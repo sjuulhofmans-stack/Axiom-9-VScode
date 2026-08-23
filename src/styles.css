@@ -1341,6 +1341,13 @@
   .sel-sub{font-family:var(--font-mono); font-size:11px; color:var(--text-dim);}
   .room-tag.room{color:var(--start); font-weight:700;}
   .room-tag.corridor{color:var(--text-dim); opacity:.6;}
+  input.room-tag{
+    font-family:var(--font-mono); font-size:9.5px; letter-spacing:.02em;
+    background:transparent; border:none; border-bottom:1px dashed transparent;
+    width:100%; padding:0; margin:0 0 5px; cursor:text;
+  }
+  input.room-tag:hover{border-bottom-color:var(--line);}
+  input.room-tag:focus{outline:none; border-bottom-color:var(--amber);}
   .thumb-grid{
     display:grid; grid-template-columns:repeat(8,1fr); gap:1px; aspect-ratio:1;
   }

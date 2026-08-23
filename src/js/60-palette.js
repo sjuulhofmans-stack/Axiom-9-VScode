@@ -13,8 +13,36 @@ function renderPalette(){
     card.className = 'tile-thumb' + (selectedSlot===slotIdx || highlightTile===tid ? ' active' : '');
     const badge = isCornerTile(tid) ? ' 🔒' : (tid===START_TILE ? ' ★' : '');
     const roomName = ROOM_NAMES[tid];
-    card.innerHTML = `<div class="id"><span class="id-num">#${tid}${badge}</span><b>${letterForSlot(slotIdx)}</b></div>` +
-      `<div class="room-tag ${roomName ? 'room' : 'corridor'}">${roomName || ('Gang ' + tid)}</div>`;
+    card.innerHTML = `<div class="id"><span class="id-num">#${tid}${badge}</span><b>${letterForSlot(slotIdx)}</b></div>`;
+    if (roomName){
+      const nameInput = document.createElement('input');
+      nameInput.type = 'text';
+      nameInput.className = 'room-tag room room-name-input';
+      nameInput.value = roomName;
+      nameInput.maxLength = 40;
+      nameInput.title = 'Kamernaam aanpassen';
+      nameInput.setAttribute('aria-label', 'Kamernaam van tegel #' + tid);
+      nameInput.addEventListener('pointerdown', e => e.stopPropagation());
+      nameInput.addEventListener('click', e => e.stopPropagation());
+      nameInput.addEventListener('dblclick', e => e.stopPropagation());
+      nameInput.addEventListener('keydown', e => {
+        e.stopPropagation();
+        if (e.key === 'Enter') nameInput.blur();
+      });
+      nameInput.addEventListener('change', () => {
+        const val = nameInput.value.trim();
+        ROOM_NAMES[tid] = val || roomName;
+        nameInput.value = ROOM_NAMES[tid];
+        renderBoard();
+        renderQuestRegister();
+      });
+      card.appendChild(nameInput);
+    } else {
+      const tag = document.createElement('div');
+      tag.className = 'room-tag corridor';
+      tag.textContent = 'Gang ' + tid;
+      card.appendChild(tag);
+    }
     const editBtn = document.createElement('button');
     editBtn.className = 'edit-btn';
     editBtn.type = 'button';
