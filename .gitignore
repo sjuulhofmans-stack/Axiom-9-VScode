@@ -1,0 +1,7 @@
+__pycache__/
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Lokale Claude Code instellingen (paden/permissies van deze computer, niet nodig in de repo)
+.claude/settings.local.json

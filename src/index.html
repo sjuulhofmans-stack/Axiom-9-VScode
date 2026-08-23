@@ -1,0 +1,376 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AXIOM-9 — Map Generator</title>
+<style>
+{{CSS}}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <div class="title-block">
+      <img class="logo" src="{{LOGO}}" alt="Axiom-9 logo">
+      <h1 class="spaced-title">MAP GENERATOR</h1>
+    </div>
+    <div class="status">
+      <div><span class="dot"></span>SYSTEEM ACTIEF</div>
+      <div>SEED: <b id="statSeed" title="De seed waarmee de huidige indeling is gegenereerd">origineel</b></div>
+    </div>
+  </header>
+
+  <div class="tab-bar" role="tablist">
+    <button class="tab-btn active" id="tabBtnMap" data-tab="map" role="tab" aria-selected="true">Kaart maken</button>
+    <button class="tab-btn" id="tabBtnSimulate" data-tab="simulate" role="tab" aria-selected="false">Simulatie</button>
+    <button class="tab-btn" id="tabBtnWalk" data-tab="walk" role="tab" aria-selected="false">Stap voor stap</button>
+    <button class="tab-btn" id="tabBtnCards" data-tab="cards" role="tab" aria-selected="false">Kaarten</button>
+  </div>
+
+  <div id="tabMap" class="tab-panel" role="tabpanel">
+
+  <div class="grid-layout">
+
+    <div class="panel">
+      <div class="board-zoom-wrap">
+        <div class="board-tools">
+          <button type="button" class="small ghost board-zoom">Vergroten</button>
+          <p class="scroll-hint">↔ Swipe om te schuiven</p>
+        </div>
+        <div class="board-outer">
+          <div id="board"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="right-col">
+
+    <div class="panel">
+      <h2>Geselecteerde tegel</h2>
+      <div class="controls">
+        <div class="selected-tile-box" id="selectedBox">Geen selectie — klik een tegel op het bord of in het register</div>
+        <div class="rotate-row">
+          <button id="btnRotL" disabled>↺ 90° links</button>
+          <button id="btnRotR" disabled>90° rechts ↻</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h2>Besturing</h2>
+      <div class="controls">
+        <div class="field">
+          <label for="seedInput">Seed</label>
+          <div class="seed-row">
+            <input type="text" id="seedInput" placeholder="bijv. terra-nova-07" value="axiom-9">
+            <button id="btnDice" class="small" title="Willekeurige seed" aria-label="Willekeurige seed">🎲</button>
+          </div>
+        </div>
+        <div class="btn-row">
+          <button id="btnShuffle" class="primary">Genereer indeling</button>
+          <button id="btnReset" class="ghost">Herstel alles</button>
+        </div>
+        <div id="genProgress" class="sim-progress" hidden>
+          <div class="sim-progress-bar"><div class="sim-progress-fill" id="genProgressFill"></div></div>
+          <div class="sim-progress-text" id="genProgressText"></div>
+        </div>
+
+        <div id="layoutCode" hidden></div>
+
+        <p class="hint" id="swapHint">Sleep een tegel over een andere om ze te verwisselen.</p>
+        <p class="hint">In het register onderaan: <b>🔒</b> = hoektegel, ligt vast op A/E/P/T · <b>★</b> = Hibernatie, de tegel met de vier startposities · de letter rechts is de positie op het bord.</p>
+
+        <div class="legend" id="legend">
+          <div class="legend-row" data-key="walk"><span class="swatch" style="background:var(--walk)"></span>Loopbaar vakje</div>
+          <div class="legend-row" data-key="quest"><span class="swatch" style="background:var(--quest)"></span>Opdrachtvakje (2.x)</div>
+          <div class="legend-row" data-key="start"><span class="swatch" style="background:var(--start)"></span>Startpositie (3.x)</div>
+          <div class="legend-row" data-key="empty"><span class="swatch" style="background:var(--slot-empty)"></span>Leeg vakje — hier kun je niet lopen</div>
+          <div class="legend-row" data-key="seamopen"><span class="swatch" style="background:var(--amber); box-shadow:0 0 6px var(--amber);"></span>Naad open — tegels sluiten aan</div>
+          <div class="legend-row" data-key="seambroken"><span class="swatch" style="background:var(--danger); box-shadow:0 0 6px var(--danger);"></span>Naad geblokkeerd — doorgang eindigt in een muur</div>
+          <div class="legend-row" data-key="letters"><span class="swatch" style="background:var(--amber);"></span>Positieletters (A–T)</div>
+        </div>
+      </div>
+    </div>
+
+    </div>
+
+  </div>
+
+  <div id="connStatus" style="display:none;"></div>
+
+  <div class="panel" style="margin-top:22px;">
+    <h2>Opdrachten <span class="count" id="countQuests"></span></h2>
+    <p class="hint" style="margin-bottom:10px;">Namen zijn puur thematisch (voor op de fysieke opdrachtkaarten) — de speelregel blijft dat een opdracht telt zodra je op het vakje staat. Hernoemen kan in <code>10-rules.js</code> (<code>QUEST_NAMES</code>).</p>
+    <div id="questRegister"></div>
+  </div>
+
+  <div class="register-grid">
+    <div class="panel palette-strip">
+      <h2>Kamers <span class="count" id="countRooms"></span></h2>
+      <div id="paletteRooms" class="palette-list"></div>
+    </div>
+    <div class="panel palette-strip">
+      <h2>Gangen <span class="count" id="countCorridors"></span></h2>
+      <div id="paletteCorridors" class="palette-list"></div>
+    </div>
+  </div>
+
+  </div>
+
+  <div id="tabSimulate" class="tab-panel" role="tabpanel" hidden>
+    <div class="panel">
+      <h2>Simulatie</h2>
+      <div class="controls">
+        <div class="field">
+          <label for="simCount">Aantal potjes</label>
+          <div class="seed-row">
+            <input type="number" id="simCount" min="100" max="20000" step="100" value="2000">
+            <button id="btnSimulate" class="primary">Draai simulatie</button>
+          </div>
+        </div>
+        <p class="hint">Speelt potjes na met 2×D6 (exact aantal stappen, geen U-turn, bezette vakjes blokkeren) op de indeling van het tabblad "Kaart maken". Elke speler heeft een eigen geschud stapeltje opdrachten 1–9; wie als eerste 6 opdrachten voltooit wint.</p>
+        <div id="simProgress" class="sim-progress" hidden>
+          <div class="sim-progress-bar"><div class="sim-progress-fill" id="simProgressFill"></div></div>
+          <div class="sim-progress-text" id="simProgressText"></div>
+        </div>
+        <div id="simStatus" class="reach-status"></div>
+        <div id="simResults"></div>
+      </div>
+    </div>
+  </div>
+
+  <div id="tabWalk" class="tab-panel" role="tabpanel" hidden>
+    <div class="panel">
+      <h2>Stap voor stap</h2>
+      <div class="controls">
+        <div class="walk-mode-toggle" role="tablist">
+          <button class="walk-mode-btn active" id="walkModeAuto" data-mode="auto" role="tab" aria-selected="true">Automatisch</button>
+          <button class="walk-mode-btn" id="walkModeSolo" data-mode="solo" role="tab" aria-selected="false">Zelf spelen</button>
+        </div>
+
+        <div class="walk-controls" id="walkAutoControls">
+          <div class="field">
+            <label for="walkPlayers">Aantal spelers</label>
+            <select id="walkPlayers">
+              <option value="1">1 speler</option>
+              <option value="2">2 spelers</option>
+              <option value="3">3 spelers</option>
+              <option value="4" selected>4 spelers</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="walkStart">Startpositie</label>
+            <select id="walkStart"></select>
+          </div>
+          <div class="field">
+            <label for="walkEnergyMode">Energie-inzet</label>
+            <select id="walkEnergyMode">
+              <option value="mix" selected>elke speler een andere</option>
+              <option value="boost">alleen Stuwstoot (3)</option>
+              <option value="reorder">alleen Herprioritering (6)</option>
+              <option value="jump">alleen Noodtransport (10)</option>
+              <option value="none">niemand geeft uit</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="walkSpeed">Tempo — <span id="walkSpeedLabel">normaal</span></label>
+            <input type="range" id="walkSpeed" min="0" max="4" step="1" value="2">
+          </div>
+          <div class="btn-row">
+            <button id="btnWalkStart" class="primary">Simulatie starten</button>
+            <button id="btnWalkPause" class="ghost" disabled>Pauze</button>
+            <button id="btnWalkStop" class="ghost" disabled>Stoppen</button>
+          </div>
+        </div>
+        <p class="hint" id="walkAutoHint">Speelt één potje op de indeling van het tabblad "Kaart maken", met dezelfde regels als de batch-simulatie: elke speler blokkeert de vakjes waar hij staat, en er wordt doorgespeeld tot de één na laatste speler binnen is — bij 4 spelers dus tot en met de nummer 3, want dan ligt de vierde plaats vast. Het tempo kun je tijdens het lopen aanpassen. <span id="walkStartHint" class="sub"></span></p>
+
+        <div class="walk-controls" id="walkSoloControls" hidden>
+          <div class="field">
+            <label for="walkSoloPlayers">Aantal spelers</label>
+            <select id="walkSoloPlayers">
+              <option value="1">1 speler (alleen)</option>
+              <option value="2">2 spelers</option>
+              <option value="3">3 spelers</option>
+              <option value="4" selected>4 spelers</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="walkSoloBots">Aantal bots</label>
+            <select id="walkSoloBots"></select>
+          </div>
+        </div>
+        <p class="hint" id="walkSoloHint">Jij bestuurt één speler, de rest speelt zichzelf. <b>Volgorde van een beurt:</b> 1. energie-actie kiezen en meteen inzetten — 2. dobbelen (2 loopstenen + de energiesteen) — 3. stappen zetten, waarbij je vóór de eerste stap of tussen stappen door hooguit <b>één</b> actiekaart mag spelen of afleggen. Een actiekaart krijg je door een opdracht te voltooien; je houdt er hoogstens twee op hand.</p>
+        <div id="walkSoloSetupPlayers" class="walk-solo-setup"></div>
+        <div class="walk-controls" id="walkSoloStartRow" hidden>
+          <div class="btn-row">
+            <button id="btnWalkSoloStart" class="primary">Potje starten</button>
+            <button id="btnWalkSoloReset" class="ghost" disabled>Nieuw potje</button>
+          </div>
+        </div>
+        <div class="walk-play-layout">
+          <div class="walk-board-col">
+            <div class="walk-score" id="walkScore"></div>
+
+            <div class="board-zoom-wrap">
+              <div class="board-tools">
+                <button type="button" class="small ghost board-zoom">Vergroten</button>
+                <p class="scroll-hint">↔ Swipe om te schuiven</p>
+              </div>
+              <div class="board-outer">
+                <div id="walkBoard"></div>
+              </div>
+            </div>
+
+            <div class="walk-legend">
+              <span class="walk-key"><i class="walk-swatch pawn p1"></i><i class="walk-swatch pawn p2"></i><i class="walk-swatch pawn p3"></i><i class="walk-swatch pawn p4"></i>pionnen (speler 1–4)</span>
+              <span class="walk-key"><i class="walk-swatch target"></i>doel van wie aan zet is</span>
+              <span class="walk-key"><i class="walk-swatch trail"></i>route deze beurt (kleur van wie aan zet is)</span>
+              <span class="walk-key"><i class="walk-swatch done"></i>al voltooid door wie aan zet is</span>
+              <span class="walk-key"><i class="walk-swatch start"></i>startpositie</span>
+            </div>
+
+            <div id="walkLog" class="walk-log"></div>
+          </div>
+
+          <div class="walk-side-col">
+            <div class="walk-dirpad-row" id="walkDirPad" hidden>
+              <div class="walk-dirpad">
+                <button type="button" class="walk-dir-btn walk-dir-n" data-dir="0" title="Noord">▲<span>N</span></button>
+                <button type="button" class="walk-dir-btn walk-dir-w" data-dir="3" title="West">◀<span>W</span></button>
+                <button type="button" class="walk-dir-btn walk-dir-o" data-dir="1" title="Oost">▶<span>O</span></button>
+                <button type="button" class="walk-dir-btn walk-dir-z" data-dir="2" title="Zuid">▼<span>Z</span></button>
+              </div>
+              <div class="walk-step-counter">
+                <div class="walk-step-box"><span class="walk-step-num" id="walkStepDone">0</span><span class="walk-step-lbl">gezet</span></div>
+                <div class="walk-step-box"><span class="walk-step-num" id="walkStepLeft">0</span><span class="walk-step-lbl">nog</span></div>
+              </div>
+            </div>
+
+            <div class="walk-hud">
+              <div class="walk-dice" id="walkDice"></div>
+              <span id="walkPausedFlag" class="walk-paused-flag" hidden>gepauzeerd</span>
+              <div class="btn-row">
+                <button id="btnWalkSoloRoll" class="primary" hidden>🎲 Gooi de dobbelstenen</button>
+                <button id="btnWalkSoloSkip" class="ghost" hidden>Geen actie, gewoon dobbelen</button>
+              </div>
+            </div>
+
+            <!-- kaartkluis: staat direct onder de dobbelstenen en is alleen zichtbaar zodra je
+                 daadwerkelijk een actiekaart in handen hebt. Klikken opent het kaartvenster. -->
+            <button type="button" class="walk-card-vault" id="walkCardVault" hidden>
+              <span class="walk-card-vault-thumbs" id="walkCardVaultThumbs"></span>
+              <span class="walk-card-vault-text">
+                <b id="walkCardVaultCount">Actiekaarten</b>
+                <span class="sub" id="walkCardVaultHint">klik om te bekijken →</span>
+              </span>
+            </button>
+
+            <div class="walk-info-panel">
+              <!-- de opdrachtkaart die op dit moment het doel is; leeg zolang er geen potje loopt -->
+              <div class="walk-quest-card" id="walkQuestCard"></div>
+
+              <div class="walk-meta" id="walkMeta"></div>
+
+              <div class="walk-score" id="walkScoreActive"></div>
+
+              <div class="walk-solo-panel" id="walkSoloPanel" hidden>
+                <div class="walk-solo-actions" id="walkSoloActions"></div>
+              </div>
+
+              <div id="walkStatus" class="reach-status"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="tabCards" class="tab-panel" role="tabpanel" hidden>
+    <div class="panel">
+      <h2>Opdrachtkaarten</h2>
+      <p class="hint">De negen opdrachten uit reeks 2. De kamer onderaan een kaart wordt opgezocht bij de tegel waar het opdrachtvakje op ligt, dus verplaats je een label in de tegel-editor, dan verandert de kaart mee. Tik of klik een kaart aan om hem groot te bekijken.</p>
+      <div class="cards-shelf" id="cardsQuestGrid"></div>
+    </div>
+
+    <div class="panel">
+      <h2>Actiekaarten</h2>
+      <p class="hint">Alle achttien actiekaarten, gegroepeerd per categorie. Van elke kaart zitten er <b>twee</b> in de gedeelde trekstapel (36 kaarten); je trekt er een zodra je een opdracht voltooit en houdt er hoogstens twee op hand. Tik of klik een kaart aan om hem groot te bekijken.</p>
+      <div id="cardsActionWrap"></div>
+    </div>
+  </div>
+
+  <footer>AXIOM-9 · MILITAIR BEVOORRADINGSSCHIP · JAAR 2150 — alles draait lokaal in dit bestand, niets wordt verzonden</footer>
+
+  <!-- kaartvenster: toont de actiekaarten die je op dit moment in handen hebt, op ware
+       kaartverhouding. Eén kaart tegelijk selecteerbaar; onderin gecentreerd de keuze. -->
+  <div id="cardsZoom" class="cards-zoom" hidden>
+    <div class="cards-zoom-inner">
+      <div class="cards-zoom-face" id="cardsZoomFace"></div>
+      <p class="cards-zoom-cap" id="cardsZoomCap"></p>
+      <p class="hint">Klik ergens om te sluiten</p>
+    </div>
+  </div>
+
+  <!-- kaartvenster: toont de actiekaarten die je op dit moment in handen hebt, op ware
+       kaartverhouding. Eén kaart tegelijk selecteerbaar; onderin gecentreerd de keuze. -->
+  <div id="cardOverlay" class="card-overlay" hidden>
+    <div class="card-panel" role="dialog" aria-modal="true" aria-labelledby="cardPanelTitle">
+      <div class="card-panel-head">
+        <h2 id="cardPanelTitle">Jouw actiekaarten</h2>
+        <button id="cardPanelClose" class="small ghost" aria-label="Venster sluiten">Sluiten ✕</button>
+      </div>
+      <p class="hint" id="cardPanelHint"></p>
+      <div class="card-grid" id="cardGrid"></div>
+      <div class="card-panel-actions">
+        <button id="btnCardPlay" class="primary" disabled>Speel deze kaart</button>
+        <button id="btnCardDiscard" class="ghost" disabled>Afleggen</button>
+        <button id="btnCardCancel" class="ghost">Sluiten</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="editorOverlay" class="editor-overlay" hidden>
+    <div class="editor-panel">
+      <div class="editor-head">
+        <h2 id="editorTitle">Tegel bewerken</h2>
+        <button id="editorClose" class="small ghost">Sluiten ✕</button>
+      </div>
+      <div class="editor-body">
+        <div>
+          <div id="editorGrid" class="editor-grid"></div>
+          <p class="hint" style="margin-top:10px;">Klik een vakje aan om het met het gekozen gereedschap te zetten.</p>
+        </div>
+        <div class="editor-side">
+          <div class="field">
+            <label>Gereedschap</label>
+            <div class="tool-list" id="toolList">
+              <button class="tool active" data-tool="walk"><span class="swatch" style="background:var(--walk)"></span>Loopbaar vakje</button>
+              <button class="tool" id="toolQuest" data-tool="quest"><span class="swatch" style="background:var(--quest)"></span>Opdrachtvakje</button>
+              <button class="tool" data-tool="erase"><span class="swatch" style="background:var(--slot-empty); border:1px solid var(--line);"></span>Wissen</button>
+            </div>
+          </div>
+          <div class="field" id="labelField" hidden>
+            <label for="labelSelect">Nummer</label>
+            <select id="labelSelect"></select>
+          </div>
+          <div class="btn-row">
+            <button id="editorRevert" class="small ghost">Herstel deze tegel</button>
+          </div>
+          <p class="hint">Een zijde telt als doorgang zodra beide deurvakjes gevuld zijn. Wijzig je dat, dan passen de regels en de generator zich automatisch aan.</p>
+          <div class="field editor-checklist-field">
+            <label>Controlelijst</label>
+            <ul id="editorChecklist" class="checklist"></ul>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+{{JS}}
+</script>
+</body>
+</html>
