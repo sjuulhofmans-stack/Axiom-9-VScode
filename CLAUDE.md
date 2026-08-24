@@ -9,8 +9,11 @@ in een raster van 4 rijen × 5 kolommen (posities A t/m T, van links naar rechts
 waarvan 800 KB het logo). Bewerk altijd de bronbestanden in `src/` en draai daarna:
 
 ```
-python3 build.py
+python build.py
 ```
+
+(Op Mac/Linux heet dit vaak `python3 build.py` — op Windows installeert de officiële
+Python-installer geen apart `python3`-commando, dus daar is het gewoon `python`.)
 
 Dit is precies waarom het project is opgesplitst: één wijziging in de knopjes hoeft
 niet het hele logo mee te slepen.
@@ -116,7 +119,7 @@ aangeroepen (functiedeclaraties worden gehoist, `const`/`let` niet).
 
 ## Controleren of het nog werkt
 
-Na een wijziging altijd `python3 build.py` en dan `dist/axiom9.html` openen.
+Na een wijziging altijd `python build.py` en dan `dist/axiom9.html` openen.
 Check minimaal:
 1. Dobbelsteenknop → melding "strak aaneengesloten, geen doodlopende doorgangen".
 2. Onbereikbare vakjes (bv. na een tegel-bewerking) krijgen een roze/magenta rand
