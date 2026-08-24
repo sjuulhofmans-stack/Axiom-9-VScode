@@ -85,6 +85,7 @@
         <div class="legend" id="legend">
           <div class="legend-row" data-key="walk"><span class="swatch" style="background:var(--walk)"></span>Loopbaar vakje</div>
           <div class="legend-row" data-key="quest"><span class="swatch" style="background:var(--quest)"></span>Opdrachtvakje (2.x)</div>
+          <div class="legend-row" data-key="actioncell"><span class="swatch" style="background:var(--actioncell)"></span>Actiekaartvakje (4.x)</div>
           <div class="legend-row" data-key="start"><span class="swatch" style="background:var(--start)"></span>Startpositie (3.x)</div>
           <div class="legend-row" data-key="empty"><span class="swatch" style="background:var(--slot-empty)"></span>Leeg vakje — hier kun je niet lopen</div>
           <div class="legend-row" data-key="seamopen"><span class="swatch" style="background:var(--amber); box-shadow:0 0 6px var(--amber);"></span>Naad open — tegels sluiten aan</div>
@@ -104,6 +105,12 @@
     <h2>Opdrachten <span class="count" id="countQuests"></span></h2>
     <p class="hint" style="margin-bottom:10px;">Namen zijn puur thematisch (voor op de fysieke opdrachtkaarten) — de speelregel blijft dat een opdracht telt zodra je op het vakje staat. Hernoemen kan in <code>10-rules.js</code> (<code>QUEST_NAMES</code>).</p>
     <div id="questRegister"></div>
+  </div>
+
+  <div class="panel" style="margin-top:22px;">
+    <h2>Actiekaartvakjes <span class="count" id="countActionCells"></span></h2>
+    <p class="hint" style="margin-bottom:10px;">Elke gangtegel heeft er precies één. Loop je er tijdens je beurt overheen, dan trek je een beloningskaart — je zet stopt er niet voor, en hooguit 1 kaart per beurt op deze manier.</p>
+    <div id="actionCellRegister"></div>
   </div>
 
   <div class="register-grid">
@@ -131,6 +138,7 @@
           </div>
         </div>
         <p class="hint">Speelt potjes na met 2×D6 (exact aantal stappen, geen U-turn, bezette vakjes blokkeren) op de indeling van het tabblad "Kaart maken". Elke speler heeft een eigen geschud stapeltje opdrachten 1–9; wie als eerste 6 opdrachten voltooit wint.</p>
+        <p class="hint">Elke gang heeft daarnaast een actiekaartvakje: loop je daar tijdens je beurt overheen, dan trek je een beloningskaart (de zet stopt er niet voor, hooguit 1x per beurt).</p>
         <div id="simProgress" class="sim-progress" hidden>
           <div class="sim-progress-bar"><div class="sim-progress-fill" id="simProgressFill"></div></div>
           <div class="sim-progress-text" id="simProgressText"></div>
@@ -201,7 +209,7 @@
             <select id="walkSoloBots"></select>
           </div>
         </div>
-        <p class="hint" id="walkSoloHint">Jij bestuurt één speler, de rest speelt zichzelf. <b>Volgorde van een beurt:</b> 1. energie-actie kiezen en meteen inzetten — 2. dobbelen (2 loopstenen + de energiesteen) — 3. stappen zetten, waarbij je vóór de eerste stap of tussen stappen door hooguit <b>één</b> actiekaart mag spelen of afleggen. Een actiekaart krijg je door een opdracht te voltooien; je houdt er hoogstens twee op hand.</p>
+        <p class="hint" id="walkSoloHint">Jij bestuurt één speler, de rest speelt zichzelf. <b>Volgorde van een beurt:</b> 1. energie-actie kiezen en meteen inzetten — 2. dobbelen (2 loopstenen + de energiesteen) — 3. stappen zetten, waarbij je vóór de eerste stap of tussen stappen door hooguit <b>één</b> actiekaart mag spelen of afleggen. Een actiekaart krijg je door een opdracht te voltooien, of door tijdens je beurt over het actiekaartvakje van een gang te lopen (je zet stopt daar niet voor, en hooguit 1 kaart per beurt op die manier); je houdt er hoogstens drie op hand.</p>
         <div id="walkSoloSetupPlayers" class="walk-solo-setup"></div>
         <div class="walk-controls" id="walkSoloStartRow" hidden>
           <div class="btn-row">
@@ -296,7 +304,7 @@
 
     <div class="panel">
       <h2>Actiekaarten</h2>
-      <p class="hint">Alle achttien actiekaarten, gegroepeerd per categorie. Van elke kaart zitten er <b>twee</b> in de gedeelde trekstapel (36 kaarten); je trekt er een zodra je een opdracht voltooit en houdt er hoogstens twee op hand. Tik of klik een kaart aan om hem groot te bekijken.</p>
+      <p class="hint">Alle achttien actiekaarten, gegroepeerd per categorie. Van elke kaart zitten er <b>twee</b> in de gedeelde trekstapel (36 kaarten); je trekt er een zodra je een opdracht voltooit of over het actiekaartvakje van een gang loopt (hooguit 1x per beurt), en houdt er hoogstens drie op hand. Tik of klik een kaart aan om hem groot te bekijken.</p>
       <div id="cardsActionWrap"></div>
     </div>
   </div>
@@ -348,6 +356,7 @@
             <div class="tool-list" id="toolList">
               <button class="tool active" data-tool="walk"><span class="swatch" style="background:var(--walk)"></span>Loopbaar vakje</button>
               <button class="tool" id="toolQuest" data-tool="quest"><span class="swatch" style="background:var(--quest)"></span>Opdrachtvakje</button>
+              <button class="tool" id="toolCard" data-tool="card"><span class="swatch" style="background:var(--actioncell)"></span>Actiekaartvakje</button>
               <button class="tool" data-tool="erase"><span class="swatch" style="background:var(--slot-empty); border:1px solid var(--line);"></span>Wissen</button>
             </div>
           </div>

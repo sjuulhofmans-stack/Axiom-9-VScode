@@ -100,3 +100,21 @@ function renderQuestRegister(){
   }).join('');
   el.innerHTML = `<table class="sim-table quest-table"><thead><tr><th>Opdracht</th><th>Naam</th><th>Ligt in</th></tr></thead><tbody>${rows}</tbody></table>`;
 }
+
+// ---------- actiekaartvakjes-register ----------
+// puur informatief, zelfde opzet als renderQuestRegister — elke gangtegel draagt precies 1 label
+function renderActionCellRegister(){
+  const el = document.getElementById('actionCellRegister');
+  if (!el) return;
+  const countEl = document.getElementById('countActionCells');
+  if (countEl) countEl.textContent = '(' + ACTION_CELL_LABELS.length + ')';
+  const rows = ACTION_CELL_LABELS.map(label => {
+    const tid = findLabelTile(label);
+    const slotIdx = tid !== null ? layout.indexOf(tid) : -1;
+    const where = tid !== null && slotIdx !== -1
+      ? `${ROOM_NAMES[tid] || ('Gang ' + tid)} · positie ${letterForSlot(slotIdx)}`
+      : `<span class="bad">ontbreekt op het bord</span>`;
+    return `<tr><td>${label}</td><td>${where}</td></tr>`;
+  }).join('');
+  el.innerHTML = `<table class="sim-table quest-table"><thead><tr><th>Vakje</th><th>Ligt in</th></tr></thead><tbody>${rows}</tbody></table>`;
+}

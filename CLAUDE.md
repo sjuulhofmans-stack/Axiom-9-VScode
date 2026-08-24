@@ -62,6 +62,7 @@ aangeroepen (functiedeclaraties worden gehoist, `const`/`let` niet).
 | iets aan de tegel-editor                    | `90-editor.js`        |
 | de spelsimulatie aanpassen                  | `95-simulate.js`      |
 | iets aan "stap voor stap" (pion, tempo)     | `96-walk.js`          |
+| het actiekaartvakje van een gang verplaatsen | tegel-editor in de tool (of `src/data/tiles.json`, labels `4.1`–`4.10`) |
 
 ## Spelregels die in de code zitten
 
@@ -100,6 +101,18 @@ aangeroepen (functiedeclaraties worden gehoist, `const`/`let` niet).
   en vervalt de rest. Elke speler heeft een eigen geschud stapeltje opdrachten
   1–9 (labels `2.1`–`2.9`); wie als eerste 6 opdrachten voltooit wint. Draait
   altijd op de indeling die op dat moment in de tool staat.
+- Elke **gangtegel** heeft precies 1 actiekaartvakje (labels `4.1`–`4.10`,
+  analoog aan het opdrachtvakje in een kamer — zie `tileValidationIssues` in
+  `90-editor.js`). Loop je er tijdens je beurt overheen, dan trek je een
+  beloningskaart net als bij een voltooide opdracht, maar anders dan een
+  opdrachtvakje **onderbreekt het de zet niet** (`resolveMove` stopt alleen op
+  je eigen `targetKey`) en levert het **hooguit 1 kaart per beurt** op, ook als
+  je onderweg meerdere van deze vakjes passeert — geen heen-en-weer lopen voor
+  een 2e kaart. Gedeelde logica: `graph.actionCells` (in `buildSimGraph`),
+  `pathHasActionCell` en `drawActionCellReward` in `95-simulate.js`; elke
+  spelmodus (`95-simulate.js`, `96-walk.js`, `97-solo.js`) houdt zelf een
+  per-beurt vlag bij (bv. `actionCellDrawnThisTurn`) omdat animatie/bot-logica
+  per modus verschilt. Max. handgrootte: `ACTION_CARD_HAND_MAX` (nu 3).
 
 ## Controleren of het nog werkt
 
@@ -120,6 +133,10 @@ Check minimaal:
    de dobbelstenen rollen, en het potje eindigt met "Gewonnen vanaf 3.x".
    Tempo moet je tijdens het lopen kunnen wijzigen; "Stoppen" moet de pion
    echt stilzetten (geen achtergrondlus die doorloopt).
+9. Elke gangtegel heeft één paars actiekaartvakje op het bord (legenda
+   "Actiekaartvakje (4.x)"). Loopt een pion er tijdens "Stap voor stap"
+   overheen, dan verschijnt een logregel "trekt een beloningskaart" en loopt
+   de pion gewoon door — de beurt stopt er niet voor.
 
 ## Nog te doen
 

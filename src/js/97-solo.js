@@ -195,6 +195,7 @@ let soloUsedBoots = false;
 let soloAllowUturn = false;   // Snelroute: geen-U-turn-regel geldt deze beurt niet voor jou
 let soloLockedThisTurn = false; // Vergrendeling: deze beurt geen energie- en kaartactie
 let soloUsedJump = false;
+let soloActionCellDrawnThisTurn = false;  // hooguit 1 beloningskaart per beurt via een actiekaartvakje
 let soloBootsOptions = [];
 let soloCurrentLegalMoves = [];  // { key, dir }[] — de opties die het richtingskruis nu toont
 let soloBlindOfferAvailable = false; // deze stap geblokkeerd door een tegenstander + Blinde Vlek in de hand
@@ -761,6 +762,31 @@ function soloUseEnergyAction(id){
   }
 }
 
+// ---------- actiekaartvakje (gang): loop je erover, dan trek je een beloningskaart ----------
+// Net als een opdracht, maar onderbreekt de zet niet (alleen soloTargetKey doet dat) en hooguit
+// 1x per beurt (soloActionCellDrawnThisTurn), ook als je onderweg meerdere van deze vakjes
+// passeert. `soloGrantActionCellReward` gaat er blind van uit dat de aanroeper al vastgesteld
+// heeft dat er een actiekaartvakje geraakt is — alleen het "al gehad deze beurt"-slot wordt hier
+// nog getoetst. `soloCheckActionCell` is de per-stap variant (mens): checkt zelf één cel.
+function soloGrantActionCellReward(player, isHuman){
+  if (soloActionCellDrawnThisTurn) return;
+  soloActionCellDrawnThisTurn = true;
+  const reward = drawActionCellReward(player, soloDeck, soloRand);
+  if (reward.drawn){
+    const msg = isHuman
+      ? `Je loopt over een actiekaartvakje en trekt een beloningskaart: <b>${ACTION_CARDS[reward.drawn].name}</b> — ${ACTION_CARDS[reward.drawn].hint}.`
+      : `${player.name} loopt over een actiekaartvakje en trekt een beloningskaart: <b>${ACTION_CARDS[reward.drawn].name}</b> — ${ACTION_CARDS[reward.drawn].hint}.`;
+    walkLog(msg, null, player);
+    if (isHuman) soloRefreshCardVault();
+  } else if (reward.handFull){
+    walkLog(isHuman ? `Je loopt over een actiekaartvakje, maar je hand is al vol.` : `${player.name} loopt over een actiekaartvakje, maar de hand is al vol.`, null, player);
+  }
+}
+function soloCheckActionCell(key, player, isHuman){
+  if (soloActionCellDrawnThisTurn || !soloGraph.actionCells.has(key)) return;
+  soloGrantActionCellReward(player, isHuman);
+}
+
 // ---------- Zwaartekracht-laarzen: richting kiezen ----------
 function soloEnterBootsDirection(){
   const options = gravityBootsOptions(soloGraph, solo().pos, 10, soloOccupied(), soloTargetKey);
@@ -823,6 +849,7 @@ function soloResolveBoots(dir){
     leaving.style.setProperty('--pc', p.color);
     leaving.classList.add('walk-trail', 'walk-jump');
     p.pos = path[i];
+    soloCheckActionCell(p.pos, p, true);
   }
   paintWalkPawns(soloGraph, soloPlayers, p.idx);
   soloMove = { d1: 0, d2: 0, d3: null, roll: path.length - 1, stepsLeft: 0, lastDir: -1, path };
@@ -858,6 +885,7 @@ function soloHandleJumpClick(key){
   const toEl = walkCellDiv(soloGraph, key);
   toEl.style.setProperty('--pc', p.color);
   toEl.classList.add('walk-trail', 'walk-jump');
+  soloCheckActionCell(p.pos, p, true);
   paintWalkPawns(soloGraph, soloPlayers, p.idx);
 
   if (key === soloTargetKey){
@@ -1069,6 +1097,7 @@ function soloHandleMoveClick(key){
   solo().lastDir = match.dir;   // Terugtrekbevel duwt je langs deze richting terug
   soloMove.stepsLeft--;
   soloMove.path.push(key);
+  soloCheckActionCell(p.pos, p, true);
   paintWalkPawns(soloGraph, soloPlayers, p.idx);
 
   if (key === soloTargetKey){
@@ -1163,6 +1192,7 @@ function soloBeginHumanTurn(pIdx){
   soloPendingBoost = false;
   soloUsedBoots = false;
   soloUsedJump = false;
+  soloActionCellDrawnThisTurn = false;
   soloAllowUturn = false;
   soloMove = null;
 
@@ -1209,6 +1239,7 @@ function soloBeginHumanTurn(pIdx){
 // en jij niet op hen.
 function soloResolveBotTurn(player){
   soloTurn++;
+  soloActionCellDrawnThisTurn = false;
   const pIdx = player.idx;
   // Energie-acties en kaarten hebben ELK hun eigen actie-slot per beurt (max 1 van elk) —
   // zelfde opzet als simulateOneGame() in 95-simulate.js, zie de uitgebreide toelichting daar
@@ -1383,6 +1414,7 @@ function soloResolveBotTurn(player){
     const jump = resolveEnergyJump(soloGraph, player.pos, ENERGY_JUMP_RANGE, targetKey);
     if (jump){
       player.energy -= ENERGY_ACTIONS.jump.cost; player.actionUses++; energyActionUsed = true;
+      if (pathHasActionCell(soloGraph, jump.path)) soloGrantActionCellReward(player, false);
       move = jump.banked
         ? { key: jump.key, path: [jump.key], stepsUsed: 0, bankedQuest: true, wasBlocked: false }
         : resolveMove(soloGraph, jump.key, roll, occupied, targetKey, soloRand, undefined, allowUturn);
@@ -1393,6 +1425,7 @@ function soloResolveBotTurn(player){
 
   player.pos = move.key;
   paintWalkPawns(soloGraph, soloPlayers, pIdx);
+  if (pathHasActionCell(soloGraph, move.path)) soloGrantActionCellReward(player, false);
 
   if (move.bankedQuest){
     player.completed++;
@@ -1557,7 +1590,7 @@ function startSoloGame(){
     const stratNote = p.isHuman ? '' : ` · energie: <b>${ENERGY_ACTIONS[p.strategy].name}</b>`;
     walkLog(`${p.name} ${who} start op <b>${p.startLabel}</b>${stratNote} · stapel: ${p.deck.slice(0, SIM_QUESTS_TO_WIN).join(' → ')} …`, null, p);
   }
-  walkLog(`Elke voltooide opdracht levert een beloningskaart op van een gedeelde stapel — max 2 kaarten in de hand.`);
+  walkLog(`Elke voltooide opdracht levert een beloningskaart op van een gedeelde stapel — net als het actiekaartvakje in elke gang (zet stopt er niet voor, hooguit 1x per beurt) — max ${ACTION_CARD_HAND_MAX} kaarten in de hand.`);
   if (soloPlayers.length > 1){
     walkLog(`Beurtvolgorde: ${soloTurnOrder.map(i => soloPlayers[i].name).join(' → ')}.`);
     walkLog(soloPlayers.length === 2

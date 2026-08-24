@@ -494,7 +494,7 @@ async function runWalkSimulation(){
   for (const p of players){
     walkLog(`${p.name} start op <b>${p.startLabel}</b> · energie: <b>${ENERGY_ACTIONS[p.strategy].name}</b> · stapel: ${p.deck.slice(0, SIM_QUESTS_TO_WIN).join(' → ')} …`, null, p);
   }
-  walkLog(`Elke voltooide opdracht levert een beloningskaart op van een gedeelde stapel — max 2 kaarten in de hand.`);
+  walkLog(`Elke voltooide opdracht levert een beloningskaart op van een gedeelde stapel — net als het actiekaartvakje in elke gang (zet stopt er niet voor, hooguit 1x per beurt) — max ${ACTION_CARD_HAND_MAX} kaarten in de hand.`);
   if (playerCount > 1){
     walkLog(`Beurtvolgorde: ${turnOrder.map(i => players[i].name).join(' → ')}.`);
     walkLog(playerCount === 2
@@ -526,6 +526,7 @@ async function runWalkSimulation(){
       // Vlek/Noodtransport) die elkaar nog wél uitsluiten binnen hún ene bewegingsmoment.
       let energyActionUsed = false;   // hooguit 1 energie-actie per beurt
       let cardActionUsed = false;     // hooguit 1 kaart spelen per beurt
+      let actionCellDrawnThisTurn = false;   // hooguit 1 beloningskaart per beurt via een actiekaartvakje
       // Vergrendeling: vorige beurt geraakt betekent dat je NU zowel je energie- als je
       // kaartslot mist; beide sloten op "gebruikt" zetten blokkeert vanzelf alles hieronder.
       if (player.lockedNextTurn){
@@ -710,6 +711,17 @@ async function runWalkSimulation(){
           leaving.classList.add('walk-trail');
           if (special) leaving.classList.add('walk-jump');
           player.pos = path[i];
+          // actiekaartvakje (gang): onderbreekt de zet niet, levert hooguit 1x per beurt een
+          // beloningskaart op — ook als je onderweg meerdere van deze vakjes passeert
+          if (!actionCellDrawnThisTurn && graph.actionCells.has(player.pos)){
+            actionCellDrawnThisTurn = true;
+            const reward = drawActionCellReward(player, deck, rand);
+            if (reward.drawn){
+              walkLog(`${player.name} loopt over een actiekaartvakje en trekt een beloningskaart: <b>${ACTION_CARDS[reward.drawn].name}</b> — ${ACTION_CARDS[reward.drawn].hint}.`, null, player);
+            } else if (reward.handFull){
+              walkLog(`${player.name} loopt over een actiekaartvakje, maar de hand is al vol.`, null, player);
+            }
+          }
           paintWalkPawns(graph, players, pIdx);
           renderWalkMeta({ player, turn, stepsLeft: path.length - 1 - i });
           await walkTick(walkSpeed().stepMs);

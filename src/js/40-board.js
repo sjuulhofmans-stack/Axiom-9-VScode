@@ -99,7 +99,7 @@ function renderBoard(){
       const tileId = layout[slotIdx];
       const val = getDisplayValue(tileId, dr, dc);
       const div = cellEls[R][C];
-      div.classList.remove('walk','quest','start','empty-slot','slot-hover','seam-open','seam-broken','room-tile');
+      div.classList.remove('walk','quest','start','actioncell','empty-slot','slot-hover','seam-open','seam-broken','room-tile');
       const type = cellType(val);
       if (type){
         div.classList.add(type);
@@ -181,6 +181,7 @@ function renderBoard(){
   renderSelectedBox();
   renderPalette();
   renderQuestRegister();
+  renderActionCellRegister();
 }
 
 function renderSelectedBox(){

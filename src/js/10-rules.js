@@ -205,5 +205,9 @@ function cellType(v){
   if (v === 1) return 'walk';
   if (typeof v === 'string' && v.startsWith('2.')) return 'quest';
   if (typeof v === 'string' && v.startsWith('3.')) return 'start';
+  if (typeof v === 'string' && v.startsWith('4.')) return 'actioncell';
   return '';
 }
+// vaste labels voor de actiekaartvakjes in gangtegels (analoog aan 2.x voor opdrachten) — puur
+// een technisch label, geen thema/naam nodig zoals bij QUEST_NAMES
+const ACTION_CELL_LABELS = Array.from({length:10}, (_,i) => '4.' + (i+1));

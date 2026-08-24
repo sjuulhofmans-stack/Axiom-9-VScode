@@ -230,8 +230,10 @@ function blindReorderTarget(graph, player, fromKey, threshold){
 
 // ---------- beloningskaarten ----------
 // Wie een opdracht bereikt trekt een kaart van een gedeelde, gesloten stapel (2 exemplaren
-// van elk van de 10 typen = 20 kaarten). Je mag maximaal 2 kaarten tegelijk vasthouden; sta je
-// al op 2, dan trek je niet (de kaart blijft liggen). Gebruikte kaarten gaan op de aflegstapel;
+// van elk van de 10 typen = 20 kaarten) — net als het actiekaartvakje in elke gangtegel, dat
+// dezelfde beloning geeft zonder de zet te onderbreken (zie ACTION_CELL_LABELS/actionCells).
+// Je mag maximaal ACTION_CARD_HAND_MAX kaarten tegelijk vasthouden; sta je daar al op, dan
+// trek je niet (de kaart blijft liggen). Gebruikte kaarten gaan op de aflegstapel;
 // is de trekstapel leeg, dan wordt de aflegstapel geschud en dient weer als trekstapel. De
 // opdrachtkaarten blijven gewoon staan — je moet nog steeds je 6 opdrachten voltooien, de
 // kaarten zijn een bonus onderweg, geen vervanging.
@@ -267,7 +269,7 @@ const ACTION_CARDS = {
   peek:      { name: 'Herinnering',           hint: 'bekijk en herschik de bovenste 3 kaarten van de trekstapel' },
 };
 const ACTION_CARD_IDS = Object.keys(ACTION_CARDS);
-const ACTION_CARD_HAND_MAX = 2;
+const ACTION_CARD_HAND_MAX = 3;
 
 // ---------- kaart-illustraties ----------
 // Geen losse plaatjes (dat blaast het éénbestands-HTML op) — elke kaart is een klein
@@ -381,6 +383,24 @@ function drawActionCard(deck, rand){
     deck.discard = [];
   }
   return deck.draw.pop();
+}
+// beloning voor het lopen over een actiekaartvakje (gangtegels) tijdens de beurt — mechanisch
+// hetzelfde als een opdracht-beloning (kaart trekken, tenzij de hand al vol is), maar de
+// aanroeper bepaalt zelf (per beurt, per spelmodus) of dit al is gebeurd: anders dan een
+// opdracht onderbreekt dit vakje de zet niet, dus je kunt er in principe meerdere per beurt
+// passeren — precies waarom er hooguit 1x per beurt beloond wordt.
+function drawActionCellReward(player, deck, rand){
+  if (player.cards.length >= ACTION_CARD_HAND_MAX) return { drawn: null, handFull: true };
+  const drawn = drawActionCard(deck, rand);
+  if (drawn) player.cards.push(drawn);
+  return { drawn, handFull: false };
+}
+// heeft dit (net gelopen) pad-segment een actiekaartvakje geraakt? `path[0]` is de cel waar je
+// AL stond bij het begin van dit segment, dus die telt niet mee — alleen cellen die je deze
+// beurt daadwerkelijk BETREDEN hebt.
+function pathHasActionCell(graph, path){
+  for (let i = 1; i < path.length; i++) if (graph.actionCells.has(path[i])) return true;
+  return false;
 }
 // verwijdert een kaart uit de hand van een speler en legt hem af. `extra` is optioneel —
 // "stap voor stap" telt niets bij, alleen de batch-simulatie.
@@ -635,14 +655,15 @@ function buildSimGraph(){
       adjKey[k] = ks; adjDir[k] = ds;
     }
   }
-  const questCells = {}, startCells = {};
+  const questCells = {}, startCells = {}, actionCells = new Set();
   for (let k = 0; k < N; k++){
     const v = labelAt[k];
     if (typeof v !== 'string') continue;
     if (v.startsWith('2.')) questCells[v] = k;
     else if (v.startsWith('3.')) startCells[v] = k;
+    else if (v.startsWith('4.')) actionCells.add(k);
   }
-  return { H, W, N, adjKey, adjDir, questCells, startCells };
+  return { H, W, N, adjKey, adjDir, questCells, startCells, actionCells };
 }
 
 // zuivere topologische afstand vanaf één cel (negeert bezetting/U-turn) — dient als
@@ -863,6 +884,7 @@ function simulateOneGame(graph, rand, heatmap, questStats, extra){
       // voor een dubbele/onzinnige swap.
       let energyActionUsed = false;   // hooguit 1 energie-actie per beurt
       let cardActionUsed = false;     // hooguit 1 kaart spelen per beurt
+      let actionCellCrossed = false;  // hooguit 1 beloningskaart per beurt via een actiekaartvakje
       // Vergrendeling: geraakt in een vorige beurt betekent dat je NU zowel je energie- als je
       // kaartslot mist. Beide sloten meteen op "gebruikt" zetten blokkeert vanzelf elke
       // `!energyActionUsed`/`!cardActionUsed`-check hieronder — geen aparte if-ketting nodig.
@@ -1107,6 +1129,7 @@ function simulateOneGame(graph, rand, heatmap, questStats, extra){
           player.actionUses++;
           energyActionUsed = true;
           for (let p = 0; p < jump.path.length; p++) heatmap[jump.path[p]]++;
+          if (pathHasActionCell(graph, jump.path)) actionCellCrossed = true;
           // de sprong kan de opdracht zelf al pakken; anders loop je vanaf daar verder
           move = jump.banked
             ? { key: jump.key, path: [jump.key], stepsUsed: 0, bankedQuest: true, wasBlocked: false }
@@ -1122,6 +1145,16 @@ function simulateOneGame(graph, rand, heatmap, questStats, extra){
       extra.totalTurns++;
       if (move.wasBlocked) extra.blockedTurns++;
       for (let p = 0; p < move.path.length; p++) heatmap[move.path[p]]++;
+      if (pathHasActionCell(graph, move.path)) actionCellCrossed = true;
+
+      // actiekaartvakje (gang): levert een kaart op net als een opdracht, maar onderbreekt de
+      // zet niet (resolveMove stopt alleen op targetKey) en hooguit 1x per beurt, ook als je
+      // onderweg meerdere van deze vakjes passeerde.
+      if (actionCellCrossed){
+        const reward = drawActionCellReward(player, deck, rand);
+        if (reward.drawn) extra.actionCellDraws++;
+        else if (reward.handFull) extra.handFullOnActionCell++;
+      }
 
       if (move.bankedQuest){
         const qs = questStats[targetLabel];
@@ -1536,8 +1569,12 @@ function renderSimResults({ n, stuckCount, startWins, startTurnsSum, startRanks,
   const drawsPerGame = played ? (extra.cardDraws / played) : 0;
   const handFullPct = extra.cardDraws + extra.handFullOnBank
     ? (extra.handFullOnBank / (extra.cardDraws + extra.handFullOnBank) * 100) : 0;
+  const actionCellDrawsPerGame = played ? (extra.actionCellDraws / played) : 0;
+  const actionCellHandFullPct = extra.actionCellDraws + extra.handFullOnActionCell
+    ? (extra.handFullOnActionCell / (extra.actionCellDraws + extra.handFullOnActionCell) * 100) : 0;
   html += simSectionOpen('Beloningskaarten');
-  html += `<p class="hint">Wie een opdracht bereikt trekt een kaart van een gedeelde stapel van 20 (2 van elk type), tenzij zijn hand al vol is (max 2). Gemiddeld <b>${nl(drawsPerGame, 1)}</b> kaarten getrokken per potje (alle 4 spelers samen); <b>${nl(handFullPct, 1)}%</b> van de trekkans ging verloren aan een volle hand.</p>`;
+  html += `<p class="hint">Wie een opdracht bereikt trekt een kaart van een gedeelde stapel van 20 (2 van elk type), tenzij zijn hand al vol is (max ${ACTION_CARD_HAND_MAX}). Gemiddeld <b>${nl(drawsPerGame, 1)}</b> kaarten getrokken per potje via opdrachten (alle 4 spelers samen); <b>${nl(handFullPct, 1)}%</b> van die trekkans ging verloren aan een volle hand.</p>`;
+  html += `<p class="hint">Elke gangtegel heeft ook een <b>actiekaartvakje</b>: loop je daar overheen (je beurt stopt er niet voor), dan trek je er net zo een kaart bij — hooguit 1x per beurt, ook als je meerdere van deze vakjes passeert. Gemiddeld <b>${nl(actionCellDrawsPerGame, 1)}</b> kaarten getrokken per potje via actiekaartvakjes; <b>${nl(actionCellHandFullPct, 1)}%</b> van die trekkans ging verloren aan een volle hand.</p>`;
   html += `<table class="sim-table"><thead><tr><th>Kaart</th><th>Keer gebruikt per potje</th></tr></thead><tbody>${cardRows}</tbody></table>`;
   html += `<p class="hint">Prioriteitspas heeft in deze simulatie geen mechanisch effect (het is pure informatie voor een mens aan tafel) en wordt daarom nooit ingezet — 0,00 hierboven is dus verwacht, niet een bug. Een getrokken Prioriteitspas bezet wel een handslot tot het potje afloopt.</p>`;
 
@@ -1657,6 +1694,7 @@ function runSimulationBatch(){
         energyRolled: 0, energyWasted: 0,
         energyLevels: new Int32Array(ENERGY_MAX + 1),   // hoe vaak stond een speler op N energie
         cardDraws: 0, handFullOnBank: 0, cardUses,
+        actionCellDraws: 0, handFullOnActionCell: 0,
       };
       let stuckCount = 0;
 

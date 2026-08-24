@@ -7,6 +7,7 @@ const labelSelect = document.getElementById('labelSelect');
 const editorClose = document.getElementById('editorClose');
 const editorChecklist = document.getElementById('editorChecklist');
 const toolQuest = document.getElementById('toolQuest');
+const toolCard = document.getElementById('toolCard');
 let editorTile = null;      // tegel-id dat open staat
 let editorTool = 'walk';
 let editorSnapshot = null;  // kopie om te kunnen terugdraaien
@@ -110,6 +111,24 @@ function tileValidationIssues(tid){
       issues.push({ category: 'quest', cells: [k], message: `opdrachtvakje mag niet op een deurvakje of het vakje direct erachter staan.` });
     }
   }
+  const actionCells = [...m.entries()].filter(([,v]) => typeof v === 'string' && v.startsWith('4.')).map(([k])=>k);
+  if (ROOM_NAMES[tid]){
+    if (actionCells.length > 0){
+      issues.push({ category: 'actioncell', cells: actionCells, message: `kamertegels mogen geen actiekaartvakje hebben — dat gereedschap is alleen voor gangen.` });
+    }
+  } else {
+    if (actionCells.length < 1){
+      issues.push({ category: 'actioncell', cells: [], message: `gangtegel moet minimaal 1 actiekaartvakje hebben.` });
+    }
+    if (actionCells.length > 1){
+      issues.push({ category: 'actioncell', cells: actionCells, message: `maximaal 1 actiekaartvakje per tegel toegestaan (nu ${actionCells.length}).` });
+    }
+  }
+  for (const k of actionCells){
+    if (DOOR_KEYS.has(k) || DOOR_INWARD_VALUES.has(k)){
+      issues.push({ category: 'actioncell', cells: [k], message: `actiekaartvakje mag niet op een deurvakje of het vakje direct erachter staan.` });
+    }
+  }
   return issues;
 }
 // vertaalt de losse issues naar 4 brede checklist-punten voor de tegel-editor
@@ -121,7 +140,7 @@ function tileChecklistItems(tid){
     { label: 'Minimaal 2 doorgangen', ok: !has('exits') },
     { label: 'Doorgangen kloppen (geen halve deuren)', ok: !has('doors') },
     { label: 'Alle vakjes met elkaar verbonden', ok: !has('connected') },
-    ...(isRoom ? [{ label: '1 opdrachtvakje', ok: !has('quest') }] : []),
+    ...(isRoom ? [{ label: '1 opdrachtvakje', ok: !has('quest') }] : [{ label: '1 actiekaartvakje', ok: !has('actioncell') }]),
   ];
 }
 // welke 2.x / 3.x labels zijn nog vrij (buiten deze tegel)
@@ -134,12 +153,13 @@ function labelsInUse(exceptTile){
   return used;
 }
 function refreshLabelOptions(){
-  const wantQuest = editorTool === 'quest';
-  labelField.hidden = !wantQuest;
+  const wantLabel = editorTool === 'quest' || editorTool === 'card';
+  labelField.hidden = !wantLabel;
   if (labelField.hidden) return;
   const used = labelsInUse(editorTile);
-  const opts = [];
-  for (let i=1; i<=9; i++) opts.push('2.'+i);
+  const opts = editorTool === 'quest'
+    ? Array.from({length:9}, (_,i) => '2.'+(i+1))
+    : ACTION_CELL_LABELS.slice();
   labelSelect.innerHTML = opts.map(o =>
     `<option value="${o}"${used.has(o) ? ' data-used="1"' : ''}>${o}${used.has(o) ? ' (al in gebruik)' : ''}</option>`
   ).join('');
@@ -159,10 +179,12 @@ function openTileEditor(tid){
   editorDirty = false;
   const name = ROOM_NAMES[tid] ? ROOM_NAMES[tid] : 'Gang';
   editorTitle.textContent = `Tegel #${tid} — ${name}`;
-  // gangen mogen geen opdrachtvakjes hebben: dat gereedschap is daar niet beschikbaar
+  // gangen mogen geen opdrachtvakjes hebben en kamers geen actiekaartvakjes: dat gereedschap
+  // is dan niet beschikbaar
   const isRoom = !!ROOM_NAMES[tid];
   toolQuest.hidden = !isRoom;
-  if (!isRoom && editorTool === 'quest'){
+  toolCard.hidden = isRoom;
+  if ((!isRoom && editorTool === 'quest') || (isRoom && editorTool === 'card')){
     document.querySelectorAll('#toolList .tool').forEach(b => b.classList.remove('active'));
     document.querySelector('#toolList .tool[data-tool="walk"]').classList.add('active');
     editorTool = 'walk';
@@ -254,15 +276,16 @@ function paintCell(key){
       m.set(key, 1);
     }
   } else {
-    // opdrachtvakjes alleen op gewone vakjes, nooit op een deurvakje of het vakje erachter
+    // opdracht-/actiekaartvakjes alleen op gewone vakjes, nooit op een deurvakje of het vakje erachter
     if (DOOR_KEYS.has(key) || DOOR_INWARD_VALUES.has(key)) return;
-    // het opdrachtlabel wordt over een AL LOOPBAAR vakje gelegd (of over een vakje dat al
-    // opdracht is, om het label te wisselen) — nooit op een lege/onbenutte sjabloonplek.
-    // Kon dat eerder wel: dan werd de tegelvorm ongemerkt uitgebreid met dat vakje, en zodra
-    // je het label daarna verplaatste, viel de oude plek altijd terug op "loopbaar" (1) in
-    // plaats van weer leeg — ook als hij dat origineel nooit was.
+    // het label wordt over een AL LOOPBAAR vakje gelegd (of over een vakje met hetzelfde
+    // labeltype, om het label te wisselen) — nooit op een lege/onbenutte sjabloonplek of een
+    // vakje van het ANDERE labeltype. Kon dat eerder wel: dan werd de tegelvorm ongemerkt
+    // uitgebreid met dat vakje, en zodra je het label daarna verplaatste, viel de oude plek
+    // altijd terug op "loopbaar" (1) in plaats van weer leeg — ook als hij dat origineel nooit was.
+    const prefix = editorTool === 'quest' ? '2.' : '4.';
     const cur = m.get(key);
-    if (cur !== 1 && !(typeof cur === 'string' && cur.startsWith('2.'))) return;
+    if (cur !== 1 && !(typeof cur === 'string' && cur.startsWith(prefix))) return;
     const label = labelSelect.value;
     if (!label) return;
     // hetzelfde label mag maar één keer voorkomen op het HELE bord (niet alleen deze

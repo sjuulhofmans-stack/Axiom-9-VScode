@@ -22,6 +22,8 @@
     --walk-room: #8f8577;
     --quest:     #4fb8e0;
     --quest-glow:#8fe0ff;
+    --actioncell:     #b57bef;
+    --actioncell-glow:#d9b3ff;
     --start:     #55d68a;
     --start-glow:#9bffc6;
     --danger:    #ff5d5d;
@@ -181,6 +183,7 @@
   .cell.walk{background:var(--walk); box-shadow:inset 0 0 0 1px rgba(0,0,0,.25);}
   .cell.walk.room-tile{background:var(--walk-room);}
   .cell.quest{background:var(--quest); box-shadow:0 0 6px rgba(79,184,224,.55);}
+  .cell.actioncell{background:var(--actioncell); box-shadow:0 0 6px rgba(181,123,239,.55);}
   .cell.start{background:var(--start); box-shadow:0 0 6px rgba(85,214,138,.55);}
   .cell.empty-slot{background:var(--slot-empty); border-radius:1px;}
   .cell.tile-edge-r{box-shadow: inset -1px 0 0 0 rgba(255,181,69,.28);}
@@ -1194,6 +1197,7 @@
   }
   .ed-cell.walk{background:var(--walk); border-color:#5f6b77;}
   .ed-cell.quest{background:var(--quest); border-color:#7fd4f5;}
+  .ed-cell.actioncell{background:var(--actioncell); border-color:#d9b3ff;}
   .ed-cell.start{background:var(--start); border-color:#9bffc6;}
   .ed-cell.door{box-shadow:inset 0 0 0 2px rgba(255,181,69,.85);}
   .ed-cell.outside-pattern{background:#000; border-color:#000; border-radius:0; box-shadow:none; cursor:not-allowed;}
@@ -1290,6 +1294,7 @@
 
   #board.hide-walk .cell.walk{background:transparent !important; box-shadow:none !important;}
   #board.hide-quest .cell.quest{background:transparent !important; box-shadow:none !important;}
+  #board.hide-actioncell .cell.actioncell{background:transparent !important; box-shadow:none !important;}
   #board.hide-start .cell.start{background:transparent !important; box-shadow:none !important;}
   #board.hide-empty .cell.empty-slot{background:transparent !important;}
   #board.hide-seamopen .cell.seam-open{box-shadow:none !important;}
@@ -1362,6 +1367,7 @@
   .thumb-cell.walk{background:var(--walk);}
   .thumb-cell.walk.room-tile{background:var(--walk-room);}
   .thumb-cell.quest{background:var(--quest);}
+  .thumb-cell.actioncell{background:var(--actioncell);}
   .thumb-cell.start{background:var(--start);}
   .thumb-cell.empty-slot{background:var(--slot-empty);}
 
@@ -1536,6 +1542,7 @@
         <div class="legend" id="legend">
           <div class="legend-row" data-key="walk"><span class="swatch" style="background:var(--walk)"></span>Loopbaar vakje</div>
           <div class="legend-row" data-key="quest"><span class="swatch" style="background:var(--quest)"></span>Opdrachtvakje (2.x)</div>
+          <div class="legend-row" data-key="actioncell"><span class="swatch" style="background:var(--actioncell)"></span>Actiekaartvakje (4.x)</div>
           <div class="legend-row" data-key="start"><span class="swatch" style="background:var(--start)"></span>Startpositie (3.x)</div>
           <div class="legend-row" data-key="empty"><span class="swatch" style="background:var(--slot-empty)"></span>Leeg vakje — hier kun je niet lopen</div>
           <div class="legend-row" data-key="seamopen"><span class="swatch" style="background:var(--amber); box-shadow:0 0 6px var(--amber);"></span>Naad open — tegels sluiten aan</div>
@@ -1555,6 +1562,12 @@
     <h2>Opdrachten <span class="count" id="countQuests"></span></h2>
     <p class="hint" style="margin-bottom:10px;">Namen zijn puur thematisch (voor op de fysieke opdrachtkaarten) — de speelregel blijft dat een opdracht telt zodra je op het vakje staat. Hernoemen kan in <code>10-rules.js</code> (<code>QUEST_NAMES</code>).</p>
     <div id="questRegister"></div>
+  </div>
+
+  <div class="panel" style="margin-top:22px;">
+    <h2>Actiekaartvakjes <span class="count" id="countActionCells"></span></h2>
+    <p class="hint" style="margin-bottom:10px;">Elke gangtegel heeft er precies één. Loop je er tijdens je beurt overheen, dan trek je een beloningskaart — je zet stopt er niet voor, en hooguit 1 kaart per beurt op deze manier.</p>
+    <div id="actionCellRegister"></div>
   </div>
 
   <div class="register-grid">
@@ -1582,6 +1595,7 @@
           </div>
         </div>
         <p class="hint">Speelt potjes na met 2×D6 (exact aantal stappen, geen U-turn, bezette vakjes blokkeren) op de indeling van het tabblad "Kaart maken". Elke speler heeft een eigen geschud stapeltje opdrachten 1–9; wie als eerste 6 opdrachten voltooit wint.</p>
+        <p class="hint">Elke gang heeft daarnaast een actiekaartvakje: loop je daar tijdens je beurt overheen, dan trek je een beloningskaart (de zet stopt er niet voor, hooguit 1x per beurt).</p>
         <div id="simProgress" class="sim-progress" hidden>
           <div class="sim-progress-bar"><div class="sim-progress-fill" id="simProgressFill"></div></div>
           <div class="sim-progress-text" id="simProgressText"></div>
@@ -1652,7 +1666,7 @@
             <select id="walkSoloBots"></select>
           </div>
         </div>
-        <p class="hint" id="walkSoloHint">Jij bestuurt één speler, de rest speelt zichzelf. <b>Volgorde van een beurt:</b> 1. energie-actie kiezen en meteen inzetten — 2. dobbelen (2 loopstenen + de energiesteen) — 3. stappen zetten, waarbij je vóór de eerste stap of tussen stappen door hooguit <b>één</b> actiekaart mag spelen of afleggen. Een actiekaart krijg je door een opdracht te voltooien; je houdt er hoogstens twee op hand.</p>
+        <p class="hint" id="walkSoloHint">Jij bestuurt één speler, de rest speelt zichzelf. <b>Volgorde van een beurt:</b> 1. energie-actie kiezen en meteen inzetten — 2. dobbelen (2 loopstenen + de energiesteen) — 3. stappen zetten, waarbij je vóór de eerste stap of tussen stappen door hooguit <b>één</b> actiekaart mag spelen of afleggen. Een actiekaart krijg je door een opdracht te voltooien, of door tijdens je beurt over het actiekaartvakje van een gang te lopen (je zet stopt daar niet voor, en hooguit 1 kaart per beurt op die manier); je houdt er hoogstens drie op hand.</p>
         <div id="walkSoloSetupPlayers" class="walk-solo-setup"></div>
         <div class="walk-controls" id="walkSoloStartRow" hidden>
           <div class="btn-row">
@@ -1747,7 +1761,7 @@
 
     <div class="panel">
       <h2>Actiekaarten</h2>
-      <p class="hint">Alle achttien actiekaarten, gegroepeerd per categorie. Van elke kaart zitten er <b>twee</b> in de gedeelde trekstapel (36 kaarten); je trekt er een zodra je een opdracht voltooit en houdt er hoogstens twee op hand. Tik of klik een kaart aan om hem groot te bekijken.</p>
+      <p class="hint">Alle achttien actiekaarten, gegroepeerd per categorie. Van elke kaart zitten er <b>twee</b> in de gedeelde trekstapel (36 kaarten); je trekt er een zodra je een opdracht voltooit of over het actiekaartvakje van een gang loopt (hooguit 1x per beurt), en houdt er hoogstens drie op hand. Tik of klik een kaart aan om hem groot te bekijken.</p>
       <div id="cardsActionWrap"></div>
     </div>
   </div>
@@ -1799,6 +1813,7 @@
             <div class="tool-list" id="toolList">
               <button class="tool active" data-tool="walk"><span class="swatch" style="background:var(--walk)"></span>Loopbaar vakje</button>
               <button class="tool" id="toolQuest" data-tool="quest"><span class="swatch" style="background:var(--quest)"></span>Opdrachtvakje</button>
+              <button class="tool" id="toolCard" data-tool="card"><span class="swatch" style="background:var(--actioncell)"></span>Actiekaartvakje</button>
               <button class="tool" data-tool="erase"><span class="swatch" style="background:var(--slot-empty); border:1px solid var(--line);"></span>Wissen</button>
             </div>
           </div>
@@ -1823,7 +1838,31 @@
 <script>
 // ===== 00-data.js =====
 // Tegeldata wordt door build.py uit src/data/tiles.json geinjecteerd.
-const DATA = {"pattern":[[0,3],[0,4],[1,1],[1,2],[1,3],[1,4],[1,5],[1,6],[2,1],[2,2],[2,3],[2,4],[2,5],[2,6],[3,0],[3,1],[3,2],[3,3],[3,4],[3,5],[3,6],[3,7],[4,0],[4,1],[4,2],[4,3],[4,4],[4,5],[4,6],[4,7],[5,1],[5,2],[5,3],[5,4],[5,5],[5,6],[6,1],[6,2],[6,3],[6,4],[6,5],[6,6],[7,3],[7,4]],"tiles":{"1":[[2,3,1],[2,4,1],[3,2,1],[3,3,1],[3,4,1],[3,5,1],[3,6,1],[3,7,1],[4,2,1],[4,3,1],[4,5,1],[4,6,1],[4,7,1],[5,3,1],[5,4,1],[6,3,1],[6,4,1],[7,3,1],[7,4,1]],"2":[[1,1,1],[1,2,1],[1,3,1],[1,4,1],[1,5,1],[1,6,1],[2,1,1],[2,6,1],[3,0,1],[3,1,1],[3,2,"2.1"],[3,3,1],[3,4,1],[3,5,1],[3,6,1],[3,7,1],[4,0,1],[4,1,1],[4,2,1],[4,3,1],[4,4,1],[4,5,1],[4,6,1],[4,7,1],[5,3,1],[5,4,1],[6,3,1],[6,4,1],[7,3,1],[7,4,1]],"3":[[2,1,1],[2,2,1],[2,4,"2.5"],[2,5,1],[2,6,1],[3,0,1],[3,1,1],[3,2,1],[3,3,1],[3,4,1],[3,5,1],[3,6,1],[3,7,1],[4,0,1],[4,1,1],[4,2,1],[4,3,1],[4,4,1],[4,5,1],[4,6,1],[4,7,1],[5,3,1],[5,4,1],[6,3,1],[6,4,1],[7,3,1],[7,4,1]],"4":[[1,5,1],[1,6,1],[2,1,1],[2,2,"2.2"],[2,5,1],[2,6,1],[3,0,1],[3,1,1],[3,2,1],[3,5,1],[3,6,1],[3,7,1],[4,0,1],[4,1,1],[4,2,1],[4,5,1],[4,6,1],[4,7,1],[5,1,1],[5,2,1],[5,3,1],[5,4,1],[5,5,1],[5,6,1],[6,2,1],[6,3,1],[6,4,1],[6,5,1],[6,6,1],[7,3,1],[7,4,1]],"5":[[2,1,1],[2,2,1],[2,3,1],[2,4,1],[2,5,1],[3,0,1],[3,1,1],[3,2,1],[3,3,1],[3,4,1],[3,5,1],[4,0,1],[4,1,1],[4,2,1],[4,3,1],[4,4,1],[4,5,1],[5,1,1],[5,2,1],[5,3,1],[5,4,1],[5,5,"2.3"],[6,3,1],[6,4,1],[7,3,1],[7,4,1]],"6":[[0,3,1],[0,4,1],[1,3,1],[1,4,1],[2,3,1],[2,4,1],[3,3,1],[3,4,1],[3,5,1],[3,6,1],[3,7,1],[4,3,1],[4,4,1],[4,5,1],[4,6,1],[4,7,1],[5,3,1],[5,4,1],[6,3,1],[6,4,1],[7,3,1],[7,4,1]],"7":[[0,3,1],[0,4,1],[1,3,1],[1,4,1],[1,5,1],[2,1,1],[2,2,1],[2,3,1],[2,4,1],[2,5,1],[2,6,1],[3,0,1],[3,1,1],[3,2,1],[3,3,1],[3,5,1],[3,6,1],[3,7,1],[4,0,1],[4,1,1],[4,2,1],[4,4,1],[4,5,1],[4,6,1],[4,7,1],[5,1,"2.4"],[5,2,1],[5,3,1],[5,4,1],[5,5,1],[5,6,1],[6,3,1],[6,4,1],[7,3,1],[7,4,1]],"8":[[0,3,1],[0,4,1],[1,2,1],[1,3,1],[1,4,1],[1,5,"3.1"],[2,1,"3.4"],[2,2,1],[2,3,1],[2,4,1],[2,5,1],[2,6,1],[3,0,1],[3,1,1],[3,2,1],[3,5,1],[3,6,1],[3,7,1],[4,0,1],[4,1,1],[4,2,1],[4,5,1],[4,6,1],[4,7,1],[5,1,1],[5,2,1],[5,3,1],[5,4,1],[5,5,1],[5,6,"3.2"],[6,2,"3.3"],[6,3,1],[6,4,1],[7,3,1],[7,4,1]],"9":[[0,3,1],[0,4,1],[1,3,1],[1,4,1],[2,3,1],[2,4,1],[3,0,1],[3,1,1],[3,2,1],[3,3,1],[3,4,1],[3,5,1],[3,6,1],[3,7,1],[4,0,1],[4,1,1],[4,2,1],[4,3,1],[4,4,1],[4,5,1],[4,6,1],[4,7,1],[5,3,1],[5,4,1],[6,3,1],[6,4,1],[7,3,1],[7,4,1]],"10":[[0,3,1],[0,4,1],[1,3,1],[1,4,1],[2,3,1],[2,4,1],[3,0,1],[3,1,1],[3,2,1],[3,3,1],[3,4,1],[3,5,1],[3,6,1],[3,7,1],[4,0,1],[4,1,1],[4,2,1],[4,3,1],[4,4,1],[4,5,1],[4,6,1],[4,7,1],[5,2,1],[5,3,1],[5,4,1],[6,3,1],[6,4,1],[7,3,1],[7,4,1]],"11":[[0,3,1],[0,4,1],[1,3,1],[1,4,1],[2,2,1],[2,3,1],[2,4,1],[2,5,1],[3,0,1],[3,1,1],[3,2,1],[3,3,1],[3,4,1],[3,5,1],[3,6,1],[3,7,1],[4,0,1],[4,1,1],[4,2,1],[4,3,1],[4,4,1],[4,5,1],[4,6,1],[4,7,1],[5,2,1],[5,3,1],[5,4,1],[6,3,1],[6,4,1],[7,3,1],[7,4,1]],"12":[[0,3,1],[0,4,1],[1,3,1],[1,4,1],[2,1,1],[2,2,1],[2,3,1],[2,4,1],[3,0,1],[3,1,1],[3,2,1],[3,3,1],[3,4,1],[3,5,1],[3,6,1],[3,7,1],[4,0,1],[4,1,1],[4,2,1],[4,3,1],[4,4,1],[4,5,1],[4,6,1],[4,7,1]],"13":[[0,3,1],[0,4,1],[1,3,1],[1,4,1],[2,3,1],[2,4,1],[3,0,1],[3,1,1],[3,2,1],[3,3,1],[3,4,1],[3,5,1],[3,6,1],[3,7,1],[4,0,1],[4,1,1],[4,2,1],[4,3,1],[4,4,1],[4,5,1],[4,6,1],[4,7,1],[5,3,1],[5,4,1],[6,3,1],[6,4,1],[7,3,1],[7,4,1]],"14":[[0,3,1],[0,4,1],[1,3,1],[1,4,1],[2,2,1],[2,3,1],[2,4,1],[3,3,1],[3,4,1],[3,5,1],[3,6,1],[3,7,1],[4,2,"2.6"],[4,3,1],[4,4,1],[4,5,1],[4,6,1],[4,7,1],[5,2,1],[5,3,1],[5,4,1],[5,5,1],[5,6,1],[6,2,1],[6,3,1],[6,4,1],[7,3,1],[7,4,1]],"15":[[0,3,1],[0,4,1],[1,1,1],[1,2,1],[1,3,1],[1,4,1],[2,1,1],[2,2,1],[2,3,1],[2,4,1],[3,0,1],[3,1,1],[3,2,1],[4,0,1],[4,1,1],[4,2,1],[5,1,1],[5,2,1],[5,3,1],[5,4,1],[6,1,1],[6,2,1],[6,3,1],[6,4,1],[7,3,1],[7,4,1]],"16":[[0,3,1],[0,4,1],[1,3,1],[1,4,1],[2,3,1],[2,4,1],[3,3,1],[3,4,1],[3,5,1],[3,6,1],[3,7,1],[4,2,1],[4,3,1],[4,4,1],[4,5,1],[4,6,1],[4,7,1],[5,2,1],[5,3,1]],"17":[[0,3,1],[0,4,1],[1,2,1],[1,3,1],[1,4,1],[1,5,1],[2,1,1],[2,2,1],[2,3,1],[2,4,1],[2,5,1],[2,6,1],[3,0,1],[3,1,1],[3,2,1],[3,5,1],[3,6,1],[3,7,1],[4,0,1],[4,1,1],[4,2,"2.7"],[4,5,1],[4,6,1],[4,7,1],[5,1,1],[5,2,1],[5,3,1],[5,4,1],[5,5,1],[5,6,1],[6,2,1],[6,3,1],[6,4,1],[6,5,1],[7,3,1],[7,4,1]],"18":[[0,3,1],[0,4,1],[1,2,1],[1,3,1],[1,4,1],[1,5,1],[1,6,1],[2,2,1],[2,6,1],[3,0,1],[3,1,1],[3,2,1],[3,6,1],[3,7,1],[4,0,1],[4,1,1],[4,2,1],[4,3,1],[4,4,1],[4,5,1],[4,6,1],[4,7,1],[5,1,1],[5,2,"2.8"],[5,3,1],[5,4,1],[5,5,1],[5,6,1]],"19":[[0,3,1],[0,4,1],[1,3,1],[1,4,1],[2,2,1],[2,3,1],[2,4,1],[3,0,1],[3,1,1],[3,2,1],[3,3,1],[3,4,1],[3,5,1],[3,6,1],[3,7,1],[4,0,1],[4,1,1],[4,2,1],[4,3,1],[4,4,1],[4,5,1],[4,6,1],[4,7,1],[5,2,1]],"20":[[0,3,1],[0,4,1],[1,2,1],[1,3,1],[1,4,1],[1,5,1],[2,1,1],[2,2,1],[2,3,1],[2,4,1],[2,5,1],[3,0,1],[3,1,1],[3,2,1],[4,0,1],[4,1,1],[4,2,1],[5,1,1],[5,2,1],[5,3,1],[5,4,"2.9"],[5,5,1],[5,6,1],[6,1,1],[6,2,1],[6,3,1],[6,4,1],[6,5,1]]}};
+const DATA = {
+  "pattern": [[0, 3], [0, 4], [1, 1], [1, 2], [1, 3], [1, 4], [1, 5], [1, 6], [2, 1], [2, 2], [2, 3], [2, 4], [2, 5], [2, 6], [3, 0], [3, 1], [3, 2], [3, 3], [3, 4], [3, 5], [3, 6], [3, 7], [4, 0], [4, 1], [4, 2], [4, 3], [4, 4], [4, 5], [4, 6], [4, 7], [5, 1], [5, 2], [5, 3], [5, 4], [5, 5], [5, 6], [6, 1], [6, 2], [6, 3], [6, 4], [6, 5], [6, 6], [7, 3], [7, 4]],
+  "tiles": {
+    "1": [[2, 3, 1], [2, 4, 1], [3, 2, 1], [3, 3, "4.1"], [3, 4, 1], [3, 5, 1], [3, 6, 1], [3, 7, 1], [4, 2, 1], [4, 3, 1], [4, 5, 1], [4, 6, 1], [4, 7, 1], [5, 3, 1], [5, 4, 1], [6, 3, 1], [6, 4, 1], [7, 3, 1], [7, 4, 1]],
+    "2": [[1, 1, 1], [1, 2, 1], [1, 3, 1], [1, 4, 1], [1, 5, 1], [1, 6, 1], [2, 1, 1], [2, 6, 1], [3, 0, 1], [3, 1, 1], [3, 2, "2.1"], [3, 3, 1], [3, 4, 1], [3, 5, 1], [3, 6, 1], [3, 7, 1], [4, 0, 1], [4, 1, 1], [4, 2, 1], [4, 3, 1], [4, 4, 1], [4, 5, 1], [4, 6, 1], [4, 7, 1], [5, 3, 1], [5, 4, 1], [6, 3, 1], [6, 4, 1], [7, 3, 1], [7, 4, 1]],
+    "3": [[2, 1, 1], [2, 2, 1], [2, 4, "2.5"], [2, 5, 1], [2, 6, 1], [3, 0, 1], [3, 1, 1], [3, 2, 1], [3, 3, 1], [3, 4, 1], [3, 5, 1], [3, 6, 1], [3, 7, 1], [4, 0, 1], [4, 1, 1], [4, 2, 1], [4, 3, 1], [4, 4, 1], [4, 5, 1], [4, 6, 1], [4, 7, 1], [5, 3, 1], [5, 4, 1], [6, 3, 1], [6, 4, 1], [7, 3, 1], [7, 4, 1]],
+    "4": [[1, 5, 1], [1, 6, 1], [2, 1, 1], [2, 2, "2.2"], [2, 5, 1], [2, 6, 1], [3, 0, 1], [3, 1, 1], [3, 2, 1], [3, 5, 1], [3, 6, 1], [3, 7, 1], [4, 0, 1], [4, 1, 1], [4, 2, 1], [4, 5, 1], [4, 6, 1], [4, 7, 1], [5, 1, 1], [5, 2, 1], [5, 3, 1], [5, 4, 1], [5, 5, 1], [5, 6, 1], [6, 2, 1], [6, 3, 1], [6, 4, 1], [6, 5, 1], [6, 6, 1], [7, 3, 1], [7, 4, 1]],
+    "5": [[2, 1, 1], [2, 2, 1], [2, 3, 1], [2, 4, 1], [2, 5, 1], [3, 0, 1], [3, 1, 1], [3, 2, 1], [3, 3, 1], [3, 4, 1], [3, 5, 1], [4, 0, 1], [4, 1, 1], [4, 2, 1], [4, 3, 1], [4, 4, 1], [4, 5, 1], [5, 1, 1], [5, 2, 1], [5, 3, 1], [5, 4, 1], [5, 5, "2.3"], [6, 3, 1], [6, 4, 1], [7, 3, 1], [7, 4, 1]],
+    "6": [[0, 3, 1], [0, 4, 1], [1, 3, 1], [1, 4, 1], [2, 3, 1], [2, 4, 1], [3, 3, 1], [3, 4, 1], [3, 5, 1], [3, 6, 1], [3, 7, 1], [4, 3, 1], [4, 4, "4.2"], [4, 5, 1], [4, 6, 1], [4, 7, 1], [5, 3, 1], [5, 4, 1], [6, 3, 1], [6, 4, 1], [7, 3, 1], [7, 4, 1]],
+    "7": [[0, 3, 1], [0, 4, 1], [1, 3, 1], [1, 4, 1], [1, 5, 1], [2, 1, 1], [2, 2, 1], [2, 3, 1], [2, 4, 1], [2, 5, 1], [2, 6, 1], [3, 0, 1], [3, 1, 1], [3, 2, 1], [3, 3, 1], [3, 5, 1], [3, 6, 1], [3, 7, 1], [4, 0, 1], [4, 1, 1], [4, 2, 1], [4, 4, 1], [4, 5, 1], [4, 6, 1], [4, 7, 1], [5, 1, "2.4"], [5, 2, 1], [5, 3, 1], [5, 4, 1], [5, 5, 1], [5, 6, 1], [6, 3, 1], [6, 4, 1], [7, 3, 1], [7, 4, 1]],
+    "8": [[0, 3, 1], [0, 4, 1], [1, 2, 1], [1, 3, 1], [1, 4, 1], [1, 5, "3.1"], [2, 1, "3.4"], [2, 2, 1], [2, 3, 1], [2, 4, 1], [2, 5, 1], [2, 6, 1], [3, 0, 1], [3, 1, 1], [3, 2, 1], [3, 5, 1], [3, 6, 1], [3, 7, 1], [4, 0, 1], [4, 1, 1], [4, 2, 1], [4, 5, 1], [4, 6, 1], [4, 7, 1], [5, 1, 1], [5, 2, 1], [5, 3, 1], [5, 4, 1], [5, 5, 1], [5, 6, "3.2"], [6, 2, "3.3"], [6, 3, 1], [6, 4, 1], [7, 3, 1], [7, 4, 1]],
+    "9": [[0, 3, 1], [0, 4, 1], [1, 3, 1], [1, 4, 1], [2, 3, 1], [2, 4, 1], [3, 0, 1], [3, 1, 1], [3, 2, 1], [3, 3, 1], [3, 4, 1], [3, 5, 1], [3, 6, 1], [3, 7, 1], [4, 0, 1], [4, 1, 1], [4, 2, 1], [4, 3, 1], [4, 4, "4.3"], [4, 5, 1], [4, 6, 1], [4, 7, 1], [5, 3, 1], [5, 4, 1], [6, 3, 1], [6, 4, 1], [7, 3, 1], [7, 4, 1]],
+    "10": [[0, 3, 1], [0, 4, 1], [1, 3, 1], [1, 4, 1], [2, 3, 1], [2, 4, 1], [3, 0, 1], [3, 1, 1], [3, 2, 1], [3, 3, 1], [3, 4, 1], [3, 5, 1], [3, 6, 1], [3, 7, 1], [4, 0, 1], [4, 1, 1], [4, 2, 1], [4, 3, 1], [4, 4, "4.4"], [4, 5, 1], [4, 6, 1], [4, 7, 1], [5, 2, 1], [5, 3, 1], [5, 4, 1], [6, 3, 1], [6, 4, 1], [7, 3, 1], [7, 4, 1]],
+    "11": [[0, 3, 1], [0, 4, 1], [1, 3, 1], [1, 4, 1], [2, 2, 1], [2, 3, 1], [2, 4, 1], [2, 5, 1], [3, 0, 1], [3, 1, 1], [3, 2, 1], [3, 3, 1], [3, 4, 1], [3, 5, 1], [3, 6, 1], [3, 7, 1], [4, 0, 1], [4, 1, 1], [4, 2, 1], [4, 3, 1], [4, 4, "4.5"], [4, 5, 1], [4, 6, 1], [4, 7, 1], [5, 2, 1], [5, 3, 1], [5, 4, 1], [6, 3, 1], [6, 4, 1], [7, 3, 1], [7, 4, 1]],
+    "12": [[0, 3, 1], [0, 4, 1], [1, 3, 1], [1, 4, 1], [2, 1, 1], [2, 2, 1], [2, 3, 1], [2, 4, 1], [3, 0, 1], [3, 1, 1], [3, 2, 1], [3, 3, 1], [3, 4, 1], [3, 5, 1], [3, 6, 1], [3, 7, 1], [4, 0, 1], [4, 1, 1], [4, 2, 1], [4, 3, 1], [4, 4, "4.6"], [4, 5, 1], [4, 6, 1], [4, 7, 1]],
+    "13": [[0, 3, 1], [0, 4, 1], [1, 3, 1], [1, 4, 1], [2, 3, 1], [2, 4, 1], [3, 0, 1], [3, 1, 1], [3, 2, 1], [3, 3, 1], [3, 4, 1], [3, 5, 1], [3, 6, 1], [3, 7, 1], [4, 0, 1], [4, 1, 1], [4, 2, 1], [4, 3, 1], [4, 4, "4.7"], [4, 5, 1], [4, 6, 1], [4, 7, 1], [5, 3, 1], [5, 4, 1], [6, 3, 1], [6, 4, 1], [7, 3, 1], [7, 4, 1]],
+    "14": [[0, 3, 1], [0, 4, 1], [1, 3, 1], [1, 4, 1], [2, 2, 1], [2, 3, 1], [2, 4, 1], [3, 3, 1], [3, 4, 1], [3, 5, 1], [3, 6, 1], [3, 7, 1], [4, 2, "2.6"], [4, 3, 1], [4, 4, 1], [4, 5, 1], [4, 6, 1], [4, 7, 1], [5, 2, 1], [5, 3, 1], [5, 4, 1], [5, 5, 1], [5, 6, 1], [6, 2, 1], [6, 3, 1], [6, 4, 1], [7, 3, 1], [7, 4, 1]],
+    "15": [[0, 3, 1], [0, 4, 1], [1, 1, 1], [1, 2, 1], [1, 3, 1], [1, 4, 1], [2, 1, 1], [2, 2, 1], [2, 3, 1], [2, 4, 1], [3, 0, 1], [3, 1, 1], [3, 2, 1], [4, 0, 1], [4, 1, 1], [4, 2, 1], [5, 1, 1], [5, 2, "4.8"], [5, 3, 1], [5, 4, 1], [6, 1, 1], [6, 2, 1], [6, 3, 1], [6, 4, 1], [7, 3, 1], [7, 4, 1]],
+    "16": [[0, 3, 1], [0, 4, 1], [1, 3, 1], [1, 4, 1], [2, 3, 1], [2, 4, 1], [3, 3, 1], [3, 4, 1], [3, 5, 1], [3, 6, 1], [3, 7, 1], [4, 2, 1], [4, 3, 1], [4, 4, "4.9"], [4, 5, 1], [4, 6, 1], [4, 7, 1], [5, 2, 1], [5, 3, 1]],
+    "17": [[0, 3, 1], [0, 4, 1], [1, 2, 1], [1, 3, 1], [1, 4, 1], [1, 5, 1], [2, 1, 1], [2, 2, 1], [2, 3, 1], [2, 4, 1], [2, 5, 1], [2, 6, 1], [3, 0, 1], [3, 1, 1], [3, 2, 1], [3, 5, 1], [3, 6, 1], [3, 7, 1], [4, 0, 1], [4, 1, 1], [4, 2, "2.7"], [4, 5, 1], [4, 6, 1], [4, 7, 1], [5, 1, 1], [5, 2, 1], [5, 3, 1], [5, 4, 1], [5, 5, 1], [5, 6, 1], [6, 2, 1], [6, 3, 1], [6, 4, 1], [6, 5, 1], [7, 3, 1], [7, 4, 1]],
+    "18": [[0, 3, 1], [0, 4, 1], [1, 2, 1], [1, 3, 1], [1, 4, 1], [1, 5, 1], [1, 6, 1], [2, 2, 1], [2, 6, 1], [3, 0, 1], [3, 1, 1], [3, 2, 1], [3, 6, 1], [3, 7, 1], [4, 0, 1], [4, 1, 1], [4, 2, 1], [4, 3, 1], [4, 4, 1], [4, 5, 1], [4, 6, 1], [4, 7, 1], [5, 1, 1], [5, 2, "2.8"], [5, 3, 1], [5, 4, 1], [5, 5, 1], [5, 6, 1]],
+    "19": [[0, 3, 1], [0, 4, 1], [1, 3, 1], [1, 4, 1], [2, 2, 1], [2, 3, 1], [2, 4, 1], [3, 0, 1], [3, 1, 1], [3, 2, 1], [3, 3, 1], [3, 4, 1], [3, 5, 1], [3, 6, 1], [3, 7, 1], [4, 0, 1], [4, 1, 1], [4, 2, 1], [4, 3, 1], [4, 4, "4.10"], [4, 5, 1], [4, 6, 1], [4, 7, 1], [5, 2, 1]],
+    "20": [[0, 3, 1], [0, 4, 1], [1, 2, 1], [1, 3, 1], [1, 4, 1], [1, 5, 1], [2, 1, 1], [2, 2, 1], [2, 3, 1], [2, 4, 1], [2, 5, 1], [3, 0, 1], [3, 1, 1], [3, 2, 1], [4, 0, 1], [4, 1, 1], [4, 2, 1], [5, 1, 1], [5, 2, 1], [5, 3, 1], [5, 4, "2.9"], [5, 5, 1], [5, 6, 1], [6, 1, 1], [6, 2, 1], [6, 3, 1], [6, 4, 1], [6, 5, 1]]
+  }
+};
 
 const TILE_ROWS = 4, TILE_COLS = 5, TILE_H = 8, TILE_W = 8;
 const patternSet = new Set(DATA.pattern.map(([r,c]) => r+'_'+c));
@@ -2109,8 +2148,12 @@ function cellType(v){
   if (v === 1) return 'walk';
   if (typeof v === 'string' && v.startsWith('2.')) return 'quest';
   if (typeof v === 'string' && v.startsWith('3.')) return 'start';
+  if (typeof v === 'string' && v.startsWith('4.')) return 'actioncell';
   return '';
 }
+// vaste labels voor de actiekaartvakjes in gangtegels (analoog aan 2.x voor opdrachten) — puur
+// een technisch label, geen thema/naam nodig zoals bij QUEST_NAMES
+const ACTION_CELL_LABELS = Array.from({length:10}, (_,i) => '4.' + (i+1));
 
 
 // ===== 20-connectivity.js =====
@@ -2352,7 +2395,7 @@ function renderBoard(){
       const tileId = layout[slotIdx];
       const val = getDisplayValue(tileId, dr, dc);
       const div = cellEls[R][C];
-      div.classList.remove('walk','quest','start','empty-slot','slot-hover','seam-open','seam-broken','room-tile');
+      div.classList.remove('walk','quest','start','actioncell','empty-slot','slot-hover','seam-open','seam-broken','room-tile');
       const type = cellType(val);
       if (type){
         div.classList.add(type);
@@ -2434,6 +2477,7 @@ function renderBoard(){
   renderSelectedBox();
   renderPalette();
   renderQuestRegister();
+  renderActionCellRegister();
 }
 
 function renderSelectedBox(){
@@ -2655,6 +2699,24 @@ function renderQuestRegister(){
     return `<tr><td>${label}</td><td>${QUEST_NAMES[label]}</td><td>${where}</td></tr>`;
   }).join('');
   el.innerHTML = `<table class="sim-table quest-table"><thead><tr><th>Opdracht</th><th>Naam</th><th>Ligt in</th></tr></thead><tbody>${rows}</tbody></table>`;
+}
+
+// ---------- actiekaartvakjes-register ----------
+// puur informatief, zelfde opzet als renderQuestRegister — elke gangtegel draagt precies 1 label
+function renderActionCellRegister(){
+  const el = document.getElementById('actionCellRegister');
+  if (!el) return;
+  const countEl = document.getElementById('countActionCells');
+  if (countEl) countEl.textContent = '(' + ACTION_CELL_LABELS.length + ')';
+  const rows = ACTION_CELL_LABELS.map(label => {
+    const tid = findLabelTile(label);
+    const slotIdx = tid !== null ? layout.indexOf(tid) : -1;
+    const where = tid !== null && slotIdx !== -1
+      ? `${ROOM_NAMES[tid] || ('Gang ' + tid)} · positie ${letterForSlot(slotIdx)}`
+      : `<span class="bad">ontbreekt op het bord</span>`;
+    return `<tr><td>${label}</td><td>${where}</td></tr>`;
+  }).join('');
+  el.innerHTML = `<table class="sim-table quest-table"><thead><tr><th>Vakje</th><th>Ligt in</th></tr></thead><tbody>${rows}</tbody></table>`;
 }
 
 
@@ -3480,6 +3542,7 @@ const labelSelect = document.getElementById('labelSelect');
 const editorClose = document.getElementById('editorClose');
 const editorChecklist = document.getElementById('editorChecklist');
 const toolQuest = document.getElementById('toolQuest');
+const toolCard = document.getElementById('toolCard');
 let editorTile = null;      // tegel-id dat open staat
 let editorTool = 'walk';
 let editorSnapshot = null;  // kopie om te kunnen terugdraaien
@@ -3583,6 +3646,24 @@ function tileValidationIssues(tid){
       issues.push({ category: 'quest', cells: [k], message: `opdrachtvakje mag niet op een deurvakje of het vakje direct erachter staan.` });
     }
   }
+  const actionCells = [...m.entries()].filter(([,v]) => typeof v === 'string' && v.startsWith('4.')).map(([k])=>k);
+  if (ROOM_NAMES[tid]){
+    if (actionCells.length > 0){
+      issues.push({ category: 'actioncell', cells: actionCells, message: `kamertegels mogen geen actiekaartvakje hebben — dat gereedschap is alleen voor gangen.` });
+    }
+  } else {
+    if (actionCells.length < 1){
+      issues.push({ category: 'actioncell', cells: [], message: `gangtegel moet minimaal 1 actiekaartvakje hebben.` });
+    }
+    if (actionCells.length > 1){
+      issues.push({ category: 'actioncell', cells: actionCells, message: `maximaal 1 actiekaartvakje per tegel toegestaan (nu ${actionCells.length}).` });
+    }
+  }
+  for (const k of actionCells){
+    if (DOOR_KEYS.has(k) || DOOR_INWARD_VALUES.has(k)){
+      issues.push({ category: 'actioncell', cells: [k], message: `actiekaartvakje mag niet op een deurvakje of het vakje direct erachter staan.` });
+    }
+  }
   return issues;
 }
 // vertaalt de losse issues naar 4 brede checklist-punten voor de tegel-editor
@@ -3594,7 +3675,7 @@ function tileChecklistItems(tid){
     { label: 'Minimaal 2 doorgangen', ok: !has('exits') },
     { label: 'Doorgangen kloppen (geen halve deuren)', ok: !has('doors') },
     { label: 'Alle vakjes met elkaar verbonden', ok: !has('connected') },
-    ...(isRoom ? [{ label: '1 opdrachtvakje', ok: !has('quest') }] : []),
+    ...(isRoom ? [{ label: '1 opdrachtvakje', ok: !has('quest') }] : [{ label: '1 actiekaartvakje', ok: !has('actioncell') }]),
   ];
 }
 // welke 2.x / 3.x labels zijn nog vrij (buiten deze tegel)
@@ -3607,12 +3688,13 @@ function labelsInUse(exceptTile){
   return used;
 }
 function refreshLabelOptions(){
-  const wantQuest = editorTool === 'quest';
-  labelField.hidden = !wantQuest;
+  const wantLabel = editorTool === 'quest' || editorTool === 'card';
+  labelField.hidden = !wantLabel;
   if (labelField.hidden) return;
   const used = labelsInUse(editorTile);
-  const opts = [];
-  for (let i=1; i<=9; i++) opts.push('2.'+i);
+  const opts = editorTool === 'quest'
+    ? Array.from({length:9}, (_,i) => '2.'+(i+1))
+    : ACTION_CELL_LABELS.slice();
   labelSelect.innerHTML = opts.map(o =>
     `<option value="${o}"${used.has(o) ? ' data-used="1"' : ''}>${o}${used.has(o) ? ' (al in gebruik)' : ''}</option>`
   ).join('');
@@ -3632,10 +3714,12 @@ function openTileEditor(tid){
   editorDirty = false;
   const name = ROOM_NAMES[tid] ? ROOM_NAMES[tid] : 'Gang';
   editorTitle.textContent = `Tegel #${tid} — ${name}`;
-  // gangen mogen geen opdrachtvakjes hebben: dat gereedschap is daar niet beschikbaar
+  // gangen mogen geen opdrachtvakjes hebben en kamers geen actiekaartvakjes: dat gereedschap
+  // is dan niet beschikbaar
   const isRoom = !!ROOM_NAMES[tid];
   toolQuest.hidden = !isRoom;
-  if (!isRoom && editorTool === 'quest'){
+  toolCard.hidden = isRoom;
+  if ((!isRoom && editorTool === 'quest') || (isRoom && editorTool === 'card')){
     document.querySelectorAll('#toolList .tool').forEach(b => b.classList.remove('active'));
     document.querySelector('#toolList .tool[data-tool="walk"]').classList.add('active');
     editorTool = 'walk';
@@ -3727,15 +3811,16 @@ function paintCell(key){
       m.set(key, 1);
     }
   } else {
-    // opdrachtvakjes alleen op gewone vakjes, nooit op een deurvakje of het vakje erachter
+    // opdracht-/actiekaartvakjes alleen op gewone vakjes, nooit op een deurvakje of het vakje erachter
     if (DOOR_KEYS.has(key) || DOOR_INWARD_VALUES.has(key)) return;
-    // het opdrachtlabel wordt over een AL LOOPBAAR vakje gelegd (of over een vakje dat al
-    // opdracht is, om het label te wisselen) — nooit op een lege/onbenutte sjabloonplek.
-    // Kon dat eerder wel: dan werd de tegelvorm ongemerkt uitgebreid met dat vakje, en zodra
-    // je het label daarna verplaatste, viel de oude plek altijd terug op "loopbaar" (1) in
-    // plaats van weer leeg — ook als hij dat origineel nooit was.
+    // het label wordt over een AL LOOPBAAR vakje gelegd (of over een vakje met hetzelfde
+    // labeltype, om het label te wisselen) — nooit op een lege/onbenutte sjabloonplek of een
+    // vakje van het ANDERE labeltype. Kon dat eerder wel: dan werd de tegelvorm ongemerkt
+    // uitgebreid met dat vakje, en zodra je het label daarna verplaatste, viel de oude plek
+    // altijd terug op "loopbaar" (1) in plaats van weer leeg — ook als hij dat origineel nooit was.
+    const prefix = editorTool === 'quest' ? '2.' : '4.';
     const cur = m.get(key);
-    if (cur !== 1 && !(typeof cur === 'string' && cur.startsWith('2.'))) return;
+    if (cur !== 1 && !(typeof cur === 'string' && cur.startsWith(prefix))) return;
     const label = labelSelect.value;
     if (!label) return;
     // hetzelfde label mag maar één keer voorkomen op het HELE bord (niet alleen deze
@@ -4031,8 +4116,10 @@ function blindReorderTarget(graph, player, fromKey, threshold){
 
 // ---------- beloningskaarten ----------
 // Wie een opdracht bereikt trekt een kaart van een gedeelde, gesloten stapel (2 exemplaren
-// van elk van de 10 typen = 20 kaarten). Je mag maximaal 2 kaarten tegelijk vasthouden; sta je
-// al op 2, dan trek je niet (de kaart blijft liggen). Gebruikte kaarten gaan op de aflegstapel;
+// van elk van de 10 typen = 20 kaarten) — net als het actiekaartvakje in elke gangtegel, dat
+// dezelfde beloning geeft zonder de zet te onderbreken (zie ACTION_CELL_LABELS/actionCells).
+// Je mag maximaal ACTION_CARD_HAND_MAX kaarten tegelijk vasthouden; sta je daar al op, dan
+// trek je niet (de kaart blijft liggen). Gebruikte kaarten gaan op de aflegstapel;
 // is de trekstapel leeg, dan wordt de aflegstapel geschud en dient weer als trekstapel. De
 // opdrachtkaarten blijven gewoon staan — je moet nog steeds je 6 opdrachten voltooien, de
 // kaarten zijn een bonus onderweg, geen vervanging.
@@ -4068,7 +4155,7 @@ const ACTION_CARDS = {
   peek:      { name: 'Herinnering',           hint: 'bekijk en herschik de bovenste 3 kaarten van de trekstapel' },
 };
 const ACTION_CARD_IDS = Object.keys(ACTION_CARDS);
-const ACTION_CARD_HAND_MAX = 2;
+const ACTION_CARD_HAND_MAX = 3;
 
 // ---------- kaart-illustraties ----------
 // Geen losse plaatjes (dat blaast het éénbestands-HTML op) — elke kaart is een klein
@@ -4182,6 +4269,24 @@ function drawActionCard(deck, rand){
     deck.discard = [];
   }
   return deck.draw.pop();
+}
+// beloning voor het lopen over een actiekaartvakje (gangtegels) tijdens de beurt — mechanisch
+// hetzelfde als een opdracht-beloning (kaart trekken, tenzij de hand al vol is), maar de
+// aanroeper bepaalt zelf (per beurt, per spelmodus) of dit al is gebeurd: anders dan een
+// opdracht onderbreekt dit vakje de zet niet, dus je kunt er in principe meerdere per beurt
+// passeren — precies waarom er hooguit 1x per beurt beloond wordt.
+function drawActionCellReward(player, deck, rand){
+  if (player.cards.length >= ACTION_CARD_HAND_MAX) return { drawn: null, handFull: true };
+  const drawn = drawActionCard(deck, rand);
+  if (drawn) player.cards.push(drawn);
+  return { drawn, handFull: false };
+}
+// heeft dit (net gelopen) pad-segment een actiekaartvakje geraakt? `path[0]` is de cel waar je
+// AL stond bij het begin van dit segment, dus die telt niet mee — alleen cellen die je deze
+// beurt daadwerkelijk BETREDEN hebt.
+function pathHasActionCell(graph, path){
+  for (let i = 1; i < path.length; i++) if (graph.actionCells.has(path[i])) return true;
+  return false;
 }
 // verwijdert een kaart uit de hand van een speler en legt hem af. `extra` is optioneel —
 // "stap voor stap" telt niets bij, alleen de batch-simulatie.
@@ -4436,14 +4541,15 @@ function buildSimGraph(){
       adjKey[k] = ks; adjDir[k] = ds;
     }
   }
-  const questCells = {}, startCells = {};
+  const questCells = {}, startCells = {}, actionCells = new Set();
   for (let k = 0; k < N; k++){
     const v = labelAt[k];
     if (typeof v !== 'string') continue;
     if (v.startsWith('2.')) questCells[v] = k;
     else if (v.startsWith('3.')) startCells[v] = k;
+    else if (v.startsWith('4.')) actionCells.add(k);
   }
-  return { H, W, N, adjKey, adjDir, questCells, startCells };
+  return { H, W, N, adjKey, adjDir, questCells, startCells, actionCells };
 }
 
 // zuivere topologische afstand vanaf één cel (negeert bezetting/U-turn) — dient als
@@ -4664,6 +4770,7 @@ function simulateOneGame(graph, rand, heatmap, questStats, extra){
       // voor een dubbele/onzinnige swap.
       let energyActionUsed = false;   // hooguit 1 energie-actie per beurt
       let cardActionUsed = false;     // hooguit 1 kaart spelen per beurt
+      let actionCellCrossed = false;  // hooguit 1 beloningskaart per beurt via een actiekaartvakje
       // Vergrendeling: geraakt in een vorige beurt betekent dat je NU zowel je energie- als je
       // kaartslot mist. Beide sloten meteen op "gebruikt" zetten blokkeert vanzelf elke
       // `!energyActionUsed`/`!cardActionUsed`-check hieronder — geen aparte if-ketting nodig.
@@ -4908,6 +5015,7 @@ function simulateOneGame(graph, rand, heatmap, questStats, extra){
           player.actionUses++;
           energyActionUsed = true;
           for (let p = 0; p < jump.path.length; p++) heatmap[jump.path[p]]++;
+          if (pathHasActionCell(graph, jump.path)) actionCellCrossed = true;
           // de sprong kan de opdracht zelf al pakken; anders loop je vanaf daar verder
           move = jump.banked
             ? { key: jump.key, path: [jump.key], stepsUsed: 0, bankedQuest: true, wasBlocked: false }
@@ -4923,6 +5031,16 @@ function simulateOneGame(graph, rand, heatmap, questStats, extra){
       extra.totalTurns++;
       if (move.wasBlocked) extra.blockedTurns++;
       for (let p = 0; p < move.path.length; p++) heatmap[move.path[p]]++;
+      if (pathHasActionCell(graph, move.path)) actionCellCrossed = true;
+
+      // actiekaartvakje (gang): levert een kaart op net als een opdracht, maar onderbreekt de
+      // zet niet (resolveMove stopt alleen op targetKey) en hooguit 1x per beurt, ook als je
+      // onderweg meerdere van deze vakjes passeerde.
+      if (actionCellCrossed){
+        const reward = drawActionCellReward(player, deck, rand);
+        if (reward.drawn) extra.actionCellDraws++;
+        else if (reward.handFull) extra.handFullOnActionCell++;
+      }
 
       if (move.bankedQuest){
         const qs = questStats[targetLabel];
@@ -5337,8 +5455,12 @@ function renderSimResults({ n, stuckCount, startWins, startTurnsSum, startRanks,
   const drawsPerGame = played ? (extra.cardDraws / played) : 0;
   const handFullPct = extra.cardDraws + extra.handFullOnBank
     ? (extra.handFullOnBank / (extra.cardDraws + extra.handFullOnBank) * 100) : 0;
+  const actionCellDrawsPerGame = played ? (extra.actionCellDraws / played) : 0;
+  const actionCellHandFullPct = extra.actionCellDraws + extra.handFullOnActionCell
+    ? (extra.handFullOnActionCell / (extra.actionCellDraws + extra.handFullOnActionCell) * 100) : 0;
   html += simSectionOpen('Beloningskaarten');
-  html += `<p class="hint">Wie een opdracht bereikt trekt een kaart van een gedeelde stapel van 20 (2 van elk type), tenzij zijn hand al vol is (max 2). Gemiddeld <b>${nl(drawsPerGame, 1)}</b> kaarten getrokken per potje (alle 4 spelers samen); <b>${nl(handFullPct, 1)}%</b> van de trekkans ging verloren aan een volle hand.</p>`;
+  html += `<p class="hint">Wie een opdracht bereikt trekt een kaart van een gedeelde stapel van 20 (2 van elk type), tenzij zijn hand al vol is (max ${ACTION_CARD_HAND_MAX}). Gemiddeld <b>${nl(drawsPerGame, 1)}</b> kaarten getrokken per potje via opdrachten (alle 4 spelers samen); <b>${nl(handFullPct, 1)}%</b> van die trekkans ging verloren aan een volle hand.</p>`;
+  html += `<p class="hint">Elke gangtegel heeft ook een <b>actiekaartvakje</b>: loop je daar overheen (je beurt stopt er niet voor), dan trek je er net zo een kaart bij — hooguit 1x per beurt, ook als je meerdere van deze vakjes passeert. Gemiddeld <b>${nl(actionCellDrawsPerGame, 1)}</b> kaarten getrokken per potje via actiekaartvakjes; <b>${nl(actionCellHandFullPct, 1)}%</b> van die trekkans ging verloren aan een volle hand.</p>`;
   html += `<table class="sim-table"><thead><tr><th>Kaart</th><th>Keer gebruikt per potje</th></tr></thead><tbody>${cardRows}</tbody></table>`;
   html += `<p class="hint">Prioriteitspas heeft in deze simulatie geen mechanisch effect (het is pure informatie voor een mens aan tafel) en wordt daarom nooit ingezet — 0,00 hierboven is dus verwacht, niet een bug. Een getrokken Prioriteitspas bezet wel een handslot tot het potje afloopt.</p>`;
 
@@ -5458,6 +5580,7 @@ function runSimulationBatch(){
         energyRolled: 0, energyWasted: 0,
         energyLevels: new Int32Array(ENERGY_MAX + 1),   // hoe vaak stond een speler op N energie
         cardDraws: 0, handFullOnBank: 0, cardUses,
+        actionCellDraws: 0, handFullOnActionCell: 0,
       };
       let stuckCount = 0;
 
@@ -6023,7 +6146,7 @@ async function runWalkSimulation(){
   for (const p of players){
     walkLog(`${p.name} start op <b>${p.startLabel}</b> · energie: <b>${ENERGY_ACTIONS[p.strategy].name}</b> · stapel: ${p.deck.slice(0, SIM_QUESTS_TO_WIN).join(' → ')} …`, null, p);
   }
-  walkLog(`Elke voltooide opdracht levert een beloningskaart op van een gedeelde stapel — max 2 kaarten in de hand.`);
+  walkLog(`Elke voltooide opdracht levert een beloningskaart op van een gedeelde stapel — net als het actiekaartvakje in elke gang (zet stopt er niet voor, hooguit 1x per beurt) — max ${ACTION_CARD_HAND_MAX} kaarten in de hand.`);
   if (playerCount > 1){
     walkLog(`Beurtvolgorde: ${turnOrder.map(i => players[i].name).join(' → ')}.`);
     walkLog(playerCount === 2
@@ -6055,6 +6178,7 @@ async function runWalkSimulation(){
       // Vlek/Noodtransport) die elkaar nog wél uitsluiten binnen hún ene bewegingsmoment.
       let energyActionUsed = false;   // hooguit 1 energie-actie per beurt
       let cardActionUsed = false;     // hooguit 1 kaart spelen per beurt
+      let actionCellDrawnThisTurn = false;   // hooguit 1 beloningskaart per beurt via een actiekaartvakje
       // Vergrendeling: vorige beurt geraakt betekent dat je NU zowel je energie- als je
       // kaartslot mist; beide sloten op "gebruikt" zetten blokkeert vanzelf alles hieronder.
       if (player.lockedNextTurn){
@@ -6239,6 +6363,17 @@ async function runWalkSimulation(){
           leaving.classList.add('walk-trail');
           if (special) leaving.classList.add('walk-jump');
           player.pos = path[i];
+          // actiekaartvakje (gang): onderbreekt de zet niet, levert hooguit 1x per beurt een
+          // beloningskaart op — ook als je onderweg meerdere van deze vakjes passeert
+          if (!actionCellDrawnThisTurn && graph.actionCells.has(player.pos)){
+            actionCellDrawnThisTurn = true;
+            const reward = drawActionCellReward(player, deck, rand);
+            if (reward.drawn){
+              walkLog(`${player.name} loopt over een actiekaartvakje en trekt een beloningskaart: <b>${ACTION_CARDS[reward.drawn].name}</b> — ${ACTION_CARDS[reward.drawn].hint}.`, null, player);
+            } else if (reward.handFull){
+              walkLog(`${player.name} loopt over een actiekaartvakje, maar de hand is al vol.`, null, player);
+            }
+          }
           paintWalkPawns(graph, players, pIdx);
           renderWalkMeta({ player, turn, stepsLeft: path.length - 1 - i });
           await walkTick(walkSpeed().stepMs);
@@ -6653,6 +6788,7 @@ let soloUsedBoots = false;
 let soloAllowUturn = false;   // Snelroute: geen-U-turn-regel geldt deze beurt niet voor jou
 let soloLockedThisTurn = false; // Vergrendeling: deze beurt geen energie- en kaartactie
 let soloUsedJump = false;
+let soloActionCellDrawnThisTurn = false;  // hooguit 1 beloningskaart per beurt via een actiekaartvakje
 let soloBootsOptions = [];
 let soloCurrentLegalMoves = [];  // { key, dir }[] — de opties die het richtingskruis nu toont
 let soloBlindOfferAvailable = false; // deze stap geblokkeerd door een tegenstander + Blinde Vlek in de hand
@@ -7219,6 +7355,31 @@ function soloUseEnergyAction(id){
   }
 }
 
+// ---------- actiekaartvakje (gang): loop je erover, dan trek je een beloningskaart ----------
+// Net als een opdracht, maar onderbreekt de zet niet (alleen soloTargetKey doet dat) en hooguit
+// 1x per beurt (soloActionCellDrawnThisTurn), ook als je onderweg meerdere van deze vakjes
+// passeert. `soloGrantActionCellReward` gaat er blind van uit dat de aanroeper al vastgesteld
+// heeft dat er een actiekaartvakje geraakt is — alleen het "al gehad deze beurt"-slot wordt hier
+// nog getoetst. `soloCheckActionCell` is de per-stap variant (mens): checkt zelf één cel.
+function soloGrantActionCellReward(player, isHuman){
+  if (soloActionCellDrawnThisTurn) return;
+  soloActionCellDrawnThisTurn = true;
+  const reward = drawActionCellReward(player, soloDeck, soloRand);
+  if (reward.drawn){
+    const msg = isHuman
+      ? `Je loopt over een actiekaartvakje en trekt een beloningskaart: <b>${ACTION_CARDS[reward.drawn].name}</b> — ${ACTION_CARDS[reward.drawn].hint}.`
+      : `${player.name} loopt over een actiekaartvakje en trekt een beloningskaart: <b>${ACTION_CARDS[reward.drawn].name}</b> — ${ACTION_CARDS[reward.drawn].hint}.`;
+    walkLog(msg, null, player);
+    if (isHuman) soloRefreshCardVault();
+  } else if (reward.handFull){
+    walkLog(isHuman ? `Je loopt over een actiekaartvakje, maar je hand is al vol.` : `${player.name} loopt over een actiekaartvakje, maar de hand is al vol.`, null, player);
+  }
+}
+function soloCheckActionCell(key, player, isHuman){
+  if (soloActionCellDrawnThisTurn || !soloGraph.actionCells.has(key)) return;
+  soloGrantActionCellReward(player, isHuman);
+}
+
 // ---------- Zwaartekracht-laarzen: richting kiezen ----------
 function soloEnterBootsDirection(){
   const options = gravityBootsOptions(soloGraph, solo().pos, 10, soloOccupied(), soloTargetKey);
@@ -7281,6 +7442,7 @@ function soloResolveBoots(dir){
     leaving.style.setProperty('--pc', p.color);
     leaving.classList.add('walk-trail', 'walk-jump');
     p.pos = path[i];
+    soloCheckActionCell(p.pos, p, true);
   }
   paintWalkPawns(soloGraph, soloPlayers, p.idx);
   soloMove = { d1: 0, d2: 0, d3: null, roll: path.length - 1, stepsLeft: 0, lastDir: -1, path };
@@ -7316,6 +7478,7 @@ function soloHandleJumpClick(key){
   const toEl = walkCellDiv(soloGraph, key);
   toEl.style.setProperty('--pc', p.color);
   toEl.classList.add('walk-trail', 'walk-jump');
+  soloCheckActionCell(p.pos, p, true);
   paintWalkPawns(soloGraph, soloPlayers, p.idx);
 
   if (key === soloTargetKey){
@@ -7527,6 +7690,7 @@ function soloHandleMoveClick(key){
   solo().lastDir = match.dir;   // Terugtrekbevel duwt je langs deze richting terug
   soloMove.stepsLeft--;
   soloMove.path.push(key);
+  soloCheckActionCell(p.pos, p, true);
   paintWalkPawns(soloGraph, soloPlayers, p.idx);
 
   if (key === soloTargetKey){
@@ -7621,6 +7785,7 @@ function soloBeginHumanTurn(pIdx){
   soloPendingBoost = false;
   soloUsedBoots = false;
   soloUsedJump = false;
+  soloActionCellDrawnThisTurn = false;
   soloAllowUturn = false;
   soloMove = null;
 
@@ -7667,6 +7832,7 @@ function soloBeginHumanTurn(pIdx){
 // en jij niet op hen.
 function soloResolveBotTurn(player){
   soloTurn++;
+  soloActionCellDrawnThisTurn = false;
   const pIdx = player.idx;
   // Energie-acties en kaarten hebben ELK hun eigen actie-slot per beurt (max 1 van elk) —
   // zelfde opzet als simulateOneGame() in 95-simulate.js, zie de uitgebreide toelichting daar
@@ -7841,6 +8007,7 @@ function soloResolveBotTurn(player){
     const jump = resolveEnergyJump(soloGraph, player.pos, ENERGY_JUMP_RANGE, targetKey);
     if (jump){
       player.energy -= ENERGY_ACTIONS.jump.cost; player.actionUses++; energyActionUsed = true;
+      if (pathHasActionCell(soloGraph, jump.path)) soloGrantActionCellReward(player, false);
       move = jump.banked
         ? { key: jump.key, path: [jump.key], stepsUsed: 0, bankedQuest: true, wasBlocked: false }
         : resolveMove(soloGraph, jump.key, roll, occupied, targetKey, soloRand, undefined, allowUturn);
@@ -7851,6 +8018,7 @@ function soloResolveBotTurn(player){
 
   player.pos = move.key;
   paintWalkPawns(soloGraph, soloPlayers, pIdx);
+  if (pathHasActionCell(soloGraph, move.path)) soloGrantActionCellReward(player, false);
 
   if (move.bankedQuest){
     player.completed++;
@@ -8015,7 +8183,7 @@ function startSoloGame(){
     const stratNote = p.isHuman ? '' : ` · energie: <b>${ENERGY_ACTIONS[p.strategy].name}</b>`;
     walkLog(`${p.name} ${who} start op <b>${p.startLabel}</b>${stratNote} · stapel: ${p.deck.slice(0, SIM_QUESTS_TO_WIN).join(' → ')} …`, null, p);
   }
-  walkLog(`Elke voltooide opdracht levert een beloningskaart op van een gedeelde stapel — max 2 kaarten in de hand.`);
+  walkLog(`Elke voltooide opdracht levert een beloningskaart op van een gedeelde stapel — net als het actiekaartvakje in elke gang (zet stopt er niet voor, hooguit 1x per beurt) — max ${ACTION_CARD_HAND_MAX} kaarten in de hand.`);
   if (soloPlayers.length > 1){
     walkLog(`Beurtvolgorde: ${soloTurnOrder.map(i => soloPlayers[i].name).join(' → ')}.`);
     walkLog(soloPlayers.length === 2
@@ -8192,6 +8360,8 @@ cardsZoom.addEventListener('click', closeCardsZoom);
 document.addEventListener('keydown', e => {
   if (e.key === 'Escape' && !cardsZoom.hidden) closeCardsZoom();
 });
+
+
 
 </script>
 </body>
