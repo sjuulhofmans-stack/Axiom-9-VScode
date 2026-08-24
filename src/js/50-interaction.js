@@ -68,3 +68,49 @@ document.addEventListener('pointercancel', ()=>{
   boardEl.classList.remove('dragging');
   renderBoard();
 });
+
+// ---------- hover-tip: naam naast de cursor voor opdracht-, actiekaart- en startvakjes ----------
+// Alleen deze drie soorten hebben een naam die de moeite waard is om los te tonen; gewone
+// loopvakjes en lege vakjes leveren niets op (hoverTipInfo geeft dan null en het tipje blijft weg).
+const hoverTipEl = document.createElement('div');
+hoverTipEl.className = 'cell-hover-tip';
+hoverTipEl.hidden = true;
+document.body.appendChild(hoverTipEl);
+
+function hoverTipInfo(tileId, dr, dc){
+  const val = getDisplayValue(tileId, dr, dc);
+  if (typeof val !== 'string') return null;
+  if (val.startsWith('2.')) return { text: `${QUEST_NAMES[val] || 'Opdracht'} (${val})`, kind: 'quest' };
+  if (val.startsWith('3.')) return { text: `Startpositie ${val}`, kind: 'start' };
+  if (val.startsWith('4.')) return { text: `Actiekaartvakje ${val}`, kind: 'actioncell' };
+  return null;
+}
+
+function hideHoverTip(){ hoverTipEl.hidden = true; }
+
+function updateHoverTip(e){
+  // tijdens slepen wijst het kader al genoeg aan; een naam-tipje erbovenop is dan alleen ruis
+  if (dragState.from !== null){ hideHoverTip(); return; }
+  const hit = e.target.closest ? e.target.closest('.slot-hit') : null;
+  const info = hit
+    ? hoverTipInfo(layout[parseInt(hit.dataset.slot, 10)], parseInt(hit.dataset.dr, 10), parseInt(hit.dataset.dc, 10))
+    : null;
+  if (!info){ hideHoverTip(); return; }
+  hoverTipEl.textContent = info.text;
+  hoverTipEl.className = 'cell-hover-tip ' + info.kind;
+  hoverTipEl.hidden = false;
+  const margin = 16;
+  let x = e.clientX + margin, y = e.clientY + margin;
+  const rect = hoverTipEl.getBoundingClientRect();
+  if (x + rect.width > window.innerWidth - 4) x = e.clientX - rect.width - margin;
+  if (y + rect.height > window.innerHeight - 4) y = e.clientY - rect.height - margin;
+  hoverTipEl.style.left = x + 'px';
+  hoverTipEl.style.top = y + 'px';
+}
+
+boardEl.addEventListener('pointermove', (e)=>{
+  // op touch bestaat "hoveren" niet echt en zou het tipje alleen in de weg zitten tijdens slepen
+  if (e.pointerType && e.pointerType !== 'mouse') return;
+  updateHoverTip(e);
+});
+boardEl.addEventListener('pointerleave', hideHoverTip);

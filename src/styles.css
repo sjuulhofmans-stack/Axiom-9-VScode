@@ -1438,6 +1438,19 @@
     footer{font-size:10.5px; padding:0 8px;}
   }
 
+  /* hover-tip naast de cursor: alleen voor opdracht-, actiekaart- en startpositievakjes (zie
+     50-interaction.js) — gewone loop-/lege vakjes hebben geen naam die de moeite waard is */
+  .cell-hover-tip{
+    position:fixed; pointer-events:none; z-index:500;
+    font-family:var(--font-mono); font-size:12px; white-space:nowrap;
+    background:var(--panel-2); color:var(--text); border:1px solid var(--line);
+    border-left:3px solid var(--text-dim); border-radius:4px; padding:5px 10px;
+    box-shadow:0 4px 14px rgba(0,0,0,.45);
+  }
+  .cell-hover-tip.quest{border-left-color:var(--quest);}
+  .cell-hover-tip.actioncell{border-left-color:var(--actioncell);}
+  .cell-hover-tip.start{border-left-color:var(--start);}
+
   /* Op een telefoon wordt het bord tot 40 vakjes breed teruggerekend en houd je vakjes van
      ~7px over: je ziet de vorm van de indeling wel, maar leest de opdracht- en startvakjes
      nauwelijks. Passend maken blijft daarom de standaard (je wilt het geheel zien), maar met
