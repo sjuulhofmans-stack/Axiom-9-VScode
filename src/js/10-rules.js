@@ -130,12 +130,15 @@ function nl(x, digits = 1){
   return Number(x).toFixed(digits).replace('.', ',');
 }
 
+// elk label zit op een vaste tegel (zie tiles.json), dus ook op een vaste kamer — de naam moet
+// daarom bij DIE kamer passen: 2.1 Cafetaria, 2.2 Motor 1, 2.3 Beveiliging, 2.4 Serverruimte,
+// 2.5 Wapens, 2.6 Ziekenboeg, 2.7 Kernreactor, 2.8 Navigatie, 2.9 Motor 2
 const QUEST_NAMES = {
-  '2.1': 'Stroomstoring',
-  '2.2': 'Vrachtinspectie',
-  '2.3': 'Noodsignaal',
-  '2.4': 'Filterwissel',
-  '2.5': 'Beveiligingsronde',
+  '2.1': 'Voedseltekort',
+  '2.2': 'Stroomstoring',
+  '2.3': 'Inbraakalarm',
+  '2.4': 'Datalek',
+  '2.5': 'Wapeninspectie',
   '2.6': 'Medische voorraad',
   '2.7': 'Reactorcontrole',
   '2.8': 'Navigatiekaarten',
