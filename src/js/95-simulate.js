@@ -1,10 +1,12 @@
 // ---------- spelsimulatie ----------
 // Duizenden potjes doorrekenen op de HUIDIGE indeling (layout + tileRotation) om
 // speelduur en eerlijkheid per startpositie te meten. Regels: 2xD6 = exact aantal
-// stappen, geen U-turn, bezette vakjes blokkeren; uitzondering: land je exact op je
-// eigen opdrachtvakje met minder dan de volledige worp, dan stop je daar (rest vervalt).
-// Elke speler heeft een eigen geschud stapeltje opdrachten 1-9 (labels 2.1..2.9);
-// wie als eerste 6 opdrachten voltooit wint.
+// stappen, geen U-turn, bezette vakjes blokkeren. Land je onderweg op je eigen
+// opdrachtvakje, dan loop je met de resterende stappen gewoon door (de beurt stopt er
+// niet meer voor) — voert de rest toevallig ook door de VOLGENDE opdracht, dan pak je
+// die in dezelfde beurt meteen mee (zeldzaam, zie resolveMove/pickEnd). Elke speler
+// heeft een eigen geschud stapeltje opdrachten 1-9 (labels 2.1..2.9); wie als eerste
+// 6 opdrachten voltooit wint.
 //
 // Er wordt DOORGESPEELD na de winnaar, om ook plaats 2 en 3 uit te spelen. Wie binnen
 // is stopt met spelen en verdwijnt van het bord (blokkeert dus ook niemand meer). Zodra
@@ -458,7 +460,7 @@ function resolveGravityBoots(graph, fromKey, maxSteps, occupied, targetKey){
   if (!candidates.length) return null;
 
   const banked = candidates.find(c => c.bankedAt !== -1);
-  if (banked) return { key: targetKey, path: banked.path, stepsUsed: banked.bankedAt, bankedQuest: true, wasBlocked: banked.wasBlocked };
+  if (banked) return { key: targetKey, path: banked.path, stepsUsed: banked.bankedAt, bankedCount: 1, bankedQuest: true, wasBlocked: banked.wasBlocked };
 
   // geen van de vier raakte het doel: kies de richting die het dichtst bij eindigt, en
   // gebruik de kaart alleen als dat minstens zo goed is als een gemiddelde worp (7 stappen
@@ -474,7 +476,7 @@ function resolveGravityBoots(graph, fromKey, maxSteps, occupied, targetKey){
     if (improvement > bestImprovement){ bestImprovement = improvement; best = c; }
   }
   if (!best || bestImprovement < 7) return null;
-  return { key: best.path[best.path.length - 1], path: best.path, stepsUsed: best.path.length - 1, bankedQuest: false, wasBlocked: best.wasBlocked };
+  return { key: best.path[best.path.length - 1], path: best.path, stepsUsed: best.path.length - 1, bankedCount: 0, bankedQuest: false, wasBlocked: best.wasBlocked };
 }
 
 // Kiest de koploper onder de tegenstanders die nog niet door DEZE kaart geraakt zijn.
@@ -622,7 +624,10 @@ function simGainEnergy(player, roll){
 // meerdere staplagen kan voorkomen — een gedeelde buffer zou daar de verkeerde
 // voorganger onthouden en het teruggereconstrueerde pad corrumperen.
 const SIM_N = TILE_ROWS * TILE_H * TILE_COLS * TILE_W;
-const simDpStamp = new Int32Array(SIM_N * 4);
+// bovengrens op hoeveel opdrachten je in ÉÉN beurt achter elkaar kunt pakken (zie resolveMove) —
+// nooit meer dan de 9 labels in een stapeltje, ruim genoeg boven wat één worp ooit haalt
+const SIM_CHAIN_CAP = 10;
+const simDpStamp = new Int32Array(SIM_N * 4 * SIM_CHAIN_CAP);
 let simDpStampCounter = 0;
 const simBfsDist = new Int32Array(SIM_N);
 const simBfsStampArr = new Int32Array(SIM_N);
@@ -726,10 +731,13 @@ function backtrackLayers(layersKeys, layersParent, step, idx){
   return path;
 }
 
-// kiest, tussen meerdere even geldige eindcellen (zelfde afstand tot eigen doel), de
-// beste met de hinder-score als tie-break en tot slot willekeur.
-function pickEnd(graph, layersKeys, layersParent, step, targetKey, occupiedSet, rand, stepsUsed, bankedQuest, endBlockedSet){
-  const keys = layersKeys[step];
+// kiest, tussen meerdere even geldige eindcellen, EERST de meeste in deze beurt geraakte
+// opdrachten (bankedCount — zie resolveMove: je loopt na een opdracht door, dus een tweede kan
+// in dezelfde beurt vallen als de resterende stappen daar toevallig doorheen voeren), en
+// binnen die groep de kortste afstand tot het eerstvolgende nog openstaande doel, dan de
+// hinder-score als tie-break en tot slot willekeur.
+function pickEnd(graph, layersKeys, layersParent, layersBanked, step, targets, occupiedSet, rand, stepsUsed, endBlockedSet){
+  const keys = layersKeys[step], bankedArr = layersBanked[step];
   const firstIndex = new Map();
   for (let i = 0; i < keys.length; i++) if (!firstIndex.has(keys[i])) firstIndex.set(keys[i], i);
   let uniqueKeys = Array.from(firstIndex.keys());
@@ -743,14 +751,22 @@ function pickEnd(graph, layersKeys, layersParent, step, targetKey, occupiedSet, 
     uniqueKeys = free;
   }
 
+  let maxBanked = 0;
+  for (const k of uniqueKeys) maxBanked = Math.max(maxBanked, bankedArr[firstIndex.get(k)]);
+  uniqueKeys = uniqueKeys.filter(k => bankedArr[firstIndex.get(k)] === maxBanked);
+
   let chosenKey;
   if (uniqueKeys.length === 1){
     chosenKey = uniqueKeys[0];
   } else {
-    const stamp = simBfsDistances(graph, targetKey);
-    let minD = Infinity;
-    for (const k of uniqueKeys){ const d = simDistLookup(stamp, k); if (d !== -1 && d < minD) minD = d; }
-    let closest = uniqueKeys.filter(k => simDistLookup(stamp, k) === minD);
+    const nextTarget = maxBanked < targets.length ? targets[maxBanked] : null;
+    let closest = uniqueKeys;
+    if (nextTarget !== null){
+      const stamp = simBfsDistances(graph, nextTarget);
+      let minD = Infinity;
+      for (const k of uniqueKeys){ const d = simDistLookup(stamp, k); if (d !== -1 && d < minD) minD = d; }
+      closest = uniqueKeys.filter(k => simDistLookup(stamp, k) === minD);
+    }
     if (closest.length > 1){
       const hinderScores = computeHinderScores(graph, closest, occupiedSet);
       let maxH = -1;
@@ -760,59 +776,64 @@ function pickEnd(graph, layersKeys, layersParent, step, targetKey, occupiedSet, 
     chosenKey = closest[Math.floor(rand() * closest.length)];
   }
   const path = backtrackLayers(layersKeys, layersParent, step, firstIndex.get(chosenKey));
-  return { key: chosenKey, stepsUsed, bankedQuest, path };
+  return { key: chosenKey, stepsUsed, bankedCount: maxBanked, bankedQuest: maxBanked > 0, path };
 }
 
-// lost één beurt op: DP over (cel, binnenkomstrichting) per stap, t/m de geworpen som.
-// Houdt alle lagen bij (klein: <=12 stappen, elk een paar honderd toestanden) zodat
-// het uiteindelijk gekozen pad achteraf teruggelezen kan worden voor de heatmap.
+// lost één beurt op: DP over (cel, binnenkomstrichting, aantal-deze-beurt-al-geraakte-
+// opdrachten) per stap, t/m de geworpen som. Houdt alle lagen bij (klein: <=18 stappen, elk
+// een paar honderd toestanden) zodat het uiteindelijk gekozen pad achteraf teruggelezen kan
+// worden voor de heatmap.
+// `targets` is de rij opdrachtvakjes (celsleutels) die deze speler nog moet halen, te beginnen
+// bij zijn HUIDIGE doel (targets[0] = het vroegere `targetKey`). Raakt het pad targets[0], dan
+// stopt de beurt niet meer meteen (zie CLAUDE.md) — de resterende stappen lopen gewoon door,
+// nu getoetst aan targets[1]. Zo kun je in dezelfde beurt zelfs een 2e opdracht pakken als de
+// route daar toevallig doorheen komt; `bankedCount` in het resultaat zegt hoeveel dat er waren
+// (vrijwel altijd 0 of 1).
 // `endBlockedSet` (optioneel) is de verzameling vakjes waar je wel DOORHEEN mag maar niet op
 // mag EINDIGEN — alleen gebruikt door Blinde Vlek. Geeft null terug als er met die beperking
 // geen zet mogelijk is. `allowUturn` (Snelroute) zet de geen-U-turn-regel deze zet uit.
-// Zonder beide parameters gedraagt deze functie zich exact als voorheen.
-function resolveMove(graph, startKey, steps, occupiedSet, targetKey, rand, endBlockedSet, allowUturn){
+function resolveMove(graph, startKey, steps, occupiedSet, targets, rand, endBlockedSet, allowUturn){
   const { adjKey, adjDir } = graph;
-  const layersKeys = [[startKey]], layersDirs = [[-1]], layersParent = [[]];
+  const layersKeys = [[startKey]], layersDirs = [[-1]], layersParent = [[]], layersBanked = [[0]];
   let wasBlocked = false;
 
   for (let step = 1; step <= steps; step++){
     simDpStampCounter++;
     const stamp = simDpStampCounter;
-    const prevKeys = layersKeys[step - 1], prevDirs = layersDirs[step - 1];
-    const nextKeys = [], nextDirs = [], nextParent = [];
+    const prevKeys = layersKeys[step - 1], prevDirs = layersDirs[step - 1], prevBanked = layersBanked[step - 1];
+    const nextKeys = [], nextDirs = [], nextParent = [], nextBanked = [];
     for (let i = 0; i < prevKeys.length; i++){
-      const ck = prevKeys[i], cd = prevDirs[i];
+      const ck = prevKeys[i], cd = prevDirs[i], banked = prevBanked[i];
       const neigh = adjKey[ck], dirs = adjDir[ck];
       for (let j = 0; j < neigh.length; j++){
         const d = dirs[j];
         if (!allowUturn && cd !== -1 && d === (cd + 2) % 4) continue; // geen U-turn (tenzij Snelroute)
         const nk = neigh[j];
         if (occupiedSet.has(nk)){ wasBlocked = true; continue; } // bezet vakje blokkeert
-        // eigen doel exact geraakt: beurt eindigt meteen, rest van de worp vervalt —
-        // geen noodzaak om de rest van deze (of latere) lagen nog uit te rekenen.
-        // staat er met Blinde Vlek een tegenstander op je eigen opdrachtvakje, dan mag je er
-        // wel overheen lopen maar hem niet pakken — dus doorzoeken i.p.v. hier afronden
-        if (nk === targetKey && !(endBlockedSet && endBlockedSet.has(nk))){
-          const path = backtrackLayers(layersKeys, layersParent, step - 1, i);
-          path.push(nk);
-          return { key: targetKey, stepsUsed: step, bankedQuest: true, path, wasBlocked };
+        // eerstvolgende nog openstaande opdracht geraakt: telt mee, maar de beurt loopt door met
+        // de resterende stappen (getoetst aan de opdracht daarna) — geen vroegtijdige return meer.
+        // staat er met Blinde Vlek een tegenstander op dat vakje, dan mag je er wel overheen lopen
+        // maar hem niet pakken, dus telt dat hier niet als bank-moment
+        let newBanked = banked;
+        if (banked < targets.length && nk === targets[banked] && !(endBlockedSet && endBlockedSet.has(nk))){
+          newBanked = banked + 1;
         }
-        const stateIdx = nk * 4 + d;
+        const stateIdx = (nk * 4 + d) * SIM_CHAIN_CAP + newBanked;
         if (simDpStamp[stateIdx] === stamp) continue;
         simDpStamp[stateIdx] = stamp;
-        nextKeys.push(nk); nextDirs.push(d); nextParent.push(i);
+        nextKeys.push(nk); nextDirs.push(d); nextParent.push(i); nextBanked.push(newBanked);
       }
     }
     if (nextKeys.length === 0){
       // doodlopend voordat de worp op is: stop op de laatst haalbare laag
-      const move = pickEnd(graph, layersKeys, layersParent, step - 1, targetKey, occupiedSet, rand, step - 1, false, endBlockedSet);
+      const move = pickEnd(graph, layersKeys, layersParent, layersBanked, step - 1, targets, occupiedSet, rand, step - 1, endBlockedSet);
       if (!move) return null;
       move.wasBlocked = wasBlocked;
       return move;
     }
-    layersKeys.push(nextKeys); layersDirs.push(nextDirs); layersParent.push(nextParent);
+    layersKeys.push(nextKeys); layersDirs.push(nextDirs); layersParent.push(nextParent); layersBanked.push(nextBanked);
   }
-  const move = pickEnd(graph, layersKeys, layersParent, steps, targetKey, occupiedSet, rand, steps, false, endBlockedSet);
+  const move = pickEnd(graph, layersKeys, layersParent, layersBanked, steps, targets, occupiedSet, rand, steps, endBlockedSet);
   if (!move) return null;
   move.wasBlocked = wasBlocked;
   return move;
@@ -1039,6 +1060,11 @@ function simulateOneGame(graph, rand, heatmap, questStats, extra){
         }
       }
       const targetKey = graph.questCells[targetLabel];
+      // volledige rij nog te halen opdrachtvakjes, te beginnen bij het huidige doel — resolveMove
+      // loopt na targets[0] door en toetst de resterende stappen meteen aan targets[1], enz.,
+      // zodat je zelden maar soms wél een 2e opdracht in dezelfde beurt kunt pakken
+      const targets = [];
+      for (let i = player.nextIdx; i < player.order.length; i++) targets.push(graph.questCells[player.order[i]]);
 
       const occupied = new Set();
       for (let j = 0; j < 4; j++) if (j !== pIdx && !players[j].rank) occupied.add(players[j].pos);
@@ -1088,7 +1114,7 @@ function simulateOneGame(graph, rand, heatmap, questStats, extra){
           useActionCard(player, 'fastlane', deck, extra);
           cardActionUsed = true;
         }
-        move = resolveMove(graph, player.pos, roll, occupied, targetKey, rand, undefined, allowUturn);
+        move = resolveMove(graph, player.pos, roll, occupied, targets, rand, undefined, allowUturn);
         // Koerscorrectie: een tegenvallende worp overdoen. Alleen zinvol als deze worp de
         // opdracht niet al pakt, en alleen onder de verwachtingswaarde (3,5 per steen) — dan
         // is opnieuw gooien in verwachting winst. De nieuwe worp telt, ook als die slechter is.
@@ -1097,7 +1123,7 @@ function simulateOneGame(graph, rand, heatmap, questStats, extra){
           for (let d = 0; d < dice; d++) roll += simRollD6(rand);
           useActionCard(player, 'reroll', deck, extra);
           cardActionUsed = true;
-          move = resolveMove(graph, player.pos, roll, occupied, targetKey, rand, undefined, allowUturn);
+          move = resolveMove(graph, player.pos, roll, occupied, targets, rand, undefined, allowUturn);
         }
       }
 
@@ -1114,7 +1140,7 @@ function simulateOneGame(graph, rand, heatmap, questStats, extra){
         // door tegenstanders heen mogen lopen (lege blokkeerset), maar er niet op eindigen
         // (occupied als endBlockedSet) — levert dat geen enkel vrij eindvakje op, dan geeft
         // resolveMove null terug en blijft de gewone, geblokkeerde zet staan
-        const retry = resolveMove(graph, player.pos, roll, SIM_EMPTY_SET, targetKey, rand, occupied, allowUturn);
+        const retry = resolveMove(graph, player.pos, roll, SIM_EMPTY_SET, targets, rand, occupied, allowUturn);
         if (retry && retry.key !== move.key){
           move = retry;
           useActionCard(player, 'blind', deck, extra);
@@ -1132,8 +1158,8 @@ function simulateOneGame(graph, rand, heatmap, questStats, extra){
           if (pathHasActionCell(graph, jump.path)) actionCellCrossed = true;
           // de sprong kan de opdracht zelf al pakken; anders loop je vanaf daar verder
           move = jump.banked
-            ? { key: jump.key, path: [jump.key], stepsUsed: 0, bankedQuest: true, wasBlocked: false }
-            : resolveMove(graph, jump.key, roll, occupied, targetKey, rand, undefined, allowUturn);
+            ? { key: jump.key, path: [jump.key], stepsUsed: 0, bankedCount: 1, bankedQuest: true, wasBlocked: false }
+            : resolveMove(graph, jump.key, roll, occupied, targets, rand, undefined, allowUturn);
         }
       }
       // laatst gelopen richting onthouden — Terugtrekbevel duwt je daar weer langs terug
@@ -1148,16 +1174,20 @@ function simulateOneGame(graph, rand, heatmap, questStats, extra){
       if (pathHasActionCell(graph, move.path)) actionCellCrossed = true;
 
       // actiekaartvakje (gang): levert een kaart op net als een opdracht, maar onderbreekt de
-      // zet niet (resolveMove stopt alleen op targetKey) en hooguit 1x per beurt, ook als je
-      // onderweg meerdere van deze vakjes passeerde.
+      // zet niet en levert hooguit 1x per beurt op, ook als je onderweg meerdere van deze
+      // vakjes passeerde.
       if (actionCellCrossed){
         const reward = drawActionCellReward(player, deck, rand);
         if (reward.drawn) extra.actionCellDraws++;
         else if (reward.handFull) extra.handFullOnActionCell++;
       }
 
-      if (move.bankedQuest){
-        const qs = questStats[targetLabel];
+      // meestal 0 of 1 opdracht; zelden 2 (de resterende stappen na de 1e voerden toevallig
+      // ook door de 2e) — zie resolveMove. Elke gebankte opdracht krijgt zijn eigen boekhouding
+      // (stats, kaarttrekking, winst-check), in de volgorde waarin ze onderweg geraakt zijn.
+      for (let b = 0; b < move.bankedCount; b++){
+        const label = player.order[player.nextIdx];
+        const qs = questStats[label];
         qs.turns += player.turnsOnTarget;
         qs.count++;
         player.completed++;
@@ -1175,6 +1205,7 @@ function simulateOneGame(graph, rand, heatmap, questStats, extra){
         if (player.completed >= SIM_QUESTS_TO_WIN){
           player.finishTurn = turnCount;
           roundFinishers.push(player);
+          break; // binnen: een eventuele 2e bank in dezelfde beurt doet er niet meer toe
         }
       }
       if (turnCount >= SIM_MAX_TURNS){ hitTurnCap = true; break; }

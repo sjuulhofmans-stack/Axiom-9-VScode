@@ -99,19 +99,25 @@ aangeroepen (functiedeclaraties worden gehoist, `const`/`let` niet).
   Serverruimte, 17 Kernreactor) dragen bovendien een opdracht, dus centraal
   vastzetten haalt de reden weg om naar buiten te lopen.
 - Spelsimulatie (`95-simulate.js`): 2×D6 = exact aantal te lopen stappen, geen
-  U-turn, bezette vakjes (andere spelers) blokkeren. Uitzondering: land je exact
-  op je eigen opdrachtvakje met minder dan de volledige worp, dan stop je daar
-  en vervalt de rest. Elke speler heeft een eigen geschud stapeltje opdrachten
-  1–9 (labels `2.1`–`2.9`); wie als eerste 6 opdrachten voltooit wint. Draait
-  altijd op de indeling die op dat moment in de tool staat.
+  U-turn, bezette vakjes (andere spelers) blokkeren. Land je onderweg op je
+  eigen opdrachtvakje, dan loop je met de resterende stappen gewoon door — de
+  beurt stopt er **niet meer** voor (vroeger wel; sinds 2026-08 vervalt de rest
+  van de worp niet meer, want dat voelde als verspilde stappen). Voert de rest
+  toevallig ook door de VOLGENDE opdracht, dan pak je die in dezelfde beurt
+  meteen mee (zeldzaam: ±0,3% van alle opdracht-momenten). Zie `resolveMove`/
+  `pickEnd`: `targets` is de rij nog te halen opdrachtvakjes vanaf het huidige
+  doel, en `bankedCount` in het resultaat zegt hoeveel er deze beurt zijn
+  gehaald. Elke speler heeft een eigen geschud stapeltje opdrachten 1–9
+  (labels `2.1`–`2.9`); wie als eerste 6 opdrachten voltooit wint. Draait altijd
+  op de indeling die op dat moment in de tool staat.
 - Elke **gangtegel** heeft precies 1 actiekaartvakje (labels `4.1`–`4.10`,
   analoog aan het opdrachtvakje in een kamer — zie `tileValidationIssues` in
   `90-editor.js`). Loop je er tijdens je beurt overheen, dan trek je een
   beloningskaart net als bij een voltooide opdracht, maar anders dan een
-  opdrachtvakje **onderbreekt het de zet niet** (`resolveMove` stopt alleen op
-  je eigen `targetKey`) en levert het **hooguit 1 kaart per beurt** op, ook als
-  je onderweg meerdere van deze vakjes passeert — geen heen-en-weer lopen voor
-  een 2e kaart. Gedeelde logica: `graph.actionCells` (in `buildSimGraph`),
+  opdrachtvakje **onderbreekt het de zet niet** en levert het **hooguit 1
+  kaart per beurt** op, ook als je onderweg meerdere van deze vakjes
+  passeert — geen heen-en-weer lopen voor een 2e kaart. Gedeelde logica:
+  `graph.actionCells` (in `buildSimGraph`),
   `pathHasActionCell` en `drawActionCellReward` in `95-simulate.js`; elke
   spelmodus (`95-simulate.js`, `96-walk.js`, `97-solo.js`) houdt zelf een
   per-beurt vlag bij (bv. `actionCellDrawnThisTurn`) omdat animatie/bot-logica

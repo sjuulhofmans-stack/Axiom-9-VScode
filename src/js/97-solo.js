@@ -196,6 +196,10 @@ let soloAllowUturn = false;   // Snelroute: geen-U-turn-regel geldt deze beurt n
 let soloLockedThisTurn = false; // Vergrendeling: deze beurt geen energie- en kaartactie
 let soloUsedJump = false;
 let soloActionCellDrawnThisTurn = false;  // hooguit 1 beloningskaart per beurt via een actiekaartvakje
+// hoeveel opdrachten deze beurt al onderweg gebankt zijn (normaal 0 of 1, zelden 2 — zie
+// soloBankCurrentQuest): de beurt stopt er niet meer voor, dus dit bepaalt straks alleen nog of
+// het einde van de beurt "onderweg naar X" moet loggen of gewoon stil mag afronden
+let soloBankCountThisTurn = 0;
 let soloBootsOptions = [];
 let soloCurrentLegalMoves = [];  // { key, dir }[] — de opties die het richtingskruis nu toont
 let soloBlindOfferAvailable = false; // deze stap geblokkeerd door een tegenstander + Blinde Vlek in de hand
@@ -1033,7 +1037,8 @@ function soloAdvanceMovePhase(){
     soloHideDirPad();
     const reason = legalIgnoringBlock.length ? 'liep tegen een bezette route aan' : 'doodlopend';
     walkLog(`${reason === 'doodlopend' ? 'Doodlopend' : 'Geblokkeerd door een tegenstander'} — geen vervolgstap meer mogelijk.`, null, solo());
-    soloFinishTurn(false);
+    if (soloBankCountThisTurn > 0) soloEndMoveAlreadyBanked();
+    else soloFinishTurn(false);
     return;
   }
   soloPhase = 'moving';
@@ -1079,10 +1084,70 @@ if (walkSoloActionsEl){
     } else {
       walkSoloActionsEl.innerHTML = '';
       walkLog(`Doodlopend — geen vervolgstap meer mogelijk.`, null, solo());
-      soloFinishTurn(false);
+      if (soloBankCountThisTurn > 0) soloEndMoveAlreadyBanked();
+      else soloFinishTurn(false);
     }
   });
 }
+// boekt de opdracht op soloTargetKey meteen af i.p.v. te wachten tot het einde van de beurt —
+// de beurt stopt er niet meer voor (zie CLAUDE.md), dus met de stappen die overblijven mag je
+// gewoon doorlopen. Geeft true terug als dit je 6e opdracht was (de beurt is dan meteen voorbij).
+function soloBankCurrentQuest(){
+  soloRollEnergyForTurn();   // vangnet: idempotent, zie de toelichting in soloFinishTurn
+  const p = solo();
+  const label = p.deck[p.nextIdx];
+  const key = soloTargetKey;
+  p.completed++;
+  p.nextIdx++;
+  p.doneCells.push(key);
+  const div = walkCellDiv(soloGraph, key);
+  div.classList.remove('walk-target');
+  div.classList.add('walk-done');
+  soloBankCountThisTurn++;
+
+  if (soloBankCountThisTurn === 1){
+    const rollText = soloUsedBoots
+      ? `🥾 ${soloMove.path.length - 1} van 10 stappen rechtdoor`
+      : walkRollText(soloMove.d1, soloMove.d2, soloMove.d3, soloMove.roll);
+    const turnNote = walkActionNote(soloUsedEnergyId) + walkCardNote(soloUsedCardId) + soloDiscardNote(soloDiscardedCardId);
+    walkLog(`Beurt ${soloTurn}: <b>${rollText}</b>${walkEnergyNote(soloEnergyRoll, soloEnergyGain, p)}${turnNote} → <span class="hit">${label} ${QUEST_NAMES[label] || ''} voltooid</span> · ${p.completed}/${SIM_QUESTS_TO_WIN}`, 'hit', p);
+  } else {
+    // zeldzaam: de resterende stappen na de 1e opdracht voerden toevallig ook door deze
+    walkLog(`Je loopt meteen door en voltooit ook <span class="hit">${label} ${QUEST_NAMES[label] || ''}</span> — twee opdrachten in één beurt! · ${p.completed}/${SIM_QUESTS_TO_WIN}`, 'hit', p);
+  }
+
+  if (p.cards.length < ACTION_CARD_HAND_MAX){
+    const drawn = drawActionCard(soloDeck, soloRand);
+    if (drawn){
+      p.cards.push(drawn);
+      walkLog(`Je trekt een beloningskaart: <b>${ACTION_CARDS[drawn].name}</b> — ${ACTION_CARDS[drawn].hint}.`, null, p);
+      soloRefreshCardVault();
+    }
+  } else {
+    walkLog(`Je zou een kaart trekken, maar je hand is al vol.`, null, p);
+  }
+
+  if (p.completed >= SIM_QUESTS_TO_WIN){
+    p.finishTurn = soloTurn;
+    soloRoundFinishers.push(p);
+    walkLog(`Je hebt alle ${SIM_QUESTS_TO_WIN} opdrachten voltooid en verlaat het bord — wacht op de rest van deze ronde.`, 'hit', p);
+    clearWalkTarget();
+    paintWalkPawns(soloGraph, soloPlayers, p.idx);
+    return true;
+  }
+  soloRefreshTarget();   // nieuwe doel meteen op het bord — daar loop je nu evt. mee door
+  return false;
+}
+
+// beurt afronden nadat er deze beurt al minstens 1x inline gebankt is (soloBankCurrentQuest
+// heeft dan al alles gelogd) — géén "onderweg naar X"-regel meer nodig, gewoon opruimen.
+function soloEndMoveAlreadyBanked(){
+  soloHideDirPad();
+  if (solo()) solo().barrierCell = null;
+  renderWalkScore(soloPlayers, soloActiveIdx);
+  soloContinueLoop();
+}
+
 function soloHandleMoveClick(key){
   const occ = soloOccupied();
   const legal = soloLegalNextCells(soloGraph, solo().pos, soloMove.lastDir, soloPhase === 'moving' && soloUsedCardId === 'blind' ? null : occ);
@@ -1101,11 +1166,19 @@ function soloHandleMoveClick(key){
   paintWalkPawns(soloGraph, soloPlayers, p.idx);
 
   if (key === soloTargetKey){
+    const won = soloBankCurrentQuest();
     soloClearClickable();
-    soloFinishTurn(true);
+    if (won){
+      soloEndMoveAlreadyBanked();
+    } else if (soloMove.stepsLeft <= 0){
+      soloEndMoveAlreadyBanked();
+    } else {
+      soloAdvanceMovePhase();
+    }
   } else if (soloMove.stepsLeft <= 0){
     soloClearClickable();
-    soloFinishTurn(false);
+    if (soloBankCountThisTurn > 0) soloEndMoveAlreadyBanked();
+    else soloFinishTurn(false);
   } else {
     soloAdvanceMovePhase();
   }
@@ -1193,6 +1266,7 @@ function soloBeginHumanTurn(pIdx){
   soloUsedBoots = false;
   soloUsedJump = false;
   soloActionCellDrawnThisTurn = false;
+  soloBankCountThisTurn = 0;
   soloAllowUturn = false;
   soloMove = null;
 
@@ -1370,6 +1444,10 @@ function soloResolveBotTurn(player){
     }
   }
   const targetKey = soloGraph.questCells[targetLabel];
+  // volledige rij nog te halen opdrachtvakjes, te beginnen bij het huidige doel — zie de
+  // toelichting bij `targets` in simulateOneGame() (95-simulate.js)
+  const targets = [];
+  for (let i = player.nextIdx; i < player.deck.length; i++) targets.push(soloGraph.questCells[player.deck[i]]);
 
   const occupied = new Set();
   for (const other of soloPlayers) if (other.idx !== pIdx && !other.rank) occupied.add(other.pos);
@@ -1393,7 +1471,7 @@ function soloResolveBotTurn(player){
       allowUturn = true;
       useActionCard(player, 'fastlane', soloDeck); cardActionUsed = true;
     }
-    move = resolveMove(soloGraph, player.pos, roll, occupied, targetKey, soloRand, undefined, allowUturn);
+    move = resolveMove(soloGraph, player.pos, roll, occupied, targets, soloRand, undefined, allowUturn);
     // Koerscorrectie: tegenvallende worp overdoen (zie simulateOneGame voor de drempel)
     if (!move.bankedQuest && !cardActionUsed && player.cards.includes('reroll') && roll < dice * 3.5){
       roll = 0;
@@ -1401,13 +1479,13 @@ function soloResolveBotTurn(player){
       useActionCard(player, 'reroll', soloDeck);
       cardActionUsed = true;
       walkLog(`${player.name} gebruikt <b>Koerscorrectie</b> en gooit opnieuw: ${roll}.`, null, player);
-      move = resolveMove(soloGraph, player.pos, roll, occupied, targetKey, soloRand, undefined, allowUturn);
+      move = resolveMove(soloGraph, player.pos, roll, occupied, targets, soloRand, undefined, allowUturn);
     }
   }
 
   let blindResolvedBlock = false;
   if (!move.bankedQuest && !cardActionUsed && player.cards.includes('blind') && move.wasBlocked){
-    const retry = resolveMove(soloGraph, player.pos, roll, SIM_EMPTY_SET, targetKey, soloRand, occupied, allowUturn);
+    const retry = resolveMove(soloGraph, player.pos, roll, SIM_EMPTY_SET, targets, soloRand, occupied, allowUturn);
     if (retry && retry.key !== move.key){ move = retry; useActionCard(player, 'blind', soloDeck); cardActionUsed = true; blindResolvedBlock = true; }
   }
   if (!blindResolvedBlock && !move.bankedQuest && !energyActionUsed && player.strategy === 'jump' && player.energy >= ENERGY_ACTIONS.jump.cost){
@@ -1416,8 +1494,8 @@ function soloResolveBotTurn(player){
       player.energy -= ENERGY_ACTIONS.jump.cost; player.actionUses++; energyActionUsed = true;
       if (pathHasActionCell(soloGraph, jump.path)) soloGrantActionCellReward(player, false);
       move = jump.banked
-        ? { key: jump.key, path: [jump.key], stepsUsed: 0, bankedQuest: true, wasBlocked: false }
-        : resolveMove(soloGraph, jump.key, roll, occupied, targetKey, soloRand, undefined, allowUturn);
+        ? { key: jump.key, path: [jump.key], stepsUsed: 0, bankedCount: 1, bankedQuest: true, wasBlocked: false }
+        : resolveMove(soloGraph, jump.key, roll, occupied, targets, soloRand, undefined, allowUturn);
     }
   }
   const stepDir = lastStepDirection(soloGraph, move.path);
@@ -1428,14 +1506,22 @@ function soloResolveBotTurn(player){
   if (pathHasActionCell(soloGraph, move.path)) soloGrantActionCellReward(player, false);
 
   if (move.bankedQuest){
-    player.completed++;
+    // meestal 1 opdracht, zelden 2 (de resterende stappen na de 1e voerden toevallig ook door
+    // de 2e) — zie resolveMove in 95-simulate.js.
+    const bankedLabels = [];
+    for (let i = player.nextIdx, n = 0; n < move.bankedCount; i++, n++) bankedLabels.push(player.deck[i]);
     player.doneCells.push(targetKey);
-    player.nextIdx++;
+    for (let i = 1; i < bankedLabels.length; i++) player.doneCells.push(soloGraph.questCells[bankedLabels[i]]);
+    player.completed += bankedLabels.length;
+    player.nextIdx += bankedLabels.length;
     if (player.cards.length < ACTION_CARD_HAND_MAX){
       const drawn = drawActionCard(soloDeck, soloRand);
       if (drawn) player.cards.push(drawn);
     }
-    walkLog(`Beurt ${soloTurn}: <b>${player.name}</b> voltooit <span class="hit">${targetLabel} ${QUEST_NAMES[targetLabel] || ''}</span> · ${player.completed}/${SIM_QUESTS_TO_WIN}`, 'hit', player);
+    const chainNote = bankedLabels.length > 1
+      ? ` en meteen ook <span class="hit">${bankedLabels.slice(1).map(l => `${l} ${QUEST_NAMES[l] || ''}`).join(', ')}</span>`
+      : '';
+    walkLog(`Beurt ${soloTurn}: <b>${player.name}</b> voltooit <span class="hit">${targetLabel} ${QUEST_NAMES[targetLabel] || ''}</span>${chainNote} · ${player.completed}/${SIM_QUESTS_TO_WIN}`, 'hit', player);
     if (player.completed >= SIM_QUESTS_TO_WIN){
       player.finishTurn = soloTurn;
       soloRoundFinishers.push(player);

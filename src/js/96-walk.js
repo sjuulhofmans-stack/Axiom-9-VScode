@@ -2,7 +2,9 @@
 // Speelt EEN potje op de huidige indeling en toont elke stap. Hergebruikt de engine uit
 // 95-simulate.js (buildSimGraph + resolveMove), zodat de regels hier per definitie dezelfde
 // zijn als in de batch-simulatie: 2xD6 = exact aantal stappen, geen U-turn, bezette vakjes
-// blokkeren, en je stopt zodra je je eigen opdrachtvakje raakt (rest van de worp vervalt).
+// blokkeren, en raak je onderweg je eigen opdrachtvakje, dan loop je met de resterende
+// stappen gewoon door (zie resolveMove) — voert de rest toevallig ook door de volgende
+// opdracht, dan pak je die in dezelfde beurt meteen mee.
 // Met meerdere spelers is de "bezette vakjes"-set precies de posities van de andere pionnen
 // die nog meespelen, net als in simulateOneGame(); met één speler is die set leeg.
 //
@@ -679,6 +681,10 @@ async function runWalkSimulation(){
         }
       }
       const targetKey = graph.questCells[targetLabel];
+      // volledige rij nog te halen opdrachtvakjes, te beginnen bij het huidige doel — zie de
+      // toelichting bij `targets` in simulateOneGame() (95-simulate.js)
+      const targets = [];
+      for (let i = player.nextIdx; i < player.deck.length; i++) targets.push(graph.questCells[player.deck[i]]);
 
       // bord klaarzetten voor deze beurt: eigen voortgang, eigen doel, alle pionnen (ook een
       // net geduwde tegenstander staat hier al op zijn nieuwe plek)
@@ -795,7 +801,7 @@ async function runWalkSimulation(){
       if (aborted()) return;
 
       if (!usedBoots){
-        move = resolveMove(graph, player.pos, roll, occupiedNow(), targetKey, rand, undefined, allowUturn);
+        move = resolveMove(graph, player.pos, roll, occupiedNow(), targets, rand, undefined, allowUturn);
         // Koerscorrectie: tegenvallende worp overdoen (zie simulateOneGame voor de drempel)
         const dice = d3 ? 3 : 2;
         if (!move.bankedQuest && !cardActionUsed && player.cards.includes('reroll') && roll < dice * 3.5){
@@ -808,7 +814,7 @@ async function runWalkSimulation(){
           if (aborted()) return;
           await walkTick(Math.min(500, walkSpeed().rollMs));
           if (aborted()) return;
-          move = resolveMove(graph, player.pos, roll, occupiedNow(), targetKey, rand, undefined, allowUturn);
+          move = resolveMove(graph, player.pos, roll, occupiedNow(), targets, rand, undefined, allowUturn);
         }
       }
 
@@ -817,7 +823,7 @@ async function runWalkSimulation(){
       // de toelichting in simulateOneGame(). Noodtransport mag TUSSENTIJDS.
       let blindResolvedBlock = false;
       if (!move.bankedQuest && !cardActionUsed && !usedBoots && player.cards.includes('blind') && move.wasBlocked){
-        const retry = resolveMove(graph, player.pos, roll, SIM_EMPTY_SET, targetKey, rand, occupiedNow(), allowUturn);
+        const retry = resolveMove(graph, player.pos, roll, SIM_EMPTY_SET, targets, rand, occupiedNow(), allowUturn);
         if (retry && retry.key !== move.key){
           move = retry;
           useActionCard(player, 'blind', deck);
@@ -833,8 +839,8 @@ async function runWalkSimulation(){
           energyActionUsed = true; usedEnergyAction = 'jump';
           if (!await walkPath(jump.path, true)) return;
           move = jump.banked
-            ? { key: jump.key, path: [jump.key], stepsUsed: 0, bankedQuest: true, wasBlocked: false }
-            : resolveMove(graph, jump.key, roll, occupiedNow(), targetKey, rand, undefined, allowUturn);
+            ? { key: jump.key, path: [jump.key], stepsUsed: 0, bankedCount: 1, bankedQuest: true, wasBlocked: false }
+            : resolveMove(graph, jump.key, roll, occupiedNow(), targets, rand, undefined, allowUturn);
         }
       }
       // laatst gelopen richting onthouden — Terugtrekbevel duwt je daar weer langs terug
@@ -850,22 +856,41 @@ async function runWalkSimulation(){
       const turnNote = walkActionNote(usedEnergyAction) + walkCardNote(usedCardId);
 
       if (move.bankedQuest){
-        player.completed++;
-        player.nextIdx++;
+        // meestal 1 opdracht, zelden 2 (de resterende stappen na de 1e voerden toevallig ook
+        // door de 2e) — zie resolveMove in 95-simulate.js. `targetLabel`/`targetKey`/`targetDiv`
+        // horen al bij de EERSTE (die stond immers al als doel op het bord vóór deze beurt);
+        // eventuele volgende gebankte opdrachten deze beurt lezen we vers uit player.deck.
+        const bankedLabels = [];
+        for (let i = player.nextIdx, n = 0; n < move.bankedCount; i++, n++) bankedLabels.push(player.deck[i]);
         player.doneCells.push(targetKey);
         targetDiv.classList.remove('walk-target');
         targetDiv.classList.add('walk-done');
-        const extra = (!usedBoots && move.stepsUsed < roll) ? ` (na ${move.stepsUsed} van ${roll} stappen — de rest vervalt)` : '';
-        walkLog(`Beurt ${turn}: <b>${rollText}</b>${walkEnergyNote(energyRoll, energyGain, player)}${turnNote} → <span class="hit">${targetLabel} ${QUEST_NAMES[targetLabel] || ''} voltooid${extra}</span> · ${player.completed}/${SIM_QUESTS_TO_WIN}`, 'hit', player);
+        for (let i = 1; i < bankedLabels.length; i++){
+          const k = graph.questCells[bankedLabels[i]];
+          player.doneCells.push(k);
+          const div = walkCellDiv(graph, k);
+          div.classList.remove('walk-target');
+          div.classList.add('walk-done');
+        }
+        player.completed += bankedLabels.length;
+        player.nextIdx += bankedLabels.length;
 
-        if (player.cards.length < ACTION_CARD_HAND_MAX){
-          const drawn = drawActionCard(deck, rand);
-          if (drawn){
-            player.cards.push(drawn);
-            walkLog(`${player.name} trekt een beloningskaart: <b>${ACTION_CARDS[drawn].name}</b> — ${ACTION_CARDS[drawn].hint}.`, null, player);
+        const deadEnd = (!usedBoots && move.stepsUsed < roll) ? ` (kwam daarna vast te zitten na ${move.stepsUsed} van ${roll} stappen)` : '';
+        const chainNote = bankedLabels.length > 1
+          ? ` — en loopt meteen door naar <span class="hit">${bankedLabels.slice(1).map(l => `${l} ${QUEST_NAMES[l] || ''}`).join(', ')}</span>: twee opdrachten in één beurt!`
+          : '';
+        walkLog(`Beurt ${turn}: <b>${rollText}</b>${walkEnergyNote(energyRoll, energyGain, player)}${turnNote} → <span class="hit">${targetLabel} ${QUEST_NAMES[targetLabel] || ''} voltooid</span>${chainNote}${deadEnd} · ${player.completed}/${SIM_QUESTS_TO_WIN}`, 'hit', player);
+
+        for (let n = 0; n < bankedLabels.length; n++){
+          if (player.cards.length < ACTION_CARD_HAND_MAX){
+            const drawn = drawActionCard(deck, rand);
+            if (drawn){
+              player.cards.push(drawn);
+              walkLog(`${player.name} trekt een beloningskaart: <b>${ACTION_CARDS[drawn].name}</b> — ${ACTION_CARDS[drawn].hint}.`, null, player);
+            }
+          } else {
+            walkLog(`${player.name} zou een kaart trekken, maar de hand is al vol.`, null, player);
           }
-        } else {
-          walkLog(`${player.name} zou een kaart trekken, maar de hand is al vol.`, null, player);
         }
 
         if (player.completed >= SIM_QUESTS_TO_WIN){
