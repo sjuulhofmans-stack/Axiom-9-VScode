@@ -8355,10 +8355,14 @@ function startSoloGame(){
   soloTurn = 0;
   soloDeck = buildActionDeck(soloRand);
 
+  // Alleen de EERSTE opdracht loggen, niet de hele stapel — net als in het zijpaneel ligt
+  // de rest van je opdrachtenstapel dichtgeslagen (zie renderSoloMeta/blindReorderTarget),
+  // dus dit logregel mocht die niet stiekem al verklappen bij het opzetten van het potje.
   for (const p of soloPlayers){
     const who = p.isHuman ? '(jij)' : '(bot)';
     const stratNote = p.isHuman ? '' : ` · energie: <b>${ENERGY_ACTIONS[p.strategy].name}</b>`;
-    walkLog(`${p.name} ${who} start op <b>${p.startLabel}</b>${stratNote} · stapel: ${p.deck.slice(0, SIM_QUESTS_TO_WIN).join(' → ')} …`, null, p);
+    const first = p.deck[0];
+    walkLog(`${p.name} ${who} start op <b>${p.startLabel}</b>${stratNote} · eerste opdracht: ${first} — ${QUEST_NAMES[first] || ''}`, null, p);
   }
   walkLog(`Elke voltooide opdracht levert een beloningskaart op van een gedeelde stapel — net als het actiekaartvakje in elke gang (zet stopt er niet voor, hooguit 1x per beurt) — max ${ACTION_CARD_HAND_MAX} kaarten in de hand.`);
   if (soloPlayers.length > 1){
