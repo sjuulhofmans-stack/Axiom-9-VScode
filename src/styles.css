@@ -583,7 +583,9 @@
        doelregel 153px, onderregel 208px). Vier spelers passen daarmee naast elkaar. */
     display:grid; grid-template-columns:repeat(auto-fill, minmax(240px, 1fr));
     gap:8px; align-items:stretch;
-    margin-bottom:15px;
+    /* 26px in plaats van de gewenste 15px: de gloed rond de "aan zet"-kaart (box-shadow
+       blur 18px) bleedt buiten de kaartrand en at anders de marge zichtbaar op. */
+    margin-bottom:26px;
   }
   /* #walkScore (boven het bord) en #walkScoreActive (in het paneel rechts) krijgen allebei
      dezelfde volledige spelerslijst van renderWalkScore() — welke rijen zichtbaar zijn hangt
