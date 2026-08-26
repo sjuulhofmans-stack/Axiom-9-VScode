@@ -30,7 +30,9 @@ const walkSoloPanelEl = document.getElementById('walkSoloPanel');
 const walkSoloActionsEl = document.getElementById('walkSoloActions');
 const btnWalkSoloRoll = document.getElementById('btnWalkSoloRoll');
 const btnWalkSoloSkip = document.getElementById('btnWalkSoloSkip');
-const walkDirPadEl = document.getElementById('walkDirPad');
+const walkEnergyOverviewEl = document.getElementById('walkEnergyOverview');
+const walkEnergyValueEl = document.getElementById('walkEnergyValue');
+const walkEnergyBarFillEl = document.getElementById('walkEnergyBarFill');
 const walkCardVaultEl = document.getElementById('walkCardVault');
 const walkCardVaultThumbsEl = document.getElementById('walkCardVaultThumbs');
 const walkCardVaultCountEl = document.getElementById('walkCardVaultCount');
@@ -230,10 +232,6 @@ function setWalkMode(mode){
   if (walkSoloControlsEl) walkSoloControlsEl.hidden = isAuto;
   if (walkSoloSetupEl) walkSoloSetupEl.hidden = isAuto;
   if (walkSoloStartRowEl) walkSoloStartRowEl.hidden = true;
-  // De navigator is alleen relevant in "Zelf spelen" — maar BINNEN die modus blijft hij nu de
-  // hele partij zichtbaar (zie soloHideDirPad hierboven), dus dit is de enige plek die 'm nog
-  // echt uit de layout haalt.
-  if (walkDirPadEl) walkDirPadEl.hidden = isAuto;
   if (walkAutoHintEl) walkAutoHintEl.hidden = !isAuto;
   if (walkSoloHintEl) walkSoloHintEl.hidden = isAuto;
   if (walkSoloPanelEl) walkSoloPanelEl.hidden = true;
@@ -294,11 +292,21 @@ function soloLegalNextCells(graph, pos, lastDir, occupied){
 // ---------- score/meta ----------
 function renderSoloMeta(stepsLeft){
   renderWalkMeta({ player: solo(), turn: soloTurn, stepsLeft });
-  if (!walkMetaEl || !solo() || solo().completed >= SIM_QUESTS_TO_WIN) return;
+  soloRenderEnergyOverview();
+}
+// Los, duidelijk overzicht van je energie t.o.v. het plafond (ENERGY_MAX) — het kleine
+// ⚡-badge in de spelersrij (walkScoreActive) verdwijnt daar te makkelijk tussen de rest.
+// Hangt aan renderSoloMeta() (hierboven) zodat hij overal meeloopt waar de rest van je
+// beurtinfo ook al opnieuw getekend wordt: bij het opzetten van de beurt, na het dobbelen
+// (energiesteen) en na elke energie-actie of kaart.
+function soloRenderEnergyOverview(){
+  if (!walkEnergyOverviewEl) return;
   const p = solo();
-  const upcoming = p.deck.slice(p.nextIdx, p.nextIdx + 3)
-    .map((l, i) => i === 0 ? `<b>${l}</b>` : l).join(' → ');
-  walkMetaEl.insertAdjacentHTML('beforeend', `<span>Volgende: ${upcoming} …</span>`);
+  if (!p){ walkEnergyValueEl.textContent = '0'; walkEnergyBarFillEl.style.width = '0%'; return; }
+  const full = p.energy >= ENERGY_MAX;
+  walkEnergyOverviewEl.classList.toggle('is-full', full);
+  walkEnergyValueEl.textContent = p.energy;
+  walkEnergyBarFillEl.style.width = `${Math.min(100, p.energy / ENERGY_MAX * 100)}%`;
 }
 function soloRefreshTarget(){
   const p = solo();
@@ -552,7 +560,7 @@ function soloEnterTargetPicker(cardId){
   const targets = soloTargetPickerTargets(cardId);
   if (!targets.length) return;
   soloPhase = 'target-pick';
-  soloHideDirPad();
+  soloHideStepCounter();
   // deze picker kan nu ook MIDDENIN het lopen geopend worden (kaarten spelen kan tijdens je
   // stappen) — dan staan er nog groen-omrande aanklikbare vakjes op het bord van vóór deze klik;
   // die moeten weg zolang de doelwit-kiezer open staat, anders blijft de oude highlight zichtbaar
@@ -748,6 +756,7 @@ function soloUseEnergyAction(id){
   const act = ENERGY_ACTIONS[id];
   if (p.energy < act.cost) return;
   p.energy -= act.cost;
+  soloRenderEnergyOverview();
   soloUsedEnergyId = id;
   if (id === 'boost'){
     soloPendingBoost = true;
@@ -806,7 +815,7 @@ function soloEnterBootsDirection(){
   // andere. Dat las als "het spel is vastgelopen". Weg ermee, en het bord wijst nu alleen
   // nog de richtingen aan die de laarzen je opleveren.
   soloClearClickable();
-  soloHideDirPad();
+  soloHideStepCounter();
   btnWalkSoloSkip.hidden = true;
   btnWalkSoloRoll.hidden = true;
 
@@ -864,7 +873,7 @@ function soloResolveBoots(dir){
 function soloEnterJumpTarget(){
   soloPhase = 'jump-target';
   walkSoloActionsEl.innerHTML = '';
-  soloHideDirPad();
+  soloHideStepCounter();
   btnWalkSoloSkip.hidden = true;
   btnWalkSoloRoll.hidden = true;
   const stamp = simBfsDistances(soloGraph, solo().pos);
@@ -911,43 +920,24 @@ function renderSoloDicePending(){
     `<span class="walk-dice-row"><span class="walk-die">?</span><span class="walk-die">?</span></span>` +
     `<span class="walk-dice-row">${energyHtml}</span>`;
 }
-function soloRenderDirPad(legal){
-  if (!walkDirPadEl) return;
+// `soloCurrentLegalMoves` voedt niet alleen deze teller maar ook de pijltjestoetsen
+// hieronder — bewegen zelf gaat via een klik op een omrand bordvakje (.walk-clickable) of
+// via die pijltjestoetsen, dit is puur de "gezet/nog"-teller ernaast.
+function soloRenderStepCounter(legal){
   soloCurrentLegalMoves = legal;
-  const legalDirs = new Set(legal.map(l => l.dir));
-  for (const btn of walkDirPadEl.querySelectorAll('button[data-dir]')){
-    btn.disabled = !legalDirs.has(parseInt(btn.dataset.dir, 10));
-  }
   if (walkStepDoneEl) walkStepDoneEl.textContent = soloMove.path.length - 1;
   if (walkStepLeftEl) walkStepLeftEl.textContent = soloMove.stepsLeft;
 }
-// De navigator zelf blijft nu de HELE partij zichtbaar (zie setWalkMode: alleen de modus,
-// niet de beurtfase, bepaalt of hij getoond wordt) — "verbergen" buiten je eigen zet betekent
-// nu alleen nog de knoppen uitschakelen en de teller op een placeholder zetten, niet meer het
-// hele blok uit de layout halen. Zonder dit sprong het infopaneel eronder elke beurt een stukje
-// omhoog/omlaag zodra het navigatorblok verscheen/verdween (gebruikersmelding: "het menu rechts
-// schiet continu heen en weer").
-function soloHideDirPad(){
+function soloHideStepCounter(){
   soloCurrentLegalMoves = [];
-  if (!walkDirPadEl) return;
-  for (const btn of walkDirPadEl.querySelectorAll('button[data-dir]')) btn.disabled = true;
   if (walkStepDoneEl) walkStepDoneEl.textContent = '–';
   if (walkStepLeftEl) walkStepLeftEl.textContent = '–';
 }
-if (walkDirPadEl){
-  walkDirPadEl.addEventListener('click', (e) => {
-    if (soloPhase !== 'moving') return;
-    const btn = e.target.closest('button[data-dir]');
-    if (!btn || btn.disabled) return;
-    const dir = parseInt(btn.dataset.dir, 10);
-    const match = soloCurrentLegalMoves.find(l => l.dir === dir);
-    if (match) soloHandleMoveClick(match.key);
-  });
-}
-// Op een pc mogen de pijltjestoetsen dezelfde stap zetten als een klik op het richtingskruis
-// (gebruikersverzoek). Alleen actief tijdens het lopen (soloPhase === 'moving') en niet terwijl
-// je ergens anders op de pagina aan het typen bent (bv. de seed-invoer op tabblad "Kaart maken"),
-// anders zouden de pijltjes daar niet meer gewoon door de tekst kunnen bewegen.
+// Op een pc mogen de pijltjestoetsen een stap zetten, net als een klik op een omrand
+// bordvakje (gebruikersverzoek). Alleen actief tijdens het lopen (soloPhase === 'moving') en
+// niet terwijl je ergens anders op de pagina aan het typen bent (bv. de seed-invoer op
+// tabblad "Kaart maken"), anders zouden de pijltjes daar niet meer gewoon door de tekst
+// kunnen bewegen.
 const SOLO_ARROW_DIR = { ArrowUp: 0, ArrowRight: 1, ArrowDown: 2, ArrowLeft: 3 };
 document.addEventListener('keydown', (e) => {
   const dir = SOLO_ARROW_DIR[e.key];
@@ -967,7 +957,7 @@ document.addEventListener('keydown', (e) => {
 
 function soloProceedToRoll(){
   walkSoloActionsEl.innerHTML = '';
-  soloHideDirPad();
+  soloHideStepCounter();
   btnWalkSoloSkip.hidden = true;
   btnWalkSoloRoll.hidden = false;
   btnWalkSoloRoll.textContent = soloPendingBoost ? '🎲 Gooi 3 dobbelstenen' : '🎲 Gooi de dobbelstenen';
@@ -1034,7 +1024,7 @@ function soloAdvanceMovePhase(){
       soloOfferBlindSpot();
       return;
     }
-    soloHideDirPad();
+    soloHideStepCounter();
     const reason = legalIgnoringBlock.length ? 'liep tegen een bezette route aan' : 'doodlopend';
     walkLog(`${reason === 'doodlopend' ? 'Doodlopend' : 'Geblokkeerd door een tegenstander'} — geen vervolgstap meer mogelijk.`, null, solo());
     if (soloBankCountThisTurn > 0) soloEndMoveAlreadyBanked();
@@ -1043,7 +1033,7 @@ function soloAdvanceMovePhase(){
   }
   soloPhase = 'moving';
   soloMarkClickable(soloGraph, legal.map(l => l.key));
-  soloRenderDirPad(legal);
+  soloRenderStepCounter(legal);
   renderSoloMeta(soloMove.stepsLeft);
   // altijd-zichtbare kaartenrij (spelen/afleggen) opnieuw tekenen — dekt alle aanroepers van
   // deze functie in één keer (dobbelen, elke losse stap, ná een doelwit-kiezer/Condensator/enz.)
@@ -1054,7 +1044,7 @@ function soloAdvanceMovePhase(){
 // gewone actiepaneel maar een kort ja/nee-keuzemoment middenin de zet.
 function soloOfferBlindSpot(){
   soloPhase = 'blind-offer';
-  soloHideDirPad();
+  soloHideStepCounter();
   soloClearClickable();
   btnWalkSoloRoll.hidden = true;
   btnWalkSoloSkip.hidden = true;
@@ -1078,7 +1068,7 @@ if (walkSoloActionsEl){
       soloPhase = 'moving';
       const legal = soloLegalNextCells(soloGraph, solo().pos, soloMove.lastDir, null);
       soloMarkClickable(soloGraph, legal.map(l => l.key));
-      soloRenderDirPad(legal);
+      soloRenderStepCounter(legal);
       renderSoloMeta(soloMove.stepsLeft);
       soloRefreshCardVault();   // cardActionUsed is nu true (blind gespeeld), dus niets meer speelbaar
     } else {
@@ -1142,7 +1132,7 @@ function soloBankCurrentQuest(){
 // beurt afronden nadat er deze beurt al minstens 1x inline gebankt is (soloBankCurrentQuest
 // heeft dan al alles gelogd) — géén "onderweg naar X"-regel meer nodig, gewoon opruimen.
 function soloEndMoveAlreadyBanked(){
-  soloHideDirPad();
+  soloHideStepCounter();
   if (solo()) solo().barrierCell = null;
   renderWalkScore(soloPlayers, soloActiveIdx);
   soloContinueLoop();
@@ -1194,7 +1184,7 @@ function soloDiscardNote(id){
 // ---------- beurt afronden ----------
 function soloFinishTurn(banked){
   soloClearClickable();
-  soloHideDirPad();
+  soloHideStepCounter();
   // Noodbarrière gold precies voor deze ene beurt en verdwijnt nu, of je er nu tegenaan liep of niet
   if (solo()) solo().barrierCell = null;
   // vangnet voor Zwaartekracht-laarzen / een Noodtransport dat exact op je doel landt: die paden
@@ -1613,13 +1603,14 @@ function stopSoloGame(){
   soloGraph = null; soloPlayers = []; soloMove = null; soloActiveIdx = -1;
   soloRoundFinishers = []; soloFinished = 0; soloRoundPos = 0;
   soloClearClickable();
-  soloHideDirPad();
+  soloHideStepCounter();
   // De spelersbalk bleef anders de stand van het vorige potje tonen (scores, energie,
   // kaarten) terwijl de opzet-UI alweer open stond.
   walkScoreOrder = null;
   if (walkScoreEl) walkScoreEl.innerHTML = '';
   if (walkScoreActiveEl) walkScoreActiveEl.innerHTML = '';
   if (walkSoloPanelEl) walkSoloPanelEl.hidden = true;
+  if (walkEnergyOverviewEl) walkEnergyOverviewEl.hidden = true;
   if (walkSoloActionsEl) walkSoloActionsEl.innerHTML = '';
   if (btnWalkSoloRoll) btnWalkSoloRoll.hidden = true;
   if (btnWalkSoloSkip) btnWalkSoloSkip.hidden = true;
@@ -1634,6 +1625,7 @@ function startSoloGame(){
   walkLogEl.innerHTML = '';
   walkStatusEl.innerHTML = '';
   if (walkSoloPanelEl) walkSoloPanelEl.hidden = false;
+  if (walkEnergyOverviewEl) walkEnergyOverviewEl.hidden = false;
 
   const reach = analyseCellReachability();
   if (reach.unreachable.length > 0){

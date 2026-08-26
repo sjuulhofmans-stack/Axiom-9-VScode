@@ -243,21 +243,12 @@
           </div>
 
           <div class="walk-side-col">
-            <div class="walk-dirpad-row" id="walkDirPad" hidden>
-              <div class="walk-dirpad">
-                <button type="button" class="walk-dir-btn walk-dir-n" data-dir="0" title="Noord">▲<span>N</span></button>
-                <button type="button" class="walk-dir-btn walk-dir-w" data-dir="3" title="West">◀<span>W</span></button>
-                <button type="button" class="walk-dir-btn walk-dir-o" data-dir="1" title="Oost">▶<span>O</span></button>
-                <button type="button" class="walk-dir-btn walk-dir-z" data-dir="2" title="Zuid">▼<span>Z</span></button>
-              </div>
+            <div class="walk-hud">
+              <div class="walk-dice" id="walkDice"></div>
               <div class="walk-step-counter">
                 <div class="walk-step-box"><span class="walk-step-num" id="walkStepDone">0</span><span class="walk-step-lbl">gezet</span></div>
                 <div class="walk-step-box"><span class="walk-step-num" id="walkStepLeft">0</span><span class="walk-step-lbl">nog</span></div>
               </div>
-            </div>
-
-            <div class="walk-hud">
-              <div class="walk-dice" id="walkDice"></div>
               <span id="walkPausedFlag" class="walk-paused-flag" hidden>gepauzeerd</span>
               <div class="btn-row">
                 <button id="btnWalkSoloRoll" class="primary" hidden>🎲 Gooi de dobbelstenen</button>
@@ -265,8 +256,21 @@
               </div>
             </div>
 
-            <!-- kaartkluis: staat direct onder de dobbelstenen en is alleen zichtbaar zodra je
-                 daadwerkelijk een actiekaart in handen hebt. Klikken opent het kaartvenster. -->
+            <!-- duidelijk, op zichzelf staand overzicht van je energie t.o.v. het plafond;
+                 zichtbaar zodra een solo-potje loopt (net als walkSoloPanel hieronder, zie
+                 startSoloGame()/stopSoloGame() in 97-solo.js). -->
+            <div class="walk-energy-overview" id="walkEnergyOverview" hidden>
+              <span class="walk-energy-label">Energie</span>
+              <span class="walk-energy-value"><b id="walkEnergyValue">0</b> / 10</span>
+              <div class="walk-energy-bar"><div class="walk-energy-bar-fill" id="walkEnergyBarFill"></div></div>
+            </div>
+
+            <div class="walk-solo-panel" id="walkSoloPanel" hidden>
+              <div class="walk-solo-actions" id="walkSoloActions"></div>
+            </div>
+
+            <!-- kaartkluis: alleen zichtbaar zodra je daadwerkelijk een actiekaart in handen
+                 hebt. Klikken opent het kaartvenster. -->
             <button type="button" class="walk-card-vault" id="walkCardVault" hidden>
               <span class="walk-card-vault-thumbs" id="walkCardVaultThumbs"></span>
               <span class="walk-card-vault-text">
@@ -276,16 +280,13 @@
             </button>
 
             <div class="walk-info-panel">
-              <!-- de opdrachtkaart die op dit moment het doel is; leeg zolang er geen potje loopt -->
+              <!-- de opdrachtkaart die op dit moment het doel is; leeg zolang er geen potje loopt.
+                   Klikbaar: vergroot 'm via dezelfde openCardsZoom() als het tabblad "Kaarten". -->
               <div class="walk-quest-card" id="walkQuestCard"></div>
 
               <div class="walk-meta" id="walkMeta"></div>
 
               <div class="walk-score" id="walkScoreActive"></div>
-
-              <div class="walk-solo-panel" id="walkSoloPanel" hidden>
-                <div class="walk-solo-actions" id="walkSoloActions"></div>
-              </div>
 
               <div id="walkStatus" class="reach-status"></div>
             </div>

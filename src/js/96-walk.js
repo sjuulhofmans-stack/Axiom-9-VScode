@@ -204,6 +204,10 @@ function renderWalkQuestCard(label){
       `<b>${label} · ${QUEST_NAMES[label] || label}</b>` +
       `<span class="sub">${waar}</span>` +
     `</span>`;
+  // klikbaar: dezelfde uitvergroting als het tabblad "Kaarten" (openCardsZoom, 98-cards.js)
+  walkQuestCardEl.onclick = () => openCardsZoom(
+    renderQuestCardFace(label), '', questTint(label), QUEST_NAMES[label] || label, waar,
+  );
 }
 function walkClearClass(cls){
   for (const el of walkBoardEl.querySelectorAll('.' + cls)) el.classList.remove(cls);
@@ -253,19 +257,19 @@ function renderWalkDice(a, b, e, rolling, boost){
     `<span class="walk-dice-row">${energyDieHtml(e, rolling)}${energy}</span>`;
 }
 
+// Het huidige doel zelf staat al op de opdrachtkaart erboven (renderWalkQuestCard) — hier
+// dus geen "Doel: …"-regel meer, dat was een letterlijk duplicaat. Alleen de eindstand
+// (binnen/verloren) staat nergens anders, dus die regel blijft.
 function renderWalkMeta({ player, turn, stepsLeft }){
   if (!player){ walkMetaEl.innerHTML = ''; return; }
-  const targetLabel = player.deck[player.nextIdx];
-  const goal = player.rank
+  const rankLine = player.rank
     ? walkIsIn(player)
-      ? `<span class="hit">binnen als ${walkRankLabel(player.rank)}</span>`
-      : `<span class="lost">verloren — ${walkRankLabel(player.rank)}</span>`
-    : targetLabel
-      ? `<span class="goal">${targetLabel} — ${QUEST_NAMES[targetLabel] || ''}</span>`
-      : '—';
+      ? `<span class="hit">Binnen als ${walkRankLabel(player.rank)}</span>`
+      : `<span class="lost">Verloren — ${walkRankLabel(player.rank)}</span>`
+    : '';
   walkMetaEl.innerHTML =
     `<span>Beurt <b>${turn}</b> · aan zet: <b class="walk-active-name" style="--pc:${player.color}">${player.name}</b> (start ${player.startLabel})</span>` +
-    `<span>Doel: ${goal}</span>` +
+    rankLine +
     `<span>Voltooid: <b>${player.completed}</b> / ${SIM_QUESTS_TO_WIN}${stepsLeft !== undefined ? ` · nog <b>${stepsLeft}</b> stap(pen)` : ''}</span>`;
 }
 
