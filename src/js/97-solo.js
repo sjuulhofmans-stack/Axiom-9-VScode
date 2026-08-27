@@ -379,6 +379,7 @@ function soloAfterCardAction(){
 }
 function soloDiscardCard(id){
   if (soloCardActionUsed()) return;
+  if (mpIntercept('discardCard', { id })) return;
   const p = solo();
   useActionCard(p, id, soloDeck);
   soloDiscardedCardId = id;
@@ -461,6 +462,15 @@ function soloRefreshCardVault(){
 let soloSelectedCard = null;
 
 function soloOpenCardPanel(){
+  // solo() ("wie is aan zet") is in multiplayer niet per se "ik" — dit paneel speelt/legt af
+  // via solo(), dus buiten je eigen beurt zou het hier andermans hand tonen. Alleen openen als
+  // het echt mijn beurt is (dan is solo() toch al gelijk aan mezelf, dus de rest hieronder
+  // blijft ongewijzigd bruikbaar); de kaartkluis zelf (mpRefreshCardVault) toont je hand sowieso
+  // altijd, ook buiten je beurt — alleen dit interactieve spelen/afleggen-paneel niet.
+  if (mp.active && mp.phase === 'in-game'){
+    const owner = soloPlayers[soloActiveIdx];
+    if (!owner || owner.peerId !== mp.myPeerId) return;
+  }
   const p = solo();
   if (!p || !p.cards.length || !cardOverlayEl) return;
   soloSelectedCard = null;
@@ -588,6 +598,7 @@ if (walkSoloActionsEl){
   });
 }
 function soloResolveTargetCard(cardId, targetIdx){
+  if (mpIntercept('resolveTarget', { cardId, targetIdx })) return;
   const p = solo();
   const victim = soloPlayers[targetIdx];
   if (cardId === 'short'){
@@ -672,6 +683,7 @@ function soloResolveTargetCard(cardId, targetIdx){
 
 // Wordt alleen aangeroepen tijdens het lopen (ná de worp), vanuit het kaartvenster.
 function soloPlayCard(id){
+  if (mpIntercept('playCard', { id })) return;
   if (id === 'boots'){ soloEnterBootsDirection(); return; }
   if (SOLO_TARGET_PICKER_LABELS[id]){ soloEnterTargetPicker(id); return; }
   const p = solo();
@@ -752,6 +764,7 @@ function soloPlayCard(id){
   }
 }
 function soloUseEnergyAction(id){
+  if (mpIntercept('useEnergy', { id })) return;
   const p = solo();
   const act = ENERGY_ACTIONS[id];
   if (p.energy < act.cost) return;
@@ -849,6 +862,7 @@ if (walkSoloActionsEl){
 function soloResolveBoots(dir){
   const opt = soloBootsOptions.find(o => o.dir === dir);
   if (!opt) return;
+  if (mpIntercept('resolveBoots', { dir })) return;
   const p = solo();
   // de kaart is al afgelegd in soloEnterBootsDirection, hier alleen nog de zet afhandelen
   soloUsedBoots = true;
@@ -888,6 +902,7 @@ function soloEnterJumpTarget(){
   walkLog(`<b>Noodtransport</b> ingezet — klik een groen omrand vakje binnen bereik (tot ${ENERGY_JUMP_RANGE} vakjes vrij) om erheen te springen.`, null, solo());
 }
 function soloHandleJumpClick(key){
+  if (mpIntercept('jumpClick', { key })) return;
   soloClearClickable();
   soloUsedJump = true;
   const p = solo();
@@ -955,7 +970,12 @@ document.addEventListener('keydown', (e) => {
   soloHandleMoveClick(match.key);
 });
 
+// 10e eigenaar-actie, naast de 9 uit het onderzoek: "geen energie-actie, gewoon dobbelen" bleek
+// bij het testen met twee losse browsers rechtstreeks vanuit de skip-knop aangeroepen te worden,
+// buiten soloUseEnergyAction om — zonder guard muteerde een non-host client hier stilletjes zijn
+// eigen soloPhase, los van de host (desync bij de eerstvolgende snapshot).
 function soloProceedToRoll(){
+  if (mpIntercept('proceedToRoll', {})) return;
   walkSoloActionsEl.innerHTML = '';
   soloHideStepCounter();
   btnWalkSoloSkip.hidden = true;
@@ -987,6 +1007,7 @@ function soloRollEnergyForTurn(){
 }
 function soloRollDice(){
   if (soloPhase !== 'rolling') return;
+  if (mpIntercept('rollDice', {})) return;
   const d1 = simRollD6(soloRand), d2 = simRollD6(soloRand);
   const d3 = soloPendingBoost ? simRollD6(soloRand) : null;
   soloRollEnergyForTurn();
@@ -1056,27 +1077,34 @@ function soloOfferBlindSpot(){
       `<button type="button" class="action-card action-card--lg action-card--plain" data-blind="no"><span class="action-card-name" style="margin-top:22px;">Nee</span></button>` +
     `</div>`;
 }
+// losse naamfunctie (i.p.v. inline in de listener) zodat multiplayer 'm op de host ook kan
+// aanroepen als reactie op een intent van een remote speler — zie mpIntercept in 99-multiplayer.js
+function soloResolveBlindOffer(yes){
+  if (soloPhase !== 'blind-offer') return;
+  if (mpIntercept('blindOffer', { yes })) return;
+  if (yes){
+    useActionCard(solo(), 'blind', soloDeck);
+    soloUsedCardId = 'blind';
+    walkLog(`Je speelt <b>Blinde Vlek</b>: bezette vakjes tellen deze beurt niet mee.`, null, solo());
+    soloPhase = 'moving';
+    const legal = soloLegalNextCells(soloGraph, solo().pos, soloMove.lastDir, null);
+    soloMarkClickable(soloGraph, legal.map(l => l.key));
+    soloRenderStepCounter(legal);
+    renderSoloMeta(soloMove.stepsLeft);
+    soloRefreshCardVault();   // cardActionUsed is nu true (blind gespeeld), dus niets meer speelbaar
+  } else {
+    walkSoloActionsEl.innerHTML = '';
+    walkLog(`Doodlopend — geen vervolgstap meer mogelijk.`, null, solo());
+    if (soloBankCountThisTurn > 0) soloEndMoveAlreadyBanked();
+    else soloFinishTurn(false);
+  }
+}
 if (walkSoloActionsEl){
   walkSoloActionsEl.addEventListener('click', (e) => {
     if (soloPhase !== 'blind-offer') return;
     const btn = e.target.closest('button[data-blind]');
     if (!btn) return;
-    if (btn.dataset.blind === 'yes'){
-      useActionCard(solo(), 'blind', soloDeck);
-      soloUsedCardId = 'blind';
-      walkLog(`Je speelt <b>Blinde Vlek</b>: bezette vakjes tellen deze beurt niet mee.`, null, solo());
-      soloPhase = 'moving';
-      const legal = soloLegalNextCells(soloGraph, solo().pos, soloMove.lastDir, null);
-      soloMarkClickable(soloGraph, legal.map(l => l.key));
-      soloRenderStepCounter(legal);
-      renderSoloMeta(soloMove.stepsLeft);
-      soloRefreshCardVault();   // cardActionUsed is nu true (blind gespeeld), dus niets meer speelbaar
-    } else {
-      walkSoloActionsEl.innerHTML = '';
-      walkLog(`Doodlopend — geen vervolgstap meer mogelijk.`, null, solo());
-      if (soloBankCountThisTurn > 0) soloEndMoveAlreadyBanked();
-      else soloFinishTurn(false);
-    }
+    soloResolveBlindOffer(btn.dataset.blind === 'yes');
   });
 }
 // boekt de opdracht op soloTargetKey meteen af i.p.v. te wachten tot het einde van de beurt —
@@ -1143,6 +1171,7 @@ function soloHandleMoveClick(key){
   const legal = soloLegalNextCells(soloGraph, solo().pos, soloMove.lastDir, soloPhase === 'moving' && soloUsedCardId === 'blind' ? null : occ);
   const match = legal.find(l => l.key === key);
   if (!match) return;
+  if (mpIntercept('moveClick', { key })) return;
   const p = solo();
   const leaving = walkCellDiv(soloGraph, p.pos);
   leaving.style.setProperty('--pc', p.color);

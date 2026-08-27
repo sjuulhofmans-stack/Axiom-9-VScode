@@ -4,7 +4,9 @@ Bouwt de losse bronbestanden samen tot EEN zelfstandig HTML-bestand.
 
     python3 build.py
 
-Resultaat: dist/axiom9.html  (werkt offline, kan gemaild/gedeeld worden)
+Resultaat: dist/axiom9.html  (werkt offline, kan gemaild/gedeeld worden — behalve het
+tabblad "Multiplayer": dat laadt Trystero pas runtime vanaf een CDN en heeft dus internet
+nodig zodra je het daadwerkelijk gebruikt, de rest van de tool blijft 100% lokaal)
 
 Waarom een build-stap?
   Het logo is ~800 KB base64. Zolang dat in hetzelfde bestand zit als de code,
@@ -37,6 +39,7 @@ JS_ORDER = [
     "95-simulate.js",
     "96-walk.js",
     "97-solo.js",
+    "99-multiplayer.js",
     "98-cards.js",
 ]
 

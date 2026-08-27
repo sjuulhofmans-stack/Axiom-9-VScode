@@ -116,8 +116,13 @@ const tabPanels = {
   simulate: document.getElementById('tabSimulate'),
   walk: document.getElementById('tabWalk'),
   cards: document.getElementById('tabCards'),
+  multi: document.getElementById('tabMulti'),
 };
+// Zolang een multiplayer-potje loopt (window.mpGameActive, gezet door 99-multiplayer.js) mag
+// je het tabblad "Stap voor stap" niet verlaten — anders loop je zomaar uit je eigen potje weg
+// terwijl je medespelers nog wachten (gebruikersverzoek).
 function switchTab(name){
+  if (window.mpGameActive && name !== 'walk') return;
   for (const btn of tabButtons){
     const active = btn.dataset.tab === name;
     btn.classList.toggle('active', active);
@@ -129,6 +134,7 @@ function switchTab(name){
   if (name === 'walk' && !walkRunning) renderWalkBoard();
   // de kamernaam op een opdrachtkaart hangt aan de tegel, dus bij elk openen opnieuw opbouwen
   if (name === 'cards') renderCardsTab();
+  if (name === 'multi') mpRenderLobby();
 }
 tabButtons.forEach(btn => btn.addEventListener('click', () => switchTab(btn.dataset.tab)));
 

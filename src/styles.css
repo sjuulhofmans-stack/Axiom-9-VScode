@@ -82,6 +82,9 @@
     border-color:var(--line); box-shadow:0 -2px 0 0 var(--quest) inset;
   }
   .tab-panel[hidden]{display:none;}
+  /* zolang een multiplayer-potje loopt (zie switchTab-guard in 80-controls.js) zijn de andere
+     tabbladen niet aanklikbaar — visueel gedimd zodat dat ook zonder klikken duidelijk is */
+  .tab-bar.mp-locked .tab-btn:not([data-tab="walk"]){opacity:.35; pointer-events:none;}
 
   /* ---------- layout ---------- */
   .grid-layout{
@@ -1468,3 +1471,19 @@
     .board-zoom-wrap.is-zoomed #walkBoard{ --cell: 20px; }
     .board-zoom-wrap.is-zoomed .scroll-hint{display:block;}
   }
+
+  /* ---------- multiplayer ---------- */
+  .mp-setup{display:flex; flex-direction:column; gap:14px; max-width:360px; margin-top:14px;}
+  .mp-setup[hidden]{display:none;}
+  #mpJoinWaiting[hidden]{display:none;}
+  .mp-room-code{
+    display:flex; align-items:center; gap:10px; margin:8px 0 16px;
+    background:var(--hull); border:1px solid var(--line-dim); border-radius:6px; padding:12px 16px;
+  }
+  .mp-room-code b{
+    font-family:var(--font-mono); font-size:22px; letter-spacing:.16em; color:var(--quest);
+  }
+  #mpHostSeats, #mpWaitSeats{max-width:360px; margin-bottom:14px;}
+  #mpHostSeats:empty, #mpWaitSeats:empty{display:none;}
+  .mp-seat-you{color:var(--start) !important;}
+  .mp-seat-host{color:var(--amber) !important;}
