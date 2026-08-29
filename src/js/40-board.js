@@ -29,7 +29,12 @@ function outlineSlot(slotIdx, color, glow){
     const [dr, dc] = key.split('_').map(Number);
     const div = cellEls[slotI*TILE_H + dr][slotJ*TILE_W + dc];
     div.classList.add('slot-selected');
-    div.style.setProperty('box-shadow', contourShadow(sides, color, glow), 'important');
+    let shadow = contourShadow(sides, color, glow);
+    // .cell.unreachable in styles.css zet ook een !important box-shadow (roze gloed) — een
+    // inline !important met dezelfde importantie wint daarvan door specificiteit en zou de
+    // gloed anders wegdrukken, dus die waarde hier letterlijk meenemen i.p.v. overschrijven
+    if (div.classList.contains('unreachable')) shadow += ', 0 0 0 1px #ff8ad4, 0 0 7px rgba(255,138,212,.75)';
+    div.style.setProperty('box-shadow', shadow, 'important');
   }
 }
 
@@ -116,6 +121,11 @@ function renderBoard(){
     roomLabelEls[slotIdx].textContent = roomName || '';
   }
 
+  // bereikbaarheid vooraf bepalen (vult 'unreachable' op de cellen) zodat outlineSlot() hieronder
+  // die class al ziet staan en de roze gloed kan combineren i.p.v. overschrijven
+  const reach = analyseCellReachability();
+  for (const [R,C] of reach.unreachable) cellEls[R][C].classList.add('unreachable');
+
   // kaders: selectie (amber), sleepbron (amber, gedimd) en sleepdoel (groen = mag, rood = mag niet)
   if (selectedSlot !== null && dragState.from === null){
     outlineSlot(selectedSlot, '#ffb545', '0 0 7px rgba(255,181,69,.55)');
@@ -163,8 +173,6 @@ function renderBoard(){
   connStatusEl.innerHTML = html;
 
   // ---- bereikbaarheid op vakjesniveau ----
-  const reach = analyseCellReachability();
-  for (const [R,C] of reach.unreachable) cellEls[R][C].classList.add('unreachable');
   const reachEl = document.getElementById('reachStatus');
   if (reachEl){
     if (reach.unreachable.length === 0){
@@ -215,10 +223,29 @@ function swapAllowed(slotA, slotB){
   return canTileGoInSlotNow(tileA, slotB) && canTileGoInSlotNow(tileB, slotA);
 }
 
+// blokkeert een swap puur vanwege de HUIDIGE stand van de tegel (niet het tegeltype/de
+// slot-restrictie zelf), en zou een andere rotatie wél passen? Alleen relevant voor hoeken:
+// dat is de enige plek waar canTileGoInSlotNow ook naar de actuele oriëntatie kijkt.
+function fixableByRotation(tid, slotIdx){
+  if (slotCategory(slotIdx) !== 'corner' || !isCornerCapable(tid)) return false;
+  if (canTileGoInSlotNow(tid, slotIdx)) return false;
+  const saved = tileRotation[tid];
+  for (const rot of [0, 90, 180, 270]){
+    tileRotation[tid] = rot;
+    if (canTileGoInSlotNow(tid, slotIdx)){ tileRotation[tid] = saved; return true; }
+  }
+  tileRotation[tid] = saved;
+  return false;
+}
+
 function trySwap(slotA, slotB){
   const tileA = layout[slotA], tileB = layout[slotB];
   if (!swapAllowed(slotA, slotB)){
-    swapHint.innerHTML = `<span style="color:var(--danger)">Kan niet verwisselen — tegel #${tileA} of #${tileB} mag daar niet liggen. Op een hoek mag geen doorgang het bord af wijzen, en de starttegel (#${START_TILE}) hoort binnenin op G/H/I/L/M/N.</span>`;
+    if (fixableByRotation(tileA, slotB) || fixableByRotation(tileB, slotA)){
+      swapHint.innerHTML = `<span style="color:var(--danger)">Deze tegel past hier niet in de huidige stand — probeer eerst te draaien.</span>`;
+    } else {
+      swapHint.innerHTML = `<span style="color:var(--danger)">Kan niet verwisselen — tegel #${tileA} of #${tileB} mag daar niet liggen. Op een hoek mag geen doorgang het bord af wijzen, en de starttegel (#${START_TILE}) hoort binnenin op G/H/I/L/M/N.</span>`;
+    }
     return false;
   }
   clearSimResults();

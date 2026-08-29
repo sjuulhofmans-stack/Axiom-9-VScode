@@ -1154,11 +1154,11 @@ function simulateOneGame(graph, rand, heatmap, questStats, extra){
           player.energy -= ENERGY_ACTIONS.jump.cost;
           player.actionUses++;
           energyActionUsed = true;
-          for (let p = 0; p < jump.path.length; p++) heatmap[jump.path[p]]++;
+          for (let p = 1; p < jump.path.length; p++) heatmap[jump.path[p]]++;
           if (pathHasActionCell(graph, jump.path)) actionCellCrossed = true;
           // de sprong kan de opdracht zelf al pakken; anders loop je vanaf daar verder
           move = jump.banked
-            ? { key: jump.key, path: [jump.key], stepsUsed: 0, bankedCount: 1, bankedQuest: true, wasBlocked: false }
+            ? { key: jump.key, path: [jump.key], stepsUsed: 0, bankedCount: 1, bankedQuest: true, wasBlocked: false, teleported: true }
             : resolveMove(graph, jump.key, roll, occupied, targets, rand, undefined, allowUturn);
         }
       }
@@ -1170,7 +1170,7 @@ function simulateOneGame(graph, rand, heatmap, questStats, extra){
       player.turnsOnTarget++;
       extra.totalTurns++;
       if (move.wasBlocked) extra.blockedTurns++;
-      for (let p = 0; p < move.path.length; p++) heatmap[move.path[p]]++;
+      for (let p = 1; p < move.path.length; p++) heatmap[move.path[p]]++;
       if (pathHasActionCell(graph, move.path)) actionCellCrossed = true;
 
       // actiekaartvakje (gang): levert een kaart op net als een opdracht, maar onderbreekt de

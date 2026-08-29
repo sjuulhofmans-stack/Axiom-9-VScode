@@ -5,8 +5,9 @@ in een raster van 4 rijen × 5 kolommen (posities A t/m T, van links naar rechts
 
 ## Belangrijkste regel voor wie hieraan werkt
 
-**Bewerk NOOIT `dist/axiom9.html`.** Dat is het gebouwde eindresultaat (±860 KB,
-waarvan 800 KB het logo). Bewerk altijd de bronbestanden in `src/` en draai daarna:
+**Bewerk NOOIT `dist/axiom9.html`.** Dat is het gebouwde eindresultaat (±1,5 MB,
+waarvan ±790 KB het logo en ±240 KB de kaartillustraties). Bewerk altijd de
+bronbestanden in `src/` en draai daarna:
 
 ```
 python build.py
@@ -23,7 +24,7 @@ niet het hele logo mee te slepen.
 ```
 src/
   index.html          HTML-skelet met placeholders {{CSS}} {{JS}} {{LOGO}}
-  styles.css          alle opmaak (~16 KB)
+  styles.css          alle opmaak (~77 KB)
   assets/logo.b64     logo als base64 — hier zelden iets aan doen
   data/tiles.json     de 20 tegels + de vorm van een tegel (pattern)
   js/
@@ -36,12 +37,13 @@ src/
     50-interaction.js slepen om tegels te verwisselen, selecteren
     60-palette.js     het register onderaan (twee tabellen: Kamers / Gangen)
     70-generator.js   backtracking-solver die een geldige indeling zoekt
-    80-controls.js    knoppen: seed, dobbelsteen, herstel, draaien, download, legenda
+    80-controls.js    knoppen: seed, dobbelsteen, herstel, draaien, legenda
     90-editor.js      tegel-editor (vakjes aan/uit klikken)
     95-simulate.js    batch-spelsimulatie (2xD6, geen U-turn, bezette vakjes blokkeren)
     96-walk.js        stap-voor-stap: automatische simulatie van 1-4 spelers, eigen tabblad
     97-solo.js        stap-voor-stap "zelf spelen": eigen speler besturen tussen bots, energiekaarten
     98-cards.js       kaartvenster/zoom voor opdracht- en actiekaarten
+    99-multiplayer.js multiplayer-tabblad: lobby + peer-to-peer spelen met vrienden (WebRTC)
 build.py              plakt alles tot dist/axiom9.html
 dist/axiom9.html      GEBOUWD — niet handmatig bewerken
 ```
@@ -72,9 +74,14 @@ aangeroepen (functiedeclaraties worden gehoist, `const`/`let` niet).
 - Beweging is **horizontaal/verticaal**, nooit diagonaal.
 - Een zijde van een tegel is een **doorgang** als beide deurvakjes gevuld zijn.
   Deurvakjes: N=(0,3)(0,4), Z=(7,3)(7,4), W=(3,0)(4,0), O=(3,7)(4,7).
-- Op een **hoekpositie** (A, E, P, T) mag geen doorgang het bord af wijzen.
-  Daardoor passen tegel 1 en 16 alleen op A en P; E en T kunnen 10/5 resp. 20/5 zijn.
-- **4-weg kruisingen** (tegels 7, 8, 9, 13) liggen altijd binnenin op G/H/I/L/M/N.
+- Op een **hoekpositie** (A, E, P, T) mag geen doorgang het bord af wijzen. Dat kan
+  alleen een tegel met precies 2 open zijden die aan elkaar grenzen (niet tegenover
+  elkaar) — met de huidige tegelset zijn dat tegel 1, 5, 16 en 20. Via rotatie kan
+  elk van die vier op elke hoek terechtkomen (`isCornerCapable` in `10-rules.js`).
+- **7 tegels hebben alle vier de zijden open** (tegels 7, 8, 9, 10, 11, 13, 17).
+  Alleen tegel **8** (Hibernatie, zie hieronder) ligt gedwongen binnenin op
+  G/H/I/L/M/N — voor de rest is er bewust **geen** regel die 4-weg-tegels
+  naar binnen dwingt, zie de "Niet doen"-paragraaf verderop.
 - Tegel **8** (Hibernatie) bevat de vier startposities 3.1–3.4 en hoort ook binnenin.
   Als enige kamertegel heeft hij bewust **geen** opdrachtvakje — de tegel-editor
   staat dat uitzonderlijk toe (zie `tileValidationIssues` in `90-editor.js`).

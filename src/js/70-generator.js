@@ -103,11 +103,10 @@ function attemptSeamlessLayout(rand, stepBudget, roomColorPref){
 // tegel-graaf. Dan moet je, om ergens anders te komen, exact hetzelfde stuk twee keer lopen.
 // Standaard brug-detectie (Tarjan) op de tegel-graaf (20 knopen, kleine graaf, dus goedkoop).
 //
-// Let op: tegel 5 (Beveiliging) heeft in de brondata maar 1 deur (openDegree===1), dus die
-// tegel IS altijd een doodlopend eindpunt, in élke geldige indeling — dat is dus geen bug in
-// deze score, maar een eigenschap van die tegelvorm. roomsBehindBridges() is met de huidige
-// tegelset dus nooit 0, hooguit 1 (alleen tegel 5). De generator kiest wel de kandidaat die
-// het dichtst bij die ondergrens komt, in plaats van willekeurig 2 of 3 kamers te laten vastlopen.
+// roomsBehindBridges() rekent gewoon met de echte tegelvorm uit tiles.json — er is geen
+// tegel die per definitie altijd een wurgpunt is, dus de ondergrens hangt af van de
+// gegenereerde indeling zelf. De generator kiest wel de kandidaat die het dichtst bij
+// die ondergrens komt, in plaats van willekeurig 2 of 3 kamers te laten vastlopen.
 // welke tegelposities zijn onderling verbonden via een open naad (rotatie-bewust, dus ook
 // bruikbaar nadat applyRandomBoardFlip alles 180° gedraaid heeft)
 function tileAdjacency(lay){

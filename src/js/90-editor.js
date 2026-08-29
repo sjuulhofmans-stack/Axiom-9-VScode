@@ -10,8 +10,14 @@ const toolQuest = document.getElementById('toolQuest');
 const toolCard = document.getElementById('toolCard');
 let editorTile = null;      // tegel-id dat open staat
 let editorTool = 'walk';
-let editorSnapshot = null;  // kopie om te kunnen terugdraaien
+let editorTouchedTiles = null; // Map<tileId, Map-snapshot> — alle tegels die deze sessie zijn aangeraakt, om te kunnen terugdraaien
 let editorDirty = false;    // is er iets gewijzigd sinds het openen van deze tegel
+
+// bewaart de EERSTE stand van een tegel tijdens deze editor-sessie, zodat "Wijzigingen
+// terugdraaien" ook zijdelingse effecten (bv. de label-swap hieronder) kan herstellen
+function rememberTouchedTile(tid){
+  if (!editorTouchedTiles.has(tid)) editorTouchedTiles.set(tid, new Map(tileLookup[tid]));
+}
 
 const DOOR_KEYS = new Set();
 for (const cells of Object.values(EDGE_CELLS)) for (const [dr,dc] of cells) DOOR_KEYS.add(dr+'_'+dc);
@@ -175,7 +181,8 @@ function updateCloseButtonLabel(){
 function openTileEditor(tid){
   if (tid === START_TILE) return;
   editorTile = tid;
-  editorSnapshot = new Map(tileLookup[tid]);
+  editorTouchedTiles = new Map();
+  rememberTouchedTile(tid);
   editorDirty = false;
   const name = ROOM_NAMES[tid] ? ROOM_NAMES[tid] : 'Gang';
   editorTitle.textContent = `Tegel #${tid} — ${name}`;
@@ -288,11 +295,17 @@ function paintCell(key){
     if (cur !== 1 && !(typeof cur === 'string' && cur.startsWith(prefix))) return;
     const label = labelSelect.value;
     if (!label) return;
+    // stond er op de doelcel al een ANDER label, dan mag dat niet zomaar verdwijnen —
+    // het wordt teruggezet op de plek waar `label` vandaan komt (echte swap)
+    const oldLabel = (typeof cur === 'string' && cur !== label) ? cur : null;
     // hetzelfde label mag maar één keer voorkomen op het HELE bord (niet alleen deze
     // tegel) — anders mist de simulatie straks een opdracht-/startvakje en loopt vast
     for (let tid = 1; tid <= 20; tid++){
       const mm = tileLookup[tid];
-      for (const [k, v] of [...mm]) if (v === label && (tid !== editorTile || k !== key)) mm.set(k, 1);
+      for (const [k, v] of [...mm]) if (v === label && (tid !== editorTile || k !== key)){
+        rememberTouchedTile(tid);
+        mm.set(k, oldLabel !== null ? oldLabel : 1);
+      }
     }
     m.set(key, label);
   }
@@ -306,10 +319,12 @@ function paintCell(key){
 // wijzigingen doorvoeren in DATA, regels herberekenen en alles opnieuw tekenen
 function applyTileEdits(){
   clearSimResults();
-  DATA.tiles[String(editorTile)] = [...tileLookup[editorTile]].map(([k,v]) => {
-    const [dr,dc] = k.split('_').map(Number);
-    return [dr,dc,v];
-  });
+  for (const tid of editorTouchedTiles.keys()){
+    DATA.tiles[String(tid)] = [...tileLookup[tid]].map(([k,v]) => {
+      const [dr,dc] = k.split('_').map(Number);
+      return [dr,dc,v];
+    });
+  }
   recomputeTileMeta();
   renderBoard();
 }
@@ -328,11 +343,13 @@ document.querySelectorAll('#toolList .tool').forEach(btn => {
 });
 
 document.getElementById('editorRevert').addEventListener('click', ()=>{
-  if (editorTile === null || !editorSnapshot) return;
-  tileLookup[editorTile] = new Map(editorSnapshot);
+  if (editorTile === null || !editorTouchedTiles) return;
+  for (const [tid, snapshot] of editorTouchedTiles) tileLookup[tid] = new Map(snapshot);
   editorDirty = false;
   updateCloseButtonLabel();
   applyTileEdits();
+  editorTouchedTiles = new Map();
+  rememberTouchedTile(editorTile);
   drawEditorGrid();
 });
 

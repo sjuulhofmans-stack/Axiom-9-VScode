@@ -12,6 +12,7 @@ function slotFromPoint(x, y){
 
 function onCellPointerDown(e){
   if (e.button !== undefined && e.button !== 0) return;
+  if (dragState.from !== null && e.pointerId !== dragState.pointerId) return;
   const slotIdx = parseInt(e.currentTarget.dataset.slot, 10);
   dragState.from = slotIdx;
   dragState.over = slotIdx;

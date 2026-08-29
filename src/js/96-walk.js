@@ -710,6 +710,7 @@ async function runWalkSimulation(){
                        ENERGY_DIE_FACES[Math.floor(Math.random()*ENERGY_DIE_FACES.length)], true);
         await walkTick(90);
       }
+      if (aborted()) return;
 
       // pion langs een pad laten lopen; `special` markeert een niet-gewone verplaatsing
       // (Noodtransport, Zwaartekracht-laarzen) met een ander spoor
@@ -843,7 +844,7 @@ async function runWalkSimulation(){
           energyActionUsed = true; usedEnergyAction = 'jump';
           if (!await walkPath(jump.path, true)) return;
           move = jump.banked
-            ? { key: jump.key, path: [jump.key], stepsUsed: 0, bankedCount: 1, bankedQuest: true, wasBlocked: false }
+            ? { key: jump.key, path: [jump.key], stepsUsed: 0, bankedCount: 1, bankedQuest: true, wasBlocked: false, teleported: true }
             : resolveMove(graph, jump.key, roll, occupiedNow(), targets, rand, undefined, allowUturn);
         }
       }
@@ -879,7 +880,7 @@ async function runWalkSimulation(){
         player.completed += bankedLabels.length;
         player.nextIdx += bankedLabels.length;
 
-        const deadEnd = (!usedBoots && move.stepsUsed < roll) ? ` (kwam daarna vast te zitten na ${move.stepsUsed} van ${roll} stappen)` : '';
+        const deadEnd = (!usedBoots && !move.teleported && move.stepsUsed < roll) ? ` (kwam daarna vast te zitten na ${move.stepsUsed} van ${roll} stappen)` : '';
         const chainNote = bankedLabels.length > 1
           ? ` — en loopt meteen door naar <span class="hit">${bankedLabels.slice(1).map(l => `${l} ${QUEST_NAMES[l] || ''}`).join(', ')}</span>: twee opdrachten in één beurt!`
           : '';
@@ -909,7 +910,7 @@ async function runWalkSimulation(){
         }
       } else {
         const blocked = move.wasBlocked ? ' · liep onderweg tegen een bezette route aan' : '';
-        const extra = (!usedBoots && move.stepsUsed < roll) ? ` — kon maar ${move.stepsUsed} stappen zetten (doodlopend)` : '';
+        const extra = (!usedBoots && !move.teleported && move.stepsUsed < roll) ? ` — kon maar ${move.stepsUsed} stappen zetten (doodlopend)` : '';
         walkLog(`Beurt ${turn}: <b>${rollText}</b>${walkEnergyNote(energyRoll, energyGain, player)}${turnNote} → onderweg naar ${targetLabel}${extra}${blocked}`, null, player);
       }
       renderWalkScore(players, pIdx);

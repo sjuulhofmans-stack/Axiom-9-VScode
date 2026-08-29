@@ -1741,6 +1741,12 @@
                 <button id="btnWalkSoloRoll" class="primary" hidden>🎲 Gooi de dobbelstenen</button>
                 <button id="btnWalkSoloSkip" class="ghost" hidden>Geen actie, gewoon dobbelen</button>
               </div>
+              <!-- alleen zichtbaar tijdens een lopend multiplayer-potje (zie mpEnterPlayView/
+                   mpExitPlayView in 99-multiplayer.js) — staat BUITEN walkSoloActions, dat elke
+                   broadcast wordt overschreven, en dus ook buiten je eigen beurt bereikbaar is. -->
+              <div class="btn-row">
+                <button type="button" id="btnMpLeaveGame" class="small ghost" hidden>Verlaat potje</button>
+              </div>
             </div>
 
             <!-- duidelijk, op zichzelf staand overzicht van je energie t.o.v. het plafond;
@@ -2399,7 +2405,12 @@ function outlineSlot(slotIdx, color, glow){
     const [dr, dc] = key.split('_').map(Number);
     const div = cellEls[slotI*TILE_H + dr][slotJ*TILE_W + dc];
     div.classList.add('slot-selected');
-    div.style.setProperty('box-shadow', contourShadow(sides, color, glow), 'important');
+    let shadow = contourShadow(sides, color, glow);
+    // .cell.unreachable in styles.css zet ook een !important box-shadow (roze gloed) — een
+    // inline !important met dezelfde importantie wint daarvan door specificiteit en zou de
+    // gloed anders wegdrukken, dus die waarde hier letterlijk meenemen i.p.v. overschrijven
+    if (div.classList.contains('unreachable')) shadow += ', 0 0 0 1px #ff8ad4, 0 0 7px rgba(255,138,212,.75)';
+    div.style.setProperty('box-shadow', shadow, 'important');
   }
 }
 
@@ -2486,6 +2497,11 @@ function renderBoard(){
     roomLabelEls[slotIdx].textContent = roomName || '';
   }
 
+  // bereikbaarheid vooraf bepalen (vult 'unreachable' op de cellen) zodat outlineSlot() hieronder
+  // die class al ziet staan en de roze gloed kan combineren i.p.v. overschrijven
+  const reach = analyseCellReachability();
+  for (const [R,C] of reach.unreachable) cellEls[R][C].classList.add('unreachable');
+
   // kaders: selectie (amber), sleepbron (amber, gedimd) en sleepdoel (groen = mag, rood = mag niet)
   if (selectedSlot !== null && dragState.from === null){
     outlineSlot(selectedSlot, '#ffb545', '0 0 7px rgba(255,181,69,.55)');
@@ -2533,8 +2549,6 @@ function renderBoard(){
   connStatusEl.innerHTML = html;
 
   // ---- bereikbaarheid op vakjesniveau ----
-  const reach = analyseCellReachability();
-  for (const [R,C] of reach.unreachable) cellEls[R][C].classList.add('unreachable');
   const reachEl = document.getElementById('reachStatus');
   if (reachEl){
     if (reach.unreachable.length === 0){
@@ -2585,10 +2599,29 @@ function swapAllowed(slotA, slotB){
   return canTileGoInSlotNow(tileA, slotB) && canTileGoInSlotNow(tileB, slotA);
 }
 
+// blokkeert een swap puur vanwege de HUIDIGE stand van de tegel (niet het tegeltype/de
+// slot-restrictie zelf), en zou een andere rotatie wél passen? Alleen relevant voor hoeken:
+// dat is de enige plek waar canTileGoInSlotNow ook naar de actuele oriëntatie kijkt.
+function fixableByRotation(tid, slotIdx){
+  if (slotCategory(slotIdx) !== 'corner' || !isCornerCapable(tid)) return false;
+  if (canTileGoInSlotNow(tid, slotIdx)) return false;
+  const saved = tileRotation[tid];
+  for (const rot of [0, 90, 180, 270]){
+    tileRotation[tid] = rot;
+    if (canTileGoInSlotNow(tid, slotIdx)){ tileRotation[tid] = saved; return true; }
+  }
+  tileRotation[tid] = saved;
+  return false;
+}
+
 function trySwap(slotA, slotB){
   const tileA = layout[slotA], tileB = layout[slotB];
   if (!swapAllowed(slotA, slotB)){
-    swapHint.innerHTML = `<span style="color:var(--danger)">Kan niet verwisselen — tegel #${tileA} of #${tileB} mag daar niet liggen. Op een hoek mag geen doorgang het bord af wijzen, en de starttegel (#${START_TILE}) hoort binnenin op G/H/I/L/M/N.</span>`;
+    if (fixableByRotation(tileA, slotB) || fixableByRotation(tileB, slotA)){
+      swapHint.innerHTML = `<span style="color:var(--danger)">Deze tegel past hier niet in de huidige stand — probeer eerst te draaien.</span>`;
+    } else {
+      swapHint.innerHTML = `<span style="color:var(--danger)">Kan niet verwisselen — tegel #${tileA} of #${tileB} mag daar niet liggen. Op een hoek mag geen doorgang het bord af wijzen, en de starttegel (#${START_TILE}) hoort binnenin op G/H/I/L/M/N.</span>`;
+    }
     return false;
   }
   clearSimResults();
@@ -2947,11 +2980,10 @@ function attemptSeamlessLayout(rand, stepBudget, roomColorPref){
 // tegel-graaf. Dan moet je, om ergens anders te komen, exact hetzelfde stuk twee keer lopen.
 // Standaard brug-detectie (Tarjan) op de tegel-graaf (20 knopen, kleine graaf, dus goedkoop).
 //
-// Let op: tegel 5 (Beveiliging) heeft in de brondata maar 1 deur (openDegree===1), dus die
-// tegel IS altijd een doodlopend eindpunt, in élke geldige indeling — dat is dus geen bug in
-// deze score, maar een eigenschap van die tegelvorm. roomsBehindBridges() is met de huidige
-// tegelset dus nooit 0, hooguit 1 (alleen tegel 5). De generator kiest wel de kandidaat die
-// het dichtst bij die ondergrens komt, in plaats van willekeurig 2 of 3 kamers te laten vastlopen.
+// roomsBehindBridges() rekent gewoon met de echte tegelvorm uit tiles.json — er is geen
+// tegel die per definitie altijd een wurgpunt is, dus de ondergrens hangt af van de
+// gegenereerde indeling zelf. De generator kiest wel de kandidaat die het dichtst bij
+// die ondergrens komt, in plaats van willekeurig 2 of 3 kamers te laten vastlopen.
 // welke tegelposities zijn onderling verbonden via een open naad (rotatie-bewust, dus ook
 // bruikbaar nadat applyRandomBoardFlip alles 180° gedraaid heeft)
 function tileAdjacency(lay){
@@ -3601,7 +3633,7 @@ function tryRotate(delta){
   const ok = canTileGoInSlotNow(tid, selectedSlot);
   if (!ok){
     tileRotation[tid] = prevRotation;
-    swapHint.innerHTML = `<span style="color:var(--danger)">Kan niet draaien — tegel #${tid} zou dan een doorgang het bord af laten wijzen. Op een hoek mag geen doorgang het bord af wijzen, en de starttegel (#${START_TILE}) hoort binnenin op G/H/I/L/M/N.</span>`;
+    swapHint.innerHTML = `<span style="color:var(--danger)">Kan niet draaien — tegel #${tid} zou dan op deze positie een doorgang het bord af laten wijzen.</span>`;
     return;
   }
   clearSimResults();
@@ -7353,8 +7385,31 @@ function soloBarrierTargets(){
   const occNow = soloOccupied();
   return soloOthers().filter(p => soloGraph.adjKey[p.pos].some(k => !occNow.has(k) && k !== solo().pos));
 }
+// Terugtrekbevel duwt ACHTERUIT langs victim.lastDir (max 2 stappen, stopt bij bezetting) —
+// dat is een andere richting/bestemming dan Duwstoot (vooruit, willekeurige richting). Gedeeld
+// door de doelwit-kiezer hieronder (welke aangrenzende spelers hébben er ruimte om terug te
+// gaan?) en de daadwerkelijke uitvoering in soloResolveTargetCard, zodat beide nooit uit de pas
+// kunnen lopen. `extraCell` is de cel van de speler die de kaart speelt: die telt ook als bezet
+// (dezelfde regel als de oorspronkelijke inline versie hieronder had).
+function soloRecoilSteps(victim, extraCell){
+  if (victim.lastDir === -1) return { steps: 0, toKey: victim.pos };
+  const revDir = (victim.lastDir + 2) % 4;
+  const occNow = soloOccupied();
+  if (extraCell !== undefined) occNow.add(extraCell);
+  let cur = victim.pos, steps = 0;
+  for (let s = 0; s < 2; s++){
+    const dirs = soloGraph.adjDir[cur], keys = soloGraph.adjKey[cur];
+    let nextKey = -1;
+    for (let j = 0; j < dirs.length; j++) if (dirs[j] === revDir){ nextKey = keys[j]; break; }
+    if (nextKey === -1 || occNow.has(nextKey)) break;
+    cur = nextKey; steps++;
+  }
+  return { steps, toKey: cur };
+}
 function soloRecoilTargets(){
-  return soloShoveTargets().filter(p => p.lastDir !== -1);
+  const p = solo();
+  const neigh = new Set(soloGraph.adjKey[p.pos]);
+  return soloOthers().filter(v => neigh.has(v.pos) && v.lastDir !== -1 && soloRecoilSteps(v, p.pos).steps > 0);
 }
 function soloTargetPickerTargets(cardId){
   if (cardId === 'shove') return soloShoveTargets();
@@ -7458,20 +7513,11 @@ function soloResolveTargetCard(cardId, targetIdx){
     }
     soloAfterCardAction();
   } else if (cardId === 'recoil'){
-    const revDir = (victim.lastDir + 2) % 4;
-    const occNow = soloOccupied(); occNow.add(p.pos);
-    let cur = victim.pos, steps = 0;
-    for (let s = 0; s < 2; s++){
-      const dirs = soloGraph.adjDir[cur], keys = soloGraph.adjKey[cur];
-      let nextKey = -1;
-      for (let j = 0; j < dirs.length; j++) if (dirs[j] === revDir){ nextKey = keys[j]; break; }
-      if (nextKey === -1 || occNow.has(nextKey)) break;
-      cur = nextKey; steps++;
-    }
+    const { steps, toKey } = soloRecoilSteps(victim, p.pos);
     useActionCard(p, 'recoil', soloDeck);
     soloUsedCardId = 'recoil';
     if (steps > 0){
-      victim.pos = cur;
+      victim.pos = toKey;
       walkLog(`Je speelt <b>Terugtrekbevel</b> op ${victim.name} en duwt die ${steps} vakje(s) terug.`, null, p);
     } else {
       walkLog(`Je speelt <b>Terugtrekbevel</b> op ${victim.name}, maar er was geen ruimte om terug te duwen.`, null, p);
@@ -8739,10 +8785,12 @@ let mp = {
   isHost: false,
   myPeerId: null,
   myIdx: -1,               // index in soloPlayers zodra het potje loopt
+  hostPeerId: null,         // peerId van de host — bekend bij host (=mezelf) én client (via lobby-seats)
   roomCode: null,
   room: null,
   actions: null,
   stateVersion: 0,         // host: laatst uitgezonden versie. client: laatst toegepaste versie.
+  lastFingerprint: null,    // host: vingerafdruk van de laatst uitgezonden state — voor dirty-detectie
   seats: [],                // lobby-fase: [{peerId, name, isHost}], host-only bijgehouden
   totalSeats: 4,
   fillBots: true,
@@ -8786,7 +8834,7 @@ async function mpConnect(code){
 }
 
 function mpRegisterActions(room){
-  const names = ['hello', 'lobby', 'start', 'state', 'leave', 'intent'];
+  const names = ['hello', 'lobby', 'start', 'state', 'leave', 'intent', 'stop'];
   mp.actions = {};
   for (const n of names) mp.actions[n] = room.makeAction(n);
 
@@ -8796,6 +8844,9 @@ function mpRegisterActions(room){
   mp.actions.state.onMessage = (data) => { if (!mp.isHost) mpApplyState(data); };
   mp.actions.intent.onMessage = (data, { peerId }) => { if (mp.isHost) mpHandleIntent(peerId, data); };
   mp.actions.leave.onMessage = (data, { peerId }) => { mpOnPeerLeave(peerId, true); };
+  // host stopt het lopende potje bewust (zie btnMpLeaveGame) terwijl de room open blijft —
+  // anders dan 'leave' verlaat niemand de room hierbij, gasten gaan terug naar de wachtkamer.
+  mp.actions.stop.onMessage = () => { if (!mp.isHost) mpClientOnStop(); };
 
   // room.onPeerJoin vuurt pas zodra de WebRTC-datachannel naar die peer daadwerkelijk klaar is
   // (dat kan een paar seconden na joinRoom() duren, via de signaling-relay) — een 'hello' die je
@@ -8824,6 +8875,7 @@ async function mpHostCreate(){
   mp.active = true;
   mp.isHost = true;
   mp.phase = 'hosting';
+  mp.hostPeerId = mp.myPeerId;
   mp.seats = [{ peerId: mp.myPeerId, name, isHost: true }];
   mpRoomCodeTextEl.textContent = code;
   mpHostRoomEl.hidden = false;
@@ -8897,6 +8949,11 @@ function mpClientOnLobby(data){
   mp.seats = data.seats;
   mp.totalSeats = data.totalSeats;
   mp.fillBots = data.fillBots;
+  // de host-rij staat er altijd bij (isHost:true) — zo kent een client het host-peerId al
+  // vóórdat het potje start, nodig om straks een écht vertrek van de host te herkennen
+  // (zie mpOnPeerLeave) i.p.v. elke vertrekkende medespeler daarvoor aan te zien.
+  const hostSeat = mp.seats.find(s => s.isHost);
+  if (hostSeat) mp.hostPeerId = hostSeat.peerId;
   if (mpWaitSeatsEl) mpWaitSeatsEl.innerHTML = mp.seats.map((s, i) => mpSeatRowHtml(s, i)).join('');
 }
 function mpJoinLeave(){
@@ -8913,10 +8970,12 @@ function mpTeardown(){
   }
   window.mpGameActive = false;
   if (mpTabBarEl) mpTabBarEl.classList.remove('mp-locked');
+  if (btnMpLeaveGame) btnMpLeaveGame.hidden = true;
   mp = {
-    active: false, phase: 'idle', isHost: false, myPeerId: null, myIdx: -1,
-    roomCode: null, room: null, actions: null, stateVersion: 0, seats: [],
+    active: false, phase: 'idle', isHost: false, myPeerId: null, myIdx: -1, hostPeerId: null,
+    roomCode: null, room: null, actions: null, stateVersion: 0, lastFingerprint: null, seats: [],
     totalSeats: 4, fillBots: true, broadcastTimer: null, lastLogCount: 0, pendingName: null,
+    processingIntent: false,
   };
 }
 
@@ -8949,8 +9008,12 @@ function mpOnPeerLeave(peerId, explicit){
     }
     mpBroadcastState();
   } else {
-    // de host zelf viel weg: het potje kan niet door zonder scheidsrechter
-    if (mp.roomCode && soloPlayers[soloActiveIdx] === undefined) return;
+    // Alleen als de vertrokken peer daadwerkelijk de host was, stopt het potje voor iedereen —
+    // een gewone medespeler die wegvalt wordt al aan de hostkant (hierboven) omgezet naar een
+    // bot, en die bijgewerkte staat komt via de eerstvolgende mpBroadcastState() vanzelf door.
+    // (voorheen werd hier ELKE vertrekkende peer als "host weg" behandeld, want de guard keek
+    // naar soloPlayers[soloActiveIdx] i.p.v. naar de meegegeven peerId.)
+    if (peerId !== mp.hostPeerId) return;
     mpSetStatus('De host heeft het spel verlaten — het potje is gestopt.', 'bad');
     mpExitPlayView();
     mpTeardown();
@@ -9030,11 +9093,12 @@ function mpHostStartGame(){
 
   mp.actions.start.send({
     layout: layout.slice(),
-    players: soloPlayers,
+    players: mpPublicPlayers(soloPlayers),
     turnOrder: soloTurnOrder,
     finishTarget: soloFinishTarget,
   });
 
+  mp.lastFingerprint = null;
   mp.broadcastTimer = setInterval(mpBroadcastTick, 200);
   soloAdvanceLoop();
   mpBroadcastState();
@@ -9077,20 +9141,38 @@ function mpBroadcastTick(){
   mpRefreshCardVault();
   mpBroadcastState();
 }
+// ---------- publieke view: nooit verborgen informatie uitzenden ----------
+// soloPlayers/soloDeck bevatten spelinterne info die geen enkele client mag kunnen aflezen:
+// de volledige geschudde opdrachtvolgorde (2.1-2.9) van IEDEREEN, en de volgorde van de
+// actiekaart-trekstapel. Wat WEL al publiek hoort te zijn (zie renderWalkScore in 96-walk.js,
+// dat toont voor elke speler altijd al p.deck[p.nextIdx]) blijft gewoon zichtbaar: het huidige
+// doel van elke speler. De rest van ieders stapel (nog te komen opdrachten) wordt hier
+// vervangen door null — de array-lengte en -index blijven kloppen, dus bestaande render-code
+// (renderWalkScore, de doel-marker op het bord) hoeft niet aangepast te worden.
+function mpPublicPlayer(p){
+  const deck = new Array(p.deck.length).fill(null);
+  if (p.nextIdx < p.deck.length) deck[p.nextIdx] = p.deck[p.nextIdx];
+  return { ...p, deck };
+}
+function mpPublicPlayers(players){ return players.map(mpPublicPlayer); }
+// soloDeck.draw/.discard zijn de trekstapel/aflegstapel-VOLGORDE — client-code heeft daar
+// nooit meer dan de lengte van nodig (zie soloCardBlockReason: 'de trekstapel is leeg' etc.),
+// dus die volgorde/inhoud wordt hier nooit meegestuurd.
+function mpPublicDeck(deck){
+  return { draw: { length: deck.draw.length }, discard: { length: deck.discard.length } };
+}
+
 function mpBroadcastState(){
   if (!mp.isHost || !mp.actions || mp.phase !== 'in-game') return;
-  mp.stateVersion++;
   const newLines = [...walkLogEl.children].slice(mp.lastLogCount)
     .map(el => ({ html: el.innerHTML, cls: el.className }));
-  mp.lastLogCount = walkLogEl.children.length;
-  mp.actions.state.send({
-    stateVersion: mp.stateVersion,
-    soloPlayers, soloActiveIdx, soloPhase, soloTurn, soloTargetKey, soloMove,
+  const core = {
+    soloPlayers: mpPublicPlayers(soloPlayers), soloActiveIdx, soloPhase, soloTurn, soloTargetKey, soloMove,
     soloBootsOptions, soloCurrentLegalMoves, soloRoundPos, soloTurnOrder,
     soloBankCountThisTurn, soloAllowUturn, soloPendingBoost, soloUsedBoots, soloUsedJump,
     soloTargetSwapped, soloUsedEnergyId, soloUsedCardId, soloDiscardedCardId,
     soloEnergyRoll, soloEnergyGain, soloBlindOfferAvailable, soloLockedThisTurn,
-    soloActionCellDrawnThisTurn, walkScoreOrder, soloDeck,
+    soloActionCellDrawnThisTurn, walkScoreOrder, soloDeck: mpPublicDeck(soloDeck),
     soloFinished, soloFinishTarget, soloRoundFinishers,
     ownerUi: {
       rollHidden: btnWalkSoloRoll ? btnWalkSoloRoll.hidden : true,
@@ -9103,8 +9185,20 @@ function mpBroadcastState(){
         : [],
     },
     statusHtml: walkStatusEl ? walkStatusEl.innerHTML : '',
-    newLogLines: newLines,
-  });
+  };
+  // Dirty-detectie (i.p.v. stateVersion elke 200ms onvoorwaardelijk ophogen): mpHandleIntent
+  // accepteert een intent van een gast alleen bij EXACT de huidige stateVersion, en negeert 'm
+  // anders stilzwijgend. Bij normale netwerklatency kon een intent zo precies tussen twee
+  // ticks in verspringen. Nu blijft de versie staan zolang er niets wijzigt — de tick zendt de
+  // huidige state nog steeds elke 200ms uit (voor nieuwe/herverbindende peers), maar verhoogt
+  // de versie alleen als er ook echt iets anders uitgaat dan de vorige keer.
+  const fingerprint = JSON.stringify(core) + '|' + newLines.length;
+  if (fingerprint !== mp.lastFingerprint){
+    mp.stateVersion++;
+    mp.lastFingerprint = fingerprint;
+  }
+  mp.lastLogCount = walkLogEl.children.length;
+  mp.actions.state.send({ stateVersion: mp.stateVersion, ...core, newLogLines: newLines });
   if (soloPhase === 'game-over') mpOnGameOver();
 }
 
@@ -9188,6 +9282,13 @@ function mpOnGameOver(){
   if (!window.mpGameActive) return;
   window.mpGameActive = false;
   if (mpTabBarEl) mpTabBarEl.classList.remove('mp-locked');
+  if (btnMpLeaveGame) btnMpLeaveGame.hidden = true;
+  // de 200ms-broadcasttick tikte hierna anders onnodig door tot de host handmatig "Stop
+  // hosting" deed — en mp.phase bleef op 'in-game' staan, terwijl er geen potje meer loopt.
+  if (mp.broadcastTimer){ clearInterval(mp.broadcastTimer); mp.broadcastTimer = null; }
+  // host: terug naar de hostkamer, zodat meteen een nieuw potje gestart kan worden met
+  // dezelfde zitplaatsen. client: terug naar "wacht op de host", de verbinding blijft intact.
+  mp.phase = mp.isHost ? 'hosting' : 'joining';
 }
 
 // ---------- eigen hand (kaartkluis/kaartvenster) — "wie ben ik", niet "wie is aan zet" ----------
@@ -9256,6 +9357,12 @@ function mpHandleIntent(peerId, msg){
   try { handler(msg.args || {}); }
   finally { mp.processingIntent = false; }
   mpBroadcastState();
+  // De handler hierboven riep onderweg (via de gewone 97-solo.js-functies) soloRefreshCardVault()
+  // aan, die ONVOORWAARDELIJK solo().cards toont — dat is hier de gast wiens intent net verwerkt
+  // is, niet de host. Zonder deze regel zag de host tot de eerstvolgende broadcasttick (max
+  // 200ms) heel even de kaartkluis van de gast in zijn eigen scherm. mpRefreshCardVault() leest
+  // altijd van mpMe() en herstelt dus meteen de eigen hand van de host.
+  mpRefreshCardVault();
 }
 
 // ---------- overgang naar/uit het speelscherm (hergebruikt tabblad "Stap voor stap") ----------
@@ -9273,14 +9380,51 @@ function mpEnterPlayView(){
   if (walkSoloHintEl) walkSoloHintEl.hidden = true;
   if (walkSoloPanelEl) walkSoloPanelEl.hidden = false;
   if (walkEnergyOverviewEl) walkEnergyOverviewEl.hidden = false;
+  // alle andere tabbladen zitten op slot (.mp-locked) zolang dit potje loopt — dit knopje leeft
+  // BUITEN walkSoloActionsEl (dat wordt elke broadcast overschreven) en is dus altijd bereikbaar,
+  // ook als het niet jouw beurt is. Zie mpLeaveGame().
+  if (btnMpLeaveGame) btnMpLeaveGame.hidden = false;
   renderWalkBoard();
 }
 function mpExitPlayView(){
   window.mpGameActive = false;
   if (mpTabBarEl) mpTabBarEl.classList.remove('mp-locked');
+  if (btnMpLeaveGame) btnMpLeaveGame.hidden = true;
   if (walkModeAutoBtn) walkModeAutoBtn.hidden = false;
   if (walkModeSoloBtn) walkModeSoloBtn.hidden = false;
   if (walkAutoHintEl) walkAutoHintEl.hidden = false;
+}
+
+// ---------- mid-game vertrekken (bereikbaar tijdens 'in-game', zie btnMpLeaveGame) ----------
+// Host: het potje stopt voor iedereen, maar de room/lobby blijft bestaan zodat meteen een
+// nieuw potje gestart kan worden (zelfde eindtoestand als mpOnGameOver, zie daar).
+// Gast: verlaat de room helemaal en gaat terug naar het join-scherm — hergebruikt exact het
+// pad van "host is weg" (mpOnPeerLeave) resp. de bestaande mpJoinLeave().
+function mpLeaveGame(){
+  if (!mp.active || mp.phase !== 'in-game') return;
+  if (mp.isHost){
+    if (mp.actions && mp.actions.stop) mp.actions.stop.send({});
+    if (mp.broadcastTimer){ clearInterval(mp.broadcastTimer); mp.broadcastTimer = null; }
+    mp.phase = 'hosting';
+    mpExitPlayView();
+    switchTab('multi');
+    mpRenderLobby();
+  } else {
+    mpExitPlayView();
+    mpTeardown();   // stuurt zelf een 'leave'-bericht, zie mpTeardown — host zet deze speler dan om in een bot
+    switchTab('multi');
+    mpRenderLobby();
+  }
+}
+// Gast ontvangt het "host heeft het potje gestopt"-bericht: de room blijft intact (anders dan
+// bij mpOnPeerLeave met een écht vertrokken host), dus gewoon terug naar de wachtkamer.
+function mpClientOnStop(){
+  if (mp.isHost || mp.phase !== 'in-game') return;
+  mpSetStatus('De host heeft dit potje gestopt.', '');
+  mpExitPlayView();
+  mp.phase = 'joining';
+  switchTab('multi');
+  mpRenderLobby();
 }
 
 // ---------- lobby-tabblad: welk deelscherm ----------
@@ -9305,7 +9449,9 @@ const btnMpHostStop = document.getElementById('btnMpHostStop');
 const btnMpJoinConnect = document.getElementById('btnMpJoinConnect');
 const btnMpJoinCancel = document.getElementById('btnMpJoinCancel');
 const btnMpJoinLeave = document.getElementById('btnMpJoinLeave');
+const btnMpLeaveGame = document.getElementById('btnMpLeaveGame');
 
+if (btnMpLeaveGame) btnMpLeaveGame.addEventListener('click', mpLeaveGame);
 if (btnMpHost) btnMpHost.addEventListener('click', () => { mp.phase = 'host-setup'; mpRenderLobby(); });
 if (btnMpJoinShow) btnMpJoinShow.addEventListener('click', () => { mp.phase = 'join-form'; mpRenderLobby(); });
 if (btnMpHostCancel) btnMpHostCancel.addEventListener('click', () => { mp.phase = 'idle'; mpRenderLobby(); });

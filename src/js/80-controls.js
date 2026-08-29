@@ -84,20 +84,23 @@ document.getElementById('btnReset').addEventListener('click', ()=>{
   renderBoard();
 });
 
-document.getElementById('btnRotL').addEventListener('click', ()=>{
+function tryRotate(delta){
   if (selectedSlot === null) return;
-  clearSimResults();
   const tid = layout[selectedSlot];
-  tileRotation[tid] = ((tileRotation[tid] || 0) + 270) % 360;
-  renderBoard();
-});
-document.getElementById('btnRotR').addEventListener('click', ()=>{
-  if (selectedSlot === null) return;
+  const prevRotation = tileRotation[tid] || 0;
+  const newRotation = (prevRotation + delta) % 360;
+  tileRotation[tid] = newRotation;
+  const ok = canTileGoInSlotNow(tid, selectedSlot);
+  if (!ok){
+    tileRotation[tid] = prevRotation;
+    swapHint.innerHTML = `<span style="color:var(--danger)">Kan niet draaien — tegel #${tid} zou dan op deze positie een doorgang het bord af laten wijzen.</span>`;
+    return;
+  }
   clearSimResults();
-  const tid = layout[selectedSlot];
-  tileRotation[tid] = ((tileRotation[tid] || 0) + 90) % 360;
   renderBoard();
-});
+}
+document.getElementById('btnRotL').addEventListener('click', ()=> tryRotate(270));
+document.getElementById('btnRotR').addEventListener('click', ()=> tryRotate(90));
 
 document.getElementById('btnDice').addEventListener('click', ()=>{
   const adjectives = ['zwart','stil','koud','verweerd','duister','verloren','laatst','ijl'];
