@@ -1,6 +1,6 @@
-// Kaartafbeeldingen van de fysieke actiekaarten (Canva-ontwerp, zie src/assets/cards/*.webp).
-// Dit blok wordt door build.py ingevuld: per kaart-id een data-URI. Handmatig bewerken heeft
-// dus geen zin — vervang de .webp-bestanden en draai `python3 build.py` opnieuw.
+// Kaartafbeeldingen van de fysieke actiekaarten (Canva-ontwerp). De data-URI's hieronder
+// staan als base64 hardcoded in dit bestand — er is geen build-stap of asset-map die ze
+// inleest. Wil je een afbeelding vervangen, pas dan de base64-data hier zelf aan.
 //
 // Waarom WebP op 520px: de kaarten worden hooguit ~260px breed getoond (dus 2x voor scherpe
 // weergave op een retina-scherm), en zo blijft de hele set onder de 140 KB. De volledige

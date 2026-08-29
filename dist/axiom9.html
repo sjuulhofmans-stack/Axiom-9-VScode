@@ -1320,9 +1320,6 @@
   .tag.startroom{color:var(--start); border-color:var(--start);}
 
   /* ---------- palette ---------- */
-  .palette-strip{
-    margin-top:22px;
-  }
   .register-grid{
     display:grid; grid-template-columns:1fr 1fr; gap:22px; margin-top:22px; align-items:start;
   }
@@ -1432,7 +1429,7 @@
     }
     .room-label{font-size:calc(var(--cell) * 0.5); padding-left:3px;}
 
-    #palette{grid-template-columns:repeat(auto-fill,minmax(88px,1fr)); gap:9px;}
+    .palette-list{grid-template-columns:repeat(auto-fill,minmax(88px,1fr)); gap:9px;}
     .tile-thumb{padding:8px;}
     .tile-thumb .id{font-size:11.5px;}
     /* 11px maakte "Serverruimte" net 3px te breed voor een kaartje van 88px */
@@ -1878,8 +1875,9 @@
 
   <footer>AXIOM-9 · MILITAIR BEVOORRADINGSSCHIP · JAAR 2150 — alles draait lokaal in dit bestand. Alleen als je zelf Multiplayer gebruikt, verbind je peer-to-peer met de spelers die je uitnodigt; er is geen eigen server en niets wordt opgeslagen.</footer>
 
-  <!-- kaartvenster: toont de actiekaarten die je op dit moment in handen hebt, op ware
-       kaartverhouding. Eén kaart tegelijk selecteerbaar; onderin gecentreerd de keuze. -->
+  <!-- generieke vergrote weergave van één losse kaart, op ware kaartverhouding. Wordt
+       gevuld en geopend vanuit de kaarten-vitrine en vanuit "stap voor stap" (daar voor
+       de actieve opdrachtkaart), zie 98-cards.js. -->
   <div id="cardsZoom" class="cards-zoom" hidden>
     <div class="cards-zoom-inner">
       <div class="cards-zoom-face" id="cardsZoomFace"></div>
@@ -1966,9 +1964,9 @@ let highlightTile = null;
 
 
 // ===== 05-card-art.js =====
-// Kaartafbeeldingen van de fysieke actiekaarten (Canva-ontwerp, zie src/assets/cards/*.webp).
-// Dit blok wordt door build.py ingevuld: per kaart-id een data-URI. Handmatig bewerken heeft
-// dus geen zin — vervang de .webp-bestanden en draai `python3 build.py` opnieuw.
+// Kaartafbeeldingen van de fysieke actiekaarten (Canva-ontwerp). De data-URI's hieronder
+// staan als base64 hardcoded in dit bestand — er is geen build-stap of asset-map die ze
+// inleest. Wil je een afbeelding vervangen, pas dan de base64-data hier zelf aan.
 //
 // Waarom WebP op 520px: de kaarten worden hooguit ~260px breed getoond (dus 2x voor scherpe
 // weergave op een retina-scherm), en zo blijft de hele set onder de 140 KB. De volledige
@@ -2615,6 +2613,7 @@ function slotFromPoint(x, y){
 
 function onCellPointerDown(e){
   if (e.button !== undefined && e.button !== 0) return;
+  if (dragState.from !== null && e.pointerId !== dragState.pointerId) return;
   const slotIdx = parseInt(e.currentTarget.dataset.slot, 10);
   dragState.from = slotIdx;
   dragState.over = slotIdx;
@@ -3593,20 +3592,23 @@ document.getElementById('btnReset').addEventListener('click', ()=>{
   renderBoard();
 });
 
-document.getElementById('btnRotL').addEventListener('click', ()=>{
+function tryRotate(delta){
   if (selectedSlot === null) return;
-  clearSimResults();
   const tid = layout[selectedSlot];
-  tileRotation[tid] = ((tileRotation[tid] || 0) + 270) % 360;
-  renderBoard();
-});
-document.getElementById('btnRotR').addEventListener('click', ()=>{
-  if (selectedSlot === null) return;
+  const prevRotation = tileRotation[tid] || 0;
+  const newRotation = (prevRotation + delta) % 360;
+  tileRotation[tid] = newRotation;
+  const ok = canTileGoInSlotNow(tid, selectedSlot);
+  if (!ok){
+    tileRotation[tid] = prevRotation;
+    swapHint.innerHTML = `<span style="color:var(--danger)">Kan niet draaien — tegel #${tid} zou dan een doorgang het bord af laten wijzen. Op een hoek mag geen doorgang het bord af wijzen, en de starttegel (#${START_TILE}) hoort binnenin op G/H/I/L/M/N.</span>`;
+    return;
+  }
   clearSimResults();
-  const tid = layout[selectedSlot];
-  tileRotation[tid] = ((tileRotation[tid] || 0) + 90) % 360;
   renderBoard();
-});
+}
+document.getElementById('btnRotL').addEventListener('click', ()=> tryRotate(270));
+document.getElementById('btnRotR').addEventListener('click', ()=> tryRotate(90));
 
 document.getElementById('btnDice').addEventListener('click', ()=>{
   const adjectives = ['zwart','stil','koud','verweerd','duister','verloren','laatst','ijl'];
@@ -3678,8 +3680,14 @@ const toolQuest = document.getElementById('toolQuest');
 const toolCard = document.getElementById('toolCard');
 let editorTile = null;      // tegel-id dat open staat
 let editorTool = 'walk';
-let editorSnapshot = null;  // kopie om te kunnen terugdraaien
+let editorTouchedTiles = null; // Map<tileId, Map-snapshot> — alle tegels die deze sessie zijn aangeraakt, om te kunnen terugdraaien
 let editorDirty = false;    // is er iets gewijzigd sinds het openen van deze tegel
+
+// bewaart de EERSTE stand van een tegel tijdens deze editor-sessie, zodat "Wijzigingen
+// terugdraaien" ook zijdelingse effecten (bv. de label-swap hieronder) kan herstellen
+function rememberTouchedTile(tid){
+  if (!editorTouchedTiles.has(tid)) editorTouchedTiles.set(tid, new Map(tileLookup[tid]));
+}
 
 const DOOR_KEYS = new Set();
 for (const cells of Object.values(EDGE_CELLS)) for (const [dr,dc] of cells) DOOR_KEYS.add(dr+'_'+dc);
@@ -3843,7 +3851,8 @@ function updateCloseButtonLabel(){
 function openTileEditor(tid){
   if (tid === START_TILE) return;
   editorTile = tid;
-  editorSnapshot = new Map(tileLookup[tid]);
+  editorTouchedTiles = new Map();
+  rememberTouchedTile(tid);
   editorDirty = false;
   const name = ROOM_NAMES[tid] ? ROOM_NAMES[tid] : 'Gang';
   editorTitle.textContent = `Tegel #${tid} — ${name}`;
@@ -3956,11 +3965,17 @@ function paintCell(key){
     if (cur !== 1 && !(typeof cur === 'string' && cur.startsWith(prefix))) return;
     const label = labelSelect.value;
     if (!label) return;
+    // stond er op de doelcel al een ANDER label, dan mag dat niet zomaar verdwijnen —
+    // het wordt teruggezet op de plek waar `label` vandaan komt (echte swap)
+    const oldLabel = (typeof cur === 'string' && cur !== label) ? cur : null;
     // hetzelfde label mag maar één keer voorkomen op het HELE bord (niet alleen deze
     // tegel) — anders mist de simulatie straks een opdracht-/startvakje en loopt vast
     for (let tid = 1; tid <= 20; tid++){
       const mm = tileLookup[tid];
-      for (const [k, v] of [...mm]) if (v === label && (tid !== editorTile || k !== key)) mm.set(k, 1);
+      for (const [k, v] of [...mm]) if (v === label && (tid !== editorTile || k !== key)){
+        rememberTouchedTile(tid);
+        mm.set(k, oldLabel !== null ? oldLabel : 1);
+      }
     }
     m.set(key, label);
   }
@@ -3974,10 +3989,12 @@ function paintCell(key){
 // wijzigingen doorvoeren in DATA, regels herberekenen en alles opnieuw tekenen
 function applyTileEdits(){
   clearSimResults();
-  DATA.tiles[String(editorTile)] = [...tileLookup[editorTile]].map(([k,v]) => {
-    const [dr,dc] = k.split('_').map(Number);
-    return [dr,dc,v];
-  });
+  for (const tid of editorTouchedTiles.keys()){
+    DATA.tiles[String(tid)] = [...tileLookup[tid]].map(([k,v]) => {
+      const [dr,dc] = k.split('_').map(Number);
+      return [dr,dc,v];
+    });
+  }
   recomputeTileMeta();
   renderBoard();
 }
@@ -3996,11 +4013,13 @@ document.querySelectorAll('#toolList .tool').forEach(btn => {
 });
 
 document.getElementById('editorRevert').addEventListener('click', ()=>{
-  if (editorTile === null || !editorSnapshot) return;
-  tileLookup[editorTile] = new Map(editorSnapshot);
+  if (editorTile === null || !editorTouchedTiles) return;
+  for (const [tid, snapshot] of editorTouchedTiles) tileLookup[tid] = new Map(snapshot);
   editorDirty = false;
   updateCloseButtonLabel();
   applyTileEdits();
+  editorTouchedTiles = new Map();
+  rememberTouchedTile(editorTile);
   drawEditorGrid();
 });
 
@@ -5173,11 +5192,11 @@ function simulateOneGame(graph, rand, heatmap, questStats, extra){
           player.energy -= ENERGY_ACTIONS.jump.cost;
           player.actionUses++;
           energyActionUsed = true;
-          for (let p = 0; p < jump.path.length; p++) heatmap[jump.path[p]]++;
+          for (let p = 1; p < jump.path.length; p++) heatmap[jump.path[p]]++;
           if (pathHasActionCell(graph, jump.path)) actionCellCrossed = true;
           // de sprong kan de opdracht zelf al pakken; anders loop je vanaf daar verder
           move = jump.banked
-            ? { key: jump.key, path: [jump.key], stepsUsed: 0, bankedCount: 1, bankedQuest: true, wasBlocked: false }
+            ? { key: jump.key, path: [jump.key], stepsUsed: 0, bankedCount: 1, bankedQuest: true, wasBlocked: false, teleported: true }
             : resolveMove(graph, jump.key, roll, occupied, targets, rand, undefined, allowUturn);
         }
       }
@@ -5189,7 +5208,7 @@ function simulateOneGame(graph, rand, heatmap, questStats, extra){
       player.turnsOnTarget++;
       extra.totalTurns++;
       if (move.wasBlocked) extra.blockedTurns++;
-      for (let p = 0; p < move.path.length; p++) heatmap[move.path[p]]++;
+      for (let p = 1; p < move.path.length; p++) heatmap[move.path[p]]++;
       if (pathHasActionCell(graph, move.path)) actionCellCrossed = true;
 
       // actiekaartvakje (gang): levert een kaart op net als een opdracht, maar onderbreekt de
@@ -6526,6 +6545,7 @@ async function runWalkSimulation(){
                        ENERGY_DIE_FACES[Math.floor(Math.random()*ENERGY_DIE_FACES.length)], true);
         await walkTick(90);
       }
+      if (aborted()) return;
 
       // pion langs een pad laten lopen; `special` markeert een niet-gewone verplaatsing
       // (Noodtransport, Zwaartekracht-laarzen) met een ander spoor
@@ -6659,7 +6679,7 @@ async function runWalkSimulation(){
           energyActionUsed = true; usedEnergyAction = 'jump';
           if (!await walkPath(jump.path, true)) return;
           move = jump.banked
-            ? { key: jump.key, path: [jump.key], stepsUsed: 0, bankedCount: 1, bankedQuest: true, wasBlocked: false }
+            ? { key: jump.key, path: [jump.key], stepsUsed: 0, bankedCount: 1, bankedQuest: true, wasBlocked: false, teleported: true }
             : resolveMove(graph, jump.key, roll, occupiedNow(), targets, rand, undefined, allowUturn);
         }
       }
@@ -6695,7 +6715,7 @@ async function runWalkSimulation(){
         player.completed += bankedLabels.length;
         player.nextIdx += bankedLabels.length;
 
-        const deadEnd = (!usedBoots && move.stepsUsed < roll) ? ` (kwam daarna vast te zitten na ${move.stepsUsed} van ${roll} stappen)` : '';
+        const deadEnd = (!usedBoots && !move.teleported && move.stepsUsed < roll) ? ` (kwam daarna vast te zitten na ${move.stepsUsed} van ${roll} stappen)` : '';
         const chainNote = bankedLabels.length > 1
           ? ` — en loopt meteen door naar <span class="hit">${bankedLabels.slice(1).map(l => `${l} ${QUEST_NAMES[l] || ''}`).join(', ')}</span>: twee opdrachten in één beurt!`
           : '';
@@ -6725,7 +6745,7 @@ async function runWalkSimulation(){
         }
       } else {
         const blocked = move.wasBlocked ? ' · liep onderweg tegen een bezette route aan' : '';
-        const extra = (!usedBoots && move.stepsUsed < roll) ? ` — kon maar ${move.stepsUsed} stappen zetten (doodlopend)` : '';
+        const extra = (!usedBoots && !move.teleported && move.stepsUsed < roll) ? ` — kon maar ${move.stepsUsed} stappen zetten (doodlopend)` : '';
         walkLog(`Beurt ${turn}: <b>${rollText}</b>${walkEnergyNote(energyRoll, energyGain, player)}${turnNote} → onderweg naar ${targetLabel}${extra}${blocked}`, null, player);
       }
       renderWalkScore(players, pIdx);
@@ -8546,6 +8566,126 @@ soloSyncBotOptions();
 setWalkMode('auto');
 
 
+// ===== 98-cards.js =====
+// ---------- tabblad "Kaarten" ----------
+// Toont het hele kaartspel op één plek: de negen opdrachtkaarten (2.1-2.9) en alle
+// achttien actiekaarten. Puur een overzicht — je kunt hier niets spelen, het is bedoeld
+// om naast het bord te leggen en om te controleren of code en drukwerk hetzelfde zeggen.
+//
+// Actiekaarten gebruiken renderPrintedCardFace() uit 95-simulate.js, dus die tonen hier
+// exact dezelfde kaart als in het kaartvenster van de solo-modus: de Canva-foto als die
+// er is, anders de nagetekende versie.
+//
+// Opdrachtkaarten worden hier nagetekend. Reden: de Canva-export van de opdrachtkaarten
+// is vanuit deze omgeving niet te downloaden, en een nagetekende kaart heeft bovendien
+// het voordeel dat de kamernaam meeloopt met de indeling — verschuif je 2.4 naar een
+// andere tegel, dan verandert de kaart mee. Zodra er wél .webp-bestanden in
+// src/assets/quests/ staan (bestandsnaam = het label, dus "2.1.webp") wint die foto,
+// net als bij de actiekaarten.
+
+
+// De kamer waar een opdracht op ligt, opgezocht via de tegel — dus als je de indeling of
+// een tegel wijzigt, klopt de kaart nog steeds. Gangen hebben geen naam in ROOM_NAMES.
+function questCardRoom(label){
+  const tid = findLabelTile(label);
+  if (!tid) return '—';
+  return ROOM_NAMES[tid] || `Gang ${tid}`;
+}
+
+function renderQuestCardFace(label){
+  const img = QUEST_CARD_IMAGES[label];
+  const name = QUEST_NAMES[label] || label;
+  if (img) return `<img src="${img}" alt="Opdracht ${label} — ${name}">`;
+  const art = QUEST_CARD_ART[label];
+  return `<span class="quest-card" style="--q-tint:${art.tint}">
+    <span class="quest-card-top">
+      <span class="quest-card-badge">${label}</span>
+      <span class="quest-card-kicker">OPDRACHT</span>
+    </span>
+    <span class="quest-card-title">${name}</span>
+    <svg class="quest-card-icon" viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">${art.icon}</svg>
+    <span class="quest-card-rule"></span>
+    <span class="quest-card-foot">
+      <span class="quest-card-kicker">KAMER</span>
+      <span class="quest-card-room">${questCardRoom(label)}</span>
+    </span>
+  </span>`;
+}
+
+// ---------- opbouw van het tabblad ----------
+const CARDS_CATEGORY_ORDER = ['amber', 'start', 'quest', 'danger', 'dim'];
+const CARDS_CATEGORY_LABELS = {
+  amber: 'Beweging', start: 'Energie', quest: 'Nut', danger: 'Verstoring', dim: 'Informatie',
+};
+const cardsQuestGrid  = document.getElementById('cardsQuestGrid');
+const cardsActionWrap = document.getElementById('cardsActionWrap');
+const cardsZoom       = document.getElementById('cardsZoom');
+const cardsZoomFace   = document.getElementById('cardsZoomFace');
+const cardsZoomCap    = document.getElementById('cardsZoomCap');
+
+// één kaart in de vitrine: de kaart zelf plus een bijschrift, aanklikbaar om te vergroten
+function cardsShelfItem(face, tintClass, tintStyle, name, sub){
+  const btn = document.createElement('button');
+  btn.type = 'button';
+  btn.className = 'card-show' + (tintClass ? ' ' + tintClass : '');
+  if (tintStyle) btn.style.setProperty('--card-tint', tintStyle);
+  btn.innerHTML = `<span class="card-show-face">${face}</span>
+    <span class="card-show-cap"><b>${name}</b><span>${sub}</span></span>`;
+  btn.addEventListener('click', () => openCardsZoom(face, tintClass, tintStyle, name, sub));
+  return btn;
+}
+
+function openCardsZoom(face, tintClass, tintStyle, name, sub){
+  cardsZoomFace.className = 'cards-zoom-face' + (tintClass ? ' ' + tintClass : '');
+  if (tintStyle) cardsZoomFace.style.setProperty('--card-tint', tintStyle);
+  else cardsZoomFace.style.removeProperty('--card-tint');
+  cardsZoomFace.innerHTML = face;
+  cardsZoomCap.innerHTML = `<b>${name}</b><span>${sub}</span>`;
+  cardsZoom.hidden = false;
+}
+function closeCardsZoom(){ cardsZoom.hidden = true; }
+
+// Wordt opnieuw gedraaid zodra je het tabblad opent: de kamernaam op een opdrachtkaart
+// hangt aan de tegel, en die kan intussen bewerkt of verplaatst zijn.
+function renderCardsTab(){
+  cardsQuestGrid.innerHTML = '';
+  for (const label of QUEST_CARD_IDS){
+    const tint = QUEST_CARD_ART[label].tint;
+    // Het nummer staat al groot op de kaart zelf; in het bijschrift eiste "2.1 · " kostbare
+    // breedte op, waardoor de naam op een telefoon middenin een woord afbrak.
+    cardsQuestGrid.appendChild(cardsShelfItem(
+      renderQuestCardFace(label), '', tint,
+      QUEST_NAMES[label] || label,
+      `${label} · kamer ${questCardRoom(label)}`,
+    ));
+  }
+
+  if (cardsActionWrap.childElementCount) return;   // actiekaarten veranderen niet, één keer bouwen
+  for (const cat of CARDS_CATEGORY_ORDER){
+    const ids = ACTION_CARD_IDS.filter(id => ACTION_CARD_TINTS[id] === cat);
+    if (!ids.length) continue;
+    const head = document.createElement('h3');
+    head.className = 'cards-subhead';
+    head.innerHTML = `${CARDS_CATEGORY_LABELS[cat]} <span>${ids.length} ${ids.length === 1 ? 'kaart' : 'kaarten'} · 2× in de stapel</span>`;
+    cardsActionWrap.appendChild(head);
+    const grid = document.createElement('div');
+    grid.className = 'cards-shelf';
+    for (const id of ids){
+      grid.appendChild(cardsShelfItem(
+        renderPrintedCardFace(id), 'action-card--' + cat, '',
+        ACTION_CARDS[id].name, ACTION_CARDS[id].hint,
+      ));
+    }
+    cardsActionWrap.appendChild(grid);
+  }
+}
+
+cardsZoom.addEventListener('click', closeCardsZoom);
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape' && !cardsZoom.hidden) closeCardsZoom();
+});
+
+
 // ===== 99-multiplayer.js =====
 // ---------- multiplayer: lobby + peer-to-peer spel (host-autoritatief) ----------
 // Hergebruikt het VOLLEDIGE spelsysteem van "zelf spelen" (97-solo.js) ongewijzigd — dit
@@ -9177,126 +9317,6 @@ if (btnMpHostStop) btnMpHostStop.addEventListener('click', mpHostStop);
 if (btnMpJoinLeave) btnMpJoinLeave.addEventListener('click', mpJoinLeave);
 if (btnMpCopyCode) btnMpCopyCode.addEventListener('click', () => {
   if (navigator.clipboard) navigator.clipboard.writeText(mp.roomCode || '');
-});
-
-
-// ===== 98-cards.js =====
-// ---------- tabblad "Kaarten" ----------
-// Toont het hele kaartspel op één plek: de negen opdrachtkaarten (2.1-2.9) en alle
-// achttien actiekaarten. Puur een overzicht — je kunt hier niets spelen, het is bedoeld
-// om naast het bord te leggen en om te controleren of code en drukwerk hetzelfde zeggen.
-//
-// Actiekaarten gebruiken renderPrintedCardFace() uit 95-simulate.js, dus die tonen hier
-// exact dezelfde kaart als in het kaartvenster van de solo-modus: de Canva-foto als die
-// er is, anders de nagetekende versie.
-//
-// Opdrachtkaarten worden hier nagetekend. Reden: de Canva-export van de opdrachtkaarten
-// is vanuit deze omgeving niet te downloaden, en een nagetekende kaart heeft bovendien
-// het voordeel dat de kamernaam meeloopt met de indeling — verschuif je 2.4 naar een
-// andere tegel, dan verandert de kaart mee. Zodra er wél .webp-bestanden in
-// src/assets/quests/ staan (bestandsnaam = het label, dus "2.1.webp") wint die foto,
-// net als bij de actiekaarten.
-
-
-// De kamer waar een opdracht op ligt, opgezocht via de tegel — dus als je de indeling of
-// een tegel wijzigt, klopt de kaart nog steeds. Gangen hebben geen naam in ROOM_NAMES.
-function questCardRoom(label){
-  const tid = findLabelTile(label);
-  if (!tid) return '—';
-  return ROOM_NAMES[tid] || `Gang ${tid}`;
-}
-
-function renderQuestCardFace(label){
-  const img = QUEST_CARD_IMAGES[label];
-  const name = QUEST_NAMES[label] || label;
-  if (img) return `<img src="${img}" alt="Opdracht ${label} — ${name}">`;
-  const art = QUEST_CARD_ART[label];
-  return `<span class="quest-card" style="--q-tint:${art.tint}">
-    <span class="quest-card-top">
-      <span class="quest-card-badge">${label}</span>
-      <span class="quest-card-kicker">OPDRACHT</span>
-    </span>
-    <span class="quest-card-title">${name}</span>
-    <svg class="quest-card-icon" viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">${art.icon}</svg>
-    <span class="quest-card-rule"></span>
-    <span class="quest-card-foot">
-      <span class="quest-card-kicker">KAMER</span>
-      <span class="quest-card-room">${questCardRoom(label)}</span>
-    </span>
-  </span>`;
-}
-
-// ---------- opbouw van het tabblad ----------
-const CARDS_CATEGORY_ORDER = ['amber', 'start', 'quest', 'danger', 'dim'];
-const CARDS_CATEGORY_LABELS = {
-  amber: 'Beweging', start: 'Energie', quest: 'Nut', danger: 'Verstoring', dim: 'Informatie',
-};
-const cardsQuestGrid  = document.getElementById('cardsQuestGrid');
-const cardsActionWrap = document.getElementById('cardsActionWrap');
-const cardsZoom       = document.getElementById('cardsZoom');
-const cardsZoomFace   = document.getElementById('cardsZoomFace');
-const cardsZoomCap    = document.getElementById('cardsZoomCap');
-
-// één kaart in de vitrine: de kaart zelf plus een bijschrift, aanklikbaar om te vergroten
-function cardsShelfItem(face, tintClass, tintStyle, name, sub){
-  const btn = document.createElement('button');
-  btn.type = 'button';
-  btn.className = 'card-show' + (tintClass ? ' ' + tintClass : '');
-  if (tintStyle) btn.style.setProperty('--card-tint', tintStyle);
-  btn.innerHTML = `<span class="card-show-face">${face}</span>
-    <span class="card-show-cap"><b>${name}</b><span>${sub}</span></span>`;
-  btn.addEventListener('click', () => openCardsZoom(face, tintClass, tintStyle, name, sub));
-  return btn;
-}
-
-function openCardsZoom(face, tintClass, tintStyle, name, sub){
-  cardsZoomFace.className = 'cards-zoom-face' + (tintClass ? ' ' + tintClass : '');
-  if (tintStyle) cardsZoomFace.style.setProperty('--card-tint', tintStyle);
-  else cardsZoomFace.style.removeProperty('--card-tint');
-  cardsZoomFace.innerHTML = face;
-  cardsZoomCap.innerHTML = `<b>${name}</b><span>${sub}</span>`;
-  cardsZoom.hidden = false;
-}
-function closeCardsZoom(){ cardsZoom.hidden = true; }
-
-// Wordt opnieuw gedraaid zodra je het tabblad opent: de kamernaam op een opdrachtkaart
-// hangt aan de tegel, en die kan intussen bewerkt of verplaatst zijn.
-function renderCardsTab(){
-  cardsQuestGrid.innerHTML = '';
-  for (const label of QUEST_CARD_IDS){
-    const tint = QUEST_CARD_ART[label].tint;
-    // Het nummer staat al groot op de kaart zelf; in het bijschrift eiste "2.1 · " kostbare
-    // breedte op, waardoor de naam op een telefoon middenin een woord afbrak.
-    cardsQuestGrid.appendChild(cardsShelfItem(
-      renderQuestCardFace(label), '', tint,
-      QUEST_NAMES[label] || label,
-      `${label} · kamer ${questCardRoom(label)}`,
-    ));
-  }
-
-  if (cardsActionWrap.childElementCount) return;   // actiekaarten veranderen niet, één keer bouwen
-  for (const cat of CARDS_CATEGORY_ORDER){
-    const ids = ACTION_CARD_IDS.filter(id => ACTION_CARD_TINTS[id] === cat);
-    if (!ids.length) continue;
-    const head = document.createElement('h3');
-    head.className = 'cards-subhead';
-    head.innerHTML = `${CARDS_CATEGORY_LABELS[cat]} <span>${ids.length} ${ids.length === 1 ? 'kaart' : 'kaarten'} · 2× in de stapel</span>`;
-    cardsActionWrap.appendChild(head);
-    const grid = document.createElement('div');
-    grid.className = 'cards-shelf';
-    for (const id of ids){
-      grid.appendChild(cardsShelfItem(
-        renderPrintedCardFace(id), 'action-card--' + cat, '',
-        ACTION_CARDS[id].name, ACTION_CARDS[id].hint,
-      ));
-    }
-    cardsActionWrap.appendChild(grid);
-  }
-}
-
-cardsZoom.addEventListener('click', closeCardsZoom);
-document.addEventListener('keydown', e => {
-  if (e.key === 'Escape' && !cardsZoom.hidden) closeCardsZoom();
 });
 
 </script>
