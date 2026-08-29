@@ -39,6 +39,29 @@
      stable` reserveert die ruimte altijd, scrollbalk of niet, dus die horizontale sprong is weg. */
   html{scrollbar-gutter: stable;}
   html,body{margin:0;padding:0; overflow-x:hidden;}
+
+  /* ---------- thema-scrollbalk, overal in het document ---------- */
+  /* scrollbar-color/-width is de Firefox-variant (geldt globaal via html, wordt overgeërfd);
+     de ::-webkit-scrollbar-* regels op `*` doen hetzelfde voor Chrome/Edge/Safari — dat is per
+     scrollend element (niet overerfbaar), vandaar de universele selector i.p.v. alleen html.
+     .tab-bar heeft zijn eigen `::-webkit-scrollbar{display:none}` verderop (bewust onzichtbaar,
+     puur voor het horizontaal vegen van de tabbladen op mobiel) — die regel is specifieker
+     (class i.p.v. universeel) en wint dus gewoon van dit algemene thema. */
+  html{ scrollbar-width:thin; scrollbar-color: var(--quest) var(--hull); }
+  *::-webkit-scrollbar{ width:10px; height:10px; }
+  *::-webkit-scrollbar-track{
+    background:var(--hull); border-radius:6px; box-shadow:inset 0 0 4px rgba(0,0,0,.6);
+  }
+  *::-webkit-scrollbar-thumb{
+    background:linear-gradient(180deg, var(--quest-glow), var(--quest) 55%, var(--start));
+    background-clip:padding-box; border:2px solid var(--hull); border-radius:6px;
+    box-shadow:0 0 6px var(--quest-glow);
+  }
+  *::-webkit-scrollbar-thumb:hover{
+    background:linear-gradient(180deg, var(--quest-glow), var(--start));
+    background-clip:padding-box;
+  }
+  *::-webkit-scrollbar-corner{ background:var(--hull); }
   body{
     background:
       radial-gradient(ellipse at 20% -10%, #16202b 0%, transparent 55%),
@@ -1530,23 +1553,8 @@
     font-family:var(--font-mono); font-size:13px; line-height:1.5;
   }
   .mp-chat-log:empty::before{content:'Nog geen berichten.'; color:var(--text-dim);}
-  /* thema-scrollbalk i.p.v. de kale standaardbalk — zelfde palet als de rest van de tool
-     (donkere romp-achtergrond, gloeiende quest-cyaan duim). scrollbar-color is de Firefox-
-     variant, de ::-webkit-* regels daaronder doen hetzelfde voor Chrome/Edge/Safari. */
-  .mp-chat-log{ scrollbar-width:thin; scrollbar-color: var(--quest) var(--hull); }
-  .mp-chat-log::-webkit-scrollbar{ width:10px; }
-  .mp-chat-log::-webkit-scrollbar-track{
-    background:var(--hull); border-radius:6px; box-shadow:inset 0 0 4px rgba(0,0,0,.6);
-  }
-  .mp-chat-log::-webkit-scrollbar-thumb{
-    background:linear-gradient(180deg, var(--quest-glow), var(--quest) 55%, var(--start));
-    background-clip:padding-box; border:2px solid var(--hull); border-radius:6px;
-    box-shadow:0 0 6px var(--quest-glow);
-  }
-  .mp-chat-log::-webkit-scrollbar-thumb:hover{
-    background:linear-gradient(180deg, var(--quest-glow), var(--start));
-    background-clip:padding-box;
-  }
+  /* thema-scrollbalk: nu overal in het document geregeld, zie de `*::-webkit-scrollbar-*`-
+     regels vlak na `html{scrollbar-gutter: stable;}` bovenaan dit bestand. */
   .mp-chat-msg b{margin-right:5px;}
   .mp-chat-msg span{overflow-wrap:anywhere;}
   .mp-chat-msg.mp-chat-me{opacity:.82;}
