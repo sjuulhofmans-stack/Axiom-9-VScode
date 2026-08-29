@@ -41,8 +41,6 @@ function recomputeOpenEdges(){
 }
 recomputeOpenEdges();
 function openDegree(tid){ return Object.values(OPEN_EDGES_RAW[tid]).filter(Boolean).length; }
-// gangkruisingen met 4 aansluitingen horen binnenin het bord (G,H,I,L,M,N)
-let DEG4_TILES = [];
 
 const CORNER_SLOTS = [0, TILE_COLS-1, (TILE_ROWS-1)*TILE_COLS, TILE_ROWS*TILE_COLS-1]; // A, E, P, T
 const INNER_SLOTS = [];
@@ -172,7 +170,6 @@ let FORCED_TILES = new Set();
 // alle afgeleide regels opnieuw berekenen (nodig nadat de tegel-editor iets heeft gewijzigd)
 function recomputeTileMeta(){
   recomputeOpenEdges();
-  DEG4_TILES = Array.from({length:20},(_,i)=>i+1).filter(t => openDegree(t) === 4);
   ALLOWED_TILES = [];
   for (let s=0; s<20; s++){
     ALLOWED_TILES[s] = Array.from({length:20},(_,i)=>i+1).filter(t => canTileGoInSlot(t, s));
@@ -190,6 +187,7 @@ function isCornerTile(tid){ return FORCED_TILES.has(tid); }
 function canTileGoInSlotNow(tid, slotIdx){
   const cat = slotCategory(slotIdx);
   if (cat === 'corner'){
+    if (!isCornerCapable(tid)) return false;
     for (const dir of offBoardDirs(slotIdx)) if (effectiveOpenEdge(tid, dir)) return false;
   }
   if (tid === START_TILE) return cat === 'inner';

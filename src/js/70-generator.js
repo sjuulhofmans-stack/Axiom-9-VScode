@@ -637,9 +637,14 @@ function constrainedShuffleAsync(seedStr, onProgress){
           const pick = shuffleWith(cands, fallbackRand)[0];
           if (pick !== undefined){ lay[slotIdx] = pick; used.add(pick); }
         }
-        const leftoverTiles = Array.from({length:20},(_,i)=>i+1).filter(t => !used.has(t));
-        let li = 0;
-        for (let s=0; s<20; s++) if (lay[s] === null) lay[s] = leftoverTiles[li++];
+        let leftoverTiles = Array.from({length:20},(_,i)=>i+1).filter(t => !used.has(t));
+        for (let s=0; s<20; s++){
+          if (lay[s] !== null) continue;
+          const allowed = leftoverTiles.filter(t => canTileGoInSlot(t, s));
+          const pick = allowed.length ? allowed[0] : leftoverTiles[0];
+          lay[s] = pick;
+          leftoverTiles = leftoverTiles.filter(t => t !== pick);
+        }
         result = lay;
       }
 

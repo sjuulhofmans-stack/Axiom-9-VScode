@@ -20,14 +20,3 @@ function mulberry32(a){
     return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
   }
 }
-function seededShuffle(arr, seedStr){
-  const seedFn = hashSeed(seedStr);
-  const seedInt = Math.floor(seedFn() * 4294967296);
-  const rand = mulberry32(seedInt);
-  const a = arr.slice();
-  for (let i = a.length-1; i>0; i--){
-    const j = Math.floor(rand() * (i+1));
-    [a[i],a[j]] = [a[j],a[i]];
-  }
-  return a;
-}
