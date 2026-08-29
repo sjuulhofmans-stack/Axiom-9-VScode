@@ -255,6 +255,12 @@
                 <button id="btnWalkSoloRoll" class="primary" hidden>🎲 Gooi de dobbelstenen</button>
                 <button id="btnWalkSoloSkip" class="ghost" hidden>Geen actie, gewoon dobbelen</button>
               </div>
+              <!-- alleen zichtbaar tijdens een lopend multiplayer-potje (zie mpEnterPlayView/
+                   mpExitPlayView in 99-multiplayer.js) — staat BUITEN walkSoloActions, dat elke
+                   broadcast wordt overschreven, en dus ook buiten je eigen beurt bereikbaar is. -->
+              <div class="btn-row">
+                <button type="button" id="btnMpLeaveGame" class="small ghost" hidden>Verlaat potje</button>
+              </div>
             </div>
 
             <!-- duidelijk, op zichzelf staand overzicht van je energie t.o.v. het plafond;

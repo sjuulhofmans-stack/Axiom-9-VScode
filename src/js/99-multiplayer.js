@@ -50,10 +50,12 @@ let mp = {
   isHost: false,
   myPeerId: null,
   myIdx: -1,               // index in soloPlayers zodra het potje loopt
+  hostPeerId: null,         // peerId van de host — bekend bij host (=mezelf) én client (via lobby-seats)
   roomCode: null,
   room: null,
   actions: null,
   stateVersion: 0,         // host: laatst uitgezonden versie. client: laatst toegepaste versie.
+  lastFingerprint: null,    // host: vingerafdruk van de laatst uitgezonden state — voor dirty-detectie
   seats: [],                // lobby-fase: [{peerId, name, isHost}], host-only bijgehouden
   totalSeats: 4,
   fillBots: true,
@@ -97,7 +99,7 @@ async function mpConnect(code){
 }
 
 function mpRegisterActions(room){
-  const names = ['hello', 'lobby', 'start', 'state', 'leave', 'intent'];
+  const names = ['hello', 'lobby', 'start', 'state', 'leave', 'intent', 'stop'];
   mp.actions = {};
   for (const n of names) mp.actions[n] = room.makeAction(n);
 
@@ -107,6 +109,9 @@ function mpRegisterActions(room){
   mp.actions.state.onMessage = (data) => { if (!mp.isHost) mpApplyState(data); };
   mp.actions.intent.onMessage = (data, { peerId }) => { if (mp.isHost) mpHandleIntent(peerId, data); };
   mp.actions.leave.onMessage = (data, { peerId }) => { mpOnPeerLeave(peerId, true); };
+  // host stopt het lopende potje bewust (zie btnMpLeaveGame) terwijl de room open blijft —
+  // anders dan 'leave' verlaat niemand de room hierbij, gasten gaan terug naar de wachtkamer.
+  mp.actions.stop.onMessage = () => { if (!mp.isHost) mpClientOnStop(); };
 
   // room.onPeerJoin vuurt pas zodra de WebRTC-datachannel naar die peer daadwerkelijk klaar is
   // (dat kan een paar seconden na joinRoom() duren, via de signaling-relay) — een 'hello' die je
@@ -135,6 +140,7 @@ async function mpHostCreate(){
   mp.active = true;
   mp.isHost = true;
   mp.phase = 'hosting';
+  mp.hostPeerId = mp.myPeerId;
   mp.seats = [{ peerId: mp.myPeerId, name, isHost: true }];
   mpRoomCodeTextEl.textContent = code;
   mpHostRoomEl.hidden = false;
@@ -208,6 +214,11 @@ function mpClientOnLobby(data){
   mp.seats = data.seats;
   mp.totalSeats = data.totalSeats;
   mp.fillBots = data.fillBots;
+  // de host-rij staat er altijd bij (isHost:true) — zo kent een client het host-peerId al
+  // vóórdat het potje start, nodig om straks een écht vertrek van de host te herkennen
+  // (zie mpOnPeerLeave) i.p.v. elke vertrekkende medespeler daarvoor aan te zien.
+  const hostSeat = mp.seats.find(s => s.isHost);
+  if (hostSeat) mp.hostPeerId = hostSeat.peerId;
   if (mpWaitSeatsEl) mpWaitSeatsEl.innerHTML = mp.seats.map((s, i) => mpSeatRowHtml(s, i)).join('');
 }
 function mpJoinLeave(){
@@ -224,10 +235,12 @@ function mpTeardown(){
   }
   window.mpGameActive = false;
   if (mpTabBarEl) mpTabBarEl.classList.remove('mp-locked');
+  if (btnMpLeaveGame) btnMpLeaveGame.hidden = true;
   mp = {
-    active: false, phase: 'idle', isHost: false, myPeerId: null, myIdx: -1,
-    roomCode: null, room: null, actions: null, stateVersion: 0, seats: [],
+    active: false, phase: 'idle', isHost: false, myPeerId: null, myIdx: -1, hostPeerId: null,
+    roomCode: null, room: null, actions: null, stateVersion: 0, lastFingerprint: null, seats: [],
     totalSeats: 4, fillBots: true, broadcastTimer: null, lastLogCount: 0, pendingName: null,
+    processingIntent: false,
   };
 }
 
@@ -260,8 +273,12 @@ function mpOnPeerLeave(peerId, explicit){
     }
     mpBroadcastState();
   } else {
-    // de host zelf viel weg: het potje kan niet door zonder scheidsrechter
-    if (mp.roomCode && soloPlayers[soloActiveIdx] === undefined) return;
+    // Alleen als de vertrokken peer daadwerkelijk de host was, stopt het potje voor iedereen —
+    // een gewone medespeler die wegvalt wordt al aan de hostkant (hierboven) omgezet naar een
+    // bot, en die bijgewerkte staat komt via de eerstvolgende mpBroadcastState() vanzelf door.
+    // (voorheen werd hier ELKE vertrekkende peer als "host weg" behandeld, want de guard keek
+    // naar soloPlayers[soloActiveIdx] i.p.v. naar de meegegeven peerId.)
+    if (peerId !== mp.hostPeerId) return;
     mpSetStatus('De host heeft het spel verlaten — het potje is gestopt.', 'bad');
     mpExitPlayView();
     mpTeardown();
@@ -341,11 +358,12 @@ function mpHostStartGame(){
 
   mp.actions.start.send({
     layout: layout.slice(),
-    players: soloPlayers,
+    players: mpPublicPlayers(soloPlayers),
     turnOrder: soloTurnOrder,
     finishTarget: soloFinishTarget,
   });
 
+  mp.lastFingerprint = null;
   mp.broadcastTimer = setInterval(mpBroadcastTick, 200);
   soloAdvanceLoop();
   mpBroadcastState();
@@ -388,20 +406,38 @@ function mpBroadcastTick(){
   mpRefreshCardVault();
   mpBroadcastState();
 }
+// ---------- publieke view: nooit verborgen informatie uitzenden ----------
+// soloPlayers/soloDeck bevatten spelinterne info die geen enkele client mag kunnen aflezen:
+// de volledige geschudde opdrachtvolgorde (2.1-2.9) van IEDEREEN, en de volgorde van de
+// actiekaart-trekstapel. Wat WEL al publiek hoort te zijn (zie renderWalkScore in 96-walk.js,
+// dat toont voor elke speler altijd al p.deck[p.nextIdx]) blijft gewoon zichtbaar: het huidige
+// doel van elke speler. De rest van ieders stapel (nog te komen opdrachten) wordt hier
+// vervangen door null — de array-lengte en -index blijven kloppen, dus bestaande render-code
+// (renderWalkScore, de doel-marker op het bord) hoeft niet aangepast te worden.
+function mpPublicPlayer(p){
+  const deck = new Array(p.deck.length).fill(null);
+  if (p.nextIdx < p.deck.length) deck[p.nextIdx] = p.deck[p.nextIdx];
+  return { ...p, deck };
+}
+function mpPublicPlayers(players){ return players.map(mpPublicPlayer); }
+// soloDeck.draw/.discard zijn de trekstapel/aflegstapel-VOLGORDE — client-code heeft daar
+// nooit meer dan de lengte van nodig (zie soloCardBlockReason: 'de trekstapel is leeg' etc.),
+// dus die volgorde/inhoud wordt hier nooit meegestuurd.
+function mpPublicDeck(deck){
+  return { draw: { length: deck.draw.length }, discard: { length: deck.discard.length } };
+}
+
 function mpBroadcastState(){
   if (!mp.isHost || !mp.actions || mp.phase !== 'in-game') return;
-  mp.stateVersion++;
   const newLines = [...walkLogEl.children].slice(mp.lastLogCount)
     .map(el => ({ html: el.innerHTML, cls: el.className }));
-  mp.lastLogCount = walkLogEl.children.length;
-  mp.actions.state.send({
-    stateVersion: mp.stateVersion,
-    soloPlayers, soloActiveIdx, soloPhase, soloTurn, soloTargetKey, soloMove,
+  const core = {
+    soloPlayers: mpPublicPlayers(soloPlayers), soloActiveIdx, soloPhase, soloTurn, soloTargetKey, soloMove,
     soloBootsOptions, soloCurrentLegalMoves, soloRoundPos, soloTurnOrder,
     soloBankCountThisTurn, soloAllowUturn, soloPendingBoost, soloUsedBoots, soloUsedJump,
     soloTargetSwapped, soloUsedEnergyId, soloUsedCardId, soloDiscardedCardId,
     soloEnergyRoll, soloEnergyGain, soloBlindOfferAvailable, soloLockedThisTurn,
-    soloActionCellDrawnThisTurn, walkScoreOrder, soloDeck,
+    soloActionCellDrawnThisTurn, walkScoreOrder, soloDeck: mpPublicDeck(soloDeck),
     soloFinished, soloFinishTarget, soloRoundFinishers,
     ownerUi: {
       rollHidden: btnWalkSoloRoll ? btnWalkSoloRoll.hidden : true,
@@ -414,8 +450,20 @@ function mpBroadcastState(){
         : [],
     },
     statusHtml: walkStatusEl ? walkStatusEl.innerHTML : '',
-    newLogLines: newLines,
-  });
+  };
+  // Dirty-detectie (i.p.v. stateVersion elke 200ms onvoorwaardelijk ophogen): mpHandleIntent
+  // accepteert een intent van een gast alleen bij EXACT de huidige stateVersion, en negeert 'm
+  // anders stilzwijgend. Bij normale netwerklatency kon een intent zo precies tussen twee
+  // ticks in verspringen. Nu blijft de versie staan zolang er niets wijzigt — de tick zendt de
+  // huidige state nog steeds elke 200ms uit (voor nieuwe/herverbindende peers), maar verhoogt
+  // de versie alleen als er ook echt iets anders uitgaat dan de vorige keer.
+  const fingerprint = JSON.stringify(core) + '|' + newLines.length;
+  if (fingerprint !== mp.lastFingerprint){
+    mp.stateVersion++;
+    mp.lastFingerprint = fingerprint;
+  }
+  mp.lastLogCount = walkLogEl.children.length;
+  mp.actions.state.send({ stateVersion: mp.stateVersion, ...core, newLogLines: newLines });
   if (soloPhase === 'game-over') mpOnGameOver();
 }
 
@@ -499,6 +547,13 @@ function mpOnGameOver(){
   if (!window.mpGameActive) return;
   window.mpGameActive = false;
   if (mpTabBarEl) mpTabBarEl.classList.remove('mp-locked');
+  if (btnMpLeaveGame) btnMpLeaveGame.hidden = true;
+  // de 200ms-broadcasttick tikte hierna anders onnodig door tot de host handmatig "Stop
+  // hosting" deed — en mp.phase bleef op 'in-game' staan, terwijl er geen potje meer loopt.
+  if (mp.broadcastTimer){ clearInterval(mp.broadcastTimer); mp.broadcastTimer = null; }
+  // host: terug naar de hostkamer, zodat meteen een nieuw potje gestart kan worden met
+  // dezelfde zitplaatsen. client: terug naar "wacht op de host", de verbinding blijft intact.
+  mp.phase = mp.isHost ? 'hosting' : 'joining';
 }
 
 // ---------- eigen hand (kaartkluis/kaartvenster) — "wie ben ik", niet "wie is aan zet" ----------
@@ -567,6 +622,12 @@ function mpHandleIntent(peerId, msg){
   try { handler(msg.args || {}); }
   finally { mp.processingIntent = false; }
   mpBroadcastState();
+  // De handler hierboven riep onderweg (via de gewone 97-solo.js-functies) soloRefreshCardVault()
+  // aan, die ONVOORWAARDELIJK solo().cards toont — dat is hier de gast wiens intent net verwerkt
+  // is, niet de host. Zonder deze regel zag de host tot de eerstvolgende broadcasttick (max
+  // 200ms) heel even de kaartkluis van de gast in zijn eigen scherm. mpRefreshCardVault() leest
+  // altijd van mpMe() en herstelt dus meteen de eigen hand van de host.
+  mpRefreshCardVault();
 }
 
 // ---------- overgang naar/uit het speelscherm (hergebruikt tabblad "Stap voor stap") ----------
@@ -584,14 +645,51 @@ function mpEnterPlayView(){
   if (walkSoloHintEl) walkSoloHintEl.hidden = true;
   if (walkSoloPanelEl) walkSoloPanelEl.hidden = false;
   if (walkEnergyOverviewEl) walkEnergyOverviewEl.hidden = false;
+  // alle andere tabbladen zitten op slot (.mp-locked) zolang dit potje loopt — dit knopje leeft
+  // BUITEN walkSoloActionsEl (dat wordt elke broadcast overschreven) en is dus altijd bereikbaar,
+  // ook als het niet jouw beurt is. Zie mpLeaveGame().
+  if (btnMpLeaveGame) btnMpLeaveGame.hidden = false;
   renderWalkBoard();
 }
 function mpExitPlayView(){
   window.mpGameActive = false;
   if (mpTabBarEl) mpTabBarEl.classList.remove('mp-locked');
+  if (btnMpLeaveGame) btnMpLeaveGame.hidden = true;
   if (walkModeAutoBtn) walkModeAutoBtn.hidden = false;
   if (walkModeSoloBtn) walkModeSoloBtn.hidden = false;
   if (walkAutoHintEl) walkAutoHintEl.hidden = false;
+}
+
+// ---------- mid-game vertrekken (bereikbaar tijdens 'in-game', zie btnMpLeaveGame) ----------
+// Host: het potje stopt voor iedereen, maar de room/lobby blijft bestaan zodat meteen een
+// nieuw potje gestart kan worden (zelfde eindtoestand als mpOnGameOver, zie daar).
+// Gast: verlaat de room helemaal en gaat terug naar het join-scherm — hergebruikt exact het
+// pad van "host is weg" (mpOnPeerLeave) resp. de bestaande mpJoinLeave().
+function mpLeaveGame(){
+  if (!mp.active || mp.phase !== 'in-game') return;
+  if (mp.isHost){
+    if (mp.actions && mp.actions.stop) mp.actions.stop.send({});
+    if (mp.broadcastTimer){ clearInterval(mp.broadcastTimer); mp.broadcastTimer = null; }
+    mp.phase = 'hosting';
+    mpExitPlayView();
+    switchTab('multi');
+    mpRenderLobby();
+  } else {
+    mpExitPlayView();
+    mpTeardown();   // stuurt zelf een 'leave'-bericht, zie mpTeardown — host zet deze speler dan om in een bot
+    switchTab('multi');
+    mpRenderLobby();
+  }
+}
+// Gast ontvangt het "host heeft het potje gestopt"-bericht: de room blijft intact (anders dan
+// bij mpOnPeerLeave met een écht vertrokken host), dus gewoon terug naar de wachtkamer.
+function mpClientOnStop(){
+  if (mp.isHost || mp.phase !== 'in-game') return;
+  mpSetStatus('De host heeft dit potje gestopt.', '');
+  mpExitPlayView();
+  mp.phase = 'joining';
+  switchTab('multi');
+  mpRenderLobby();
 }
 
 // ---------- lobby-tabblad: welk deelscherm ----------
@@ -616,7 +714,9 @@ const btnMpHostStop = document.getElementById('btnMpHostStop');
 const btnMpJoinConnect = document.getElementById('btnMpJoinConnect');
 const btnMpJoinCancel = document.getElementById('btnMpJoinCancel');
 const btnMpJoinLeave = document.getElementById('btnMpJoinLeave');
+const btnMpLeaveGame = document.getElementById('btnMpLeaveGame');
 
+if (btnMpLeaveGame) btnMpLeaveGame.addEventListener('click', mpLeaveGame);
 if (btnMpHost) btnMpHost.addEventListener('click', () => { mp.phase = 'host-setup'; mpRenderLobby(); });
 if (btnMpJoinShow) btnMpJoinShow.addEventListener('click', () => { mp.phase = 'join-form'; mpRenderLobby(); });
 if (btnMpHostCancel) btnMpHostCancel.addEventListener('click', () => { mp.phase = 'idle'; mpRenderLobby(); });

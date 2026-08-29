@@ -547,8 +547,31 @@ function soloBarrierTargets(){
   const occNow = soloOccupied();
   return soloOthers().filter(p => soloGraph.adjKey[p.pos].some(k => !occNow.has(k) && k !== solo().pos));
 }
+// Terugtrekbevel duwt ACHTERUIT langs victim.lastDir (max 2 stappen, stopt bij bezetting) —
+// dat is een andere richting/bestemming dan Duwstoot (vooruit, willekeurige richting). Gedeeld
+// door de doelwit-kiezer hieronder (welke aangrenzende spelers hébben er ruimte om terug te
+// gaan?) en de daadwerkelijke uitvoering in soloResolveTargetCard, zodat beide nooit uit de pas
+// kunnen lopen. `extraCell` is de cel van de speler die de kaart speelt: die telt ook als bezet
+// (dezelfde regel als de oorspronkelijke inline versie hieronder had).
+function soloRecoilSteps(victim, extraCell){
+  if (victim.lastDir === -1) return { steps: 0, toKey: victim.pos };
+  const revDir = (victim.lastDir + 2) % 4;
+  const occNow = soloOccupied();
+  if (extraCell !== undefined) occNow.add(extraCell);
+  let cur = victim.pos, steps = 0;
+  for (let s = 0; s < 2; s++){
+    const dirs = soloGraph.adjDir[cur], keys = soloGraph.adjKey[cur];
+    let nextKey = -1;
+    for (let j = 0; j < dirs.length; j++) if (dirs[j] === revDir){ nextKey = keys[j]; break; }
+    if (nextKey === -1 || occNow.has(nextKey)) break;
+    cur = nextKey; steps++;
+  }
+  return { steps, toKey: cur };
+}
 function soloRecoilTargets(){
-  return soloShoveTargets().filter(p => p.lastDir !== -1);
+  const p = solo();
+  const neigh = new Set(soloGraph.adjKey[p.pos]);
+  return soloOthers().filter(v => neigh.has(v.pos) && v.lastDir !== -1 && soloRecoilSteps(v, p.pos).steps > 0);
 }
 function soloTargetPickerTargets(cardId){
   if (cardId === 'shove') return soloShoveTargets();
@@ -652,20 +675,11 @@ function soloResolveTargetCard(cardId, targetIdx){
     }
     soloAfterCardAction();
   } else if (cardId === 'recoil'){
-    const revDir = (victim.lastDir + 2) % 4;
-    const occNow = soloOccupied(); occNow.add(p.pos);
-    let cur = victim.pos, steps = 0;
-    for (let s = 0; s < 2; s++){
-      const dirs = soloGraph.adjDir[cur], keys = soloGraph.adjKey[cur];
-      let nextKey = -1;
-      for (let j = 0; j < dirs.length; j++) if (dirs[j] === revDir){ nextKey = keys[j]; break; }
-      if (nextKey === -1 || occNow.has(nextKey)) break;
-      cur = nextKey; steps++;
-    }
+    const { steps, toKey } = soloRecoilSteps(victim, p.pos);
     useActionCard(p, 'recoil', soloDeck);
     soloUsedCardId = 'recoil';
     if (steps > 0){
-      victim.pos = cur;
+      victim.pos = toKey;
       walkLog(`Je speelt <b>Terugtrekbevel</b> op ${victim.name} en duwt die ${steps} vakje(s) terug.`, null, p);
     } else {
       walkLog(`Je speelt <b>Terugtrekbevel</b> op ${victim.name}, maar er was geen ruimte om terug te duwen.`, null, p);
