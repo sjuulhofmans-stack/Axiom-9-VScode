@@ -695,6 +695,16 @@
   .action-card--sm .action-card-icon{width:15px; height:15px;}
   .action-card--sm .action-card-name, .action-card--sm .action-card-cost{display:none;}
 
+  /* kaartrug voor andermans hand tijdens multiplayer (walkCardBadges in 96-walk.js) —
+     zelfde afmeting als .action-card--sm, maar toont alleen een aantal, geen inhoud */
+  .action-card-back{
+    width:26px; height:26px; display:flex; align-items:center; justify-content:center;
+    background:repeating-linear-gradient(135deg, var(--panel-2) 0 4px, var(--hull) 4px 8px);
+    border:1px solid var(--line); color:var(--text-dim);
+    clip-path: polygon(0 8px, 8px 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%);
+    font-family:var(--font-mono); font-size:11px; font-weight:700;
+  }
+
   .action-card--lg{
     width:108px; padding:10px 8px 9px; gap:4px;
     transition:transform .12s, box-shadow .12s, border-color .12s;
@@ -2072,7 +2082,6 @@ function recomputeOpenEdges(){
   }
   OPEN_EDGES_STATIC = OPEN_EDGES_RAW;
 }
-recomputeOpenEdges();
 function openDegree(tid){ return Object.values(OPEN_EDGES_RAW[tid]).filter(Boolean).length; }
 
 const CORNER_SLOTS = [0, TILE_COLS-1, (TILE_ROWS-1)*TILE_COLS, TILE_ROWS*TILE_COLS-1]; // A, E, P, T
@@ -6172,7 +6181,7 @@ function walkCardBadges(player){
     const me = mpMe();
     if (me && player !== me){
       return player.cards.length
-        ? `<span class="walk-player-cards walk-player-cards--hidden" title="kaarten op hand (verborgen)">🂠 ${player.cards.length}</span>`
+        ? `<span class="walk-player-cards"><span class="action-card-back" title="kaarten op hand (verborgen)">${player.cards.length}</span></span>`
         : '';
     }
   }

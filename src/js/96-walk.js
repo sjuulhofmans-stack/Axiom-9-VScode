@@ -305,7 +305,7 @@ function walkCardBadges(player){
     const me = mpMe();
     if (me && player !== me){
       return player.cards.length
-        ? `<span class="walk-player-cards walk-player-cards--hidden" title="kaarten op hand (verborgen)">🂠 ${player.cards.length}</span>`
+        ? `<span class="walk-player-cards"><span class="action-card-back" title="kaarten op hand (verborgen)">${player.cards.length}</span></span>`
         : '';
     }
   }

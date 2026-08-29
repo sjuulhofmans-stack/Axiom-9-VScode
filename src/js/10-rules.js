@@ -39,7 +39,6 @@ function recomputeOpenEdges(){
   }
   OPEN_EDGES_STATIC = OPEN_EDGES_RAW;
 }
-recomputeOpenEdges();
 function openDegree(tid){ return Object.values(OPEN_EDGES_RAW[tid]).filter(Boolean).length; }
 
 const CORNER_SLOTS = [0, TILE_COLS-1, (TILE_ROWS-1)*TILE_COLS, TILE_ROWS*TILE_COLS-1]; // A, E, P, T
