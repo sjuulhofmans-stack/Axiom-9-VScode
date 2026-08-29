@@ -1508,20 +1508,45 @@
   select.mp-seat-start{margin-left:auto;}
 
   /* lobby: twee kolommen, 2/5 - 3/5 (lobby-paneel resp. chat) — zelfde grid-opzet als
-     .walk-play-layout, zodat chatten tijdens het wachten op medespelers meteen zichtbaar is */
+     .walk-play-layout, maar met align-items:stretch (i.p.v. start) zodat beide panelen altijd
+     even hoog zijn: de chatkolom wordt precies zo hoog als het lobby-paneel ernaast, en het
+     berichtenvak (flex:1 hieronder) vult daarbinnen exact de resterende ruimte — dus niet de
+     kolommen die groeien zodra er meer berichten komen, maar alleen een scrollbalk daarbinnen. */
   .mp-layout{
-    display:grid; grid-template-columns: 2fr 3fr; gap:20px; align-items:start;
+    display:grid; grid-template-columns: 2fr 3fr; gap:20px; align-items:stretch;
   }
   @media (max-width: 880px){ .mp-layout{grid-template-columns:1fr;} }
-  .mp-chat-panel{display:flex; flex-direction:column; gap:10px;}
+  .mp-chat-panel{display:flex; flex-direction:column; gap:10px; min-height:320px;}
   .mp-chat-panel[hidden]{display:none;}
   .mp-chat-log{
-    flex:1; min-height:420px; max-height:640px; overflow-y:auto;
+    /* flex:1 + min-height:0 laat 'm in de lobby (gestretchte kolom, zie .mp-layout hierboven)
+       precies de resterende ruimte vullen; max-height is de HARDE bovengrens die ook geldt in
+       het speelscherm (#mpChatPanelGame, in .walk-side-col — daar is de kolom NIET gestretcht,
+       dus zonder deze cap zou het vak gewoon oneindig meegroeien met het aantal berichten
+       i.p.v. een scrollbalk te tonen). */
+    flex:1; min-height:0; max-height:520px; overflow-y:auto;
     display:flex; flex-direction:column; gap:5px;
     background:var(--hull); border:1px solid var(--line-dim); border-radius:6px; padding:10px;
     font-family:var(--font-mono); font-size:13px; line-height:1.5;
   }
   .mp-chat-log:empty::before{content:'Nog geen berichten.'; color:var(--text-dim);}
+  /* thema-scrollbalk i.p.v. de kale standaardbalk — zelfde palet als de rest van de tool
+     (donkere romp-achtergrond, gloeiende quest-cyaan duim). scrollbar-color is de Firefox-
+     variant, de ::-webkit-* regels daaronder doen hetzelfde voor Chrome/Edge/Safari. */
+  .mp-chat-log{ scrollbar-width:thin; scrollbar-color: var(--quest) var(--hull); }
+  .mp-chat-log::-webkit-scrollbar{ width:10px; }
+  .mp-chat-log::-webkit-scrollbar-track{
+    background:var(--hull); border-radius:6px; box-shadow:inset 0 0 4px rgba(0,0,0,.6);
+  }
+  .mp-chat-log::-webkit-scrollbar-thumb{
+    background:linear-gradient(180deg, var(--quest-glow), var(--quest) 55%, var(--start));
+    background-clip:padding-box; border:2px solid var(--hull); border-radius:6px;
+    box-shadow:0 0 6px var(--quest-glow);
+  }
+  .mp-chat-log::-webkit-scrollbar-thumb:hover{
+    background:linear-gradient(180deg, var(--quest-glow), var(--start));
+    background-clip:padding-box;
+  }
   .mp-chat-msg b{margin-right:5px;}
   .mp-chat-msg span{overflow-wrap:anywhere;}
   .mp-chat-msg.mp-chat-me{opacity:.82;}
