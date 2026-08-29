@@ -793,9 +793,11 @@ function mpChatSenderInfo(peerId){
   const me = peerId === mp.myPeerId ? mpMe() : null;
   return { name: me ? me.name : 'Speler', color: 'var(--text-dim)' };
 }
-function mpAppendChat(peerId, text){
+// `chant` (nummer) en `text` sluiten elkaar uit — een taunt-bericht heeft text:null en
+// andersom, zie mpSendChatMessage/mpOnRemoteChat hieronder.
+function mpAppendChat(peerId, text, chant){
   const info = mpChatSenderInfo(peerId);
-  mpChatMessages.push({ peerId, name: info.name, color: info.color, text, ts: Date.now() });
+  mpChatMessages.push({ peerId, name: info.name, color: info.color, text: text || null, chant: chant || null, ts: Date.now() });
   // simpele cap, puur zodat een heel lang potje niet oneindig DOM/geheugen blijft opstapelen
   if (mpChatMessages.length > 200) mpChatMessages.shift();
   mpRenderChat();
@@ -803,9 +805,13 @@ function mpAppendChat(peerId, text){
 function mpRenderChat(){
   const html = mpChatMessages.map(msg => {
     const mine = msg.peerId === mp.myPeerId;
+    // msg.chant is hier altijd al een gevalideerd getal (zie mpSendChatMessage/mpOnRemoteChat
+    // — alleen ooit gezet als CHANT_AUDIO[n] echt bestaat), dus veilig direct te tonen.
+    const body = msg.chant
+      ? `<span class="mp-chant">🔊 taunt #${msg.chant}</span>`
+      : `<span>${mpEscapeHtml(msg.text)}</span>`;
     return `<div class="mp-chat-msg${mine ? ' mp-chat-me' : ''}">` +
-      `<b style="color:${msg.color}">${mpEscapeHtml(msg.name)}:</b>` +
-      `<span>${mpEscapeHtml(msg.text)}</span>` +
+      `<b style="color:${msg.color}">${mpEscapeHtml(msg.name)}:</b>${body}` +
     `</div>`;
   }).join('');
   for (const el of [mpChatLogEl, mpChatLogGameEl]){
@@ -814,19 +820,36 @@ function mpRenderChat(){
     el.scrollTop = el.scrollHeight;
   }
 }
+// typ je puur een getal dat een bestaande taunt is (bv. "7"), dan wordt dat een taunt i.p.v.
+// een gewoon tekstbericht — hoorbaar voor jezelf én voor iedereen anders in de room, net als
+// de taunts uit het originele Age of Empires.
 function mpSendChatMessage(raw){
-  const text = String(raw || '').trim().slice(0, 240);
-  if (!text || !mp.active || !mp.actions || !mp.actions.chat) return;
-  mpAppendChat(mp.myPeerId, text);
-  mp.actions.chat.send({ text });
+  const trimmed = String(raw || '').trim().slice(0, 240);
+  if (!trimmed || !mp.active || !mp.actions || !mp.actions.chat) return;
+  const n = Number(trimmed);
+  if (/^\d+$/.test(trimmed) && CHANT_AUDIO[n]){
+    mpAppendChat(mp.myPeerId, null, n);
+    playChant(n);
+    mp.actions.chat.send({ chant: n });
+    return;
+  }
+  mpAppendChat(mp.myPeerId, trimmed, null);
+  mp.actions.chat.send({ text: trimmed });
 }
 // wordt voor IEDEREEN aangeroepen, niet alleen de host — zie de toelichting bij
 // mp.actions.chat.onMessage in mpRegisterActions hierboven
 function mpOnRemoteChat(peerId, data){
   if (!mp.active) return;
+  if (data && data.chant){
+    const n = Number(data.chant);
+    if (!CHANT_AUDIO[n]) return;   // onbekend/verzonnen nummer van een gast — gewoon negeren
+    mpAppendChat(peerId, null, n);
+    playChant(n);
+    return;
+  }
   const text = String(data && data.text || '').trim().slice(0, 240);
   if (!text) return;
-  mpAppendChat(peerId, text);
+  mpAppendChat(peerId, text, null);
 }
 function mpWireChatForm(formEl, inputEl){
   if (!formEl || !inputEl) return;

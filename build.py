@@ -14,6 +14,7 @@ Waarom een build-stap?
   src/assets/logo.b64 en wordt het alleen bij het bouwen ingevoegd.
 """
 
+import base64
 import json
 import pathlib
 import re
@@ -27,6 +28,7 @@ DIST = ROOT / "dist"
 JS_ORDER = [
     "00-data.js",
     "05-card-art.js",
+    "06-chants.js",
     "10-rules.js",
     "20-connectivity.js",
     "30-random.js",
@@ -50,10 +52,26 @@ def read(path: pathlib.Path) -> str:
     return path.read_text(encoding="utf-8")
 
 
+def build_chants() -> dict:
+    """src/assets/chants/<nummer>.mp3 -> {nummer: data-URI}. Optioneel: ontbreekt de map of
+    een bestand, dan speelt die taunt straks gewoon niet af (geen harde build-fout, in
+    tegenstelling tot tiles.json — dit is decoratie, geen spelregel)."""
+    chants_dir = SRC / "assets" / "chants"
+    chants = {}
+    if chants_dir.exists():
+        for f in sorted(chants_dir.glob("*.mp3")):
+            if not f.stem.isdigit():
+                continue
+            data = base64.b64encode(f.read_bytes()).decode("ascii")
+            chants[int(f.stem)] = f"data:audio/mpeg;base64,{data}"
+    return chants
+
+
 def build() -> pathlib.Path:
     template = read(SRC / "index.html")
     css = read(SRC / "styles.css")
     logo = read(SRC / "assets" / "logo.b64").strip()
+    chants = build_chants()
 
     # --- tegeldata controleren en injecteren ---
     tiles_raw = read(SRC / "data" / "tiles.json")
@@ -72,9 +90,12 @@ def build() -> pathlib.Path:
         js_parts.append(f"// ===== {name} =====\n{chunk}")
     js = "\n\n".join(js_parts)
     js = js.replace("{{TILES}}", json.dumps(tiles, separators=(",", ":")))
+    js = js.replace("{{CHANTS}}", json.dumps(chants, separators=(",", ":")))
 
     if "{{TILES}}" in js:
         sys.exit("FOUT: {{TILES}} placeholder niet vervangen")
+    if "{{CHANTS}}" in js:
+        sys.exit("FOUT: {{CHANTS}} placeholder niet vervangen")
 
     html = template.replace("{{CSS}}", css)
     html = html.replace("{{JS}}", js)
@@ -95,4 +116,5 @@ if __name__ == "__main__":
     code_kb = sum(
         (SRC / "js" / n).stat().st_size for n in JS_ORDER
     ) / 1024 + (SRC / "styles.css").stat().st_size / 1024
-    print(f"Gebouwd: {out}  ({kb:.0f} KB, waarvan {code_kb:.0f} KB code)")
+    n_chants = len(build_chants())
+    print(f"Gebouwd: {out}  ({kb:.0f} KB, waarvan {code_kb:.0f} KB code, {n_chants} taunts)")

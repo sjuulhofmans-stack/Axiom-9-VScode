@@ -1518,6 +1518,7 @@
   .mp-chat-msg b{margin-right:5px;}
   .mp-chat-msg span{overflow-wrap:anywhere;}
   .mp-chat-msg.mp-chat-me{opacity:.82;}
+  .mp-chant{color:var(--quest); font-weight:700; letter-spacing:.02em;}
   .mp-chat-form{display:flex; gap:8px;}
   .mp-chat-form input[type=text]{
     flex:1; min-width:0; background:var(--hull); border:1px solid var(--line);
