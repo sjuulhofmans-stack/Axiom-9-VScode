@@ -1494,3 +1494,8 @@
   #mpHostSeats:empty, #mpWaitSeats:empty{display:none;}
   .mp-seat-you{color:var(--start) !important;}
   .mp-seat-host{color:var(--amber) !important;}
+  .mp-seat-start-badge{
+    font-family:var(--font-mono); font-size:11.5px; color:var(--text-dim);
+    border:1px solid var(--line-dim); border-radius:4px; padding:3px 7px; margin-left:auto;
+  }
+  select.mp-seat-start{margin-left:auto;}

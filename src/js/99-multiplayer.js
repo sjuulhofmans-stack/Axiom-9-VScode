@@ -99,12 +99,13 @@ async function mpConnect(code){
 }
 
 function mpRegisterActions(room){
-  const names = ['hello', 'lobby', 'start', 'state', 'leave', 'intent', 'stop'];
+  const names = ['hello', 'lobby', 'start', 'state', 'leave', 'intent', 'stop', 'seat'];
   mp.actions = {};
   for (const n of names) mp.actions[n] = room.makeAction(n);
 
   mp.actions.hello.onMessage = (data, { peerId }) => { if (mp.isHost) mpHostOnHello(peerId, data); };
   mp.actions.lobby.onMessage = (data) => { if (!mp.isHost) mpClientOnLobby(data); };
+  mp.actions.seat.onMessage = (data, { peerId }) => { if (mp.isHost) mpHostSetSeatStart(peerId, data.startLabel); };
   mp.actions.start.onMessage = (data) => { if (!mp.isHost) mpClientOnStart(data); };
   mp.actions.state.onMessage = (data) => { if (!mp.isHost) mpApplyState(data); };
   mp.actions.intent.onMessage = (data, { peerId }) => { if (mp.isHost) mpHandleIntent(peerId, data); };
@@ -141,7 +142,7 @@ async function mpHostCreate(){
   mp.isHost = true;
   mp.phase = 'hosting';
   mp.hostPeerId = mp.myPeerId;
-  mp.seats = [{ peerId: mp.myPeerId, name, isHost: true }];
+  mp.seats = [{ peerId: mp.myPeerId, name, isHost: true, startLabel: SIM_START_LABELS[0] }];
   mpRoomCodeTextEl.textContent = code;
   mpHostRoomEl.hidden = false;
   mpSetStatus('', '');
@@ -154,13 +155,30 @@ function mpHostOnHello(peerId, data){
     return;
   }
   const name = soloCleanName(data && data.name) || `Speler ${mp.seats.length + 1}`;
-  mp.seats.push({ peerId, name, isHost: false });
+  // eerste nog vrije startvakje toewijzen — met 4 labels en hoogstens 4 zitplaatsen is er
+  // altijd één vrij; de speler kan 'm hierna zelf nog wisselen (zie mpHostSetSeatStart)
+  const taken = new Set(mp.seats.map(s => s.startLabel));
+  const startLabel = SIM_START_LABELS.find(l => !taken.has(l)) || SIM_START_LABELS[0];
+  mp.seats.push({ peerId, name, isHost: false, startLabel });
   mpBroadcastLobby();
   mpRenderHostSeats();
 }
 function mpHostOnPeerJoin(){
   // niets te doen — we wachten op hun 'hello' met gekozen naam vóórdat we ze aan de lobby
   // toevoegen. Zie mpHostOnHello.
+}
+// speler (host zelf of een gast, via het 'seat'-bericht) kiest een eigen startvakje. Twee
+// mensen mogen niet dezelfde plek hebben — net als in de solo-opzet (soloRenderSetupUI)
+// wisselen we gewoon om met wie 'm nu heeft, in plaats van iets ingewikkelders.
+function mpHostSetSeatStart(peerId, startLabel){
+  if (!SIM_START_LABELS.includes(startLabel)) return;
+  const seat = mp.seats.find(s => s.peerId === peerId);
+  if (!seat || seat.startLabel === startLabel) return;
+  const clash = mp.seats.find(s => s.peerId !== peerId && s.startLabel === startLabel);
+  if (clash) clash.startLabel = seat.startLabel;
+  seat.startLabel = startLabel;
+  mpBroadcastLobby();
+  mpRenderHostSeats();
 }
 function mpBroadcastLobby(){
   if (!mp.isHost || !mp.actions) return;
@@ -179,11 +197,30 @@ function mpSeatRowHtml(seat, i){
   const you = seat.peerId === mp.myPeerId;
   const cls = you ? 'mp-seat-you' : (seat.isHost ? 'mp-seat-host' : '');
   const tag = seat.isHost ? ' · host' : '';
+  // alleen je EIGEN rij krijgt een keuzemenu — andermans plek is hier puur informatief
+  const startPicker = you
+    ? `<select class="mp-seat-start" data-mp-start aria-label="Jouw startpositie">` +
+        SIM_START_LABELS.map(l => `<option value="${l}"${l === seat.startLabel ? ' selected' : ''}>${l}</option>`).join('') +
+      `</select>`
+    : `<span class="mp-seat-start-badge" title="startpositie">${seat.startLabel || '?'}</span>`;
   return `<div class="walk-solo-setup-player" style="--pc:${WALK_PLAYER_COLORS[i % WALK_PLAYER_COLORS.length]}">` +
     `<span class="walk-solo-setup-dot"></span>` +
     `<span class="${cls}">${seat.name}${you ? ' (jij)' : ''}${tag}</span>` +
+    startPicker +
   `</div>`;
 }
+// klik-afhandeling voor het keuzemenu hierboven — staat op zowel de host- als de gast-lijst
+// (mpHostSeatsEl resp. mpWaitSeatsEl), maar er is altijd maar precies 1 <select> in beeld:
+// je eigen rij. Host past zijn eigen zitplaats direct lokaal aan; een gast stuurt een 'seat'-
+// bericht en wacht op de bijgewerkte lobby-broadcast (zie mpHostSetSeatStart hierboven).
+function mpHandleSeatPickerChange(e){
+  const sel = e.target.closest('[data-mp-start]');
+  if (!sel) return;
+  if (mp.isHost) mpHostSetSeatStart(mp.myPeerId, sel.value);
+  else if (mp.actions && mp.actions.seat) mp.actions.seat.send({ startLabel: sel.value });
+}
+if (mpHostSeatsEl) mpHostSeatsEl.addEventListener('change', mpHandleSeatPickerChange);
+if (mpWaitSeatsEl) mpWaitSeatsEl.addEventListener('change', mpHandleSeatPickerChange);
 
 function mpHostStop(){
   mpTeardown();
@@ -292,6 +329,11 @@ function mpHostStartGame(){
   const total = mp.totalSeats;
   const humans = mp.seats.slice(0, total);
   const soloSeedRand = mulberry32(Math.floor(Math.random() * 4294967296));
+  // mensen kozen hun plek al in de lobby (mpHostSetSeatStart, altijd onderling uniek dankzij
+  // de wissel-bij-botsing daar) — bots krijgen willekeurig wat er nog overblijft
+  const takenLabels = new Set(humans.filter(Boolean).map(s => s.startLabel));
+  const freeLabels = simShuffle(SIM_START_LABELS.filter(l => !takenLabels.has(l)), soloSeedRand);
+  let freeIdx = 0;
   const players = [];
   for (let i = 0; i < total; i++){
     const seat = humans[i];
@@ -305,7 +347,7 @@ function mpHostStartGame(){
       condenserPending: false, lockedNextTurn: false, rollPenalty: 0, barrierCell: null,
       reorderBlocked: false, lastDir: -1,
       strategy: isHuman ? null : ENERGY_STRATEGIES[i % ENERGY_STRATEGIES.length],
-      startLabel: SIM_START_LABELS[i],
+      startLabel: isHuman ? seat.startLabel : freeLabels[freeIdx++],
       pos: null, skipEnergyRoll: false, actionUses: 0,
       peerId: isHuman ? seat.peerId : null,
     });
