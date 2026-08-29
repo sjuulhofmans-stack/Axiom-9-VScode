@@ -23,10 +23,10 @@
   </header>
 
   <div class="tab-bar" role="tablist">
-    <button class="tab-btn active" id="tabBtnMap" data-tab="map" role="tab" aria-selected="true">Kaart maken</button>
+    <button class="tab-btn active" id="tabBtnMap" data-tab="map" role="tab" aria-selected="true">Speelbord genereren</button>
     <button class="tab-btn" id="tabBtnSimulate" data-tab="simulate" role="tab" aria-selected="false">Simulatie</button>
     <button class="tab-btn" id="tabBtnWalk" data-tab="walk" role="tab" aria-selected="false">Stap voor stap</button>
-    <button class="tab-btn" id="tabBtnCards" data-tab="cards" role="tab" aria-selected="false">Kaarten</button>
+    <button class="tab-btn" id="tabBtnCards" data-tab="cards" role="tab" aria-selected="false">Speelkaarten</button>
     <button class="tab-btn" id="tabBtnMulti" data-tab="multi" role="tab" aria-selected="false">Multiplayer</button>
   </div>
 
@@ -138,7 +138,7 @@
             <button id="btnSimulate" class="primary">Draai simulatie</button>
           </div>
         </div>
-        <p class="hint">Speelt potjes na met 2×D6 (exact aantal stappen, geen U-turn, bezette vakjes blokkeren) op de indeling van het tabblad "Kaart maken". Elke speler heeft een eigen geschud stapeltje opdrachten 1–9; wie als eerste 6 opdrachten voltooit wint.</p>
+        <p class="hint">Speelt potjes na met 2×D6 (exact aantal stappen, geen U-turn, bezette vakjes blokkeren) op de indeling van het tabblad "Speelbord genereren". Elke speler heeft een eigen geschud stapeltje opdrachten 1–9; wie als eerste 6 opdrachten voltooit wint.</p>
         <p class="hint">Elke gang heeft daarnaast een actiekaartvakje: loop je daar tijdens je beurt overheen, dan trek je een beloningskaart (de zet stopt er niet voor, hooguit 1x per beurt).</p>
         <div id="simProgress" class="sim-progress" hidden>
           <div class="sim-progress-bar"><div class="sim-progress-fill" id="simProgressFill"></div></div>
@@ -193,7 +193,7 @@
             <button id="btnWalkStop" class="ghost" disabled>Stoppen</button>
           </div>
         </div>
-        <p class="hint" id="walkAutoHint">Speelt één potje op de indeling van het tabblad "Kaart maken", met dezelfde regels als de batch-simulatie: elke speler blokkeert de vakjes waar hij staat, en er wordt doorgespeeld tot de één na laatste speler binnen is — bij 4 spelers dus tot en met de nummer 3, want dan ligt de vierde plaats vast. Het tempo kun je tijdens het lopen aanpassen. <span id="walkStartHint" class="sub"></span></p>
+        <p class="hint" id="walkAutoHint">Speelt één potje op de indeling van het tabblad "Speelbord genereren", met dezelfde regels als de batch-simulatie: elke speler blokkeert de vakjes waar hij staat, en er wordt doorgespeeld tot de één na laatste speler binnen is — bij 4 spelers dus tot en met de nummer 3, want dan ligt de vierde plaats vast. Het tempo kun je tijdens het lopen aanpassen. <span id="walkStartHint" class="sub"></span></p>
 
         <div class="walk-controls" id="walkSoloControls" hidden>
           <div class="field">
@@ -288,7 +288,7 @@
 
             <div class="walk-info-panel">
               <!-- de opdrachtkaart die op dit moment het doel is; leeg zolang er geen potje loopt.
-                   Klikbaar: vergroot 'm via dezelfde openCardsZoom() als het tabblad "Kaarten". -->
+                   Klikbaar: vergroot 'm via dezelfde openCardsZoom() als het tabblad "Speelkaarten". -->
               <div class="walk-quest-card" id="walkQuestCard"></div>
 
               <div class="walk-meta" id="walkMeta"></div>

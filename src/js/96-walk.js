@@ -204,7 +204,7 @@ function renderWalkQuestCard(label){
       `<b>${label} · ${QUEST_NAMES[label] || label}</b>` +
       `<span class="sub">${waar}</span>` +
     `</span>`;
-  // klikbaar: dezelfde uitvergroting als het tabblad "Kaarten" (openCardsZoom, 98-cards.js)
+  // klikbaar: dezelfde uitvergroting als het tabblad "Speelkaarten" (openCardsZoom, 98-cards.js)
   walkQuestCardEl.onclick = () => openCardsZoom(
     renderQuestCardFace(label), '', questTint(label), QUEST_NAMES[label] || label, waar,
   );

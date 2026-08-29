@@ -965,7 +965,7 @@ function soloHideStepCounter(){
 // Op een pc mogen de pijltjestoetsen een stap zetten, net als een klik op een omrand
 // bordvakje (gebruikersverzoek). Alleen actief tijdens het lopen (soloPhase === 'moving') en
 // niet terwijl je ergens anders op de pagina aan het typen bent (bv. de seed-invoer op
-// tabblad "Kaart maken"), anders zouden de pijltjes daar niet meer gewoon door de tekst
+// tabblad "Speelbord genereren"), anders zouden de pijltjes daar niet meer gewoon door de tekst
 // kunnen bewegen.
 const SOLO_ARROW_DIR = { ArrowUp: 0, ArrowRight: 1, ArrowDown: 2, ArrowLeft: 3 };
 document.addEventListener('keydown', (e) => {

@@ -949,7 +949,7 @@
   }
   .walk-card-vault-text .sub{font-family:var(--font-mono); font-size:10px; color:var(--text-dim);}
 
-  /* ---------- tabblad "Kaarten": de vitrine ---------- */
+  /* ---------- tabblad "Speelkaarten": de vitrine ---------- */
   .cards-shelf{
     display:grid; gap:16px; padding:4px 0 2px;
     /* clamp i.p.v. een vaste ondergrens: op een telefoon (375px) zakt de minimumbreedte naar
@@ -1422,7 +1422,7 @@
       overflow-x:auto; overflow-y:hidden; flex-wrap:nowrap;
       scrollbar-width:none; -webkit-overflow-scrolling:touch;
       /* vervaagt de rechterrand zodra er nog een tabblad buiten beeld staat, anders lijkt de
-         balk gewoon af te lopen bij "Stap voor stap" en zoek je "Kaarten" nooit */
+         balk gewoon af te lopen bij "Stap voor stap" en zoek je "Speelkaarten" nooit */
       -webkit-mask-image:linear-gradient(90deg, #000 0, #000 calc(100% - 26px), transparent 100%);
       mask-image:linear-gradient(90deg, #000 0, #000 calc(100% - 26px), transparent 100%);
     }
@@ -1586,10 +1586,10 @@
   </header>
 
   <div class="tab-bar" role="tablist">
-    <button class="tab-btn active" id="tabBtnMap" data-tab="map" role="tab" aria-selected="true">Kaart maken</button>
+    <button class="tab-btn active" id="tabBtnMap" data-tab="map" role="tab" aria-selected="true">Speelbord genereren</button>
     <button class="tab-btn" id="tabBtnSimulate" data-tab="simulate" role="tab" aria-selected="false">Simulatie</button>
     <button class="tab-btn" id="tabBtnWalk" data-tab="walk" role="tab" aria-selected="false">Stap voor stap</button>
-    <button class="tab-btn" id="tabBtnCards" data-tab="cards" role="tab" aria-selected="false">Kaarten</button>
+    <button class="tab-btn" id="tabBtnCards" data-tab="cards" role="tab" aria-selected="false">Speelkaarten</button>
     <button class="tab-btn" id="tabBtnMulti" data-tab="multi" role="tab" aria-selected="false">Multiplayer</button>
   </div>
 
@@ -1701,7 +1701,7 @@
             <button id="btnSimulate" class="primary">Draai simulatie</button>
           </div>
         </div>
-        <p class="hint">Speelt potjes na met 2×D6 (exact aantal stappen, geen U-turn, bezette vakjes blokkeren) op de indeling van het tabblad "Kaart maken". Elke speler heeft een eigen geschud stapeltje opdrachten 1–9; wie als eerste 6 opdrachten voltooit wint.</p>
+        <p class="hint">Speelt potjes na met 2×D6 (exact aantal stappen, geen U-turn, bezette vakjes blokkeren) op de indeling van het tabblad "Speelbord genereren". Elke speler heeft een eigen geschud stapeltje opdrachten 1–9; wie als eerste 6 opdrachten voltooit wint.</p>
         <p class="hint">Elke gang heeft daarnaast een actiekaartvakje: loop je daar tijdens je beurt overheen, dan trek je een beloningskaart (de zet stopt er niet voor, hooguit 1x per beurt).</p>
         <div id="simProgress" class="sim-progress" hidden>
           <div class="sim-progress-bar"><div class="sim-progress-fill" id="simProgressFill"></div></div>
@@ -1756,7 +1756,7 @@
             <button id="btnWalkStop" class="ghost" disabled>Stoppen</button>
           </div>
         </div>
-        <p class="hint" id="walkAutoHint">Speelt één potje op de indeling van het tabblad "Kaart maken", met dezelfde regels als de batch-simulatie: elke speler blokkeert de vakjes waar hij staat, en er wordt doorgespeeld tot de één na laatste speler binnen is — bij 4 spelers dus tot en met de nummer 3, want dan ligt de vierde plaats vast. Het tempo kun je tijdens het lopen aanpassen. <span id="walkStartHint" class="sub"></span></p>
+        <p class="hint" id="walkAutoHint">Speelt één potje op de indeling van het tabblad "Speelbord genereren", met dezelfde regels als de batch-simulatie: elke speler blokkeert de vakjes waar hij staat, en er wordt doorgespeeld tot de één na laatste speler binnen is — bij 4 spelers dus tot en met de nummer 3, want dan ligt de vierde plaats vast. Het tempo kun je tijdens het lopen aanpassen. <span id="walkStartHint" class="sub"></span></p>
 
         <div class="walk-controls" id="walkSoloControls" hidden>
           <div class="field">
@@ -1851,7 +1851,7 @@
 
             <div class="walk-info-panel">
               <!-- de opdrachtkaart die op dit moment het doel is; leeg zolang er geen potje loopt.
-                   Klikbaar: vergroot 'm via dezelfde openCardsZoom() als het tabblad "Kaarten". -->
+                   Klikbaar: vergroot 'm via dezelfde openCardsZoom() als het tabblad "Speelkaarten". -->
               <div class="walk-quest-card" id="walkQuestCard"></div>
 
               <div class="walk-meta" id="walkMeta"></div>
@@ -6189,7 +6189,7 @@ function renderWalkQuestCard(label){
       `<b>${label} · ${QUEST_NAMES[label] || label}</b>` +
       `<span class="sub">${waar}</span>` +
     `</span>`;
-  // klikbaar: dezelfde uitvergroting als het tabblad "Kaarten" (openCardsZoom, 98-cards.js)
+  // klikbaar: dezelfde uitvergroting als het tabblad "Speelkaarten" (openCardsZoom, 98-cards.js)
   walkQuestCardEl.onclick = () => openCardsZoom(
     renderQuestCardFace(label), '', questTint(label), QUEST_NAMES[label] || label, waar,
   );
@@ -7931,7 +7931,7 @@ function soloHideStepCounter(){
 // Op een pc mogen de pijltjestoetsen een stap zetten, net als een klik op een omrand
 // bordvakje (gebruikersverzoek). Alleen actief tijdens het lopen (soloPhase === 'moving') en
 // niet terwijl je ergens anders op de pagina aan het typen bent (bv. de seed-invoer op
-// tabblad "Kaart maken"), anders zouden de pijltjes daar niet meer gewoon door de tekst
+// tabblad "Speelbord genereren"), anders zouden de pijltjes daar niet meer gewoon door de tekst
 // kunnen bewegen.
 const SOLO_ARROW_DIR = { ArrowUp: 0, ArrowRight: 1, ArrowDown: 2, ArrowLeft: 3 };
 document.addEventListener('keydown', (e) => {
@@ -8741,7 +8741,7 @@ setWalkMode('auto');
 
 
 // ===== 98-cards.js =====
-// ---------- tabblad "Kaarten" ----------
+// ---------- tabblad "Speelkaarten" ----------
 // Toont het hele kaartspel op één plek: de negen opdrachtkaarten (2.1-2.9) en alle
 // achttien actiekaarten. Puur een overzicht — je kunt hier niets spelen, het is bedoeld
 // om naast het bord te leggen en om te controleren of code en drukwerk hetzelfde zeggen.
@@ -9238,7 +9238,7 @@ function mpHostStartGame(){
 
   const reach = analyseCellReachability();
   if (reach.unreachable.length > 0){
-    mpSetStatus(`Dit bord heeft ${reach.unreachable.length} onbereikbare vakjes — pas de indeling aan op tabblad "Kaart maken".`, 'bad');
+    mpSetStatus(`Dit bord heeft ${reach.unreachable.length} onbereikbare vakjes — pas de indeling aan op tabblad "Speelbord genereren".`, 'bad');
     return;
   }
   const graph = buildSimGraph();

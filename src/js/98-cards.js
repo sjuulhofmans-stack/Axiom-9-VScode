@@ -1,4 +1,4 @@
-// ---------- tabblad "Kaarten" ----------
+// ---------- tabblad "Speelkaarten" ----------
 // Toont het hele kaartspel op één plek: de negen opdrachtkaarten (2.1-2.9) en alle
 // achttien actiekaarten. Puur een overzicht — je kunt hier niets spelen, het is bedoeld
 // om naast het bord te leggen en om te controleren of code en drukwerk hetzelfde zeggen.

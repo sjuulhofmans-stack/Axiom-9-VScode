@@ -375,7 +375,7 @@ function mpHostStartGame(){
 
   const reach = analyseCellReachability();
   if (reach.unreachable.length > 0){
-    mpSetStatus(`Dit bord heeft ${reach.unreachable.length} onbereikbare vakjes — pas de indeling aan op tabblad "Kaart maken".`, 'bad');
+    mpSetStatus(`Dit bord heeft ${reach.unreachable.length} onbereikbare vakjes — pas de indeling aan op tabblad "Speelbord genereren".`, 'bad');
     return;
   }
   const graph = buildSimGraph();
