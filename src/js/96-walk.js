@@ -299,6 +299,16 @@ function walkCardNote(id){
 // regel maar ~15px, dus verscheen hij pas zodra iemand een kaart kreeg, dan werd de hele
 // spelersbalk hoger en schoof het bord eronder omlaag — elke beurt opnieuw.
 function walkCardBadges(player){
+  // in een lopend multiplayer-potje is de hand van andere spelers verborgen info — alleen
+  // je eigen kaarten tonen we als plaatjes, van anderen laten we enkel het aantal zien
+  if (window.mpGameActive){
+    const me = mpMe();
+    if (me && player !== me){
+      return player.cards.length
+        ? `<span class="walk-player-cards walk-player-cards--hidden" title="kaarten op hand (verborgen)">🂠 ${player.cards.length}</span>`
+        : '';
+    }
+  }
   return `<span class="walk-player-cards">` +
     player.cards.map(id => renderActionCardFace(id, { size: 'sm' })).join('') +
   `</span>`;
