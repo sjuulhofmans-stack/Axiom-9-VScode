@@ -28,6 +28,14 @@ const mpStatusEl = document.getElementById('mpStatus');
 const mpHostSeatsEl = document.getElementById('mpHostSeats');
 const mpWaitSeatsEl = document.getElementById('mpWaitSeats');
 const mpRoomCodeTextEl = document.getElementById('mpRoomCodeText');
+const mpChatPanelEl = document.getElementById('mpChatPanel');
+const mpChatLogEl = document.getElementById('mpChatLog');
+const mpChatFormEl = document.getElementById('mpChatForm');
+const mpChatInputEl = document.getElementById('mpChatInput');
+const mpChatPanelGameEl = document.getElementById('mpChatPanelGame');
+const mpChatLogGameEl = document.getElementById('mpChatLogGame');
+const mpChatFormGameEl = document.getElementById('mpChatFormGame');
+const mpChatInputGameEl = document.getElementById('mpChatInputGame');
 
 // Vaste namespace zodat onze rooms niet botsen met andermans Trystero-apps op dezelfde
 // publieke signaling-relays. Geen geheim, puur een naamruimte.
@@ -99,13 +107,17 @@ async function mpConnect(code){
 }
 
 function mpRegisterActions(room){
-  const names = ['hello', 'lobby', 'start', 'state', 'leave', 'intent', 'stop', 'seat'];
+  const names = ['hello', 'lobby', 'start', 'state', 'leave', 'intent', 'stop', 'seat', 'chat'];
   mp.actions = {};
   for (const n of names) mp.actions[n] = room.makeAction(n);
 
   mp.actions.hello.onMessage = (data, { peerId }) => { if (mp.isHost) mpHostOnHello(peerId, data); };
   mp.actions.lobby.onMessage = (data) => { if (!mp.isHost) mpClientOnLobby(data); };
   mp.actions.seat.onMessage = (data, { peerId }) => { if (mp.isHost) mpHostSetSeatStart(peerId, data.startLabel); };
+  // chat gaat NIET via de host — Trystero verbindt alle peers rechtstreeks met elkaar (mesh),
+  // dus dit bericht komt toch al bij iedereen aan; geen reden om het via de scheidsrechter te
+  // laten lopen zoals de spellogica (mp.actions.intent) dat wel moet vanwege de seeded RNG.
+  mp.actions.chat.onMessage = (data, { peerId }) => mpOnRemoteChat(peerId, data);
   mp.actions.start.onMessage = (data) => { if (!mp.isHost) mpClientOnStart(data); };
   mp.actions.state.onMessage = (data) => { if (!mp.isHost) mpApplyState(data); };
   mp.actions.intent.onMessage = (data, { peerId }) => { if (mp.isHost) mpHandleIntent(peerId, data); };
@@ -145,6 +157,7 @@ async function mpHostCreate(){
   mp.seats = [{ peerId: mp.myPeerId, name, isHost: true, startLabel: SIM_START_LABELS[0] }];
   mpRoomCodeTextEl.textContent = code;
   mpHostRoomEl.hidden = false;
+  if (mpChatPanelEl) mpChatPanelEl.hidden = false;
   mpSetStatus('', '');
   mpRenderHostSeats();
 }
@@ -245,6 +258,7 @@ async function mpJoinConnect(){
   mp.pendingName = name || 'Speler';
   mp.actions.hello.send({ name: mp.pendingName });   // meteen proberen; onPeerJoin herhaalt 'm zodra de verbinding er echt is
   mpJoinWaitingEl.hidden = false;
+  if (mpChatPanelEl) mpChatPanelEl.hidden = false;
   mpSetStatus('', '');
 }
 function mpClientOnLobby(data){
@@ -273,6 +287,12 @@ function mpTeardown(){
   window.mpGameActive = false;
   if (mpTabBarEl) mpTabBarEl.classList.remove('mp-locked');
   if (btnMpLeaveGame) btnMpLeaveGame.hidden = true;
+  if (mpChatPanelEl) mpChatPanelEl.hidden = true;
+  if (mpChatPanelGameEl) mpChatPanelGameEl.hidden = true;
+  // een nieuwe room is een vers gesprek — het vorige hoort niet ineens weer op te duiken
+  // zodra je een andere keer opnieuw host/join doet
+  mpChatMessages = [];
+  mpRenderChat();
   mp = {
     active: false, phase: 'idle', isHost: false, myPeerId: null, myIdx: -1, hostPeerId: null,
     roomCode: null, room: null, actions: null, stateVersion: 0, lastFingerprint: null, seats: [],
@@ -691,12 +711,17 @@ function mpEnterPlayView(){
   // BUITEN walkSoloActionsEl (dat wordt elke broadcast overschreven) en is dus altijd bereikbaar,
   // ook als het niet jouw beurt is. Zie mpLeaveGame().
   if (btnMpLeaveGame) btnMpLeaveGame.hidden = false;
+  // chat verhuist niet echt (zie mpRenderChat) — hij staat hier gewoon al klaar met dezelfde
+  // berichten die in de lobby ook al zichtbaar waren.
+  if (mpChatPanelGameEl) mpChatPanelGameEl.hidden = false;
+  mpRenderChat();
   renderWalkBoard();
 }
 function mpExitPlayView(){
   window.mpGameActive = false;
   if (mpTabBarEl) mpTabBarEl.classList.remove('mp-locked');
   if (btnMpLeaveGame) btnMpLeaveGame.hidden = true;
+  if (mpChatPanelGameEl) mpChatPanelGameEl.hidden = true;
   if (walkModeAutoBtn) walkModeAutoBtn.hidden = false;
   if (walkModeSoloBtn) walkModeSoloBtn.hidden = false;
   if (walkAutoHintEl) walkAutoHintEl.hidden = false;
@@ -742,8 +767,78 @@ function mpRenderLobby(){
   show(mpHostRoomEl, mp.phase === 'hosting');
   show(mpJoinFormEl, mp.phase === 'join-form');
   show(mpJoinWaitingEl, mp.phase === 'joining');
+  show(mpChatPanelEl, mp.phase === 'hosting' || mp.phase === 'joining');
   if (mp.phase === 'hosting') mpRenderHostSeats();
 }
+
+// ---------- chat ----------
+// Eén gedeelde geschiedenis (mpChatMessages) voor de hele MP-sessie, getekend in TWEE losse
+// DOM-plekken (lobby-tabblad en het speelscherm) — zelfde dubbele-render-truc als
+// renderWalkScore (walkScoreEl/walkScoreActiveEl in 96-walk.js). Omdat we niets verplaatsen,
+// staat het gesprek al klaar in het speelscherm zodra mpEnterPlayView 'm zichtbaar maakt: er is
+// dus geen aparte "overdracht" nodig bij het starten van het potje.
+let mpChatMessages = [];   // { peerId, name, color, text, ts } — naam/kleur liggen vast bij ontvangst
+function mpEscapeHtml(s){
+  return String(s).replace(/[&<>"']/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c]));
+}
+// naam/kleur van een AFZENDER wordt hier opgezocht (mp.seats — in de lobby ken je jezelf ook
+// zo, zodra het potje loopt via soloPlayers/mpMe()), NOOIT vertrouwd uit het binnengekomen
+// bericht zelf — anders kan een gast zich in de chat als iemand anders voordoen. Vastgelegd
+// op het moment van versturen/ontvangen (niet opnieuw opgezocht bij elke render), zodat een
+// speler die later de lobby verlaat zijn eerdere berichten niet met terugwerkende kracht naar
+// "Speler" laat vernoemen.
+function mpChatSenderInfo(peerId){
+  const i = mp.seats.findIndex(s => s.peerId === peerId);
+  if (i >= 0) return { name: mp.seats[i].name, color: WALK_PLAYER_COLORS[i % WALK_PLAYER_COLORS.length] };
+  const me = peerId === mp.myPeerId ? mpMe() : null;
+  return { name: me ? me.name : 'Speler', color: 'var(--text-dim)' };
+}
+function mpAppendChat(peerId, text){
+  const info = mpChatSenderInfo(peerId);
+  mpChatMessages.push({ peerId, name: info.name, color: info.color, text, ts: Date.now() });
+  // simpele cap, puur zodat een heel lang potje niet oneindig DOM/geheugen blijft opstapelen
+  if (mpChatMessages.length > 200) mpChatMessages.shift();
+  mpRenderChat();
+}
+function mpRenderChat(){
+  const html = mpChatMessages.map(msg => {
+    const mine = msg.peerId === mp.myPeerId;
+    return `<div class="mp-chat-msg${mine ? ' mp-chat-me' : ''}">` +
+      `<b style="color:${msg.color}">${mpEscapeHtml(msg.name)}:</b>` +
+      `<span>${mpEscapeHtml(msg.text)}</span>` +
+    `</div>`;
+  }).join('');
+  for (const el of [mpChatLogEl, mpChatLogGameEl]){
+    if (!el) continue;
+    el.innerHTML = html;
+    el.scrollTop = el.scrollHeight;
+  }
+}
+function mpSendChatMessage(raw){
+  const text = String(raw || '').trim().slice(0, 240);
+  if (!text || !mp.active || !mp.actions || !mp.actions.chat) return;
+  mpAppendChat(mp.myPeerId, text);
+  mp.actions.chat.send({ text });
+}
+// wordt voor IEDEREEN aangeroepen, niet alleen de host — zie de toelichting bij
+// mp.actions.chat.onMessage in mpRegisterActions hierboven
+function mpOnRemoteChat(peerId, data){
+  if (!mp.active) return;
+  const text = String(data && data.text || '').trim().slice(0, 240);
+  if (!text) return;
+  mpAppendChat(peerId, text);
+}
+function mpWireChatForm(formEl, inputEl){
+  if (!formEl || !inputEl) return;
+  formEl.addEventListener('submit', (e) => {
+    e.preventDefault();
+    mpSendChatMessage(inputEl.value);
+    inputEl.value = '';
+    inputEl.focus();
+  });
+}
+mpWireChatForm(mpChatFormEl, mpChatInputEl);
+mpWireChatForm(mpChatFormGameEl, mpChatInputGameEl);
 
 // ---------- knoppen ----------
 const btnMpHost = document.getElementById('btnMpHost');
