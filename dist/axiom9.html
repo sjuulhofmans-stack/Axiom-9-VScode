@@ -1507,19 +1507,19 @@
   }
   select.mp-seat-start{margin-left:auto;}
 
-  /* lobby: bestaande paneel links, chat vast 300px rechts ernaast — zelfde grid-opzet als
+  /* lobby: twee kolommen, 2/5 - 3/5 (lobby-paneel resp. chat) — zelfde grid-opzet als
      .walk-play-layout, zodat chatten tijdens het wachten op medespelers meteen zichtbaar is */
   .mp-layout{
-    display:grid; grid-template-columns: minmax(0,1fr) 300px; gap:20px; align-items:start;
+    display:grid; grid-template-columns: 2fr 3fr; gap:20px; align-items:start;
   }
   @media (max-width: 880px){ .mp-layout{grid-template-columns:1fr;} }
   .mp-chat-panel{display:flex; flex-direction:column; gap:10px;}
   .mp-chat-panel[hidden]{display:none;}
   .mp-chat-log{
-    flex:1; min-height:220px; max-height:420px; overflow-y:auto;
+    flex:1; min-height:420px; max-height:640px; overflow-y:auto;
     display:flex; flex-direction:column; gap:5px;
     background:var(--hull); border:1px solid var(--line-dim); border-radius:6px; padding:10px;
-    font-family:var(--font-mono); font-size:12px; line-height:1.4;
+    font-family:var(--font-mono); font-size:13px; line-height:1.5;
   }
   .mp-chat-log:empty::before{content:'Nog geen berichten.'; color:var(--text-dim);}
   .mp-chat-msg b{margin-right:5px;}
