@@ -362,15 +362,19 @@
   .walk-controls .field{margin:0; min-width:170px;}
   .walk-controls .btn-row{margin-bottom:1px;}
 
-  /* bord links, navigator + speler-/beurtinfo vast rechts ernaast — zodat een dobbelklik het
-     bord niet meer op en neer laat springen. `align-items:start` is de kern: elke kolom groeit
-     onafhankelijk van de ander, dus het bord (links) blijft op zijn plek ongeacht hoe hoog het
-     infopaneel (rechts) op dat moment is. */
+  /* bord links, twee vaste kolommen ernaast (standen + navigator/beurtinfo) — zodat een
+     dobbelklik het bord niet meer op en neer laat springen. `align-items:start` is de kern:
+     elke kolom groeit onafhankelijk van de andere, dus het bord blijft op zijn plek ongeacht
+     hoe hoog de kolommen ernaast op dat moment zijn. De standenlijst (#walkScore) stond
+     eerder BOVEN het bord, in dezelfde kolom — elke herrender daarvan (elke beurt) kon het
+     bord dus omlaag duwen zodra er ook maar 1px hoogteverschil in sloop. Nu staat hij in zijn
+     eigen kolom naast het bord, dus kan hij het bord niet meer raken. */
   .walk-play-layout{
-    display:grid; grid-template-columns: minmax(0,1fr) 300px; gap:20px; align-items:start;
+    display:grid; grid-template-columns: minmax(0,1fr) 260px 300px; gap:20px; align-items:start;
     margin-top:16px;
   }
   .walk-board-col{min-width:0;}
+  .walk-standings-col{min-width:0;}
   .walk-side-col{display:flex; flex-direction:column; gap:16px; min-width:0;}
   @media (max-width: 880px){ .walk-play-layout{grid-template-columns:1fr;} }
   input[type=range]{width:100%; accent-color:var(--quest); cursor:pointer;}
