@@ -73,7 +73,7 @@
     min-height:100vh;
     padding:28px 18px 60px;
   }
-  .wrap{max-width:1400px;margin:0 auto;}
+  .wrap{max-width:1600px;margin:0 auto;}
 
   /* ---------- header ---------- */
   header{
@@ -369,27 +369,112 @@
   .walk-controls .field{margin:0; min-width:170px;}
   .walk-controls .btn-row{margin-bottom:1px;}
 
-  /* bord links, twee vaste kolommen ernaast (standen + navigator/beurtinfo) — zodat een
-     dobbelklik het bord niet meer op en neer laat springen. `align-items:start` is de kern:
-     elke kolom groeit onafhankelijk van de andere, dus het bord blijft op zijn plek ongeacht
-     hoe hoog de kolommen ernaast op dat moment zijn. De standenlijst (#walkScore) stond
-     eerder BOVEN het bord, in dezelfde kolom — elke herrender daarvan (elke beurt) kon het
-     bord dus omlaag duwen zodra er ook maar 1px hoogteverschil in sloop. Nu staat hij in zijn
-     eigen kolom naast het bord, dus kan hij het bord niet meer raken. */
+  /* standenrij boven, dan bord + één vaste zijkolom ernaast. De standenrij staat hier
+     bewust weer BOVEN het bord (gebruikerswens, na eerdere versie ernaast) — dat kan alleen
+     zonder het bord te laten springen omdat #walkScore/.walk-player elders al een bewezen
+     vaste hoogte hebben (zie .walk-player{min-height:84px}) én de rij nu de volle breedte
+     krijgt, dus alle 1-4 spelers altijd op precies één regel passen: de rijhoogte kan dus
+     nooit meer veranderen, ongeacht wat erin staat. De zijkolom ernaast blijft `align-items:
+     start` gebruiken zodat hij onafhankelijk van het bord in hoogte kan groeien/krimpen. */
   .walk-play-layout{
-    display:grid; grid-template-columns: minmax(0,1fr) 260px 300px; gap:20px; align-items:start;
-    margin-top:16px;
+    display:flex; flex-direction:column; gap:16px; margin-top:16px;
+  }
+  /* de volle breedte hier (bord + zijkolom samen) betekent dat alle 1-4 spelers altijd op één
+     regel passen (zie .walk-players-row hierboven), dus is er ruimte om elk vak wat compacter
+     te maken dan de 84px-variant hierboven — belangrijk nu deze rij BOVEN het bord meetelt in
+     de "alles op 1 pagina"-eis, in plaats van in een kolom ernaast waar hoogte minder opviel. */
+  .walk-players-row{min-height:74px;}
+  .walk-players-row .walk-player{padding:5px 9px; min-height:66px; gap:3px;}
+  .walk-board-row{
+    display:grid; grid-template-columns: minmax(0,1fr) 300px; gap:20px; align-items:start;
   }
   .walk-board-col{min-width:0;}
-  .walk-standings-col{min-width:0;}
-  .walk-side-col{display:flex; flex-direction:column; gap:16px; min-width:0;}
-  @media (max-width: 880px){ .walk-play-layout{grid-template-columns:1fr;} }
+  /* de rechterkolom (Dobbelstenen/Energieactie/Actiekaarten/Spelerstatus) mag samen nooit
+     hoger worden dan het bord (gebruikerseis) — #walkBoard is 671px hoog (32 rijen × 20px +
+     31px tussenruimte), dus dat is het harde plafond hieronder. */
+  .walk-side-stack{
+    display:flex; flex-direction:column; gap:10px; min-width:0;
+    max-height:671px;
+  }
+  @media (max-width: 1150px){
+    .walk-board-row{grid-template-columns:1fr;}
+    .walk-side-stack{max-height:none;}
+  }
+  /* de 4 vakken zelf mogen niet krimpen — alleen .walk-info-panel (Spelerstatus, hieronder)
+     krijgt flex:1 1 auto en vult wat er over is; zo blijven Dobbelstenen/Energieactie/
+     Actiekaarten altijd hun natuurlijke hoogte houden. */
+  .walk-panel-box{flex:none;}
+  /* "of" tussen twee vakken: je kunt dobbelen ÓF een energie-actie inzetten, en verderop
+     ÓF (als dat nu kan) een actiekaart spelen vóór het dobbelen — zie 97-solo.js. */
+  .walk-or-sep{
+    margin:0; text-align:center; font-family:var(--font-mono); font-size:10px;
+    letter-spacing:.14em; text-transform:uppercase; color:var(--text-dim);
+  }
+  .walk-or-sep[hidden]{display:none;}
+
+  /* puls in de kleur van wie aan zet is (--pc, gezet op #walkSideStack — zie
+     soloBeginHumanTurn in 97-solo.js) — geeft aan dat een actie NU mogelijk is: de
+     dobbelknop (puur CSS, zodra hij zichtbaar is is het altijd ook echt jouw beurt om te
+     gooien) en de Energieactie-/Actiekaarten-vakken (via een klasse vanuit JS, zie
+     soloRenderActionPanel/soloRefreshCardVault). Tempo gelijk aan .walk-paused-flag (1.6s) —
+     bewust trager dan de 1.3s-puls van het opdrachtvakje op het bord, anders concurreren de
+     twee knipperingen zichtbaar met elkaar. */
+  @keyframes walkPcPulse{
+    0%,100%{box-shadow:0 0 0 0 color-mix(in srgb, var(--pc, var(--amber)) 55%, transparent);}
+    50%{box-shadow:0 0 12px 2px color-mix(in srgb, var(--pc, var(--amber)) 55%, transparent);}
+  }
+  .walk-pulse-affordable, #btnWalkSoloRoll:not([hidden]){
+    animation:walkPcPulse 1.6s ease-in-out infinite;
+  }
+  #tabWalk.walk-is-paused .walk-pulse-affordable,
+  #tabWalk.walk-is-paused #btnWalkSoloRoll{animation-play-state:paused;}
+
+  /* dobbelstenen bewegen heel langzaam op en neer zolang je nog niet hebt gegooid (zie
+     renderSoloDicePending in 97-solo.js) — stopt vanzelf zodra renderWalkDice() de echte
+     worp tekent, want die schrijft #walkDice's HTML dan zonder deze klasse opnieuw. Los van
+     de bestaande .walk-die.rolling/walkShake-animatie hieronder, die is voor Automatisch-
+     modus se snelle "de dobbelstenen rollen nu"-effect en blijft in solo ongebruikt. */
+  @keyframes walkDiceBob{0%,100%{transform:translateY(0);} 50%{transform:translateY(-4px);}}
+  .walk-die-pending{animation:walkDiceBob 2.2s ease-in-out infinite;}
+  #tabWalk.walk-is-paused .walk-die-pending{animation-play-state:paused;}
+
+  /* 3 kleine tegels in Spelerstatus: voltooid / beurt / live positie. flex:none — anders krimpt
+     een flex-item met overflow:hidden (of een grid-item ernaast) bij ruimtegebrek naar 0 hoogte
+     in plaats van naar zijn eigen minimuminhoud (de automatische flex-basis "auto" resolvet dan
+     naar 0), en dat wilde nu juist NOOIT: dit zijn de belangrijkste 3 getallen in het vakje. */
+  .walk-stat-tiles{display:grid; grid-template-columns:repeat(3, 1fr); gap:6px; flex:none;}
+  .walk-stat-tiles:empty{display:none;}
+  .walk-stat-tile{
+    display:flex; flex-direction:column; align-items:center; gap:2px;
+    background:var(--hull); border:1px solid var(--line-dim); border-radius:5px; padding:6px 4px;
+  }
+  .walk-stat-tile-num{
+    font-family:var(--font-mono); font-weight:700; font-size:16px; color:var(--text);
+    font-variant-numeric:tabular-nums; line-height:1.1;
+  }
+  .walk-stat-tile-lbl{
+    font-family:var(--font-mono); font-size:8px; letter-spacing:.06em; text-transform:uppercase;
+    color:var(--text-dim); text-align:center;
+  }
+  .walk-goal-line{
+    font-family:var(--font-mono); font-size:11.5px; color:var(--text-dim); flex:none;
+    overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+  }
+  .walk-goal-line:empty{display:none;}
+  .walk-goal-line b{color:var(--quest); font-weight:700;}
+
   input[type=range]{width:100%; accent-color:var(--quest); cursor:pointer;}
 
-  /* jouw beurt in de solo-modus: kies hooguit één actie, of gooi meteen */
+  /* jouw beurt in de solo-modus: kies hooguit één actie, of gooi meteen. Dit vakje wisselt van
+     inhoud tussen 5 heel verschillende deelschermen (energiekeuze, doelwit-kiezer, laarzen-
+     richting, noodtransport-doel, blinde-vlek-aanbod) — zonder hoogtegrens zou elk van die
+     wissels de kolom ernaast kunnen laten springen, exact het probleem dat deze hele kolom nu
+     juist niet meer mag hebben. `flex:none` houdt 'm bovendien uit de knijp-verdeling van
+     .walk-side-stack (zie hieronder) — alleen .walk-info-panel mag krimpen. */
   .walk-solo-panel{
-    display:flex; flex-direction:column; gap:10px;
+    display:flex; flex-direction:column; gap:10px; flex:none;
     background:var(--hull); border:1px solid var(--line-dim); border-radius:6px; padding:12px;
+    min-height:150px; max-height:230px; overflow-y:auto;
   }
   .walk-solo-panel[hidden]{display:none;}
 
@@ -449,12 +534,14 @@
     font-family:var(--font-mono); font-size:8px; letter-spacing:.08em; text-transform:uppercase;
     color:var(--text-dim);
   }
-  /* duidelijk, op zichzelf staand overzicht van je energie t.o.v. het plafond (ENERGY_MAX) —
-     losse aanvulling op het kleine ⚡-badge in de spelersrij, dat ging onder de rest van die
-     rij verloren. Kleurlogica gelijk aan .walk-player-energy.full: amber zodra je vol zit. */
+  /* duidelijk overzicht van je energie t.o.v. het plafond (ENERGY_MAX) — losse aanvulling op
+     het kleine ⚡-badge in de spelersrij, dat ging onder de rest van die rij verloren.
+     Kleurlogica gelijk aan .walk-player-energy.full: amber zodra je vol zit. Zit nu bovenin
+     de Energieactie-kolom (.walk-solo-panel) — geen eigen kader meer, alleen een streepje
+     eronder om 'm van de knoppen te scheiden. */
   .walk-energy-overview{
     display:flex; align-items:center; gap:10px;
-    background:var(--hull); border:1px solid var(--line-dim); border-radius:6px; padding:10px 13px;
+    padding-bottom:9px; border-bottom:1px solid var(--line-dim);
   }
   .walk-energy-overview[hidden]{display:none;}
   .walk-energy-label{
@@ -488,25 +575,31 @@
   }
   .cell.walk-clickable:hover{box-shadow:0 0 0 2px #fff, 0 0 10px rgba(85,214,138,.9) !important;}
 
-  /* de "grote tab" met alle info over de speler die aan zet is en welke stap dit is (dobbelstenen,
-     doel, standenlijst, actiepaneel, statusregel) — vast rechts naast het bord (zie
-     .walk-play-layout hierboven). `min-height` reserveert alvast ruimte voor de volste stand
-     (4 spelers + actiekaarten + statusregel), zodat het paneel niet zichtbaar in- en uitklapt
-     terwijl je een beurt speelt; `overflow-y:auto` vangt het zeldzame geval op dat de inhoud
-     daar toch overheen groeit, zonder de rest van de pagina mee te laten schuiven. */
+  /* "Spelerstatus" — het laatste vakje in de zijkolom (zie .walk-side-stack hierboven), en het
+     enige dat mag krimpen: `flex:1 1 auto; min-height:0` laat 'm precies de resterende ruimte
+     binnen de 703px-bordhoogte opvullen (dezelfde techniek als .mp-chat-log verderop in dit
+     bestand), en `overflow-y:auto` vangt het zeldzame geval op dat de inhoud toch niet past,
+     zonder de rest van de pagina mee te laten schuiven. */
   .walk-info-panel{
-    display:flex; flex-direction:column; gap:12px;
+    display:flex; flex-direction:column; gap:10px; flex:1 1 auto; min-height:0;
     background:var(--panel-2); border:1px solid var(--line); border-radius:6px; padding:14px;
-    min-height:440px; max-height:min(680px, calc(100vh - 220px)); overflow-y:auto;
-    scrollbar-gutter: stable;
+    overflow-y:auto; scrollbar-gutter: stable;
   }
-  @media (max-width: 880px){ .walk-info-panel{min-height:0; max-height:none;} }
+  @media (max-width: 1150px){ .walk-info-panel{flex:none; min-height:280px; max-height:none;} }
   /* Voordat er een potje loopt is alles hierbinnen leeg, en dan stond er alleen een omkaderd
      blok van ~160px (de min-height van .walk-meta) zonder inhoud. Zodra er ook maar iets in
      staat — een beurtregel, een stand of een statusmelding — komt het paneel vanzelf weer
      terug. (Het solo-actiepaneel staat sinds de herstructurering los van dit paneel, dus
      telt hier niet meer mee.) */
-  .walk-info-panel:has(#walkMeta:empty):has(#walkScoreActive:empty):has(#walkStatus:empty){
+  .walk-info-panel:has(#walkMeta:empty):has(#walkScoreActive:empty):has(#walkStatus:empty):has(#walkStatTiles:empty):has(#walkQuestCard:empty){
+    display:none;
+  }
+  /* de nieuwe stat-tegels + altijd-zichtbare spelersrij boven het bord vervangen wat #walkMeta
+     en #walkScoreActive lieten zien (beurt/voltooid resp. de eigen rij) — die blijven in de DOM
+     voor Automatisch-modus (die schrijft er nog steeds in via renderWalkMeta/renderWalkScore),
+     maar zodra de tegels gevuld zijn (dus tijdens solo/multiplayer) verbergt CSS ze hier. */
+  .walk-info-panel:has(#walkStatTiles:not(:empty)) #walkMeta,
+  .walk-info-panel:has(#walkStatTiles:not(:empty)) #walkScoreActive{
     display:none;
   }
   /* in de smalle zijkolom staat elke speler onder elkaar i.p.v. naast elkaar; zonder expliciete
@@ -534,6 +627,12 @@
      verborgen zijn (bv. 'moving', of het kiezen van een doelwit) — en dat liet .walk-info-panel
      eronder alsnog 36px op en neer springen, exact het probleem dat deze hele sectie oplost. */
   .walk-hud .btn-row{flex-basis:100%; min-height:40px;}
+  /* de "verlaat potje"-rij (alleen relevant tijdens multiplayer) mag buiten multiplayer om geen
+     40px lege ruimte claimen — anders dan de dobbel-/sla-over-rij hierboven, die haar min-height
+     WEL altijd nodig heeft (zie het commentaar bij .walk-hud .btn-row): dat voorkomt dat het
+     paneel eronder springt op het moment dat BEIDE knoppen daar even verborgen zijn. Vandaar een
+     eigen klasse i.p.v. dezelfde regel op alle btn-rows. */
+  .walk-hud .btn-row.walk-mp-leave-row:not(:has(> :not([hidden]))){display:none;}
   /* Twee vaste regels: loopstenen boven, energiesteen eronder. De vaste min-height dekt
      allebei de regels, zodat het blok niet van hoogte verandert als de Stuwstoot een derde
      loopsteen toevoegt. */
@@ -794,7 +893,11 @@
   .walk-standing:first-child{margin-left:0;}
 
   #walkBoard{
-    --cell: 19px;
+    /* 20px (i.p.v. 19px): iets groter bord geeft de zijkolom ernaast (die nooit hoger dan het
+       bord mag worden) wat meer hoogtebudget, zonder de pagina onnodig te verlengen — de
+       zijkolom-vakken hebben zelf ook nog een eigen overflow-y:auto als noodklep. .wrap is
+       tegelijk verbreed voor de bredere zijkolom-lay-out. */
+    --cell: 20px;
     display:grid;
     grid-template-columns: repeat(40, var(--cell));
     grid-template-rows: repeat(32, var(--cell));
@@ -859,7 +962,7 @@
 
   /* de opdrachtkaart die nu het doel is, bovenin het zijpaneel */
   .walk-quest-card{
-    display:flex; align-items:center; gap:11px;
+    display:flex; align-items:center; gap:11px; flex:none;
     padding:9px 11px; border-radius:6px;
     background:linear-gradient(140deg, color-mix(in srgb, var(--qtint) 15%, var(--hull)), var(--hull) 70%);
     border:1px solid var(--qtint);
@@ -868,9 +971,17 @@
   }
   .walk-quest-card:hover{box-shadow:0 0 20px color-mix(in srgb, var(--qtint) 38%, transparent);}
   .walk-quest-card:empty{display:none; cursor:default;}
-  .walk-quest-card-face{flex:none; width:78px; display:block; container-type:inline-size;}
+  /* vergroot bij hover (gebruikersverzoek) — puur transform, dus geen invloed op de hoogte van
+     .walk-info-panel eromheen; overflow:visible op de kaart zelf laat 'm over de tekst ernaast
+     heen groeien in plaats van afgesneden te worden door .walk-info-panel's overflow-y:auto. */
+  .walk-quest-card-face{
+    flex:none; width:78px; display:block; container-type:inline-size; position:relative; z-index:2;
+    transition:transform .15s ease; transform-origin:left center;
+  }
+  .walk-quest-card:hover .walk-quest-card-face{transform:scale(1.4); overflow:visible;}
   .walk-quest-card-face img{
     width:100%; aspect-ratio:63/88; object-fit:cover; border-radius:5px; display:block;
+    box-shadow:0 6px 16px rgba(0,0,0,.5);
   }
   .walk-quest-card-text{display:flex; flex-direction:column; gap:3px; min-width:0;}
   .walk-quest-card-text .lbl{
@@ -1559,7 +1670,7 @@
   .mp-chat-log{
     /* flex:1 + min-height:0 laat 'm in de lobby (gestretchte kolom, zie .mp-layout hierboven)
        precies de resterende ruimte vullen; max-height is de HARDE bovengrens die ook geldt in
-       het speelscherm (#mpChatPanelGame, in .walk-side-col — daar is de kolom NIET gestretcht,
+       het speelscherm (#mpChatPanelGame, in .walk-side-stack — daar is de kolom NIET gestretcht,
        dus zonder deze cap zou het vak gewoon oneindig meegroeien met het aantal berichten
        i.p.v. een scrollbalk te tonen). */
     flex:1; min-height:0; max-height:520px; overflow-y:auto;
@@ -1788,7 +1899,7 @@
             <select id="walkSoloBots"></select>
           </div>
         </div>
-        <p class="hint" id="walkSoloHint">Jij bestuurt één speler, de rest speelt zichzelf. <b>Volgorde van een beurt:</b> 1. energie-actie kiezen en meteen inzetten — 2. dobbelen (2 loopstenen + de energiesteen) — 3. stappen zetten, waarbij je vóór de eerste stap of tussen stappen door hooguit <b>één</b> actiekaart mag spelen of afleggen. Een actiekaart krijg je door een opdracht te voltooien, of door tijdens je beurt over het actiekaartvakje van een gang te lopen (je zet stopt daar niet voor, en hooguit 1 kaart per beurt op die manier); je houdt er hoogstens drie op hand.</p>
+        <p class="hint" id="walkSoloHint">Jij bestuurt één speler, de rest speelt zichzelf. <b>Volgorde van een beurt:</b> 1. energie-actie kiezen en meteen inzetten — óók Noodrantsoen of Stuwlading spelen kan al op dit moment — 2. dobbelen (2 loopstenen + de energiesteen) — 3. stappen zetten, waarbij je vóór de eerste stap of tussen stappen door hooguit <b>één</b> actiekaart mag spelen of afleggen (als je er nog geen gebruikt hebt). Een actiekaart krijg je door een opdracht te voltooien, of door tijdens je beurt over het actiekaartvakje van een gang te lopen (je zet stopt daar niet voor, en hooguit 1 kaart per beurt op die manier); je houdt er hoogstens drie op hand.</p>
         <div id="walkSoloSetupPlayers" class="walk-solo-setup"></div>
         <div class="walk-controls" id="walkSoloStartRow" hidden>
           <div class="btn-row">
@@ -1797,6 +1908,13 @@
           </div>
         </div>
         <div class="walk-play-layout">
+          <!-- standenrij: volle breedte boven bord + zijkolom samen, met bewezen vaste hoogte
+               (zie #walkScore/.walk-player in styles.css) zodat hij het bord nooit kan raken. -->
+          <div class="walk-players-row">
+            <div class="walk-score" id="walkScore"></div>
+          </div>
+
+          <div class="walk-board-row">
           <div class="walk-board-col">
             <div class="board-zoom-wrap">
               <div class="board-tools">
@@ -1819,12 +1937,12 @@
             <div id="walkLog" class="walk-log"></div>
           </div>
 
-          <div class="walk-standings-col">
-            <div class="walk-score" id="walkScore"></div>
-          </div>
-
-          <div class="walk-side-col">
-            <div class="walk-hud">
+          <!-- één kolom, 4 vaste vakken (Dobbelstenen / Energieactie / Actiekaarten /
+               Spelerstatus) met "of" ertussen — samen nooit hoger dan het bord (styles.css).
+               --pc wordt hier één keer per beurt gezet (zie soloBeginHumanTurn in 97-solo.js)
+               zodat alle puls-animaties eronder de kleur van wie aan zet is overnemen. -->
+          <div class="walk-side-stack" id="walkSideStack">
+            <div class="walk-panel-box walk-hud">
               <div class="walk-dice" id="walkDice"></div>
               <div class="walk-step-counter">
                 <div class="walk-step-box"><span class="walk-step-num" id="walkStepDone">0</span><span class="walk-step-lbl">gezet</span></div>
@@ -1838,27 +1956,35 @@
               <!-- alleen zichtbaar tijdens een lopend multiplayer-potje (zie mpEnterPlayView/
                    mpExitPlayView in 99-multiplayer.js) — staat BUITEN walkSoloActions, dat elke
                    broadcast wordt overschreven, en dus ook buiten je eigen beurt bereikbaar is. -->
-              <div class="btn-row">
+              <div class="btn-row walk-mp-leave-row">
                 <button type="button" id="btnMpLeaveGame" class="small ghost" hidden>Verlaat potje</button>
               </div>
             </div>
 
-            <!-- duidelijk, op zichzelf staand overzicht van je energie t.o.v. het plafond;
-                 zichtbaar zodra een solo-potje loopt (net als walkSoloPanel hieronder, zie
-                 startSoloGame()/stopSoloGame() in 97-solo.js). -->
-            <div class="walk-energy-overview" id="walkEnergyOverview" hidden>
-              <span class="walk-energy-label">Energie</span>
-              <span class="walk-energy-value"><b id="walkEnergyValue">0</b> / 10</span>
-              <div class="walk-energy-bar"><div class="walk-energy-bar-fill" id="walkEnergyBarFill"></div></div>
-            </div>
+            <!-- "of": je kunt dobbelen, óf eerst een energie-actie inzetten. Zichtbaar zolang de
+                 solo-UI actief is (zelfde hidden-toggle als walkSoloPanel hieronder). -->
+            <p class="walk-or-sep" id="walkOrSep1" hidden>of</p>
 
-            <div class="walk-solo-panel" id="walkSoloPanel" hidden>
+            <div class="walk-panel-box walk-solo-panel" id="walkSoloPanel" hidden>
+              <!-- duidelijk, op zichzelf staand overzicht van je energie t.o.v. het plafond;
+                   bovenin de Energieactie-kolom, want die energie bepaalt wat je hier kan doen. -->
+              <div class="walk-energy-overview" id="walkEnergyOverview" hidden>
+                <span class="walk-energy-label">Energie</span>
+                <span class="walk-energy-value"><b id="walkEnergyValue">0</b> / 10</span>
+                <div class="walk-energy-bar"><div class="walk-energy-bar-fill" id="walkEnergyBarFill"></div></div>
+              </div>
               <div class="walk-solo-actions" id="walkSoloActions"></div>
             </div>
 
+            <!-- "of": een actiekaart spelen kan ook, maar alleen als Noodrantsoen of Stuwlading
+                 nú (vóór het dobbelen) in je hand zit en speelbaar is — zie soloOrSep2Visible in
+                 97-solo.js. Buiten dat moment blijft dit verborgen: kaarten spelen tijdens het
+                 lopen is geen alternatief vóór het dobbelen, dus geen "of" op dat moment. -->
+            <p class="walk-or-sep" id="walkOrSep2" hidden>of</p>
+
             <!-- kaartkluis: alleen zichtbaar zodra je daadwerkelijk een actiekaart in handen
                  hebt. Klikken opent het kaartvenster. -->
-            <button type="button" class="walk-card-vault" id="walkCardVault" hidden>
+            <button type="button" class="walk-panel-box walk-card-vault" id="walkCardVault" hidden>
               <span class="walk-card-vault-thumbs" id="walkCardVaultThumbs"></span>
               <span class="walk-card-vault-text">
                 <b id="walkCardVaultCount">Actiekaarten</b>
@@ -1866,9 +1992,16 @@
               </span>
             </button>
 
-            <div class="walk-info-panel">
+            <div class="walk-panel-box walk-info-panel">
+              <!-- 3 kleine tegels: voltooide opdrachten, beurtnummer, live positie in het potje.
+                   Blijft leeg (en dus onzichtbaar, zie styles.css) tijdens Automatisch-modus. -->
+              <div class="walk-stat-tiles" id="walkStatTiles"></div>
+
+              <div class="walk-goal-line" id="walkGoalLine"></div>
+
               <!-- de opdrachtkaart die op dit moment het doel is; leeg zolang er geen potje loopt.
-                   Klikbaar: vergroot 'm via dezelfde openCardsZoom() als het tabblad "Speelkaarten". -->
+                   Vergroot bij hover; klik opent 'm nog groter via dezelfde openCardsZoom() als
+                   het tabblad "Speelkaarten". -->
               <div class="walk-quest-card" id="walkQuestCard"></div>
 
               <div class="walk-meta" id="walkMeta"></div>
@@ -1890,6 +2023,8 @@
               </form>
               <p class="hint">Typ alleen een cijfer (bv. <b>7</b>) voor een taunt.</p>
             </div>
+          </div>
+          </div>
           </div>
         </div>
       </div>
@@ -6461,11 +6596,17 @@ function refreshWalkStartOptions(){
   walkStartSel.value = SIM_START_LABELS.includes(prev) || prev === '?' ? prev : '?';
 }
 
+// sorteervolgorde voor een standenlijst: eerst wie al binnen is (op volgorde van binnenkomst,
+// p.rank), daarna de rest op aantal voltooide opdrachten — gedeeld tussen de eindklassering
+// hieronder en een eventuele LIVE rang tijdens het spelen (zie soloLiveRank in 97-solo.js;
+// die slaat het resultaat expliciet NIET op in p.rank, dat veld is voor de eindstand).
+function walkOrderPlayers(players){
+  return players.slice().sort((a, b) => (a.rank || 99) - (b.rank || 99) || b.completed - a.completed);
+}
 // eindklassering: eerst wie binnen is op volgorde van binnenkomst, daarna de rest op
 // aantal voltooide opdrachten
 function walkStandings(players){
-  return players.slice()
-    .sort((a, b) => (a.rank || 99) - (b.rank || 99) || b.completed - a.completed)
+  return walkOrderPlayers(players)
     .map(p => {
       const place = p.rank ? `${walkRankLabel(p.rank)} ` : '';
       return `<span class="walk-standing" style="--pc:${p.color}"><i class="walk-log-dot" style="--pc:${p.color}"></i>${place}${p.name} ${p.completed}/${SIM_QUESTS_TO_WIN}</span>`;
@@ -7027,6 +7168,12 @@ syncWalkStartEnabled();
 const WALK_SOLO_NO_OPPONENT_CARDS = ['short', 'blind', 'shove', 'scan',
   'lockdown', 'outage', 'barrier', 'recoil', 'jam'];
 
+// Noodrantsoen (+3 energie) en Stuwlading (gratis 3e loopsteen) zijn de enige twee kaarten die
+// je OOK al vóór het dobbelen mag spelen, naast hun bestaande moment tijdens het lopen — net
+// als een energie-actie (gebruikerswens). Alle andere kaarten blijven alleen tijdens 'moving'
+// speelbaar; zie soloCardBlockReason/soloPlayCard hieronder.
+const SOLO_PRE_ROLL_CARDS = ['ration', 'boostcell'];
+
 const walkModeAutoBtn = document.getElementById('walkModeAuto');
 const walkModeSoloBtn = document.getElementById('walkModeSolo');
 const walkAutoControlsEl = document.getElementById('walkAutoControls');
@@ -7059,6 +7206,11 @@ const btnCardDiscard = document.getElementById('btnCardDiscard');
 const btnCardCancel = document.getElementById('btnCardCancel');
 const walkStepDoneEl = document.getElementById('walkStepDone');
 const walkStepLeftEl = document.getElementById('walkStepLeft');
+const walkSideStackEl = document.getElementById('walkSideStack');
+const walkOrSep1El = document.getElementById('walkOrSep1');
+const walkOrSep2El = document.getElementById('walkOrSep2');
+const walkStatTilesEl = document.getElementById('walkStatTiles');
+const walkGoalLineEl = document.getElementById('walkGoalLine');
 
 let soloGraph = null;
 let soloDeck = null;         // gedeelde actiekaart-stapel voor dit potje
@@ -7306,6 +7458,30 @@ function soloLegalNextCells(graph, pos, lastDir, occupied){
 function renderSoloMeta(stepsLeft){
   renderWalkMeta({ player: solo(), turn: soloTurn, stepsLeft });
   soloRenderEnergyOverview();
+  soloRenderStatusExtras();
+}
+// live tussenstand tijdens het spelen — NIET hetzelfde als p.rank (dat is de echte, definitieve
+// eindstand die pas gezet wordt zodra iemand binnen is, zie stopSoloGame-omgeving verderop).
+// Hergebruikt walkOrderPlayers() (96-walk.js), dezelfde sortering als de eindklassering.
+function soloLiveRank(){
+  const p = solo();
+  if (!p) return null;
+  return walkOrderPlayers(soloPlayers).findIndex(q => q.idx === p.idx) + 1;
+}
+// 3 kleine tegels + de "Ga naar"-regel bovenin het Spelerstatus-vakje. Hangt aan renderSoloMeta
+// zodat hij overal meeloopt waar de rest van je beurtinfo ook al opnieuw getekend wordt.
+function soloRenderStatusExtras(){
+  const p = solo();
+  if (!p || !walkStatTilesEl){ if (walkStatTilesEl) walkStatTilesEl.innerHTML = ''; if (walkGoalLineEl) walkGoalLineEl.innerHTML = ''; return; }
+  const rank = soloLiveRank();
+  walkStatTilesEl.innerHTML =
+    `<div class="walk-stat-tile"><span class="walk-stat-tile-num">${p.completed}/${SIM_QUESTS_TO_WIN}</span><span class="walk-stat-tile-lbl">voltooid</span></div>` +
+    `<div class="walk-stat-tile"><span class="walk-stat-tile-num">${soloTurn}</span><span class="walk-stat-tile-lbl">beurt</span></div>` +
+    `<div class="walk-stat-tile"><span class="walk-stat-tile-num">${walkRankLabel(rank)}</span><span class="walk-stat-tile-lbl">positie</span></div>`;
+  if (walkGoalLineEl){
+    const label = p.deck[p.nextIdx];
+    walkGoalLineEl.innerHTML = p.rank ? '' : `Ga naar: <b>${QUEST_NAMES[label] || label}</b>`;
+  }
 }
 // Los, duidelijk overzicht van je energie t.o.v. het plafond (ENERGY_MAX) — het kleine
 // ⚡-badge in de spelersrij (walkScoreActive) verdwijnt daar te makkelijk tussen de rest.
@@ -7345,21 +7521,38 @@ function renderEnergySoloButton(id, disabled, reason){
   </button>`;
 }
 // De 'choose-action'-fase toont ALLEEN de energie-acties — die moet je immers vóór het dobbelen
-// inzetten. Kaarten spelen/afleggen (inclusief Zwaartekracht-laarzen en Stuwlading) kan pas ná
-// het dobbelen, vóór of tijdens het stappen zetten (via het kaartvenster, zie hieronder).
+// inzetten. De meeste kaarten spelen/afleggen kan pas ná het dobbelen, vóór of tijdens het
+// stappen zetten (via het kaartvenster, zie hieronder) — behalve Noodrantsoen/Stuwlading, die
+// mogen ook al hier (zie SOLO_PRE_ROLL_CARDS/soloCardBlockReason), maar die tonen we via de
+// kaartkluis (#walkCardVault) net als anders, niet in dit energiepaneel.
 function soloRenderActionPanel(){
   if (!walkSoloActionsEl) return;
   const p = solo();
+  // Stuwlading (kaart) kan nu ook al vóór het dobbelen gespeeld zijn — sluit Stuwstoot dan uit,
+  // spiegel van de check aan de kaart-kant in soloCardBlockReason (allebei een gratis 3e steen).
+  const boostcellUsed = soloUsedCardId === 'boostcell';
   const energyBtns = ['boost', 'reorder', 'jump'].map(id =>
-    renderEnergySoloButton(id, p.energy < ENERGY_ACTIONS[id].cost)
+    renderEnergySoloButton(id, p.energy < ENERGY_ACTIONS[id].cost || (id === 'boost' && boostcellUsed),
+      id === 'boost' && boostcellUsed ? 'je hebt deze beurt al Stuwlading gespeeld' : undefined)
   ).join('');
   // Kun je er geen enkele betalen, zeg dat dan met zoveel woorden — drie uitgegrijsde rijen
   // zien er anders uit alsof het paneel stuk is.
-  const allLocked = ['boost', 'reorder', 'jump'].every(id => p.energy < ENERGY_ACTIONS[id].cost);
+  const allLocked = ['boost', 'reorder', 'jump'].every(id => p.energy < ENERGY_ACTIONS[id].cost || (id === 'boost' && boostcellUsed));
   const note = allLocked
     ? `<p class="hint energy-pick-none">Je hebt <b>${p.energy}</b> energie — te weinig voor een actie. Gooi gewoon; je energiesteen vult je voorraad weer aan.</p>`
     : '';
   walkSoloActionsEl.innerHTML = `<div class="energy-pick-list">${energyBtns}</div>${note}`;
+  // puls op de hele Energieactie-kolom zodra er nu écht iets te kiezen valt
+  const anyAffordable = !soloEnergyActionUsed() && ['boost', 'reorder', 'jump'].some(id =>
+    p.energy >= ENERGY_ACTIONS[id].cost && !(id === 'boost' && boostcellUsed));
+  if (walkSoloPanelEl) walkSoloPanelEl.classList.toggle('walk-pulse-affordable', anyAffordable);
+  // 2e "of": alleen zichtbaar zolang je vóór het dobbelen zit én Noodrantsoen/Stuwlading nu
+  // speelbaar is (dezelfde bron als de kaartkluis-puls, maar dan specifiek voor dit moment)
+  if (walkOrSep2El){
+    const preRollPlayable = soloPhase === 'choose-action' &&
+      p.cards.some(id => SOLO_PRE_ROLL_CARDS.includes(id) && !soloCardBlockReason(id));
+    walkOrSep2El.hidden = !preRollPlayable;
+  }
 }
 if (walkSoloActionsEl){
   walkSoloActionsEl.addEventListener('click', (e) => {
@@ -7411,7 +7604,10 @@ function soloDiscardCard(id){
 function soloCardBlockReason(id){
   const p = solo();
   if (!p) return 'geen actieve speler';
-  if (soloPhase !== 'moving') return 'kan pas nadat je hebt gedobbeld';
+  // Noodrantsoen/Stuwlading mogen ook al vóór het dobbelen (choose-action) — net als een
+  // energie-actie. Alle andere kaarten blijven alleen tijdens het lopen speelbaar.
+  const preRollOk = soloPhase === 'choose-action' && SOLO_PRE_ROLL_CARDS.includes(id);
+  if (soloPhase !== 'moving' && !preRollOk) return 'kan pas nadat je hebt gedobbeld';
   if (soloCardActionUsed()) return 'je hebt deze beurt al een kaart gebruikt';
   // Blinde Vlek is puur reactief: die krijg je vanzelf aangeboden op het moment dat je zet
   // daadwerkelijk op een tegenstander stukloopt (zie soloOfferBlindSpot)
@@ -7468,6 +7664,7 @@ function soloRefreshCardVault(){
   walkCardVaultHintEl.textContent = playable
     ? `${playable} speelbaar — klik om te bekijken →`
     : 'geen speelbaar op dit moment — klik om te bekijken →';
+  walkCardVaultEl.classList.toggle('walk-pulse-affordable', playable > 0);
   if (cardOverlayEl && !cardOverlayEl.hidden) soloRenderCardGrid();
 }
 
@@ -7515,9 +7712,13 @@ function soloRenderCardGrid(){
   btnCardPlay.disabled = !!blocked;
   btnCardDiscard.disabled = !soloSelectedCard || !soloCanDiscardNow();
   cardPanelHintEl.textContent =
-    soloPhase !== 'moving' ? 'Je kunt pas een kaart spelen of afleggen nadat je hebt gedobbeld.'
-    : soloCardActionUsed() ? 'Je hebt deze beurt al een kaart gebruikt.'
-    : 'Kies één kaart. Per beurt mag je er hooguit één spelen of afleggen.';
+    soloPhase === 'moving' ? (soloCardActionUsed()
+      ? 'Je hebt deze beurt al een kaart gebruikt.'
+      : 'Kies één kaart. Per beurt mag je er hooguit één spelen of afleggen.')
+    : soloPhase === 'choose-action' ? (soloCardActionUsed()
+      ? 'Je hebt deze beurt al een kaart gebruikt.'
+      : 'Vóór het dobbelen kun je alleen Noodrantsoen of Stuwlading spelen — de rest kan pas nadat je hebt gedobbeld. Afleggen kan ook nog niet.')
+    : 'Je kunt pas een kaart spelen of afleggen nadat je hebt gedobbeld.';
 }
 if (cardGridEl){
   cardGridEl.addEventListener('click', (e) => {
@@ -7708,9 +7909,35 @@ function soloResolveTargetCard(cardId, targetIdx){
   }
 }
 
-// Wordt alleen aangeroepen tijdens het lopen (ná de worp), vanuit het kaartvenster.
+// Meestal aangeroepen tijdens het lopen (ná de worp), vanuit het kaartvenster — behalve
+// Noodrantsoen/Stuwlading, die mogen ook al vóór het dobbelen (zie SOLO_PRE_ROLL_CARDS), en
+// worden dan hieronder als allereerste apart afgehandeld.
 function soloPlayCard(id){
   if (mpIntercept('playCard', { id })) return;
+  const p0 = solo();
+  if (soloPhase === 'choose-action' && SOLO_PRE_ROLL_CARDS.includes(id)){
+    // Geen soloAfterCardAction() hier — die roept soloAdvanceMovePhase() aan, wat een lopende
+    // worp veronderstelt die er in choose-action nog niet is. Effect toepassen, kaart
+    // verbruiken, en gewoon in choose-action blijven: je kunt hierna nog een energie-actie
+    // kiezen (apart budget) en moet zelf op dobbelen klikken om verder te gaan.
+    if (id === 'ration'){
+      simGainEnergy(p0, 3);
+      useActionCard(p0, 'ration', soloDeck);
+      soloUsedCardId = 'ration';
+      walkLog(`Je speelt <b>Noodrantsoen</b> vóór het dobbelen: +3 energie → ${p0.energy}.`, null, p0);
+    } else if (id === 'boostcell'){
+      // Zelfde mechanisme als de energie-actie Stuwstoot (soloUseEnergyAction('boost')): een
+      // 3e loopsteen bij de eerstvolgende worp — soloRollDice() rolt 'm al zodra dit aan staat.
+      soloPendingBoost = true;
+      useActionCard(p0, 'boostcell', soloDeck);
+      soloUsedCardId = 'boostcell';
+      walkLog(`Je speelt <b>Stuwlading</b> vóór het dobbelen: gratis derde loopsteen bij deze worp.`, null, p0);
+    }
+    soloRenderActionPanel();
+    soloRefreshCardVault();
+    renderWalkScore(soloPlayers, soloActiveIdx);
+    return;
+  }
   if (id === 'boots'){ soloEnterBootsDirection(); return; }
   if (SOLO_TARGET_PICKER_LABELS[id]){ soloEnterTargetPicker(id); return; }
   const p = solo();
@@ -7958,8 +8185,10 @@ function renderSoloDicePending(){
   const energyHtml = e === null
     ? energyDieHtml(null, false) + `<span class="walk-die-sum energy">energie bij het gooien</span>`
     : energyDieHtml(e, false) + `<span class="walk-die-sum energy">+${e} energie</span>`;
+  // walk-die-pending: langzame op-en-neer-animatie zolang je nog niet hebt gedobbeld
+  // (gebruikersverzoek) — verdwijnt vanzelf zodra renderWalkDice() straks de echte worp tekent.
   walkDiceEl.innerHTML =
-    `<span class="walk-dice-row"><span class="walk-die">?</span><span class="walk-die">?</span></span>` +
+    `<span class="walk-dice-row"><span class="walk-die walk-die-pending">?</span><span class="walk-die walk-die-pending">?</span></span>` +
     `<span class="walk-dice-row">${energyHtml}</span>`;
 }
 // `soloCurrentLegalMoves` voedt niet alleen deze teller maar ook de pijltjestoetsen
@@ -8317,6 +8546,10 @@ function soloBeginHumanTurn(pIdx){
   soloMove = null;
 
   const p = solo();
+  // --pc één keer per beurt op de hele zijkolom, zodat alle puls-animaties eronder (dobbelknop,
+  // Energieactie-/Actiekaarten-vakken) automatisch de kleur van wie aan zet is overnemen —
+  // custom properties erven door naar alle kinderen, dus geen losse setProperty per knop nodig.
+  if (walkSideStackEl) walkSideStackEl.style.setProperty('--pc', p.color);
   // Energie wordt nu pas gegooid zodra je zelf beweegt (dobbelen, Zwaartekracht-laarzen of
   // Noodtransport) -- niet meer automatisch bij het begin van de beurt (gebruikersverzoek: "de
   // energie komt er pas bij vanaf de eerste keer dat ze dobbelen"). `null` betekent "nog niet
@@ -8667,6 +8900,15 @@ function stopSoloGame(){
   if (walkScoreActiveEl) walkScoreActiveEl.innerHTML = '';
   if (walkSoloPanelEl) walkSoloPanelEl.hidden = true;
   if (walkEnergyOverviewEl) walkEnergyOverviewEl.hidden = true;
+  if (walkOrSep1El) walkOrSep1El.hidden = true;
+  if (walkOrSep2El) walkOrSep2El.hidden = true;
+  // opzet-UI komt terug in beeld (zie startSoloGame hieronder, die 'm juist wegstopt zodra er
+  // een potje loopt) — scheelt flink wat hoogte boven het bord tijdens het spelen zelf
+  // (gebruikerseis: alles moet in 1 pagina passen).
+  if (walkSoloControlsEl) walkSoloControlsEl.hidden = false;
+  if (walkSoloHintEl) walkSoloHintEl.hidden = false;
+  if (walkStatTilesEl) walkStatTilesEl.innerHTML = '';
+  if (walkGoalLineEl) walkGoalLineEl.innerHTML = '';
   if (walkSoloActionsEl) walkSoloActionsEl.innerHTML = '';
   if (btnWalkSoloRoll) btnWalkSoloRoll.hidden = true;
   if (btnWalkSoloSkip) btnWalkSoloSkip.hidden = true;
@@ -8682,6 +8924,12 @@ function startSoloGame(){
   walkStatusEl.innerHTML = '';
   if (walkSoloPanelEl) walkSoloPanelEl.hidden = false;
   if (walkEnergyOverviewEl) walkEnergyOverviewEl.hidden = false;
+  if (walkOrSep1El) walkOrSep1El.hidden = false;
+  // opzet-UI (spelers-/bot-aantal, de lange regelparagraaf) heeft tijdens het spelen zelf geen
+  // functie meer en kost boven het bord veel hoogte — weg ermee zodra het potje loopt, zodat
+  // bord + zijkolom weer een kans hebben om zonder scrollen op het scherm te passen.
+  if (walkSoloControlsEl) walkSoloControlsEl.hidden = true;
+  if (walkSoloHintEl) walkSoloHintEl.hidden = true;
 
   const reach = analyseCellReachability();
   if (reach.unreachable.length > 0){

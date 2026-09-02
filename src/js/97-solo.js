@@ -14,6 +14,12 @@
 const WALK_SOLO_NO_OPPONENT_CARDS = ['short', 'blind', 'shove', 'scan',
   'lockdown', 'outage', 'barrier', 'recoil', 'jam'];
 
+// Noodrantsoen (+3 energie) en Stuwlading (gratis 3e loopsteen) zijn de enige twee kaarten die
+// je OOK al vóór het dobbelen mag spelen, naast hun bestaande moment tijdens het lopen — net
+// als een energie-actie (gebruikerswens). Alle andere kaarten blijven alleen tijdens 'moving'
+// speelbaar; zie soloCardBlockReason/soloPlayCard hieronder.
+const SOLO_PRE_ROLL_CARDS = ['ration', 'boostcell'];
+
 const walkModeAutoBtn = document.getElementById('walkModeAuto');
 const walkModeSoloBtn = document.getElementById('walkModeSolo');
 const walkAutoControlsEl = document.getElementById('walkAutoControls');
@@ -46,6 +52,11 @@ const btnCardDiscard = document.getElementById('btnCardDiscard');
 const btnCardCancel = document.getElementById('btnCardCancel');
 const walkStepDoneEl = document.getElementById('walkStepDone');
 const walkStepLeftEl = document.getElementById('walkStepLeft');
+const walkSideStackEl = document.getElementById('walkSideStack');
+const walkOrSep1El = document.getElementById('walkOrSep1');
+const walkOrSep2El = document.getElementById('walkOrSep2');
+const walkStatTilesEl = document.getElementById('walkStatTiles');
+const walkGoalLineEl = document.getElementById('walkGoalLine');
 
 let soloGraph = null;
 let soloDeck = null;         // gedeelde actiekaart-stapel voor dit potje
@@ -293,6 +304,30 @@ function soloLegalNextCells(graph, pos, lastDir, occupied){
 function renderSoloMeta(stepsLeft){
   renderWalkMeta({ player: solo(), turn: soloTurn, stepsLeft });
   soloRenderEnergyOverview();
+  soloRenderStatusExtras();
+}
+// live tussenstand tijdens het spelen — NIET hetzelfde als p.rank (dat is de echte, definitieve
+// eindstand die pas gezet wordt zodra iemand binnen is, zie stopSoloGame-omgeving verderop).
+// Hergebruikt walkOrderPlayers() (96-walk.js), dezelfde sortering als de eindklassering.
+function soloLiveRank(){
+  const p = solo();
+  if (!p) return null;
+  return walkOrderPlayers(soloPlayers).findIndex(q => q.idx === p.idx) + 1;
+}
+// 3 kleine tegels + de "Ga naar"-regel bovenin het Spelerstatus-vakje. Hangt aan renderSoloMeta
+// zodat hij overal meeloopt waar de rest van je beurtinfo ook al opnieuw getekend wordt.
+function soloRenderStatusExtras(){
+  const p = solo();
+  if (!p || !walkStatTilesEl){ if (walkStatTilesEl) walkStatTilesEl.innerHTML = ''; if (walkGoalLineEl) walkGoalLineEl.innerHTML = ''; return; }
+  const rank = soloLiveRank();
+  walkStatTilesEl.innerHTML =
+    `<div class="walk-stat-tile"><span class="walk-stat-tile-num">${p.completed}/${SIM_QUESTS_TO_WIN}</span><span class="walk-stat-tile-lbl">voltooid</span></div>` +
+    `<div class="walk-stat-tile"><span class="walk-stat-tile-num">${soloTurn}</span><span class="walk-stat-tile-lbl">beurt</span></div>` +
+    `<div class="walk-stat-tile"><span class="walk-stat-tile-num">${walkRankLabel(rank)}</span><span class="walk-stat-tile-lbl">positie</span></div>`;
+  if (walkGoalLineEl){
+    const label = p.deck[p.nextIdx];
+    walkGoalLineEl.innerHTML = p.rank ? '' : `Ga naar: <b>${QUEST_NAMES[label] || label}</b>`;
+  }
 }
 // Los, duidelijk overzicht van je energie t.o.v. het plafond (ENERGY_MAX) — het kleine
 // ⚡-badge in de spelersrij (walkScoreActive) verdwijnt daar te makkelijk tussen de rest.
@@ -332,21 +367,38 @@ function renderEnergySoloButton(id, disabled, reason){
   </button>`;
 }
 // De 'choose-action'-fase toont ALLEEN de energie-acties — die moet je immers vóór het dobbelen
-// inzetten. Kaarten spelen/afleggen (inclusief Zwaartekracht-laarzen en Stuwlading) kan pas ná
-// het dobbelen, vóór of tijdens het stappen zetten (via het kaartvenster, zie hieronder).
+// inzetten. De meeste kaarten spelen/afleggen kan pas ná het dobbelen, vóór of tijdens het
+// stappen zetten (via het kaartvenster, zie hieronder) — behalve Noodrantsoen/Stuwlading, die
+// mogen ook al hier (zie SOLO_PRE_ROLL_CARDS/soloCardBlockReason), maar die tonen we via de
+// kaartkluis (#walkCardVault) net als anders, niet in dit energiepaneel.
 function soloRenderActionPanel(){
   if (!walkSoloActionsEl) return;
   const p = solo();
+  // Stuwlading (kaart) kan nu ook al vóór het dobbelen gespeeld zijn — sluit Stuwstoot dan uit,
+  // spiegel van de check aan de kaart-kant in soloCardBlockReason (allebei een gratis 3e steen).
+  const boostcellUsed = soloUsedCardId === 'boostcell';
   const energyBtns = ['boost', 'reorder', 'jump'].map(id =>
-    renderEnergySoloButton(id, p.energy < ENERGY_ACTIONS[id].cost)
+    renderEnergySoloButton(id, p.energy < ENERGY_ACTIONS[id].cost || (id === 'boost' && boostcellUsed),
+      id === 'boost' && boostcellUsed ? 'je hebt deze beurt al Stuwlading gespeeld' : undefined)
   ).join('');
   // Kun je er geen enkele betalen, zeg dat dan met zoveel woorden — drie uitgegrijsde rijen
   // zien er anders uit alsof het paneel stuk is.
-  const allLocked = ['boost', 'reorder', 'jump'].every(id => p.energy < ENERGY_ACTIONS[id].cost);
+  const allLocked = ['boost', 'reorder', 'jump'].every(id => p.energy < ENERGY_ACTIONS[id].cost || (id === 'boost' && boostcellUsed));
   const note = allLocked
     ? `<p class="hint energy-pick-none">Je hebt <b>${p.energy}</b> energie — te weinig voor een actie. Gooi gewoon; je energiesteen vult je voorraad weer aan.</p>`
     : '';
   walkSoloActionsEl.innerHTML = `<div class="energy-pick-list">${energyBtns}</div>${note}`;
+  // puls op de hele Energieactie-kolom zodra er nu écht iets te kiezen valt
+  const anyAffordable = !soloEnergyActionUsed() && ['boost', 'reorder', 'jump'].some(id =>
+    p.energy >= ENERGY_ACTIONS[id].cost && !(id === 'boost' && boostcellUsed));
+  if (walkSoloPanelEl) walkSoloPanelEl.classList.toggle('walk-pulse-affordable', anyAffordable);
+  // 2e "of": alleen zichtbaar zolang je vóór het dobbelen zit én Noodrantsoen/Stuwlading nu
+  // speelbaar is (dezelfde bron als de kaartkluis-puls, maar dan specifiek voor dit moment)
+  if (walkOrSep2El){
+    const preRollPlayable = soloPhase === 'choose-action' &&
+      p.cards.some(id => SOLO_PRE_ROLL_CARDS.includes(id) && !soloCardBlockReason(id));
+    walkOrSep2El.hidden = !preRollPlayable;
+  }
 }
 if (walkSoloActionsEl){
   walkSoloActionsEl.addEventListener('click', (e) => {
@@ -398,7 +450,10 @@ function soloDiscardCard(id){
 function soloCardBlockReason(id){
   const p = solo();
   if (!p) return 'geen actieve speler';
-  if (soloPhase !== 'moving') return 'kan pas nadat je hebt gedobbeld';
+  // Noodrantsoen/Stuwlading mogen ook al vóór het dobbelen (choose-action) — net als een
+  // energie-actie. Alle andere kaarten blijven alleen tijdens het lopen speelbaar.
+  const preRollOk = soloPhase === 'choose-action' && SOLO_PRE_ROLL_CARDS.includes(id);
+  if (soloPhase !== 'moving' && !preRollOk) return 'kan pas nadat je hebt gedobbeld';
   if (soloCardActionUsed()) return 'je hebt deze beurt al een kaart gebruikt';
   // Blinde Vlek is puur reactief: die krijg je vanzelf aangeboden op het moment dat je zet
   // daadwerkelijk op een tegenstander stukloopt (zie soloOfferBlindSpot)
@@ -455,6 +510,7 @@ function soloRefreshCardVault(){
   walkCardVaultHintEl.textContent = playable
     ? `${playable} speelbaar — klik om te bekijken →`
     : 'geen speelbaar op dit moment — klik om te bekijken →';
+  walkCardVaultEl.classList.toggle('walk-pulse-affordable', playable > 0);
   if (cardOverlayEl && !cardOverlayEl.hidden) soloRenderCardGrid();
 }
 
@@ -502,9 +558,13 @@ function soloRenderCardGrid(){
   btnCardPlay.disabled = !!blocked;
   btnCardDiscard.disabled = !soloSelectedCard || !soloCanDiscardNow();
   cardPanelHintEl.textContent =
-    soloPhase !== 'moving' ? 'Je kunt pas een kaart spelen of afleggen nadat je hebt gedobbeld.'
-    : soloCardActionUsed() ? 'Je hebt deze beurt al een kaart gebruikt.'
-    : 'Kies één kaart. Per beurt mag je er hooguit één spelen of afleggen.';
+    soloPhase === 'moving' ? (soloCardActionUsed()
+      ? 'Je hebt deze beurt al een kaart gebruikt.'
+      : 'Kies één kaart. Per beurt mag je er hooguit één spelen of afleggen.')
+    : soloPhase === 'choose-action' ? (soloCardActionUsed()
+      ? 'Je hebt deze beurt al een kaart gebruikt.'
+      : 'Vóór het dobbelen kun je alleen Noodrantsoen of Stuwlading spelen — de rest kan pas nadat je hebt gedobbeld. Afleggen kan ook nog niet.')
+    : 'Je kunt pas een kaart spelen of afleggen nadat je hebt gedobbeld.';
 }
 if (cardGridEl){
   cardGridEl.addEventListener('click', (e) => {
@@ -695,9 +755,35 @@ function soloResolveTargetCard(cardId, targetIdx){
   }
 }
 
-// Wordt alleen aangeroepen tijdens het lopen (ná de worp), vanuit het kaartvenster.
+// Meestal aangeroepen tijdens het lopen (ná de worp), vanuit het kaartvenster — behalve
+// Noodrantsoen/Stuwlading, die mogen ook al vóór het dobbelen (zie SOLO_PRE_ROLL_CARDS), en
+// worden dan hieronder als allereerste apart afgehandeld.
 function soloPlayCard(id){
   if (mpIntercept('playCard', { id })) return;
+  const p0 = solo();
+  if (soloPhase === 'choose-action' && SOLO_PRE_ROLL_CARDS.includes(id)){
+    // Geen soloAfterCardAction() hier — die roept soloAdvanceMovePhase() aan, wat een lopende
+    // worp veronderstelt die er in choose-action nog niet is. Effect toepassen, kaart
+    // verbruiken, en gewoon in choose-action blijven: je kunt hierna nog een energie-actie
+    // kiezen (apart budget) en moet zelf op dobbelen klikken om verder te gaan.
+    if (id === 'ration'){
+      simGainEnergy(p0, 3);
+      useActionCard(p0, 'ration', soloDeck);
+      soloUsedCardId = 'ration';
+      walkLog(`Je speelt <b>Noodrantsoen</b> vóór het dobbelen: +3 energie → ${p0.energy}.`, null, p0);
+    } else if (id === 'boostcell'){
+      // Zelfde mechanisme als de energie-actie Stuwstoot (soloUseEnergyAction('boost')): een
+      // 3e loopsteen bij de eerstvolgende worp — soloRollDice() rolt 'm al zodra dit aan staat.
+      soloPendingBoost = true;
+      useActionCard(p0, 'boostcell', soloDeck);
+      soloUsedCardId = 'boostcell';
+      walkLog(`Je speelt <b>Stuwlading</b> vóór het dobbelen: gratis derde loopsteen bij deze worp.`, null, p0);
+    }
+    soloRenderActionPanel();
+    soloRefreshCardVault();
+    renderWalkScore(soloPlayers, soloActiveIdx);
+    return;
+  }
   if (id === 'boots'){ soloEnterBootsDirection(); return; }
   if (SOLO_TARGET_PICKER_LABELS[id]){ soloEnterTargetPicker(id); return; }
   const p = solo();
@@ -945,8 +1031,10 @@ function renderSoloDicePending(){
   const energyHtml = e === null
     ? energyDieHtml(null, false) + `<span class="walk-die-sum energy">energie bij het gooien</span>`
     : energyDieHtml(e, false) + `<span class="walk-die-sum energy">+${e} energie</span>`;
+  // walk-die-pending: langzame op-en-neer-animatie zolang je nog niet hebt gedobbeld
+  // (gebruikersverzoek) — verdwijnt vanzelf zodra renderWalkDice() straks de echte worp tekent.
   walkDiceEl.innerHTML =
-    `<span class="walk-dice-row"><span class="walk-die">?</span><span class="walk-die">?</span></span>` +
+    `<span class="walk-dice-row"><span class="walk-die walk-die-pending">?</span><span class="walk-die walk-die-pending">?</span></span>` +
     `<span class="walk-dice-row">${energyHtml}</span>`;
 }
 // `soloCurrentLegalMoves` voedt niet alleen deze teller maar ook de pijltjestoetsen
@@ -1304,6 +1392,10 @@ function soloBeginHumanTurn(pIdx){
   soloMove = null;
 
   const p = solo();
+  // --pc één keer per beurt op de hele zijkolom, zodat alle puls-animaties eronder (dobbelknop,
+  // Energieactie-/Actiekaarten-vakken) automatisch de kleur van wie aan zet is overnemen —
+  // custom properties erven door naar alle kinderen, dus geen losse setProperty per knop nodig.
+  if (walkSideStackEl) walkSideStackEl.style.setProperty('--pc', p.color);
   // Energie wordt nu pas gegooid zodra je zelf beweegt (dobbelen, Zwaartekracht-laarzen of
   // Noodtransport) -- niet meer automatisch bij het begin van de beurt (gebruikersverzoek: "de
   // energie komt er pas bij vanaf de eerste keer dat ze dobbelen"). `null` betekent "nog niet
@@ -1654,6 +1746,15 @@ function stopSoloGame(){
   if (walkScoreActiveEl) walkScoreActiveEl.innerHTML = '';
   if (walkSoloPanelEl) walkSoloPanelEl.hidden = true;
   if (walkEnergyOverviewEl) walkEnergyOverviewEl.hidden = true;
+  if (walkOrSep1El) walkOrSep1El.hidden = true;
+  if (walkOrSep2El) walkOrSep2El.hidden = true;
+  // opzet-UI komt terug in beeld (zie startSoloGame hieronder, die 'm juist wegstopt zodra er
+  // een potje loopt) — scheelt flink wat hoogte boven het bord tijdens het spelen zelf
+  // (gebruikerseis: alles moet in 1 pagina passen).
+  if (walkSoloControlsEl) walkSoloControlsEl.hidden = false;
+  if (walkSoloHintEl) walkSoloHintEl.hidden = false;
+  if (walkStatTilesEl) walkStatTilesEl.innerHTML = '';
+  if (walkGoalLineEl) walkGoalLineEl.innerHTML = '';
   if (walkSoloActionsEl) walkSoloActionsEl.innerHTML = '';
   if (btnWalkSoloRoll) btnWalkSoloRoll.hidden = true;
   if (btnWalkSoloSkip) btnWalkSoloSkip.hidden = true;
@@ -1669,6 +1770,12 @@ function startSoloGame(){
   walkStatusEl.innerHTML = '';
   if (walkSoloPanelEl) walkSoloPanelEl.hidden = false;
   if (walkEnergyOverviewEl) walkEnergyOverviewEl.hidden = false;
+  if (walkOrSep1El) walkOrSep1El.hidden = false;
+  // opzet-UI (spelers-/bot-aantal, de lange regelparagraaf) heeft tijdens het spelen zelf geen
+  // functie meer en kost boven het bord veel hoogte — weg ermee zodra het potje loopt, zodat
+  // bord + zijkolom weer een kans hebben om zonder scrollen op het scherm te passen.
+  if (walkSoloControlsEl) walkSoloControlsEl.hidden = true;
+  if (walkSoloHintEl) walkSoloHintEl.hidden = true;
 
   const reach = analyseCellReachability();
   if (reach.unreachable.length > 0){

@@ -210,7 +210,7 @@
             <select id="walkSoloBots"></select>
           </div>
         </div>
-        <p class="hint" id="walkSoloHint">Jij bestuurt één speler, de rest speelt zichzelf. <b>Volgorde van een beurt:</b> 1. energie-actie kiezen en meteen inzetten — 2. dobbelen (2 loopstenen + de energiesteen) — 3. stappen zetten, waarbij je vóór de eerste stap of tussen stappen door hooguit <b>één</b> actiekaart mag spelen of afleggen. Een actiekaart krijg je door een opdracht te voltooien, of door tijdens je beurt over het actiekaartvakje van een gang te lopen (je zet stopt daar niet voor, en hooguit 1 kaart per beurt op die manier); je houdt er hoogstens drie op hand.</p>
+        <p class="hint" id="walkSoloHint">Jij bestuurt één speler, de rest speelt zichzelf. <b>Volgorde van een beurt:</b> 1. energie-actie kiezen en meteen inzetten — óók Noodrantsoen of Stuwlading spelen kan al op dit moment — 2. dobbelen (2 loopstenen + de energiesteen) — 3. stappen zetten, waarbij je vóór de eerste stap of tussen stappen door hooguit <b>één</b> actiekaart mag spelen of afleggen (als je er nog geen gebruikt hebt). Een actiekaart krijg je door een opdracht te voltooien, of door tijdens je beurt over het actiekaartvakje van een gang te lopen (je zet stopt daar niet voor, en hooguit 1 kaart per beurt op die manier); je houdt er hoogstens drie op hand.</p>
         <div id="walkSoloSetupPlayers" class="walk-solo-setup"></div>
         <div class="walk-controls" id="walkSoloStartRow" hidden>
           <div class="btn-row">
@@ -219,6 +219,13 @@
           </div>
         </div>
         <div class="walk-play-layout">
+          <!-- standenrij: volle breedte boven bord + zijkolom samen, met bewezen vaste hoogte
+               (zie #walkScore/.walk-player in styles.css) zodat hij het bord nooit kan raken. -->
+          <div class="walk-players-row">
+            <div class="walk-score" id="walkScore"></div>
+          </div>
+
+          <div class="walk-board-row">
           <div class="walk-board-col">
             <div class="board-zoom-wrap">
               <div class="board-tools">
@@ -241,12 +248,12 @@
             <div id="walkLog" class="walk-log"></div>
           </div>
 
-          <div class="walk-standings-col">
-            <div class="walk-score" id="walkScore"></div>
-          </div>
-
-          <div class="walk-side-col">
-            <div class="walk-hud">
+          <!-- één kolom, 4 vaste vakken (Dobbelstenen / Energieactie / Actiekaarten /
+               Spelerstatus) met "of" ertussen — samen nooit hoger dan het bord (styles.css).
+               --pc wordt hier één keer per beurt gezet (zie soloBeginHumanTurn in 97-solo.js)
+               zodat alle puls-animaties eronder de kleur van wie aan zet is overnemen. -->
+          <div class="walk-side-stack" id="walkSideStack">
+            <div class="walk-panel-box walk-hud">
               <div class="walk-dice" id="walkDice"></div>
               <div class="walk-step-counter">
                 <div class="walk-step-box"><span class="walk-step-num" id="walkStepDone">0</span><span class="walk-step-lbl">gezet</span></div>
@@ -260,27 +267,35 @@
               <!-- alleen zichtbaar tijdens een lopend multiplayer-potje (zie mpEnterPlayView/
                    mpExitPlayView in 99-multiplayer.js) — staat BUITEN walkSoloActions, dat elke
                    broadcast wordt overschreven, en dus ook buiten je eigen beurt bereikbaar is. -->
-              <div class="btn-row">
+              <div class="btn-row walk-mp-leave-row">
                 <button type="button" id="btnMpLeaveGame" class="small ghost" hidden>Verlaat potje</button>
               </div>
             </div>
 
-            <!-- duidelijk, op zichzelf staand overzicht van je energie t.o.v. het plafond;
-                 zichtbaar zodra een solo-potje loopt (net als walkSoloPanel hieronder, zie
-                 startSoloGame()/stopSoloGame() in 97-solo.js). -->
-            <div class="walk-energy-overview" id="walkEnergyOverview" hidden>
-              <span class="walk-energy-label">Energie</span>
-              <span class="walk-energy-value"><b id="walkEnergyValue">0</b> / 10</span>
-              <div class="walk-energy-bar"><div class="walk-energy-bar-fill" id="walkEnergyBarFill"></div></div>
-            </div>
+            <!-- "of": je kunt dobbelen, óf eerst een energie-actie inzetten. Zichtbaar zolang de
+                 solo-UI actief is (zelfde hidden-toggle als walkSoloPanel hieronder). -->
+            <p class="walk-or-sep" id="walkOrSep1" hidden>of</p>
 
-            <div class="walk-solo-panel" id="walkSoloPanel" hidden>
+            <div class="walk-panel-box walk-solo-panel" id="walkSoloPanel" hidden>
+              <!-- duidelijk, op zichzelf staand overzicht van je energie t.o.v. het plafond;
+                   bovenin de Energieactie-kolom, want die energie bepaalt wat je hier kan doen. -->
+              <div class="walk-energy-overview" id="walkEnergyOverview" hidden>
+                <span class="walk-energy-label">Energie</span>
+                <span class="walk-energy-value"><b id="walkEnergyValue">0</b> / 10</span>
+                <div class="walk-energy-bar"><div class="walk-energy-bar-fill" id="walkEnergyBarFill"></div></div>
+              </div>
               <div class="walk-solo-actions" id="walkSoloActions"></div>
             </div>
 
+            <!-- "of": een actiekaart spelen kan ook, maar alleen als Noodrantsoen of Stuwlading
+                 nú (vóór het dobbelen) in je hand zit en speelbaar is — zie soloOrSep2Visible in
+                 97-solo.js. Buiten dat moment blijft dit verborgen: kaarten spelen tijdens het
+                 lopen is geen alternatief vóór het dobbelen, dus geen "of" op dat moment. -->
+            <p class="walk-or-sep" id="walkOrSep2" hidden>of</p>
+
             <!-- kaartkluis: alleen zichtbaar zodra je daadwerkelijk een actiekaart in handen
                  hebt. Klikken opent het kaartvenster. -->
-            <button type="button" class="walk-card-vault" id="walkCardVault" hidden>
+            <button type="button" class="walk-panel-box walk-card-vault" id="walkCardVault" hidden>
               <span class="walk-card-vault-thumbs" id="walkCardVaultThumbs"></span>
               <span class="walk-card-vault-text">
                 <b id="walkCardVaultCount">Actiekaarten</b>
@@ -288,9 +303,16 @@
               </span>
             </button>
 
-            <div class="walk-info-panel">
+            <div class="walk-panel-box walk-info-panel">
+              <!-- 3 kleine tegels: voltooide opdrachten, beurtnummer, live positie in het potje.
+                   Blijft leeg (en dus onzichtbaar, zie styles.css) tijdens Automatisch-modus. -->
+              <div class="walk-stat-tiles" id="walkStatTiles"></div>
+
+              <div class="walk-goal-line" id="walkGoalLine"></div>
+
               <!-- de opdrachtkaart die op dit moment het doel is; leeg zolang er geen potje loopt.
-                   Klikbaar: vergroot 'm via dezelfde openCardsZoom() als het tabblad "Speelkaarten". -->
+                   Vergroot bij hover; klik opent 'm nog groter via dezelfde openCardsZoom() als
+                   het tabblad "Speelkaarten". -->
               <div class="walk-quest-card" id="walkQuestCard"></div>
 
               <div class="walk-meta" id="walkMeta"></div>
@@ -312,6 +334,8 @@
               </form>
               <p class="hint">Typ alleen een cijfer (bv. <b>7</b>) voor een taunt.</p>
             </div>
+          </div>
+          </div>
           </div>
         </div>
       </div>

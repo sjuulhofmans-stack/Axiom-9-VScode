@@ -66,7 +66,7 @@
     min-height:100vh;
     padding:28px 18px 60px;
   }
-  .wrap{max-width:1400px;margin:0 auto;}
+  .wrap{max-width:1600px;margin:0 auto;}
 
   /* ---------- header ---------- */
   header{
@@ -362,27 +362,112 @@
   .walk-controls .field{margin:0; min-width:170px;}
   .walk-controls .btn-row{margin-bottom:1px;}
 
-  /* bord links, twee vaste kolommen ernaast (standen + navigator/beurtinfo) — zodat een
-     dobbelklik het bord niet meer op en neer laat springen. `align-items:start` is de kern:
-     elke kolom groeit onafhankelijk van de andere, dus het bord blijft op zijn plek ongeacht
-     hoe hoog de kolommen ernaast op dat moment zijn. De standenlijst (#walkScore) stond
-     eerder BOVEN het bord, in dezelfde kolom — elke herrender daarvan (elke beurt) kon het
-     bord dus omlaag duwen zodra er ook maar 1px hoogteverschil in sloop. Nu staat hij in zijn
-     eigen kolom naast het bord, dus kan hij het bord niet meer raken. */
+  /* standenrij boven, dan bord + één vaste zijkolom ernaast. De standenrij staat hier
+     bewust weer BOVEN het bord (gebruikerswens, na eerdere versie ernaast) — dat kan alleen
+     zonder het bord te laten springen omdat #walkScore/.walk-player elders al een bewezen
+     vaste hoogte hebben (zie .walk-player{min-height:84px}) én de rij nu de volle breedte
+     krijgt, dus alle 1-4 spelers altijd op precies één regel passen: de rijhoogte kan dus
+     nooit meer veranderen, ongeacht wat erin staat. De zijkolom ernaast blijft `align-items:
+     start` gebruiken zodat hij onafhankelijk van het bord in hoogte kan groeien/krimpen. */
   .walk-play-layout{
-    display:grid; grid-template-columns: minmax(0,1fr) 260px 300px; gap:20px; align-items:start;
-    margin-top:16px;
+    display:flex; flex-direction:column; gap:16px; margin-top:16px;
+  }
+  /* de volle breedte hier (bord + zijkolom samen) betekent dat alle 1-4 spelers altijd op één
+     regel passen (zie .walk-players-row hierboven), dus is er ruimte om elk vak wat compacter
+     te maken dan de 84px-variant hierboven — belangrijk nu deze rij BOVEN het bord meetelt in
+     de "alles op 1 pagina"-eis, in plaats van in een kolom ernaast waar hoogte minder opviel. */
+  .walk-players-row{min-height:74px;}
+  .walk-players-row .walk-player{padding:5px 9px; min-height:66px; gap:3px;}
+  .walk-board-row{
+    display:grid; grid-template-columns: minmax(0,1fr) 300px; gap:20px; align-items:start;
   }
   .walk-board-col{min-width:0;}
-  .walk-standings-col{min-width:0;}
-  .walk-side-col{display:flex; flex-direction:column; gap:16px; min-width:0;}
-  @media (max-width: 880px){ .walk-play-layout{grid-template-columns:1fr;} }
+  /* de rechterkolom (Dobbelstenen/Energieactie/Actiekaarten/Spelerstatus) mag samen nooit
+     hoger worden dan het bord (gebruikerseis) — #walkBoard is 671px hoog (32 rijen × 20px +
+     31px tussenruimte), dus dat is het harde plafond hieronder. */
+  .walk-side-stack{
+    display:flex; flex-direction:column; gap:10px; min-width:0;
+    max-height:671px;
+  }
+  @media (max-width: 1150px){
+    .walk-board-row{grid-template-columns:1fr;}
+    .walk-side-stack{max-height:none;}
+  }
+  /* de 4 vakken zelf mogen niet krimpen — alleen .walk-info-panel (Spelerstatus, hieronder)
+     krijgt flex:1 1 auto en vult wat er over is; zo blijven Dobbelstenen/Energieactie/
+     Actiekaarten altijd hun natuurlijke hoogte houden. */
+  .walk-panel-box{flex:none;}
+  /* "of" tussen twee vakken: je kunt dobbelen ÓF een energie-actie inzetten, en verderop
+     ÓF (als dat nu kan) een actiekaart spelen vóór het dobbelen — zie 97-solo.js. */
+  .walk-or-sep{
+    margin:0; text-align:center; font-family:var(--font-mono); font-size:10px;
+    letter-spacing:.14em; text-transform:uppercase; color:var(--text-dim);
+  }
+  .walk-or-sep[hidden]{display:none;}
+
+  /* puls in de kleur van wie aan zet is (--pc, gezet op #walkSideStack — zie
+     soloBeginHumanTurn in 97-solo.js) — geeft aan dat een actie NU mogelijk is: de
+     dobbelknop (puur CSS, zodra hij zichtbaar is is het altijd ook echt jouw beurt om te
+     gooien) en de Energieactie-/Actiekaarten-vakken (via een klasse vanuit JS, zie
+     soloRenderActionPanel/soloRefreshCardVault). Tempo gelijk aan .walk-paused-flag (1.6s) —
+     bewust trager dan de 1.3s-puls van het opdrachtvakje op het bord, anders concurreren de
+     twee knipperingen zichtbaar met elkaar. */
+  @keyframes walkPcPulse{
+    0%,100%{box-shadow:0 0 0 0 color-mix(in srgb, var(--pc, var(--amber)) 55%, transparent);}
+    50%{box-shadow:0 0 12px 2px color-mix(in srgb, var(--pc, var(--amber)) 55%, transparent);}
+  }
+  .walk-pulse-affordable, #btnWalkSoloRoll:not([hidden]){
+    animation:walkPcPulse 1.6s ease-in-out infinite;
+  }
+  #tabWalk.walk-is-paused .walk-pulse-affordable,
+  #tabWalk.walk-is-paused #btnWalkSoloRoll{animation-play-state:paused;}
+
+  /* dobbelstenen bewegen heel langzaam op en neer zolang je nog niet hebt gegooid (zie
+     renderSoloDicePending in 97-solo.js) — stopt vanzelf zodra renderWalkDice() de echte
+     worp tekent, want die schrijft #walkDice's HTML dan zonder deze klasse opnieuw. Los van
+     de bestaande .walk-die.rolling/walkShake-animatie hieronder, die is voor Automatisch-
+     modus se snelle "de dobbelstenen rollen nu"-effect en blijft in solo ongebruikt. */
+  @keyframes walkDiceBob{0%,100%{transform:translateY(0);} 50%{transform:translateY(-4px);}}
+  .walk-die-pending{animation:walkDiceBob 2.2s ease-in-out infinite;}
+  #tabWalk.walk-is-paused .walk-die-pending{animation-play-state:paused;}
+
+  /* 3 kleine tegels in Spelerstatus: voltooid / beurt / live positie. flex:none — anders krimpt
+     een flex-item met overflow:hidden (of een grid-item ernaast) bij ruimtegebrek naar 0 hoogte
+     in plaats van naar zijn eigen minimuminhoud (de automatische flex-basis "auto" resolvet dan
+     naar 0), en dat wilde nu juist NOOIT: dit zijn de belangrijkste 3 getallen in het vakje. */
+  .walk-stat-tiles{display:grid; grid-template-columns:repeat(3, 1fr); gap:6px; flex:none;}
+  .walk-stat-tiles:empty{display:none;}
+  .walk-stat-tile{
+    display:flex; flex-direction:column; align-items:center; gap:2px;
+    background:var(--hull); border:1px solid var(--line-dim); border-radius:5px; padding:6px 4px;
+  }
+  .walk-stat-tile-num{
+    font-family:var(--font-mono); font-weight:700; font-size:16px; color:var(--text);
+    font-variant-numeric:tabular-nums; line-height:1.1;
+  }
+  .walk-stat-tile-lbl{
+    font-family:var(--font-mono); font-size:8px; letter-spacing:.06em; text-transform:uppercase;
+    color:var(--text-dim); text-align:center;
+  }
+  .walk-goal-line{
+    font-family:var(--font-mono); font-size:11.5px; color:var(--text-dim); flex:none;
+    overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+  }
+  .walk-goal-line:empty{display:none;}
+  .walk-goal-line b{color:var(--quest); font-weight:700;}
+
   input[type=range]{width:100%; accent-color:var(--quest); cursor:pointer;}
 
-  /* jouw beurt in de solo-modus: kies hooguit één actie, of gooi meteen */
+  /* jouw beurt in de solo-modus: kies hooguit één actie, of gooi meteen. Dit vakje wisselt van
+     inhoud tussen 5 heel verschillende deelschermen (energiekeuze, doelwit-kiezer, laarzen-
+     richting, noodtransport-doel, blinde-vlek-aanbod) — zonder hoogtegrens zou elk van die
+     wissels de kolom ernaast kunnen laten springen, exact het probleem dat deze hele kolom nu
+     juist niet meer mag hebben. `flex:none` houdt 'm bovendien uit de knijp-verdeling van
+     .walk-side-stack (zie hieronder) — alleen .walk-info-panel mag krimpen. */
   .walk-solo-panel{
-    display:flex; flex-direction:column; gap:10px;
+    display:flex; flex-direction:column; gap:10px; flex:none;
     background:var(--hull); border:1px solid var(--line-dim); border-radius:6px; padding:12px;
+    min-height:150px; max-height:230px; overflow-y:auto;
   }
   .walk-solo-panel[hidden]{display:none;}
 
@@ -442,12 +527,14 @@
     font-family:var(--font-mono); font-size:8px; letter-spacing:.08em; text-transform:uppercase;
     color:var(--text-dim);
   }
-  /* duidelijk, op zichzelf staand overzicht van je energie t.o.v. het plafond (ENERGY_MAX) —
-     losse aanvulling op het kleine ⚡-badge in de spelersrij, dat ging onder de rest van die
-     rij verloren. Kleurlogica gelijk aan .walk-player-energy.full: amber zodra je vol zit. */
+  /* duidelijk overzicht van je energie t.o.v. het plafond (ENERGY_MAX) — losse aanvulling op
+     het kleine ⚡-badge in de spelersrij, dat ging onder de rest van die rij verloren.
+     Kleurlogica gelijk aan .walk-player-energy.full: amber zodra je vol zit. Zit nu bovenin
+     de Energieactie-kolom (.walk-solo-panel) — geen eigen kader meer, alleen een streepje
+     eronder om 'm van de knoppen te scheiden. */
   .walk-energy-overview{
     display:flex; align-items:center; gap:10px;
-    background:var(--hull); border:1px solid var(--line-dim); border-radius:6px; padding:10px 13px;
+    padding-bottom:9px; border-bottom:1px solid var(--line-dim);
   }
   .walk-energy-overview[hidden]{display:none;}
   .walk-energy-label{
@@ -481,25 +568,31 @@
   }
   .cell.walk-clickable:hover{box-shadow:0 0 0 2px #fff, 0 0 10px rgba(85,214,138,.9) !important;}
 
-  /* de "grote tab" met alle info over de speler die aan zet is en welke stap dit is (dobbelstenen,
-     doel, standenlijst, actiepaneel, statusregel) — vast rechts naast het bord (zie
-     .walk-play-layout hierboven). `min-height` reserveert alvast ruimte voor de volste stand
-     (4 spelers + actiekaarten + statusregel), zodat het paneel niet zichtbaar in- en uitklapt
-     terwijl je een beurt speelt; `overflow-y:auto` vangt het zeldzame geval op dat de inhoud
-     daar toch overheen groeit, zonder de rest van de pagina mee te laten schuiven. */
+  /* "Spelerstatus" — het laatste vakje in de zijkolom (zie .walk-side-stack hierboven), en het
+     enige dat mag krimpen: `flex:1 1 auto; min-height:0` laat 'm precies de resterende ruimte
+     binnen de 703px-bordhoogte opvullen (dezelfde techniek als .mp-chat-log verderop in dit
+     bestand), en `overflow-y:auto` vangt het zeldzame geval op dat de inhoud toch niet past,
+     zonder de rest van de pagina mee te laten schuiven. */
   .walk-info-panel{
-    display:flex; flex-direction:column; gap:12px;
+    display:flex; flex-direction:column; gap:10px; flex:1 1 auto; min-height:0;
     background:var(--panel-2); border:1px solid var(--line); border-radius:6px; padding:14px;
-    min-height:440px; max-height:min(680px, calc(100vh - 220px)); overflow-y:auto;
-    scrollbar-gutter: stable;
+    overflow-y:auto; scrollbar-gutter: stable;
   }
-  @media (max-width: 880px){ .walk-info-panel{min-height:0; max-height:none;} }
+  @media (max-width: 1150px){ .walk-info-panel{flex:none; min-height:280px; max-height:none;} }
   /* Voordat er een potje loopt is alles hierbinnen leeg, en dan stond er alleen een omkaderd
      blok van ~160px (de min-height van .walk-meta) zonder inhoud. Zodra er ook maar iets in
      staat — een beurtregel, een stand of een statusmelding — komt het paneel vanzelf weer
      terug. (Het solo-actiepaneel staat sinds de herstructurering los van dit paneel, dus
      telt hier niet meer mee.) */
-  .walk-info-panel:has(#walkMeta:empty):has(#walkScoreActive:empty):has(#walkStatus:empty){
+  .walk-info-panel:has(#walkMeta:empty):has(#walkScoreActive:empty):has(#walkStatus:empty):has(#walkStatTiles:empty):has(#walkQuestCard:empty){
+    display:none;
+  }
+  /* de nieuwe stat-tegels + altijd-zichtbare spelersrij boven het bord vervangen wat #walkMeta
+     en #walkScoreActive lieten zien (beurt/voltooid resp. de eigen rij) — die blijven in de DOM
+     voor Automatisch-modus (die schrijft er nog steeds in via renderWalkMeta/renderWalkScore),
+     maar zodra de tegels gevuld zijn (dus tijdens solo/multiplayer) verbergt CSS ze hier. */
+  .walk-info-panel:has(#walkStatTiles:not(:empty)) #walkMeta,
+  .walk-info-panel:has(#walkStatTiles:not(:empty)) #walkScoreActive{
     display:none;
   }
   /* in de smalle zijkolom staat elke speler onder elkaar i.p.v. naast elkaar; zonder expliciete
@@ -527,6 +620,12 @@
      verborgen zijn (bv. 'moving', of het kiezen van een doelwit) — en dat liet .walk-info-panel
      eronder alsnog 36px op en neer springen, exact het probleem dat deze hele sectie oplost. */
   .walk-hud .btn-row{flex-basis:100%; min-height:40px;}
+  /* de "verlaat potje"-rij (alleen relevant tijdens multiplayer) mag buiten multiplayer om geen
+     40px lege ruimte claimen — anders dan de dobbel-/sla-over-rij hierboven, die haar min-height
+     WEL altijd nodig heeft (zie het commentaar bij .walk-hud .btn-row): dat voorkomt dat het
+     paneel eronder springt op het moment dat BEIDE knoppen daar even verborgen zijn. Vandaar een
+     eigen klasse i.p.v. dezelfde regel op alle btn-rows. */
+  .walk-hud .btn-row.walk-mp-leave-row:not(:has(> :not([hidden]))){display:none;}
   /* Twee vaste regels: loopstenen boven, energiesteen eronder. De vaste min-height dekt
      allebei de regels, zodat het blok niet van hoogte verandert als de Stuwstoot een derde
      loopsteen toevoegt. */
@@ -787,7 +886,11 @@
   .walk-standing:first-child{margin-left:0;}
 
   #walkBoard{
-    --cell: 19px;
+    /* 20px (i.p.v. 19px): iets groter bord geeft de zijkolom ernaast (die nooit hoger dan het
+       bord mag worden) wat meer hoogtebudget, zonder de pagina onnodig te verlengen — de
+       zijkolom-vakken hebben zelf ook nog een eigen overflow-y:auto als noodklep. .wrap is
+       tegelijk verbreed voor de bredere zijkolom-lay-out. */
+    --cell: 20px;
     display:grid;
     grid-template-columns: repeat(40, var(--cell));
     grid-template-rows: repeat(32, var(--cell));
@@ -852,7 +955,7 @@
 
   /* de opdrachtkaart die nu het doel is, bovenin het zijpaneel */
   .walk-quest-card{
-    display:flex; align-items:center; gap:11px;
+    display:flex; align-items:center; gap:11px; flex:none;
     padding:9px 11px; border-radius:6px;
     background:linear-gradient(140deg, color-mix(in srgb, var(--qtint) 15%, var(--hull)), var(--hull) 70%);
     border:1px solid var(--qtint);
@@ -861,9 +964,17 @@
   }
   .walk-quest-card:hover{box-shadow:0 0 20px color-mix(in srgb, var(--qtint) 38%, transparent);}
   .walk-quest-card:empty{display:none; cursor:default;}
-  .walk-quest-card-face{flex:none; width:78px; display:block; container-type:inline-size;}
+  /* vergroot bij hover (gebruikersverzoek) — puur transform, dus geen invloed op de hoogte van
+     .walk-info-panel eromheen; overflow:visible op de kaart zelf laat 'm over de tekst ernaast
+     heen groeien in plaats van afgesneden te worden door .walk-info-panel's overflow-y:auto. */
+  .walk-quest-card-face{
+    flex:none; width:78px; display:block; container-type:inline-size; position:relative; z-index:2;
+    transition:transform .15s ease; transform-origin:left center;
+  }
+  .walk-quest-card:hover .walk-quest-card-face{transform:scale(1.4); overflow:visible;}
   .walk-quest-card-face img{
     width:100%; aspect-ratio:63/88; object-fit:cover; border-radius:5px; display:block;
+    box-shadow:0 6px 16px rgba(0,0,0,.5);
   }
   .walk-quest-card-text{display:flex; flex-direction:column; gap:3px; min-width:0;}
   .walk-quest-card-text .lbl{
@@ -1552,7 +1663,7 @@
   .mp-chat-log{
     /* flex:1 + min-height:0 laat 'm in de lobby (gestretchte kolom, zie .mp-layout hierboven)
        precies de resterende ruimte vullen; max-height is de HARDE bovengrens die ook geldt in
-       het speelscherm (#mpChatPanelGame, in .walk-side-col — daar is de kolom NIET gestretcht,
+       het speelscherm (#mpChatPanelGame, in .walk-side-stack — daar is de kolom NIET gestretcht,
        dus zonder deze cap zou het vak gewoon oneindig meegroeien met het aantal berichten
        i.p.v. een scrollbalk te tonen). */
     flex:1; min-height:0; max-height:520px; overflow-y:auto;
