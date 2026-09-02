@@ -46,6 +46,7 @@ const btnWalkPause = document.getElementById('btnWalkPause');
 const btnWalkStop = document.getElementById('btnWalkStop');
 
 let walkCellEls = null;      // [R][C] -> div, pas opgebouwd bij het eerste gebruik
+const walkRoomLabelEls = []; // per slot: de kamernaam-overlay op de linkerbovenhoek van de tegel
 let walkRunId = 0;           // elke nieuwe run verhoogt dit; een lopende run stopt zodra hij afwijkt
 let walkRunning = false;
 let walkPaused = false;
@@ -92,12 +93,25 @@ function walkPlayerCount(){
 function buildWalkBoard(){
   walkBoardEl.innerHTML = '';
   walkRoomRingEl = null;      // hing onder het bord en is met de innerHTML meegewist
+  walkRoomLabelEls.length = 0;
   const els = [];
   for (let R = 0; R < TILE_ROWS*TILE_H; R++){
     els.push([]);
     for (let C = 0; C < TILE_COLS*TILE_W; C++){
+      const dr = R % TILE_H, dc = C % TILE_W;
       const div = document.createElement('div');
       div.className = 'cell';
+      // kamernaam-overlay op de linkerbovenhoek van elke tegel, zelfde opzet als het
+      // hoofdbord (roomLabelEls in 40-board.js) maar zonder letterbadge — hier is er
+      // geen tegel-editor die de letter nodig heeft.
+      if (dr === 0 && dc === 0){
+        const slotIdx = Math.floor(R/TILE_H)*TILE_COLS + Math.floor(C/TILE_W);
+        const roomLabel = document.createElement('span');
+        roomLabel.className = 'room-label';
+        div.classList.add('has-badge');
+        div.appendChild(roomLabel);
+        walkRoomLabelEls[slotIdx] = roomLabel;
+      }
       walkBoardEl.appendChild(div);
       els[R].push(div);
     }
@@ -117,11 +131,20 @@ function renderWalkBoard(){
   for (let R = 0; R < TILE_ROWS*TILE_H; R++){
     for (let C = 0; C < TILE_COLS*TILE_W; C++){
       const dr = R % TILE_H, dc = C % TILE_W;
-      const slotIdx = Math.floor(R/TILE_H)*TILE_COLS + Math.floor(C/TILE_W);
+      const slotI = Math.floor(R/TILE_H), slotJ = Math.floor(C/TILE_W);
+      const slotIdx = slotI*TILE_COLS + slotJ;
       const tileId = layout[slotIdx];
       const val = getDisplayValue(tileId, dr, dc);
       const div = walkCellEls[R][C];
-      div.className = 'cell';
+      // className wordt hier volledig herschreven (ipv classList.remove), dus de vaste
+      // tegelrand + kamernaam-anker (uit buildWalkBoard) moeten elke render terugkomen.
+      let cls = 'cell';
+      if (dc === TILE_W-1) cls += ' walk-tile-edge-r';
+      if (dr === TILE_H-1) cls += ' walk-tile-edge-b';
+      if (dc === 0 && slotJ === 0) cls += ' walk-tile-edge-l';
+      if (dr === 0 && slotI === 0) cls += ' walk-tile-edge-t';
+      if (dr === 0 && dc === 0) cls += ' has-badge';
+      div.className = cls;
       div.style.cssText = '';
       const type = cellType(val);
       if (type){
@@ -131,6 +154,13 @@ function renderWalkBoard(){
         div.classList.add('empty-slot');
       }
     }
+  }
+
+  // kamernaam-tekst per tegel; alleen kamertegels hebben een naam (ROOM_NAMES), gangen
+  // laten de overlay leeg staan
+  for (let slotIdx=0; slotIdx<20; slotIdx++){
+    const roomName = ROOM_NAMES[layout[slotIdx]];
+    if (walkRoomLabelEls[slotIdx]) walkRoomLabelEls[slotIdx].textContent = roomName || '';
   }
 }
 

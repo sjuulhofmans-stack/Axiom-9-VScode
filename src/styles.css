@@ -21,6 +21,7 @@
     --start-glow:#9bffc6;
     --danger:    #ff5d5d;
     --slot-empty:#0e1319;
+    --tile-line: #4c78b2;
   }
   *{box-sizing:border-box;}
   /* zonder dit reserveert de browser de verticale scrollbalk pas zodra de pagina daadwerkelijk
@@ -790,6 +791,16 @@
     position:relative;              /* anker voor de rand om de doelkamer */
   }
   #walkBoard .cell{cursor:default;}
+  /* zwakke tegelrand, alleen ter oriëntatie — donkerblauw en minder opvallend dan de amber
+     rand op het tabblad "Speelbord genereren" (die daar de sleepbewerking moet ondersteunen). */
+  #walkBoard .cell.walk-tile-edge-r{box-shadow: inset -1px 0 0 0 rgba(76,120,178,.22);}
+  #walkBoard .cell.walk-tile-edge-b{box-shadow: inset 0 -1px 0 0 rgba(76,120,178,.22);}
+  #walkBoard .cell.walk-tile-edge-l{box-shadow: inset 1px 0 0 0 rgba(76,120,178,.22);}
+  #walkBoard .cell.walk-tile-edge-t{box-shadow: inset 0 1px 0 0 rgba(76,120,178,.22);}
+  #walkBoard .cell.walk-tile-edge-r.walk-tile-edge-b{box-shadow: inset -1px 0 0 0 rgba(76,120,178,.22), inset 0 -1px 0 0 rgba(76,120,178,.22);}
+  #walkBoard .cell.walk-tile-edge-r.walk-tile-edge-t{box-shadow: inset -1px 0 0 0 rgba(76,120,178,.22), inset 0 1px 0 0 rgba(76,120,178,.22);}
+  #walkBoard .cell.walk-tile-edge-l.walk-tile-edge-b{box-shadow: inset 1px 0 0 0 rgba(76,120,178,.22), inset 0 -1px 0 0 rgba(76,120,178,.22);}
+  #walkBoard .cell.walk-tile-edge-l.walk-tile-edge-t{box-shadow: inset 1px 0 0 0 rgba(76,120,178,.22), inset 0 1px 0 0 rgba(76,120,178,.22);}
   /* --pc wordt per cel inline gezet op de kleur van de speler die er loopt/staat; de
      8-cijferige hex-suffix is de doorzichtigheid, zodat het bord eronder zichtbaar blijft. */
   .cell.walk-trail{
