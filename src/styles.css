@@ -370,7 +370,7 @@
      nooit meer veranderen, ongeacht wat erin staat. De zijkolom ernaast blijft `align-items:
      start` gebruiken zodat hij onafhankelijk van het bord in hoogte kan groeien/krimpen. */
   .walk-play-layout{
-    display:flex; flex-direction:column; gap:16px; margin-top:16px;
+    display:flex; flex-direction:column; gap:15px; margin-top:16px;
   }
   /* de volle breedte hier (bord + zijkolom samen) betekent dat alle 1-4 spelers altijd op één
      regel passen (zie .walk-players-row hierboven), dus is er ruimte om elk vak wat compacter
@@ -379,7 +379,7 @@
   .walk-players-row{min-height:74px;}
   .walk-players-row .walk-player{padding:5px 9px; min-height:66px; gap:3px;}
   .walk-board-row{
-    display:grid; grid-template-columns: minmax(0,1fr) 300px; gap:20px; align-items:start;
+    display:grid; grid-template-columns: minmax(0,1fr) 300px; gap:15px; align-items:start;
   }
   .walk-board-col{min-width:0;}
   /* de rechterkolom (Dobbelstenen/Energieactie/Actiekaarten/Spelerstatus) mag samen nooit
