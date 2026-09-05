@@ -372,19 +372,21 @@ function soloRenderActionPanel(){
   // Stuwlading (kaart) kan nu ook al vóór het dobbelen gespeeld zijn — sluit Stuwstoot dan uit,
   // spiegel van de check aan de kaart-kant in soloCardBlockReason (allebei een gratis 3e steen).
   const boostcellUsed = soloUsedCardId === 'boostcell';
-  const energyBtns = ['boost', 'reorder', 'jump'].map(id =>
+  // volgorde oplopend op kosten (Herprioritering 2, Stuwstoot 3, Noodtransport 10) — de
+  // goedkoopste actie hoort bovenaan (gebruikerswens).
+  const energyBtns = ['reorder', 'boost', 'jump'].map(id =>
     renderEnergySoloButton(id, p.energy < ENERGY_ACTIONS[id].cost || (id === 'boost' && boostcellUsed),
       id === 'boost' && boostcellUsed ? 'je hebt deze beurt al Stuwlading gespeeld' : undefined)
   ).join('');
   // Kun je er geen enkele betalen, zeg dat dan met zoveel woorden — drie uitgegrijsde rijen
   // zien er anders uit alsof het paneel stuk is.
-  const allLocked = ['boost', 'reorder', 'jump'].every(id => p.energy < ENERGY_ACTIONS[id].cost || (id === 'boost' && boostcellUsed));
+  const allLocked = ['reorder', 'boost', 'jump'].every(id => p.energy < ENERGY_ACTIONS[id].cost || (id === 'boost' && boostcellUsed));
   const note = allLocked
     ? `<p class="hint energy-pick-none">Je hebt <b>${p.energy}</b> energie — te weinig voor een actie. Gooi gewoon; je energiesteen vult je voorraad weer aan.</p>`
     : '';
   walkSoloActionsEl.innerHTML = `<div class="energy-pick-list">${energyBtns}</div>${note}`;
   // puls op de hele Energieactie-kolom zodra er nu écht iets te kiezen valt
-  const anyAffordable = !soloEnergyActionUsed() && ['boost', 'reorder', 'jump'].some(id =>
+  const anyAffordable = !soloEnergyActionUsed() && ['reorder', 'boost', 'jump'].some(id =>
     p.energy >= ENERGY_ACTIONS[id].cost && !(id === 'boost' && boostcellUsed));
   if (walkSoloPanelEl) walkSoloPanelEl.classList.toggle('walk-pulse-affordable', anyAffordable);
   // 2e "of": alleen zichtbaar zolang je vóór het dobbelen zit én Noodrantsoen/Stuwlading nu

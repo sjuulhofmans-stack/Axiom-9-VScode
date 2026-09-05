@@ -478,12 +478,15 @@
      dobbelen alsnog inkrimpen (230px -> 150px zodra er minder acties te kiezen zijn), en dat
      schoof #walkInfoPanel eronder direct 80px omhoog — precies het "springen bij het dobbelen"
      dat hier juist voorkomen moest worden. Een vaste hoogte laat lege ruimte over i.p.v. te
-     krimpen; `overflow-y:auto` blijft staan voor het zeldzame geval dat inhoud er toch niet in
-     past. */
+     krimpen. 280px (i.p.v. 230px): met alle 3 acties + de energiebalk + de "te weinig
+     energie"-hint (allemaal tegelijk, gemeten met Playwright) is de natuurlijke inhoud 272px
+     hoog — bij 230px moest je dus alsnog scrollen om de onderste actie of de hint te zien,
+     precies wat "vast, niet scrollend" juist tegenging (gebruikerswens). `overflow-y:auto`
+     blijft staan voor het zeldzame geval dat inhoud er toch niet in past. */
   .walk-solo-panel{
     display:flex; flex-direction:column; gap:10px; flex:none;
     background:var(--hull); border:1px solid var(--line-dim); border-radius:6px; padding:12px;
-    height:230px; overflow-y:auto;
+    height:280px; overflow-y:auto;
   }
   .walk-solo-panel[hidden]{display:none;}
 
