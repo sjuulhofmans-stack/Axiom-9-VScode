@@ -466,13 +466,6 @@
     font-family:var(--font-mono); font-size:8px; letter-spacing:.06em; text-transform:uppercase;
     color:var(--text-dim); text-align:center;
   }
-  .walk-goal-line{
-    font-family:var(--font-mono); font-size:11.5px; color:var(--text-dim); flex:none;
-    overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
-  }
-  .walk-goal-line:empty{display:none;}
-  .walk-goal-line b{color:var(--quest); font-weight:700;}
-
   input[type=range]{width:100%; accent-color:var(--quest); cursor:pointer;}
 
   /* jouw beurt in de solo-modus: kies hooguit één actie, of gooi meteen. Dit vakje wisselt van

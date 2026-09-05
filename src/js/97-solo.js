@@ -56,7 +56,6 @@ const walkSideStackEl = document.getElementById('walkSideStack');
 const walkOrSep1El = document.getElementById('walkOrSep1');
 const walkOrSep2El = document.getElementById('walkOrSep2');
 const walkStatTilesEl = document.getElementById('walkStatTiles');
-const walkGoalLineEl = document.getElementById('walkGoalLine');
 
 let soloGraph = null;
 let soloDeck = null;         // gedeelde actiekaart-stapel voor dit potje
@@ -314,20 +313,16 @@ function soloLiveRank(){
   if (!p) return null;
   return walkOrderPlayers(soloPlayers).findIndex(q => q.idx === p.idx) + 1;
 }
-// 3 kleine tegels + de "Ga naar"-regel bovenin het Spelerstatus-vakje. Hangt aan renderSoloMeta
-// zodat hij overal meeloopt waar de rest van je beurtinfo ook al opnieuw getekend wordt.
+// 3 kleine tegels bovenin het Spelerstatus-vakje. Hangt aan renderSoloMeta zodat hij overal
+// meeloopt waar de rest van je beurtinfo ook al opnieuw getekend wordt.
 function soloRenderStatusExtras(){
   const p = solo();
-  if (!p || !walkStatTilesEl){ if (walkStatTilesEl) walkStatTilesEl.innerHTML = ''; if (walkGoalLineEl) walkGoalLineEl.innerHTML = ''; return; }
+  if (!p || !walkStatTilesEl){ if (walkStatTilesEl) walkStatTilesEl.innerHTML = ''; return; }
   const rank = soloLiveRank();
   walkStatTilesEl.innerHTML =
     `<div class="walk-stat-tile"><span class="walk-stat-tile-num">${p.completed}/${SIM_QUESTS_TO_WIN}</span><span class="walk-stat-tile-lbl">voltooid</span></div>` +
     `<div class="walk-stat-tile"><span class="walk-stat-tile-num">${soloTurn}</span><span class="walk-stat-tile-lbl">beurt</span></div>` +
     `<div class="walk-stat-tile"><span class="walk-stat-tile-num">${walkRankLabel(rank)}</span><span class="walk-stat-tile-lbl">positie</span></div>`;
-  if (walkGoalLineEl){
-    const label = p.deck[p.nextIdx];
-    walkGoalLineEl.innerHTML = p.rank ? '' : `Ga naar: <b>${QUEST_NAMES[label] || label}</b>`;
-  }
 }
 // Los, duidelijk overzicht van je energie t.o.v. het plafond (ENERGY_MAX) — het kleine
 // ⚡-badge in de spelersrij (walkScoreActive) verdwijnt daar te makkelijk tussen de rest.
@@ -1754,7 +1749,6 @@ function stopSoloGame(){
   if (walkSoloControlsEl) walkSoloControlsEl.hidden = false;
   if (walkSoloHintEl) walkSoloHintEl.hidden = false;
   if (walkStatTilesEl) walkStatTilesEl.innerHTML = '';
-  if (walkGoalLineEl) walkGoalLineEl.innerHTML = '';
   if (walkSoloActionsEl) walkSoloActionsEl.innerHTML = '';
   if (btnWalkSoloRoll) btnWalkSoloRoll.hidden = true;
   if (btnWalkSoloSkip) btnWalkSoloSkip.hidden = true;

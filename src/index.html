@@ -228,15 +228,13 @@
           <div class="walk-board-row">
           <!-- statushub: links van het bord, zodat "waar moet ik heen" meteen in het oog
                springt vóórdat je naar rechts kijkt om te dobbelen (gebruikerswens). Zelfde
-               #walkStatTiles/#walkGoalLine/#walkQuestCard/#walkMeta/#walkScoreActive/
+               #walkStatTiles/#walkQuestCard/#walkMeta/#walkScoreActive/
                #walkStatus-ids als voorheen, JS hoeft niet te weten dat dit vakje verhuisd is. -->
           <div class="walk-status-col">
             <div class="walk-panel-box walk-info-panel">
               <!-- 3 kleine tegels: voltooide opdrachten, beurtnummer, live positie in het potje.
                    Blijft leeg (en dus onzichtbaar, zie styles.css) tijdens Automatisch-modus. -->
               <div class="walk-stat-tiles" id="walkStatTiles"></div>
-
-              <div class="walk-goal-line" id="walkGoalLine"></div>
 
               <!-- de opdrachtkaart die op dit moment het doel is; leeg zolang er geen potje loopt.
                    Vergroot bij hover; klik opent 'm nog groter via dezelfde openCardsZoom() als

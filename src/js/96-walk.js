@@ -222,15 +222,14 @@ function renderWalkQuestCard(label){
   if (!walkQuestCardEl) return;
   if (!label){ walkQuestCardEl.innerHTML = ''; return; }
   const tid = findLabelTile(label);
-  const slotIdx = tid !== null ? layout.indexOf(tid) : -1;
-  const waar = tid !== null && slotIdx !== -1
-    ? `${ROOM_NAMES[tid] || ('Gang ' + tid)} · positie ${letterForSlot(slotIdx)}`
-    : '—';
+  // geen positieletter (bv. "positie B") meer hier: die kun je toch niet op het bord zien,
+  // alleen de kamernaam is bruikbare info (gebruikerswens).
+  const waar = tid !== null ? (ROOM_NAMES[tid] || ('Gang ' + tid)) : '—';
   walkQuestCardEl.style.setProperty('--qtint', questTint(label));
   walkQuestCardEl.innerHTML =
     `<span class="walk-quest-card-face">${renderQuestCardFace(label)}</span>` +
     `<span class="walk-quest-card-text">` +
-      `<span class="lbl">Nu op zoek naar</span>` +
+      `<span class="lbl">Actieve opdracht</span>` +
       `<b>${label} · ${QUEST_NAMES[label] || label}</b>` +
       `<span class="sub">${waar}</span>` +
     `</span>`;
