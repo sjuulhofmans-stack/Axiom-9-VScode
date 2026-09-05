@@ -8592,6 +8592,12 @@ function soloBeginHumanTurn(pIdx){
   soloBankCountThisTurn = 0;
   soloAllowUturn = false;
   soloMove = null;
+  // route van je VORIGE beurt wegvegen zodra de nieuwe begint — anders bleef elke gezette stap
+  // van het hele potje zichtbaar staan i.p.v. alleen de zet die je net hebt gezet
+  // (gebruikerswens). Blijft dus wel gewoon staan tussen je beurten door (incl. tijdens de
+  // bot-beurten ertussenin), en verdwijnt pas zodra je weer zelf gaat lopen.
+  walkClearClass('walk-trail');
+  walkClearClass('walk-jump');
 
   const p = solo();
   // --pc één keer per beurt op de hele zijkolom, zodat alle puls-animaties eronder (dobbelknop,
