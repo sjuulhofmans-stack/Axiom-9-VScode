@@ -378,12 +378,12 @@
      de "alles op 1 pagina"-eis, in plaats van in een kolom ernaast waar hoogte minder opviel. */
   .walk-players-row{min-height:74px;}
   .walk-players-row .walk-player{padding:5px 9px; min-height:66px; gap:3px;}
-  /* buitenste kolommen zijn allebei minmax(0,1fr): links een lege spacer, rechts de
-     zijkolom-inhoud — zo verdeelt de browser de overgebleven ruimte gelijk over "vóór het
-     bord" en "de zijkolom", wat het bord dichter naar het midden trekt én de zijkolom tot
-     de rechterrand van de pagina laat doorlopen (gebruikerswens). */
+  /* buitenste kolommen zijn de lege spacer (links) en de zijkolom-inhoud (rechts) — de
+     fr-verhouding 1:1.8 geeft de zijkolom bewust een groter deel van de restruimte dan de
+     lege spacer, zodat het bord dichter bij links blijft en de zijkolom breder wordt
+     (gebruikerswens: bord iets meer naar links, kolommen rechts iets groter). */
   .walk-board-row{
-    display:grid; grid-template-columns: minmax(0,1fr) 839px minmax(300px,1fr);
+    display:grid; grid-template-columns: minmax(0,1fr) 839px minmax(300px,1.8fr);
     gap:15px; align-items:start;
   }
   .walk-board-col{grid-column:2; min-width:0; max-width:839px;}
