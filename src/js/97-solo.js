@@ -361,7 +361,7 @@ function renderEnergySoloButton(id, disabled, reason){
   // brak "HERPRIORITERING" middenin het woord af. Als volle-breedte-rij is er ruimte zat voor
   // de naam én de uitleg op één regel.
   return `<button type="button" class="energy-pick${disabled ? ' is-disabled' : ''}${pulse ? ' walk-pulse-affordable' : ''}" data-energy="${id}"${disabled ? ' disabled' : ''} title="${title}">
-    <span class="energy-pick-cost">${act.cost}</span>
+    <span class="energy-pick-cost">⚡${act.cost}</span>
     <span class="energy-pick-text">
       <b>${act.name}</b>
       <span>${reason || act.hint}</span>

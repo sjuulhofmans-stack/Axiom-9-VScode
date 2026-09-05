@@ -886,9 +886,13 @@
     border:1px solid var(--line); font-family:var(--font-display);
     transition:border-color .12s, transform .1s, box-shadow .12s;
   }
+  /* pil i.p.v. cirkel: met alleen een getal leek dit rondje nergens specifiek naar te
+     verwijzen, het ⚡-symbool (hetzelfde teken als bv. de energiebadge in de spelersrij)
+     maakt in één oogopslag duidelijk dat het om energiekosten gaat (gebruikerswens) — een
+     cirkel van 26px is te smal voor "⚡3", dus wordt de badge nu breedte-op-inhoud. */
   .energy-pick-cost{
-    flex:none; width:26px; height:26px; border-radius:50%;
-    display:flex; align-items:center; justify-content:center;
+    flex:none; min-width:26px; height:26px; padding:0 7px; border-radius:13px;
+    display:flex; align-items:center; justify-content:center; gap:1px;
     font-family:var(--font-mono); font-size:12px; font-weight:700;
     color:var(--start); border:1px solid var(--start); background:rgba(85,214,138,.09);
   }
@@ -7545,7 +7549,7 @@ function renderEnergySoloButton(id, disabled, reason){
   // brak "HERPRIORITERING" middenin het woord af. Als volle-breedte-rij is er ruimte zat voor
   // de naam én de uitleg op één regel.
   return `<button type="button" class="energy-pick${disabled ? ' is-disabled' : ''}${pulse ? ' walk-pulse-affordable' : ''}" data-energy="${id}"${disabled ? ' disabled' : ''} title="${title}">
-    <span class="energy-pick-cost">${act.cost}</span>
+    <span class="energy-pick-cost">⚡${act.cost}</span>
     <span class="energy-pick-text">
       <b>${act.name}</b>
       <span>${reason || act.hint}</span>
