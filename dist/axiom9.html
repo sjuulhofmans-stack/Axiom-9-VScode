@@ -385,41 +385,61 @@
      de "alles op 1 pagina"-eis, in plaats van in een kolom ernaast waar hoogte minder opviel. */
   .walk-players-row{min-height:74px;}
   .walk-players-row .walk-player{padding:5px 9px; min-height:66px; gap:3px;}
-  /* drie kolommen: links de statushub (Spelerstatus — waar moet ik heen), in het midden het
-     bord op vaste breedte, rechts Dobbelstenen/Energieactie/Actiekaarten. De fr-verhouding
-     1:1.4 geeft rechts iets meer van de restruimte dan links (gebruikerswens: bord iets meer
-     naar links, kolommen rechts iets groter), met voor beide een minimum van 300px zodat geen
-     van de twee te smal wordt om zijn inhoud fatsoenlijk te tonen. */
+  /* vier kolommen: opdrachtenoverzicht, statushub (Spelerstatus — waar moet ik heen), het bord
+     op vaste breedte, en rechts Dobbelstenen/Energieactie/Actiekaarten. Minimums zijn bewust
+     krapper dan vroeger (toen er nog maar 3 kolommen waren) omdat #walkBoard's vaste 839px
+     nu een vierde flexibele kolom ernaast moet delen binnen dezelfde 1600px-pagina (.wrap) —
+     zie .walk-board-row.walk-no-checklist hieronder voor wat er gebeurt zodra die kolom leeg
+     is (Automatisch-modus of vóór een potje). */
   .walk-board-row{
-    display:grid; grid-template-columns: minmax(280px,1fr) 839px minmax(300px,1.4fr);
+    display:grid;
+    grid-template-columns: minmax(175px,0.9fr) minmax(195px,1fr) 839px minmax(255px,1.3fr);
     gap:15px; align-items:start;
   }
-  /* de statushub en de zijkolom mogen samen nooit hoger worden dan het bord (gebruikerseis)
-     — #walkBoard is 671px hoog (32 rijen × 20px + 31px tussenruimte), dus dat is het harde
-     plafond voor allebei. */
-  .walk-status-col{
+  /* Automatisch-modus / vóór een potje: het opdrachtenoverzicht is dan leeg (puur solo-modus
+     info, zie soloRenderQuestChecklist in 97-solo.js) — deze kolom-variant laat 'm helemaal
+     verdwijnen i.p.v. een lege bak te tonen, en de overige drie kolommen krijgen dan weer hun
+     eigen (ruimere) minimum terug. setWalkMode()/stopSoloGame() zetten deze klasse. */
+  .walk-board-row.walk-no-checklist{
+    grid-template-columns: minmax(280px,1fr) 839px minmax(300px,1.4fr);
+  }
+  .walk-board-row.walk-no-checklist .walk-quest-checklist-col{display:none;}
+  /* de statushub, het opdrachtenoverzicht en de zijkolom mogen samen nooit hoger worden dan
+     het bord (gebruikerseis) — #walkBoard is 671px hoog (32 rijen × 20px + 31px
+     tussenruimte), dus dat is het harde plafond voor alle drie. */
+  .walk-quest-checklist-col{
     grid-column:1;
     display:flex; flex-direction:column; min-width:0;
     max-height:671px;
   }
-  .walk-board-col{grid-column:2; min-width:0; max-width:839px;}
+  .walk-status-col{
+    grid-column:2;
+    display:flex; flex-direction:column; min-width:0;
+    max-height:671px;
+  }
+  .walk-board-row.walk-no-checklist .walk-status-col{grid-column:1;}
+  .walk-board-col{grid-column:3; min-width:0; max-width:839px;}
+  .walk-board-row.walk-no-checklist .walk-board-col{grid-column:2;}
   .walk-side-stack{
-    grid-column:3;
+    grid-column:4;
     display:flex; flex-direction:column; gap:10px; min-width:0;
     max-height:671px;
   }
+  .walk-board-row.walk-no-checklist .walk-side-stack{grid-column:3;}
   @media (max-width: 1150px){
-    .walk-board-row{grid-template-columns:1fr;}
-    .walk-status-col, .walk-board-col, .walk-side-stack{grid-column:1;}
+    .walk-board-row, .walk-board-row.walk-no-checklist{grid-template-columns:1fr;}
+    .walk-quest-checklist-col, .walk-status-col, .walk-board-col, .walk-side-stack{grid-column:1;}
     /* zelfde volgorde als vóór de statushub-verhuizing: bord eerst, dan dobbelen/energie/
-       kaarten, en de statushub (Spelerstatus) weer als laatste onderaan. */
+       kaarten, dan de statushub, en het opdrachtenoverzicht als laatste onderaan. */
     .walk-board-col{order:1; max-width:none;}
     .walk-side-stack{order:2; max-height:none;}
     .walk-status-col{order:3; max-height:none;}
+    .walk-quest-checklist-col{order:4; max-height:none;}
   }
-  /* de 3 vakken zelf mogen niet krimpen (Dobbelstenen/Energieactie/Actiekaarten) — de
-     statushub ernaast (.walk-info-panel, nu in .walk-status-col) krijgt flex:1 1 auto en
-     vult zijn eigen kolom, onafhankelijk van deze drie. */
+  /* de 3 vakken in de zijkolom mogen niet krimpen (Dobbelstenen/Energieactie/Actiekaarten) —
+     de statushub (.walk-info-panel) en het opdrachtenoverzicht (.walk-quest-checklist)
+     krijgen straks allebei flex:1 1 auto en vullen hun eigen (enige) kolom, onafhankelijk
+     van deze drie. */
   .walk-panel-box{flex:none;}
   /* "of" tussen twee vakken: je kunt dobbelen ÓF een energie-actie inzetten, en verderop
      ÓF (als dat nu kan) een actiekaart spelen vóór het dobbelen — zie 97-solo.js. */
@@ -624,6 +644,51 @@
      telt hier niet meer mee.) */
   .walk-info-panel:has(#walkMeta:empty):has(#walkScoreActive:empty):has(#walkStatus:empty):has(#walkStatTiles:empty):has(#walkQuestCard:empty){
     display:none;
+  }
+
+  /* opdrachtenoverzicht: alle 9 opdrachten (2.1-2.9) met voltooid/nog-open-status, zodat je bij
+     Herprioritering (ruilt je huidige doel blind met je volgende opdracht) kunt inschatten of
+     je 'm liever houdt — zie soloRenderQuestChecklist in 97-solo.js. Zelfde vulling/leeg-aanpak
+     als .walk-info-panel hierboven: leeg vóór er een potje loopt of in Automatisch-modus, dan
+     verdwijnt de hele kolom via .walk-board-row.walk-no-checklist (zie eerder in dit bestand). */
+  .walk-quest-checklist{
+    display:flex; flex-direction:column; gap:6px; flex:1 1 auto; min-height:0;
+    background:var(--panel-2); border:1px solid var(--line); border-radius:6px; padding:14px;
+    overflow-y:auto; scrollbar-gutter:stable;
+  }
+  @media (max-width: 1150px){ .walk-quest-checklist{flex:none; max-height:none;} }
+  .quest-check-row{
+    display:flex; align-items:baseline; flex-wrap:wrap; gap:4px 7px;
+    padding:6px 9px; border-radius:5px;
+    background:var(--hull); border:1px solid var(--line-dim); border-left:3px solid var(--qtint, var(--quest));
+  }
+  .quest-check-label{
+    font-family:var(--font-mono); font-size:10.5px; font-weight:700; color:var(--qtint, var(--quest));
+    flex:none;
+  }
+  .quest-check-name{
+    font-family:var(--font-display); font-size:12px; color:var(--text); flex:1 1 auto; min-width:0;
+  }
+  /* huidig doel: dezelfde tint als de grote opdrachtkaart ernaast (--qtint, gezet vanuit JS),
+     met een iets steviger rand zodat 'm er tussen de rest uit springt — dít is de opdracht die
+     Herprioritering daadwerkelijk zou wegruilen. */
+  .quest-check-row.is-current{
+    border-left-width:5px;
+    box-shadow:0 0 0 1px color-mix(in srgb, var(--qtint, var(--quest)) 45%, transparent);
+  }
+  .quest-check-row.is-current .quest-check-name{font-weight:700;}
+  /* voltooid: naam/label doven naar donkerder tekst, maar "Voltooid!" krijgt bewust WEL de
+     succeskleur (zelfde groen als een "hit"-logregel) — zo blijft in één oogopslag zichtbaar
+     wélke opdrachten al klaar zijn, zonder dat de hele rij even fel blijft als een open
+     opdracht (gebruikerswens: tekst donkerder, "Voltooid!" erachter). */
+  .quest-check-row.is-done{
+    background:transparent; border-left-color:var(--line-dim);
+  }
+  .quest-check-row.is-done .quest-check-label,
+  .quest-check-row.is-done .quest-check-name{color:var(--text-dim);}
+  .quest-check-done{
+    font-family:var(--font-mono); font-size:10px; font-weight:700; color:var(--start);
+    flex:none;
   }
   /* de nieuwe stat-tegels + altijd-zichtbare spelersrij boven het bord vervangen wat #walkMeta
      en #walkScoreActive lieten zien (beurt/voltooid resp. de eigen rij) — die blijven in de DOM
@@ -1954,6 +2019,15 @@
           </div>
 
           <div class="walk-board-row">
+          <!-- opdrachtenoverzicht: alle 9 opdrachten in één oogopslag, voltooid vs. nog open —
+               zodat je bij Herprioritering (die je huidige doel blind ruilt met je volgende
+               opdracht) kunt inschatten of je je huidige doel liever houdt (gebruikerswens).
+               Alleen gevuld/zichtbaar tijdens "Zelf spelen" (soloRenderQuestChecklist in
+               97-solo.js) — in Automatisch-modus of vóórdat een potje loopt is-ie leeg en
+               verdwijnt de hele kolom via .walk-board-row.walk-no-checklist hieronder. -->
+          <div class="walk-quest-checklist-col">
+            <div class="walk-panel-box walk-quest-checklist" id="walkQuestChecklist"></div>
+          </div>
           <!-- statushub: links van het bord, zodat "waar moet ik heen" meteen in het oog
                springt vóórdat je naar rechts kijkt om te dobbelen (gebruikerswens). Zelfde
                #walkStatTiles/#walkQuestCard/#walkMeta/#walkScoreActive/
@@ -7253,6 +7327,8 @@ const walkSideStackEl = document.getElementById('walkSideStack');
 const walkOrSep1El = document.getElementById('walkOrSep1');
 const walkOrSep2El = document.getElementById('walkOrSep2');
 const walkStatTilesEl = document.getElementById('walkStatTiles');
+const walkQuestChecklistEl = document.getElementById('walkQuestChecklist');
+const walkBoardRowEl = document.querySelector('.walk-board-row');
 
 let soloGraph = null;
 let soloDeck = null;         // gedeelde actiekaart-stapel voor dit potje
@@ -7520,6 +7596,31 @@ function soloRenderStatusExtras(){
     `<div class="walk-stat-tile"><span class="walk-stat-tile-num">${p.completed}/${SIM_QUESTS_TO_WIN}</span><span class="walk-stat-tile-lbl">voltooid</span></div>` +
     `<div class="walk-stat-tile"><span class="walk-stat-tile-num">${soloTurn}</span><span class="walk-stat-tile-lbl">beurt</span></div>` +
     `<div class="walk-stat-tile"><span class="walk-stat-tile-num">${walkRankLabel(rank)}</span><span class="walk-stat-tile-lbl">positie</span></div>`;
+  soloRenderQuestChecklist();
+}
+// opdrachtenoverzicht links van het bord: alle 9 opdrachten (2.1-2.9), altijd in dezelfde
+// volgorde als QUEST_NAMES zelf — dus NIET de (geheime) volgorde van je eigen stapeltje. Dat is
+// bewust: Herprioritering/Herkalibratie ruilen je huidige doel "blind" met je eerstvolgende
+// opdracht (soloUnconditionalSwap), en dit overzicht mag dat geheim niet weggeven. Het toont
+// alleen WAT je nog te goed hebt en WAT al klaar is, zodat je kunt inschatten of je je huidige
+// doel liever houdt (gebruikerswens). Hangt aan soloRenderStatusExtras zodat hij overal meeloopt.
+function soloRenderQuestChecklist(){
+  if (!walkQuestChecklistEl) return;
+  const p = solo();
+  if (!p){ walkQuestChecklistEl.innerHTML = ''; return; }
+  const done = new Set(p.deck.slice(0, p.nextIdx));
+  const current = p.rank ? null : p.deck[p.nextIdx];
+  walkQuestChecklistEl.innerHTML = Object.keys(QUEST_NAMES).map(label => {
+    const isDone = done.has(label);
+    const isCurrent = label === current;
+    const cls = 'quest-check-row' + (isDone ? ' is-done' : '') + (isCurrent ? ' is-current' : '');
+    const style = isCurrent ? ` style="--qtint:${questTint(label)}"` : '';
+    return `<div class="${cls}"${style}>` +
+      `<span class="quest-check-label">${label}</span>` +
+      `<span class="quest-check-name">${QUEST_NAMES[label]}</span>` +
+      (isDone ? `<span class="quest-check-done">✓ Voltooid!</span>` : '') +
+    `</div>`;
+  }).join('');
 }
 // Los, duidelijk overzicht van je energie t.o.v. het plafond (ENERGY_MAX) — het kleine
 // ⚡-badge in de spelersrij (walkScoreActive) verdwijnt daar te makkelijk tussen de rest.
@@ -8962,6 +9063,8 @@ function stopSoloGame(){
   if (walkSoloControlsEl) walkSoloControlsEl.hidden = false;
   if (walkSoloHintEl) walkSoloHintEl.hidden = false;
   if (walkStatTilesEl) walkStatTilesEl.innerHTML = '';
+  if (walkQuestChecklistEl) walkQuestChecklistEl.innerHTML = '';
+  if (walkBoardRowEl) walkBoardRowEl.classList.add('walk-no-checklist');
   if (walkSoloActionsEl) walkSoloActionsEl.innerHTML = '';
   if (btnWalkSoloRoll) btnWalkSoloRoll.hidden = true;
   if (btnWalkSoloSkip) btnWalkSoloSkip.hidden = true;
@@ -8978,6 +9081,9 @@ function startSoloGame(){
   if (walkSoloPanelEl) walkSoloPanelEl.hidden = false;
   if (walkEnergyOverviewEl) walkEnergyOverviewEl.hidden = false;
   if (walkOrSep1El) walkOrSep1El.hidden = false;
+  // opdrachtenoverzicht-kolom komt er nu pas bij — vóór het potje is er nog geen speler/deck
+  // om te tonen, zie soloRenderQuestChecklist().
+  if (walkBoardRowEl) walkBoardRowEl.classList.remove('walk-no-checklist');
   // opzet-UI (spelers-/bot-aantal, de lange regelparagraaf) heeft tijdens het spelen zelf geen
   // functie meer en kost boven het bord veel hoogte — weg ermee zodra het potje loopt, zodat
   // bord + zijkolom weer een kans hebben om zonder scrollen op het scherm te passen.

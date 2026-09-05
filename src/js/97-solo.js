@@ -57,6 +57,8 @@ const walkSideStackEl = document.getElementById('walkSideStack');
 const walkOrSep1El = document.getElementById('walkOrSep1');
 const walkOrSep2El = document.getElementById('walkOrSep2');
 const walkStatTilesEl = document.getElementById('walkStatTiles');
+const walkQuestChecklistEl = document.getElementById('walkQuestChecklist');
+const walkBoardRowEl = document.querySelector('.walk-board-row');
 
 let soloGraph = null;
 let soloDeck = null;         // gedeelde actiekaart-stapel voor dit potje
@@ -324,6 +326,31 @@ function soloRenderStatusExtras(){
     `<div class="walk-stat-tile"><span class="walk-stat-tile-num">${p.completed}/${SIM_QUESTS_TO_WIN}</span><span class="walk-stat-tile-lbl">voltooid</span></div>` +
     `<div class="walk-stat-tile"><span class="walk-stat-tile-num">${soloTurn}</span><span class="walk-stat-tile-lbl">beurt</span></div>` +
     `<div class="walk-stat-tile"><span class="walk-stat-tile-num">${walkRankLabel(rank)}</span><span class="walk-stat-tile-lbl">positie</span></div>`;
+  soloRenderQuestChecklist();
+}
+// opdrachtenoverzicht links van het bord: alle 9 opdrachten (2.1-2.9), altijd in dezelfde
+// volgorde als QUEST_NAMES zelf — dus NIET de (geheime) volgorde van je eigen stapeltje. Dat is
+// bewust: Herprioritering/Herkalibratie ruilen je huidige doel "blind" met je eerstvolgende
+// opdracht (soloUnconditionalSwap), en dit overzicht mag dat geheim niet weggeven. Het toont
+// alleen WAT je nog te goed hebt en WAT al klaar is, zodat je kunt inschatten of je je huidige
+// doel liever houdt (gebruikerswens). Hangt aan soloRenderStatusExtras zodat hij overal meeloopt.
+function soloRenderQuestChecklist(){
+  if (!walkQuestChecklistEl) return;
+  const p = solo();
+  if (!p){ walkQuestChecklistEl.innerHTML = ''; return; }
+  const done = new Set(p.deck.slice(0, p.nextIdx));
+  const current = p.rank ? null : p.deck[p.nextIdx];
+  walkQuestChecklistEl.innerHTML = Object.keys(QUEST_NAMES).map(label => {
+    const isDone = done.has(label);
+    const isCurrent = label === current;
+    const cls = 'quest-check-row' + (isDone ? ' is-done' : '') + (isCurrent ? ' is-current' : '');
+    const style = isCurrent ? ` style="--qtint:${questTint(label)}"` : '';
+    return `<div class="${cls}"${style}>` +
+      `<span class="quest-check-label">${label}</span>` +
+      `<span class="quest-check-name">${QUEST_NAMES[label]}</span>` +
+      (isDone ? `<span class="quest-check-done">✓ Voltooid!</span>` : '') +
+    `</div>`;
+  }).join('');
 }
 // Los, duidelijk overzicht van je energie t.o.v. het plafond (ENERGY_MAX) — het kleine
 // ⚡-badge in de spelersrij (walkScoreActive) verdwijnt daar te makkelijk tussen de rest.
@@ -1766,6 +1793,8 @@ function stopSoloGame(){
   if (walkSoloControlsEl) walkSoloControlsEl.hidden = false;
   if (walkSoloHintEl) walkSoloHintEl.hidden = false;
   if (walkStatTilesEl) walkStatTilesEl.innerHTML = '';
+  if (walkQuestChecklistEl) walkQuestChecklistEl.innerHTML = '';
+  if (walkBoardRowEl) walkBoardRowEl.classList.add('walk-no-checklist');
   if (walkSoloActionsEl) walkSoloActionsEl.innerHTML = '';
   if (btnWalkSoloRoll) btnWalkSoloRoll.hidden = true;
   if (btnWalkSoloSkip) btnWalkSoloSkip.hidden = true;
@@ -1782,6 +1811,9 @@ function startSoloGame(){
   if (walkSoloPanelEl) walkSoloPanelEl.hidden = false;
   if (walkEnergyOverviewEl) walkEnergyOverviewEl.hidden = false;
   if (walkOrSep1El) walkOrSep1El.hidden = false;
+  // opdrachtenoverzicht-kolom komt er nu pas bij — vóór het potje is er nog geen speler/deck
+  // om te tonen, zie soloRenderQuestChecklist().
+  if (walkBoardRowEl) walkBoardRowEl.classList.remove('walk-no-checklist');
   // opzet-UI (spelers-/bot-aantal, de lange regelparagraaf) heeft tijdens het spelen zelf geen
   // functie meer en kost boven het bord veel hoogte — weg ermee zodra het potje loopt, zodat
   // bord + zijkolom weer een kans hebben om zonder scrollen op het scherm te passen.
