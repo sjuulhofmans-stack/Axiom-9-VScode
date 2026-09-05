@@ -874,7 +874,11 @@
   /* De drie energie-acties uit de solo-modus: volle-breedte-rijen in plaats van kaartjes.
      Als 108px-kaartjes pasten ze niet met z'n drieën in de 300px-zijkolom (de derde viel op
      een tweede rij) en smaller gemaakt brak "Herprioritering" middenin het woord af. */
-  .energy-pick-list{display:flex; flex-direction:column; gap:6px;}
+  /* width:100% is nodig omdat de ouder (#walkSoloActions, class .walk-solo-actions) zelf een
+     flex-RIJ is (voor andere schermen in dit vakje, zie styles.css verderop) — zonder expliciete
+     breedte bleef deze kolom (en dus elke .energy-pick-knop erin) op zijn intrinsieke
+     inhoudsbreedte hangen i.p.v. de hele .walk-solo-panel te vullen (gebruikerswens). */
+  .energy-pick-list{display:flex; flex-direction:column; gap:6px; width:100%;}
   .energy-pick{
     display:flex; align-items:center; gap:10px; width:100%; text-align:left;
     padding:8px 10px; border-radius:5px; cursor:pointer;
