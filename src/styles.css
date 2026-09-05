@@ -425,10 +425,14 @@
   /* puls in de kleur van wie aan zet is (--pc, gezet op #walkSideStack — zie
      soloBeginHumanTurn in 97-solo.js) — geeft aan dat een actie NU mogelijk is: de
      dobbelknop (puur CSS, zodra hij zichtbaar is is het altijd ook echt jouw beurt om te
-     gooien) en de Energieactie-/Actiekaarten-vakken (via een klasse vanuit JS, zie
-     soloRenderActionPanel/soloRefreshCardVault). Tempo gelijk aan .walk-paused-flag (1.6s) —
-     bewust trager dan de 1.3s-puls van het opdrachtvakje op het bord, anders concurreren de
-     twee knipperingen zichtbaar met elkaar. */
+     gooien), de kaartkluis (via een klasse vanuit JS, zie soloRefreshCardVault) en losjes
+     per knop de energieacties die je nu ECHT kunt kiezen (renderEnergySoloButton) — niet de
+     hele Energieactie-kolom, want dan pulste ook een dichtgeklapt of onbetaalbaar vak mee
+     (gebruikerswens). Doordat het op de knoppen zelf staat, verdwijnt de puls vanzelf zodra
+     die knoppen na het dobbelen uit de DOM verdwijnen, i.p.v. te blijven hangen op een dan
+     lege kolom. Tempo gelijk aan .walk-paused-flag (1.6s) — bewust trager dan de 1.3s-puls
+     van het opdrachtvakje op het bord, anders concurreren de twee knipperingen zichtbaar
+     met elkaar. */
   @keyframes walkPcPulse{
     0%,100%{box-shadow:0 0 0 0 color-mix(in srgb, var(--pc, var(--amber)) 55%, transparent);}
     50%{box-shadow:0 0 12px 2px color-mix(in srgb, var(--pc, var(--amber)) 55%, transparent);}

@@ -349,11 +349,18 @@ function soloRefreshTarget(){
 function renderEnergySoloButton(id, disabled, reason){
   const act = ENERGY_ACTIONS[id];
   const title = reason ? `${act.name} — ${reason}` : `${act.name} (${act.cost} energie) — ${act.note || act.hint}`;
+  // puls per knop, niet op de hele kolom (gebruikerswens) — alleen de acties die je NU echt
+  // kunt kiezen knipperen; `disabled` dekt zowel te weinig energie als een geblokkeerde
+  // combinatie (bv. boostcellUsed). Doordat deze knoppen zelf verdwijnen zodra je dobbelt of
+  // een energie-actie gebruikt (walkSoloActionsEl wordt dan leeggemaakt, zie
+  // soloRefreshCardVault), stopt de puls vanzelf mee i.p.v. te blijven hangen op een dan lege
+  // container.
+  const pulse = !disabled && !soloEnergyActionUsed();
   // Bewust GEEN .action-card hier: dat kaartje is 108px breed en met z'n drieën passen ze niet
   // in de 300px-zijkolom — de derde viel op een tweede rij, en dwong je ze smaller te maken,
   // brak "HERPRIORITERING" middenin het woord af. Als volle-breedte-rij is er ruimte zat voor
   // de naam én de uitleg op één regel.
-  return `<button type="button" class="energy-pick${disabled ? ' is-disabled' : ''}" data-energy="${id}"${disabled ? ' disabled' : ''} title="${title}">
+  return `<button type="button" class="energy-pick${disabled ? ' is-disabled' : ''}${pulse ? ' walk-pulse-affordable' : ''}" data-energy="${id}"${disabled ? ' disabled' : ''} title="${title}">
     <span class="energy-pick-cost">${act.cost}</span>
     <span class="energy-pick-text">
       <b>${act.name}</b>
@@ -385,10 +392,6 @@ function soloRenderActionPanel(){
     ? `<p class="hint energy-pick-none">Je hebt <b>${p.energy}</b> energie — te weinig voor een actie. Gooi gewoon; je energiesteen vult je voorraad weer aan.</p>`
     : '';
   walkSoloActionsEl.innerHTML = `<div class="energy-pick-list">${energyBtns}</div>${note}`;
-  // puls op de hele Energieactie-kolom zodra er nu écht iets te kiezen valt
-  const anyAffordable = !soloEnergyActionUsed() && ['reorder', 'boost', 'jump'].some(id =>
-    p.energy >= ENERGY_ACTIONS[id].cost && !(id === 'boost' && boostcellUsed));
-  if (walkSoloPanelEl) walkSoloPanelEl.classList.toggle('walk-pulse-affordable', anyAffordable);
   // 2e "of": alleen zichtbaar zolang je vóór het dobbelen zit én Noodrantsoen/Stuwlading nu
   // speelbaar is (dezelfde bron als de kaartkluis-puls, maar dan specifiek voor dit moment)
   if (walkOrSep2El){

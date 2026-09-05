@@ -432,10 +432,14 @@
   /* puls in de kleur van wie aan zet is (--pc, gezet op #walkSideStack — zie
      soloBeginHumanTurn in 97-solo.js) — geeft aan dat een actie NU mogelijk is: de
      dobbelknop (puur CSS, zodra hij zichtbaar is is het altijd ook echt jouw beurt om te
-     gooien) en de Energieactie-/Actiekaarten-vakken (via een klasse vanuit JS, zie
-     soloRenderActionPanel/soloRefreshCardVault). Tempo gelijk aan .walk-paused-flag (1.6s) —
-     bewust trager dan de 1.3s-puls van het opdrachtvakje op het bord, anders concurreren de
-     twee knipperingen zichtbaar met elkaar. */
+     gooien), de kaartkluis (via een klasse vanuit JS, zie soloRefreshCardVault) en losjes
+     per knop de energieacties die je nu ECHT kunt kiezen (renderEnergySoloButton) — niet de
+     hele Energieactie-kolom, want dan pulste ook een dichtgeklapt of onbetaalbaar vak mee
+     (gebruikerswens). Doordat het op de knoppen zelf staat, verdwijnt de puls vanzelf zodra
+     die knoppen na het dobbelen uit de DOM verdwijnen, i.p.v. te blijven hangen op een dan
+     lege kolom. Tempo gelijk aan .walk-paused-flag (1.6s) — bewust trager dan de 1.3s-puls
+     van het opdrachtvakje op het bord, anders concurreren de twee knipperingen zichtbaar
+     met elkaar. */
   @keyframes walkPcPulse{
     0%,100%{box-shadow:0 0 0 0 color-mix(in srgb, var(--pc, var(--amber)) 55%, transparent);}
     50%{box-shadow:0 0 12px 2px color-mix(in srgb, var(--pc, var(--amber)) 55%, transparent);}
@@ -7525,11 +7529,18 @@ function soloRefreshTarget(){
 function renderEnergySoloButton(id, disabled, reason){
   const act = ENERGY_ACTIONS[id];
   const title = reason ? `${act.name} — ${reason}` : `${act.name} (${act.cost} energie) — ${act.note || act.hint}`;
+  // puls per knop, niet op de hele kolom (gebruikerswens) — alleen de acties die je NU echt
+  // kunt kiezen knipperen; `disabled` dekt zowel te weinig energie als een geblokkeerde
+  // combinatie (bv. boostcellUsed). Doordat deze knoppen zelf verdwijnen zodra je dobbelt of
+  // een energie-actie gebruikt (walkSoloActionsEl wordt dan leeggemaakt, zie
+  // soloRefreshCardVault), stopt de puls vanzelf mee i.p.v. te blijven hangen op een dan lege
+  // container.
+  const pulse = !disabled && !soloEnergyActionUsed();
   // Bewust GEEN .action-card hier: dat kaartje is 108px breed en met z'n drieën passen ze niet
   // in de 300px-zijkolom — de derde viel op een tweede rij, en dwong je ze smaller te maken,
   // brak "HERPRIORITERING" middenin het woord af. Als volle-breedte-rij is er ruimte zat voor
   // de naam én de uitleg op één regel.
-  return `<button type="button" class="energy-pick${disabled ? ' is-disabled' : ''}" data-energy="${id}"${disabled ? ' disabled' : ''} title="${title}">
+  return `<button type="button" class="energy-pick${disabled ? ' is-disabled' : ''}${pulse ? ' walk-pulse-affordable' : ''}" data-energy="${id}"${disabled ? ' disabled' : ''} title="${title}">
     <span class="energy-pick-cost">${act.cost}</span>
     <span class="energy-pick-text">
       <b>${act.name}</b>
@@ -7561,10 +7572,6 @@ function soloRenderActionPanel(){
     ? `<p class="hint energy-pick-none">Je hebt <b>${p.energy}</b> energie — te weinig voor een actie. Gooi gewoon; je energiesteen vult je voorraad weer aan.</p>`
     : '';
   walkSoloActionsEl.innerHTML = `<div class="energy-pick-list">${energyBtns}</div>${note}`;
-  // puls op de hele Energieactie-kolom zodra er nu écht iets te kiezen valt
-  const anyAffordable = !soloEnergyActionUsed() && ['reorder', 'boost', 'jump'].some(id =>
-    p.energy >= ENERGY_ACTIONS[id].cost && !(id === 'boost' && boostcellUsed));
-  if (walkSoloPanelEl) walkSoloPanelEl.classList.toggle('walk-pulse-affordable', anyAffordable);
   // 2e "of": alleen zichtbaar zolang je vóór het dobbelen zit én Noodrantsoen/Stuwlading nu
   // speelbaar is (dezelfde bron als de kaartkluis-puls, maar dan specifiek voor dit moment)
   if (walkOrSep2El){
