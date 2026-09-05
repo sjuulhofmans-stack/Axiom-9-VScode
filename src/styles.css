@@ -378,24 +378,27 @@
      de "alles op 1 pagina"-eis, in plaats van in een kolom ernaast waar hoogte minder opviel. */
   .walk-players-row{min-height:74px;}
   .walk-players-row .walk-player{padding:5px 9px; min-height:66px; gap:3px;}
+  /* buitenste kolommen zijn allebei minmax(0,1fr): links een lege spacer, rechts de
+     zijkolom-inhoud — zo verdeelt de browser de overgebleven ruimte gelijk over "vóór het
+     bord" en "de zijkolom", wat het bord dichter naar het midden trekt én de zijkolom tot
+     de rechterrand van de pagina laat doorlopen (gebruikerswens). */
   .walk-board-row{
-    display:grid; grid-template-columns: max-content 300px; gap:15px; align-items:start;
+    display:grid; grid-template-columns: minmax(0,1fr) 839px minmax(300px,1fr);
+    gap:15px; align-items:start;
   }
-  /* max-width hier is nodig omdat .walk-legend (flex-wrap) door de browser wordt meegeteld
-     als was het één ongewrapte regel bij het bepalen van de "max-content"-kolombreedte
-     hierboven — zonder deze clamp wordt de kolom (en dus de kloof tot de zijkolom) ineens
-     zo breed als die ongewrapte legenda i.p.v. de 839px van het bord (40×20px cel + 39×1px
-     naad, zie #walkBoard hieronder). */
-  .walk-board-col{min-width:0; max-width:839px;}
+  .walk-board-col{grid-column:2; min-width:0; max-width:839px;}
   /* de rechterkolom (Dobbelstenen/Energieactie/Actiekaarten/Spelerstatus) mag samen nooit
      hoger worden dan het bord (gebruikerseis) — #walkBoard is 671px hoog (32 rijen × 20px +
      31px tussenruimte), dus dat is het harde plafond hieronder. */
   .walk-side-stack{
+    grid-column:3;
     display:flex; flex-direction:column; gap:10px; min-width:0;
     max-height:671px;
   }
   @media (max-width: 1150px){
     .walk-board-row{grid-template-columns:1fr;}
+    .walk-board-col, .walk-side-stack{grid-column:1;}
+    .walk-board-col{max-width:none;}
     .walk-side-stack{max-height:none;}
   }
   /* de 4 vakken zelf mogen niet krimpen — alleen .walk-info-panel (Spelerstatus, hieronder)
@@ -717,7 +720,7 @@
        en juist die vertelt waar een tegenstander heen gaat. */
     /* 240px is de smalste kolom waarin alle drie de regels nog helemaal passen (gemeten:
        doelregel 153px, onderregel 208px). Vier spelers passen daarmee naast elkaar. */
-    display:grid; grid-template-columns:repeat(auto-fill, minmax(240px, 1fr));
+    display:grid; grid-template-columns:repeat(auto-fit, minmax(240px, 1fr));
     gap:8px; align-items:stretch;
     /* 26px in plaats van de gewenste 15px: de gloed rond de "aan zet"-kaart (box-shadow
        blur 18px) bleedt buiten de kaartrand en at anders de marge zichtbaar op. */
