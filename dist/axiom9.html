@@ -542,8 +542,16 @@
 
   /* stappenteller tijdens het lopen in de solo-modus, naast de dobbelstenen in .walk-hud —
      bewegen zelf gaat via bordklik of pijltjestoetsen (zie SOLO_ARROW_DIR in 97-solo.js),
-     dit is puur een teller zodat je niet naar de worp bovenaan hoeft terug te scrollen. */
-  .walk-step-counter{display:flex; gap:8px;}
+     dit is puur een teller zodat je niet naar de worp bovenaan hoeft terug te scrollen.
+     `margin-left:auto` duwt 'm vast tegen de rechterkant van .walk-hud, ongeacht hoe breed de
+     dobbelstenen ernaast zijn (vóór een worp klein "? ?", erna "3 5 = 8 stappen" — zonder dit
+     schoof de teller mee met die breedte i.p.v. op een vaste plek te blijven staan).
+     `soloRenderStepCounter`/`soloHideStepCounter` in 97-solo.js zetten hier nu ook `hidden` op
+     i.p.v. alleen de cijfers op "–" te zetten, dus de `[hidden]`-regel eronder is nodig: zonder
+     die override wint deze `display:flex`-regel gewoon van het standaard `[hidden]` (zelfde
+     patroon als .walk-or-sep[hidden] en .walk-controls[hidden] hierboven). */
+  .walk-step-counter{display:flex; gap:8px; margin-left:auto;}
+  .walk-step-counter[hidden]{display:none;}
   .walk-step-box{
     display:flex; flex-direction:column; align-items:center; justify-content:center;
     min-width:40px; padding:5px 7px; background:var(--hull); border:1px solid var(--line-dim);
@@ -1998,7 +2006,7 @@
           <div class="walk-side-stack" id="walkSideStack">
             <div class="walk-panel-box walk-hud">
               <div class="walk-dice" id="walkDice"></div>
-              <div class="walk-step-counter">
+              <div class="walk-step-counter" id="walkStepCounter" hidden>
                 <div class="walk-step-box"><span class="walk-step-num" id="walkStepDone">0</span><span class="walk-step-lbl">gezet</span></div>
                 <div class="walk-step-box"><span class="walk-step-num" id="walkStepLeft">0</span><span class="walk-step-lbl">nog</span></div>
               </div>
@@ -7238,6 +7246,7 @@ const cardPanelClose = document.getElementById('cardPanelClose');
 const btnCardPlay = document.getElementById('btnCardPlay');
 const btnCardDiscard = document.getElementById('btnCardDiscard');
 const btnCardCancel = document.getElementById('btnCardCancel');
+const walkStepCounterEl = document.getElementById('walkStepCounter');
 const walkStepDoneEl = document.getElementById('walkStepDone');
 const walkStepLeftEl = document.getElementById('walkStepLeft');
 const walkSideStackEl = document.getElementById('walkSideStack');
@@ -8230,11 +8239,16 @@ function renderSoloDicePending(){
 // via die pijltjestoetsen, dit is puur de "gezet/nog"-teller ernaast.
 function soloRenderStepCounter(legal){
   soloCurrentLegalMoves = legal;
+  if (walkStepCounterEl) walkStepCounterEl.hidden = false;
   if (walkStepDoneEl) walkStepDoneEl.textContent = soloMove.path.length - 1;
   if (walkStepLeftEl) walkStepLeftEl.textContent = soloMove.stepsLeft;
 }
+// verborgen zolang je nog niet hebt gedobbeld (gebruikerswens) — pas zichtbaar vanaf de eerste
+// soloRenderStepCounter()-aanroep, die precies samenvalt met het moment dat je stappen kunt
+// gaan zetten.
 function soloHideStepCounter(){
   soloCurrentLegalMoves = [];
+  if (walkStepCounterEl) walkStepCounterEl.hidden = true;
   if (walkStepDoneEl) walkStepDoneEl.textContent = '–';
   if (walkStepLeftEl) walkStepLeftEl.textContent = '–';
 }
@@ -9696,6 +9710,7 @@ function mpBroadcastState(){
       rollHidden: btnWalkSoloRoll ? btnWalkSoloRoll.hidden : true,
       skipHidden: btnWalkSoloSkip ? btnWalkSoloSkip.hidden : true,
       actionsHtml: walkSoloActionsEl ? walkSoloActionsEl.innerHTML : '',
+      stepHidden: walkStepCounterEl ? walkStepCounterEl.hidden : true,
       stepDone: walkStepDoneEl ? walkStepDoneEl.textContent : '–',
       stepLeft: walkStepLeftEl ? walkStepLeftEl.textContent : '–',
       clickableKeys: walkBoardEl
@@ -9780,6 +9795,7 @@ function mpApplyState(payload){
   if (btnWalkSoloRoll) btnWalkSoloRoll.hidden = isMine ? ui.rollHidden : true;
   if (btnWalkSoloSkip) btnWalkSoloSkip.hidden = isMine ? ui.skipHidden : true;
   if (walkSoloActionsEl) walkSoloActionsEl.innerHTML = isMine ? ui.actionsHtml : '';
+  if (walkStepCounterEl) walkStepCounterEl.hidden = isMine ? ui.stepHidden : true;
   if (walkStepDoneEl) walkStepDoneEl.textContent = isMine ? ui.stepDone : '–';
   if (walkStepLeftEl) walkStepLeftEl.textContent = isMine ? ui.stepLeft : '–';
   if (isMine) soloMarkClickable(soloGraph, ui.clickableKeys); else soloClearClickable();

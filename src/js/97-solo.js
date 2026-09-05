@@ -50,6 +50,7 @@ const cardPanelClose = document.getElementById('cardPanelClose');
 const btnCardPlay = document.getElementById('btnCardPlay');
 const btnCardDiscard = document.getElementById('btnCardDiscard');
 const btnCardCancel = document.getElementById('btnCardCancel');
+const walkStepCounterEl = document.getElementById('walkStepCounter');
 const walkStepDoneEl = document.getElementById('walkStepDone');
 const walkStepLeftEl = document.getElementById('walkStepLeft');
 const walkSideStackEl = document.getElementById('walkSideStack');
@@ -1042,11 +1043,16 @@ function renderSoloDicePending(){
 // via die pijltjestoetsen, dit is puur de "gezet/nog"-teller ernaast.
 function soloRenderStepCounter(legal){
   soloCurrentLegalMoves = legal;
+  if (walkStepCounterEl) walkStepCounterEl.hidden = false;
   if (walkStepDoneEl) walkStepDoneEl.textContent = soloMove.path.length - 1;
   if (walkStepLeftEl) walkStepLeftEl.textContent = soloMove.stepsLeft;
 }
+// verborgen zolang je nog niet hebt gedobbeld (gebruikerswens) — pas zichtbaar vanaf de eerste
+// soloRenderStepCounter()-aanroep, die precies samenvalt met het moment dat je stappen kunt
+// gaan zetten.
 function soloHideStepCounter(){
   soloCurrentLegalMoves = [];
+  if (walkStepCounterEl) walkStepCounterEl.hidden = true;
   if (walkStepDoneEl) walkStepDoneEl.textContent = '–';
   if (walkStepLeftEl) walkStepLeftEl.textContent = '–';
 }

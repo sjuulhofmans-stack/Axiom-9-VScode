@@ -535,8 +535,16 @@
 
   /* stappenteller tijdens het lopen in de solo-modus, naast de dobbelstenen in .walk-hud —
      bewegen zelf gaat via bordklik of pijltjestoetsen (zie SOLO_ARROW_DIR in 97-solo.js),
-     dit is puur een teller zodat je niet naar de worp bovenaan hoeft terug te scrollen. */
-  .walk-step-counter{display:flex; gap:8px;}
+     dit is puur een teller zodat je niet naar de worp bovenaan hoeft terug te scrollen.
+     `margin-left:auto` duwt 'm vast tegen de rechterkant van .walk-hud, ongeacht hoe breed de
+     dobbelstenen ernaast zijn (vóór een worp klein "? ?", erna "3 5 = 8 stappen" — zonder dit
+     schoof de teller mee met die breedte i.p.v. op een vaste plek te blijven staan).
+     `soloRenderStepCounter`/`soloHideStepCounter` in 97-solo.js zetten hier nu ook `hidden` op
+     i.p.v. alleen de cijfers op "–" te zetten, dus de `[hidden]`-regel eronder is nodig: zonder
+     die override wint deze `display:flex`-regel gewoon van het standaard `[hidden]` (zelfde
+     patroon als .walk-or-sep[hidden] en .walk-controls[hidden] hierboven). */
+  .walk-step-counter{display:flex; gap:8px; margin-left:auto;}
+  .walk-step-counter[hidden]{display:none;}
   .walk-step-box{
     display:flex; flex-direction:column; align-items:center; justify-content:center;
     min-width:40px; padding:5px 7px; background:var(--hull); border:1px solid var(--line-dim);
