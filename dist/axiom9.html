@@ -386,9 +386,14 @@
   .walk-players-row{min-height:74px;}
   .walk-players-row .walk-player{padding:5px 9px; min-height:66px; gap:3px;}
   .walk-board-row{
-    display:grid; grid-template-columns: minmax(0,1fr) 300px; gap:15px; align-items:start;
+    display:grid; grid-template-columns: max-content 300px; gap:15px; align-items:start;
   }
-  .walk-board-col{min-width:0;}
+  /* max-width hier is nodig omdat .walk-legend (flex-wrap) door de browser wordt meegeteld
+     als was het één ongewrapte regel bij het bepalen van de "max-content"-kolombreedte
+     hierboven — zonder deze clamp wordt de kolom (en dus de kloof tot de zijkolom) ineens
+     zo breed als die ongewrapte legenda i.p.v. de 839px van het bord (40×20px cel + 39×1px
+     naad, zie #walkBoard hieronder). */
+  .walk-board-col{min-width:0; max-width:839px;}
   /* de rechterkolom (Dobbelstenen/Energieactie/Actiekaarten/Spelerstatus) mag samen nooit
      hoger worden dan het bord (gebruikerseis) — #walkBoard is 671px hoog (32 rijen × 20px +
      31px tussenruimte), dus dat is het harde plafond hieronder. */
@@ -470,11 +475,17 @@
      richting, noodtransport-doel, blinde-vlek-aanbod) — zonder hoogtegrens zou elk van die
      wissels de kolom ernaast kunnen laten springen, exact het probleem dat deze hele kolom nu
      juist niet meer mag hebben. `flex:none` houdt 'm bovendien uit de knijp-verdeling van
-     .walk-side-stack (zie hieronder) — alleen .walk-info-panel mag krimpen. */
+     .walk-side-stack (zie hieronder) — alleen .walk-info-panel mag krimpen.
+     Vaste `height` (i.p.v. de eerdere min/max-range): met een range kon dit vakje na het
+     dobbelen alsnog inkrimpen (230px -> 150px zodra er minder acties te kiezen zijn), en dat
+     schoof #walkInfoPanel eronder direct 80px omhoog — precies het "springen bij het dobbelen"
+     dat hier juist voorkomen moest worden. Een vaste hoogte laat lege ruimte over i.p.v. te
+     krimpen; `overflow-y:auto` blijft staan voor het zeldzame geval dat inhoud er toch niet in
+     past. */
   .walk-solo-panel{
     display:flex; flex-direction:column; gap:10px; flex:none;
     background:var(--hull); border:1px solid var(--line-dim); border-radius:6px; padding:12px;
-    min-height:150px; max-height:230px; overflow-y:auto;
+    height:230px; overflow-y:auto;
   }
   .walk-solo-panel[hidden]{display:none;}
 
@@ -1027,7 +1038,7 @@
   .walk-swatch.start{background:var(--start);}
 
   .walk-log{
-    margin-top:12px; max-height:190px; overflow-y:auto;
+    margin-top:20px; max-height:190px; overflow-y:auto;
     font-family:var(--font-mono); font-size:11.5px; line-height:1.7; color:var(--text-dim);
     background:var(--hull); border:1px solid var(--line-dim); border-radius:4px; padding:9px 11px;
   }
