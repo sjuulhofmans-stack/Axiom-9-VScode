@@ -226,6 +226,30 @@
           </div>
 
           <div class="walk-board-row">
+          <!-- statushub: links van het bord, zodat "waar moet ik heen" meteen in het oog
+               springt vóórdat je naar rechts kijkt om te dobbelen (gebruikerswens). Zelfde
+               #walkStatTiles/#walkGoalLine/#walkQuestCard/#walkMeta/#walkScoreActive/
+               #walkStatus-ids als voorheen, JS hoeft niet te weten dat dit vakje verhuisd is. -->
+          <div class="walk-status-col">
+            <div class="walk-panel-box walk-info-panel">
+              <!-- 3 kleine tegels: voltooide opdrachten, beurtnummer, live positie in het potje.
+                   Blijft leeg (en dus onzichtbaar, zie styles.css) tijdens Automatisch-modus. -->
+              <div class="walk-stat-tiles" id="walkStatTiles"></div>
+
+              <div class="walk-goal-line" id="walkGoalLine"></div>
+
+              <!-- de opdrachtkaart die op dit moment het doel is; leeg zolang er geen potje loopt.
+                   Vergroot bij hover; klik opent 'm nog groter via dezelfde openCardsZoom() als
+                   het tabblad "Speelkaarten". -->
+              <div class="walk-quest-card" id="walkQuestCard"></div>
+
+              <div class="walk-meta" id="walkMeta"></div>
+
+              <div class="walk-score" id="walkScoreActive"></div>
+
+              <div id="walkStatus" class="reach-status"></div>
+            </div>
+          </div>
           <div class="walk-board-col">
             <div class="board-zoom-wrap">
               <div class="board-tools">
@@ -248,10 +272,11 @@
             <div id="walkLog" class="walk-log"></div>
           </div>
 
-          <!-- één kolom, 4 vaste vakken (Dobbelstenen / Energieactie / Actiekaarten /
-               Spelerstatus) met "of" ertussen — samen nooit hoger dan het bord (styles.css).
-               --pc wordt hier één keer per beurt gezet (zie soloBeginHumanTurn in 97-solo.js)
-               zodat alle puls-animaties eronder de kleur van wie aan zet is overnemen. -->
+          <!-- rechts van het bord: alleen nog Dobbelstenen / Energieactie / Actiekaarten,
+               met "of" ertussen — Spelerstatus staat nu links (.walk-status-col hierboven).
+               Samen nooit hoger dan het bord (styles.css). --pc wordt hier één keer per beurt
+               gezet (zie soloBeginHumanTurn in 97-solo.js) zodat alle puls-animaties eronder
+               de kleur van wie aan zet is overnemen. -->
           <div class="walk-side-stack" id="walkSideStack">
             <div class="walk-panel-box walk-hud">
               <div class="walk-dice" id="walkDice"></div>
@@ -302,25 +327,6 @@
                 <span class="sub" id="walkCardVaultHint">klik om te bekijken →</span>
               </span>
             </button>
-
-            <div class="walk-panel-box walk-info-panel">
-              <!-- 3 kleine tegels: voltooide opdrachten, beurtnummer, live positie in het potje.
-                   Blijft leeg (en dus onzichtbaar, zie styles.css) tijdens Automatisch-modus. -->
-              <div class="walk-stat-tiles" id="walkStatTiles"></div>
-
-              <div class="walk-goal-line" id="walkGoalLine"></div>
-
-              <!-- de opdrachtkaart die op dit moment het doel is; leeg zolang er geen potje loopt.
-                   Vergroot bij hover; klik opent 'm nog groter via dezelfde openCardsZoom() als
-                   het tabblad "Speelkaarten". -->
-              <div class="walk-quest-card" id="walkQuestCard"></div>
-
-              <div class="walk-meta" id="walkMeta"></div>
-
-              <div class="walk-score" id="walkScoreActive"></div>
-
-              <div id="walkStatus" class="reach-status"></div>
-            </div>
 
             <!-- alleen zichtbaar tijdens een lopend multiplayer-potje (zie mpEnterPlayView/
                  mpExitPlayView in 99-multiplayer.js) — dezelfde berichten als op het

@@ -378,18 +378,24 @@
      de "alles op 1 pagina"-eis, in plaats van in een kolom ernaast waar hoogte minder opviel. */
   .walk-players-row{min-height:74px;}
   .walk-players-row .walk-player{padding:5px 9px; min-height:66px; gap:3px;}
-  /* buitenste kolommen zijn de lege spacer (links) en de zijkolom-inhoud (rechts) — de
-     fr-verhouding 1:1.8 geeft de zijkolom bewust een groter deel van de restruimte dan de
-     lege spacer, zodat het bord dichter bij links blijft en de zijkolom breder wordt
-     (gebruikerswens: bord iets meer naar links, kolommen rechts iets groter). */
+  /* drie kolommen: links de statushub (Spelerstatus — waar moet ik heen), in het midden het
+     bord op vaste breedte, rechts Dobbelstenen/Energieactie/Actiekaarten. De fr-verhouding
+     1:1.4 geeft rechts iets meer van de restruimte dan links (gebruikerswens: bord iets meer
+     naar links, kolommen rechts iets groter), met voor beide een minimum van 300px zodat geen
+     van de twee te smal wordt om zijn inhoud fatsoenlijk te tonen. */
   .walk-board-row{
-    display:grid; grid-template-columns: minmax(0,1fr) 839px minmax(300px,1.8fr);
+    display:grid; grid-template-columns: minmax(280px,1fr) 839px minmax(300px,1.4fr);
     gap:15px; align-items:start;
   }
+  /* de statushub en de zijkolom mogen samen nooit hoger worden dan het bord (gebruikerseis)
+     — #walkBoard is 671px hoog (32 rijen × 20px + 31px tussenruimte), dus dat is het harde
+     plafond voor allebei. */
+  .walk-status-col{
+    grid-column:1;
+    display:flex; flex-direction:column; min-width:0;
+    max-height:671px;
+  }
   .walk-board-col{grid-column:2; min-width:0; max-width:839px;}
-  /* de rechterkolom (Dobbelstenen/Energieactie/Actiekaarten/Spelerstatus) mag samen nooit
-     hoger worden dan het bord (gebruikerseis) — #walkBoard is 671px hoog (32 rijen × 20px +
-     31px tussenruimte), dus dat is het harde plafond hieronder. */
   .walk-side-stack{
     grid-column:3;
     display:flex; flex-direction:column; gap:10px; min-width:0;
@@ -397,13 +403,16 @@
   }
   @media (max-width: 1150px){
     .walk-board-row{grid-template-columns:1fr;}
-    .walk-board-col, .walk-side-stack{grid-column:1;}
-    .walk-board-col{max-width:none;}
-    .walk-side-stack{max-height:none;}
+    .walk-status-col, .walk-board-col, .walk-side-stack{grid-column:1;}
+    /* zelfde volgorde als vóór de statushub-verhuizing: bord eerst, dan dobbelen/energie/
+       kaarten, en de statushub (Spelerstatus) weer als laatste onderaan. */
+    .walk-board-col{order:1; max-width:none;}
+    .walk-side-stack{order:2; max-height:none;}
+    .walk-status-col{order:3; max-height:none;}
   }
-  /* de 4 vakken zelf mogen niet krimpen — alleen .walk-info-panel (Spelerstatus, hieronder)
-     krijgt flex:1 1 auto en vult wat er over is; zo blijven Dobbelstenen/Energieactie/
-     Actiekaarten altijd hun natuurlijke hoogte houden. */
+  /* de 3 vakken zelf mogen niet krimpen (Dobbelstenen/Energieactie/Actiekaarten) — de
+     statushub ernaast (.walk-info-panel, nu in .walk-status-col) krijgt flex:1 1 auto en
+     vult zijn eigen kolom, onafhankelijk van deze drie. */
   .walk-panel-box{flex:none;}
   /* "of" tussen twee vakken: je kunt dobbelen ÓF een energie-actie inzetten, en verderop
      ÓF (als dat nu kan) een actiekaart spelen vóór het dobbelen — zie 97-solo.js. */
@@ -582,11 +591,11 @@
   }
   .cell.walk-clickable:hover{box-shadow:0 0 0 2px #fff, 0 0 10px rgba(85,214,138,.9) !important;}
 
-  /* "Spelerstatus" — het laatste vakje in de zijkolom (zie .walk-side-stack hierboven), en het
-     enige dat mag krimpen: `flex:1 1 auto; min-height:0` laat 'm precies de resterende ruimte
-     binnen de 703px-bordhoogte opvullen (dezelfde techniek als .mp-chat-log verderop in dit
-     bestand), en `overflow-y:auto` vangt het zeldzame geval op dat de inhoud toch niet past,
-     zonder de rest van de pagina mee te laten schuiven. */
+  /* "Spelerstatus" — de statushub, nu links van het bord in zijn eigen .walk-status-col
+     (zie .walk-board-row hierboven). `flex:1 1 auto; min-height:0` laat 'm precies de
+     resterende ruimte binnen de 703px-bordhoogte opvullen (dezelfde techniek als
+     .mp-chat-log verderop in dit bestand), en `overflow-y:auto` vangt het zeldzame geval op
+     dat de inhoud toch niet past, zonder de rest van de pagina mee te laten schuiven. */
   .walk-info-panel{
     display:flex; flex-direction:column; gap:10px; flex:1 1 auto; min-height:0;
     background:var(--panel-2); border:1px solid var(--line); border-radius:6px; padding:14px;
