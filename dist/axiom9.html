@@ -385,61 +385,39 @@
      de "alles op 1 pagina"-eis, in plaats van in een kolom ernaast waar hoogte minder opviel. */
   .walk-players-row{min-height:74px;}
   .walk-players-row .walk-player{padding:5px 9px; min-height:66px; gap:3px;}
-  /* vier kolommen: opdrachtenoverzicht, statushub (Spelerstatus — waar moet ik heen), het bord
-     op vaste breedte, en rechts Dobbelstenen/Energieactie/Actiekaarten. Minimums zijn bewust
-     krapper dan vroeger (toen er nog maar 3 kolommen waren) omdat #walkBoard's vaste 839px
-     nu een vierde flexibele kolom ernaast moet delen binnen dezelfde 1600px-pagina (.wrap) —
-     zie .walk-board-row.walk-no-checklist hieronder voor wat er gebeurt zodra die kolom leeg
-     is (Automatisch-modus of vóór een potje). */
+  /* drie kolommen: links de statushub (huidige opdracht bovenin, opdrachtenoverzicht eronder
+     — zie .walk-status-col hieronder), in het midden het bord op vaste breedte, rechts
+     Dobbelstenen/Energieactie/Actiekaarten. */
   .walk-board-row{
-    display:grid;
-    grid-template-columns: minmax(175px,0.9fr) minmax(195px,1fr) 839px minmax(255px,1.3fr);
+    display:grid; grid-template-columns: minmax(280px,1fr) 839px minmax(300px,1.4fr);
     gap:15px; align-items:start;
   }
-  /* Automatisch-modus / vóór een potje: het opdrachtenoverzicht is dan leeg (puur solo-modus
-     info, zie soloRenderQuestChecklist in 97-solo.js) — deze kolom-variant laat 'm helemaal
-     verdwijnen i.p.v. een lege bak te tonen, en de overige drie kolommen krijgen dan weer hun
-     eigen (ruimere) minimum terug. setWalkMode()/stopSoloGame() zetten deze klasse. */
-  .walk-board-row.walk-no-checklist{
-    grid-template-columns: minmax(280px,1fr) 839px minmax(300px,1.4fr);
-  }
-  .walk-board-row.walk-no-checklist .walk-quest-checklist-col{display:none;}
-  /* de statushub, het opdrachtenoverzicht en de zijkolom mogen samen nooit hoger worden dan
-     het bord (gebruikerseis) — #walkBoard is 671px hoog (32 rijen × 20px + 31px
-     tussenruimte), dus dat is het harde plafond voor alle drie. */
-  .walk-quest-checklist-col{
-    grid-column:1;
-    display:flex; flex-direction:column; min-width:0;
-    max-height:671px;
-  }
+  /* de statushub en de zijkolom mogen samen nooit hoger worden dan het bord (gebruikerseis)
+     — #walkBoard is 671px hoog (32 rijen × 20px + 31px tussenruimte), dus dat is het harde
+     plafond voor allebei. */
   .walk-status-col{
-    grid-column:2;
-    display:flex; flex-direction:column; min-width:0;
-    max-height:671px;
-  }
-  .walk-board-row.walk-no-checklist .walk-status-col{grid-column:1;}
-  .walk-board-col{grid-column:3; min-width:0; max-width:839px;}
-  .walk-board-row.walk-no-checklist .walk-board-col{grid-column:2;}
-  .walk-side-stack{
-    grid-column:4;
+    grid-column:1;
     display:flex; flex-direction:column; gap:10px; min-width:0;
     max-height:671px;
   }
-  .walk-board-row.walk-no-checklist .walk-side-stack{grid-column:3;}
+  .walk-board-col{grid-column:2; min-width:0; max-width:839px;}
+  .walk-side-stack{
+    grid-column:3;
+    display:flex; flex-direction:column; gap:10px; min-width:0;
+    max-height:671px;
+  }
   @media (max-width: 1150px){
-    .walk-board-row, .walk-board-row.walk-no-checklist{grid-template-columns:1fr;}
-    .walk-quest-checklist-col, .walk-status-col, .walk-board-col, .walk-side-stack{grid-column:1;}
+    .walk-board-row{grid-template-columns:1fr;}
+    .walk-status-col, .walk-board-col, .walk-side-stack{grid-column:1;}
     /* zelfde volgorde als vóór de statushub-verhuizing: bord eerst, dan dobbelen/energie/
-       kaarten, dan de statushub, en het opdrachtenoverzicht als laatste onderaan. */
+       kaarten, en de statushub (huidige opdracht + opdrachtenoverzicht) als laatste onderaan. */
     .walk-board-col{order:1; max-width:none;}
     .walk-side-stack{order:2; max-height:none;}
     .walk-status-col{order:3; max-height:none;}
-    .walk-quest-checklist-col{order:4; max-height:none;}
   }
   /* de 3 vakken in de zijkolom mogen niet krimpen (Dobbelstenen/Energieactie/Actiekaarten) —
-     de statushub (.walk-info-panel) en het opdrachtenoverzicht (.walk-quest-checklist)
-     krijgen straks allebei flex:1 1 auto en vullen hun eigen (enige) kolom, onafhankelijk
-     van deze drie. */
+     in de statuskolom hiernaast geldt dat NIET: .walk-info-panel en .walk-quest-checklist
+     verdelen die kolom onderling (zie hun eigen regels verderop). */
   .walk-panel-box{flex:none;}
   /* "of" tussen twee vakken: je kunt dobbelen ÓF een energie-actie inzetten, en verderop
      ÓF (als dat nu kan) een actiekaart spelen vóór het dobbelen — zie 97-solo.js. */
@@ -626,17 +604,18 @@
   }
   .cell.walk-clickable:hover{box-shadow:0 0 0 2px #fff, 0 0 10px rgba(85,214,138,.9) !important;}
 
-  /* "Spelerstatus" — de statushub, nu links van het bord in zijn eigen .walk-status-col
-     (zie .walk-board-row hierboven). `flex:1 1 auto; min-height:0` laat 'm precies de
-     resterende ruimte binnen de 703px-bordhoogte opvullen (dezelfde techniek als
-     .mp-chat-log verderop in dit bestand), en `overflow-y:auto` vangt het zeldzame geval op
-     dat de inhoud toch niet past, zonder de rest van de pagina mee te laten schuiven. */
+  /* "Spelerstatus" — de statushub bovenin .walk-status-col (zie .walk-board-row hierboven),
+     met het opdrachtenoverzicht (.walk-quest-checklist hieronder) eronder in dezelfde kolom.
+     `flex:none` (i.p.v. eerder flex:1 1 auto): dit vakje neemt nu zijn natuurlijke
+     inhoudshoogte, en het overzicht eronder vult de rest — precies de volgorde die de
+     gebruiker vroeg ("huidige opdracht erboven, overzicht eronder"). `overflow-y:auto` blijft
+     staan voor het zeldzame geval dat de inhoud toch niet past. */
   .walk-info-panel{
-    display:flex; flex-direction:column; gap:10px; flex:1 1 auto; min-height:0;
+    display:flex; flex-direction:column; gap:10px; flex:none;
     background:var(--panel-2); border:1px solid var(--line); border-radius:6px; padding:14px;
     overflow-y:auto; scrollbar-gutter: stable;
   }
-  @media (max-width: 1150px){ .walk-info-panel{flex:none; min-height:280px; max-height:none;} }
+  @media (max-width: 1150px){ .walk-info-panel{min-height:280px; max-height:none;} }
   /* Voordat er een potje loopt is alles hierbinnen leeg, en dan stond er alleen een omkaderd
      blok van ~160px (de min-height van .walk-meta) zonder inhoud. Zodra er ook maar iets in
      staat — een beurtregel, een stand of een statusmelding — komt het paneel vanzelf weer
@@ -648,14 +627,16 @@
 
   /* opdrachtenoverzicht: alle 9 opdrachten (2.1-2.9) met voltooid/nog-open-status, zodat je bij
      Herprioritering (ruilt je huidige doel blind met je volgende opdracht) kunt inschatten of
-     je 'm liever houdt — zie soloRenderQuestChecklist in 97-solo.js. Zelfde vulling/leeg-aanpak
-     als .walk-info-panel hierboven: leeg vóór er een potje loopt of in Automatisch-modus, dan
-     verdwijnt de hele kolom via .walk-board-row.walk-no-checklist (zie eerder in dit bestand). */
+     je 'm liever houdt — zie soloRenderQuestChecklist in 97-solo.js. Vult de ruimte die
+     .walk-info-panel hierboven overlaat (flex:1 1 auto); is leeg (en dus onzichtbaar via
+     :empty hieronder) vóór er een potje loopt of tijdens Automatisch-modus, precies zoals
+     .walk-info-panel dat zelf ook al deed vóór er iets te tonen viel. */
   .walk-quest-checklist{
     display:flex; flex-direction:column; gap:6px; flex:1 1 auto; min-height:0;
     background:var(--panel-2); border:1px solid var(--line); border-radius:6px; padding:14px;
     overflow-y:auto; scrollbar-gutter:stable;
   }
+  .walk-quest-checklist:empty{display:none;}
   @media (max-width: 1150px){ .walk-quest-checklist{flex:none; max-height:none;} }
   .quest-check-row{
     display:flex; align-items:baseline; flex-wrap:wrap; gap:4px 7px;
@@ -2019,19 +2000,15 @@
           </div>
 
           <div class="walk-board-row">
-          <!-- opdrachtenoverzicht: alle 9 opdrachten in één oogopslag, voltooid vs. nog open —
-               zodat je bij Herprioritering (die je huidige doel blind ruilt met je volgende
-               opdracht) kunt inschatten of je je huidige doel liever houdt (gebruikerswens).
-               Alleen gevuld/zichtbaar tijdens "Zelf spelen" (soloRenderQuestChecklist in
-               97-solo.js) — in Automatisch-modus of vóórdat een potje loopt is-ie leeg en
-               verdwijnt de hele kolom via .walk-board-row.walk-no-checklist hieronder. -->
-          <div class="walk-quest-checklist-col">
-            <div class="walk-panel-box walk-quest-checklist" id="walkQuestChecklist"></div>
-          </div>
           <!-- statushub: links van het bord, zodat "waar moet ik heen" meteen in het oog
                springt vóórdat je naar rechts kijkt om te dobbelen (gebruikerswens). Zelfde
                #walkStatTiles/#walkQuestCard/#walkMeta/#walkScoreActive/
-               #walkStatus-ids als voorheen, JS hoeft niet te weten dat dit vakje verhuisd is. -->
+               #walkStatus-ids als voorheen, JS hoeft niet te weten dat dit vakje verhuisd is.
+               Het opdrachtenoverzicht (alle 9, voltooid vs. nog open) staat eronder in
+               dezelfde kolom — huidige opdracht boven, overzicht eronder (gebruikerswens).
+               Alleen dat onderste vakje is gevuld tijdens "Zelf spelen" (soloRenderQuestChecklist
+               in 97-solo.js); in Automatisch-modus of vóórdat een potje loopt is het leeg en
+               verdwijnt het vanzelf (.walk-quest-checklist:empty in styles.css). -->
           <div class="walk-status-col">
             <div class="walk-panel-box walk-info-panel">
               <!-- 3 kleine tegels: voltooide opdrachten, beurtnummer, live positie in het potje.
@@ -2049,6 +2026,7 @@
 
               <div id="walkStatus" class="reach-status"></div>
             </div>
+            <div class="walk-panel-box walk-quest-checklist" id="walkQuestChecklist"></div>
           </div>
           <div class="walk-board-col">
             <div class="board-zoom-wrap">
@@ -7328,7 +7306,6 @@ const walkOrSep1El = document.getElementById('walkOrSep1');
 const walkOrSep2El = document.getElementById('walkOrSep2');
 const walkStatTilesEl = document.getElementById('walkStatTiles');
 const walkQuestChecklistEl = document.getElementById('walkQuestChecklist');
-const walkBoardRowEl = document.querySelector('.walk-board-row');
 
 let soloGraph = null;
 let soloDeck = null;         // gedeelde actiekaart-stapel voor dit potje
@@ -9064,7 +9041,6 @@ function stopSoloGame(){
   if (walkSoloHintEl) walkSoloHintEl.hidden = false;
   if (walkStatTilesEl) walkStatTilesEl.innerHTML = '';
   if (walkQuestChecklistEl) walkQuestChecklistEl.innerHTML = '';
-  if (walkBoardRowEl) walkBoardRowEl.classList.add('walk-no-checklist');
   if (walkSoloActionsEl) walkSoloActionsEl.innerHTML = '';
   if (btnWalkSoloRoll) btnWalkSoloRoll.hidden = true;
   if (btnWalkSoloSkip) btnWalkSoloSkip.hidden = true;
@@ -9081,9 +9057,6 @@ function startSoloGame(){
   if (walkSoloPanelEl) walkSoloPanelEl.hidden = false;
   if (walkEnergyOverviewEl) walkEnergyOverviewEl.hidden = false;
   if (walkOrSep1El) walkOrSep1El.hidden = false;
-  // opdrachtenoverzicht-kolom komt er nu pas bij — vóór het potje is er nog geen speler/deck
-  // om te tonen, zie soloRenderQuestChecklist().
-  if (walkBoardRowEl) walkBoardRowEl.classList.remove('walk-no-checklist');
   // opzet-UI (spelers-/bot-aantal, de lange regelparagraaf) heeft tijdens het spelen zelf geen
   // functie meer en kost boven het bord veel hoogte — weg ermee zodra het potje loopt, zodat
   // bord + zijkolom weer een kans hebben om zonder scrollen op het scherm te passen.

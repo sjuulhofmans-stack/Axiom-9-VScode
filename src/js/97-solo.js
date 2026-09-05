@@ -58,7 +58,6 @@ const walkOrSep1El = document.getElementById('walkOrSep1');
 const walkOrSep2El = document.getElementById('walkOrSep2');
 const walkStatTilesEl = document.getElementById('walkStatTiles');
 const walkQuestChecklistEl = document.getElementById('walkQuestChecklist');
-const walkBoardRowEl = document.querySelector('.walk-board-row');
 
 let soloGraph = null;
 let soloDeck = null;         // gedeelde actiekaart-stapel voor dit potje
@@ -1794,7 +1793,6 @@ function stopSoloGame(){
   if (walkSoloHintEl) walkSoloHintEl.hidden = false;
   if (walkStatTilesEl) walkStatTilesEl.innerHTML = '';
   if (walkQuestChecklistEl) walkQuestChecklistEl.innerHTML = '';
-  if (walkBoardRowEl) walkBoardRowEl.classList.add('walk-no-checklist');
   if (walkSoloActionsEl) walkSoloActionsEl.innerHTML = '';
   if (btnWalkSoloRoll) btnWalkSoloRoll.hidden = true;
   if (btnWalkSoloSkip) btnWalkSoloSkip.hidden = true;
@@ -1811,9 +1809,6 @@ function startSoloGame(){
   if (walkSoloPanelEl) walkSoloPanelEl.hidden = false;
   if (walkEnergyOverviewEl) walkEnergyOverviewEl.hidden = false;
   if (walkOrSep1El) walkOrSep1El.hidden = false;
-  // opdrachtenoverzicht-kolom komt er nu pas bij — vóór het potje is er nog geen speler/deck
-  // om te tonen, zie soloRenderQuestChecklist().
-  if (walkBoardRowEl) walkBoardRowEl.classList.remove('walk-no-checklist');
   // opzet-UI (spelers-/bot-aantal, de lange regelparagraaf) heeft tijdens het spelen zelf geen
   // functie meer en kost boven het bord veel hoogte — weg ermee zodra het potje loopt, zodat
   // bord + zijkolom weer een kans hebben om zonder scrollen op het scherm te passen.

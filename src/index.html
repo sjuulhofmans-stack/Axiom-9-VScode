@@ -226,19 +226,15 @@
           </div>
 
           <div class="walk-board-row">
-          <!-- opdrachtenoverzicht: alle 9 opdrachten in één oogopslag, voltooid vs. nog open —
-               zodat je bij Herprioritering (die je huidige doel blind ruilt met je volgende
-               opdracht) kunt inschatten of je je huidige doel liever houdt (gebruikerswens).
-               Alleen gevuld/zichtbaar tijdens "Zelf spelen" (soloRenderQuestChecklist in
-               97-solo.js) — in Automatisch-modus of vóórdat een potje loopt is-ie leeg en
-               verdwijnt de hele kolom via .walk-board-row.walk-no-checklist hieronder. -->
-          <div class="walk-quest-checklist-col">
-            <div class="walk-panel-box walk-quest-checklist" id="walkQuestChecklist"></div>
-          </div>
           <!-- statushub: links van het bord, zodat "waar moet ik heen" meteen in het oog
                springt vóórdat je naar rechts kijkt om te dobbelen (gebruikerswens). Zelfde
                #walkStatTiles/#walkQuestCard/#walkMeta/#walkScoreActive/
-               #walkStatus-ids als voorheen, JS hoeft niet te weten dat dit vakje verhuisd is. -->
+               #walkStatus-ids als voorheen, JS hoeft niet te weten dat dit vakje verhuisd is.
+               Het opdrachtenoverzicht (alle 9, voltooid vs. nog open) staat eronder in
+               dezelfde kolom — huidige opdracht boven, overzicht eronder (gebruikerswens).
+               Alleen dat onderste vakje is gevuld tijdens "Zelf spelen" (soloRenderQuestChecklist
+               in 97-solo.js); in Automatisch-modus of vóórdat een potje loopt is het leeg en
+               verdwijnt het vanzelf (.walk-quest-checklist:empty in styles.css). -->
           <div class="walk-status-col">
             <div class="walk-panel-box walk-info-panel">
               <!-- 3 kleine tegels: voltooide opdrachten, beurtnummer, live positie in het potje.
@@ -256,6 +252,7 @@
 
               <div id="walkStatus" class="reach-status"></div>
             </div>
+            <div class="walk-panel-box walk-quest-checklist" id="walkQuestChecklist"></div>
           </div>
           <div class="walk-board-col">
             <div class="board-zoom-wrap">
