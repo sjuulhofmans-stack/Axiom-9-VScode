@@ -369,8 +369,13 @@
      krijgt, dus alle 1-4 spelers altijd op precies één regel passen: de rijhoogte kan dus
      nooit meer veranderen, ongeacht wat erin staat. De zijkolom ernaast blijft `align-items:
      start` gebruiken zodat hij onafhankelijk van het bord in hoogte kan groeien/krimpen. */
+  /* gap:0 — niet per ongeluk weggelaten: #walkScore hieronder heeft al een eigen
+     margin-bottom:15px, exact gelijk aan de 15px kloof tussen bord en zijkolom. Een gap hier
+     zou daar zomaar bovenop komen (stond hier ooit per ongeluk óók op 15px, dus 41px totaal
+     i.p.v. 15px — gebruikersmelding "kolommen boven staan verder van de map dan links/
+     rechts"). */
   .walk-play-layout{
-    display:flex; flex-direction:column; gap:15px; margin-top:16px;
+    display:flex; flex-direction:column; gap:0; margin-top:16px;
   }
   /* de volle breedte hier (bord + zijkolom samen) betekent dat alle 1-4 spelers altijd op één
      regel passen (zie .walk-players-row hierboven), dus is er ruimte om elk vak wat compacter
@@ -382,22 +387,31 @@
      — zie .walk-status-col hieronder), in het midden het bord op vaste breedte, rechts
      Dobbelstenen/Energieactie/Actiekaarten. */
   .walk-board-row{
-    display:grid; grid-template-columns: minmax(280px,1fr) 839px minmax(300px,1.4fr);
+    display:grid; grid-template-columns: minmax(280px,1fr) 861px minmax(300px,1.4fr);
     gap:15px; align-items:start;
   }
-  /* de statushub en de zijkolom mogen samen nooit hoger worden dan het bord (gebruikerseis)
-     — #walkBoard is 671px hoog (32 rijen × 20px + 31px tussenruimte), dus dat is het harde
-     plafond voor allebei. */
+  /* de statushub en de zijkolom mogen samen nooit hoger worden dan het omkaderde bord
+     (gebruikerseis) — #walkBoard zelf is 671px hoog (32 rijen × 20px + 31px tussenruimte),
+     plus de rand eromheen (zie .walk-board-col .board-outer hieronder: 10px padding + 1px
+     rand rondom = 22px erbij) is dat 693px, dus dat is het harde plafond voor allebei. */
   .walk-status-col{
     grid-column:1;
     display:flex; flex-direction:column; gap:10px; min-width:0;
-    max-height:671px;
+    max-height:693px;
   }
-  .walk-board-col{grid-column:2; min-width:0; max-width:839px;}
+  .walk-board-col{grid-column:2; min-width:0; max-width:861px;}
+  /* zichtbare rand rondom het bord (gebruikerswens: iets duidelijker dat het speelveld het
+     midden van de pagina is) — bewust alleen hier en niet op de generieke .board-outer
+     hierboven, want die wordt ook door het tabblad "Speelbord genereren" gebruikt. 10px
+     padding + 1px rand = 22px extra t.o.v. het kale bord (839px -> 861px breed, 671px ->
+     693px hoog), zie de grid-template-columns/max-height hierboven en hieronder. */
+  .walk-board-col .board-outer{
+    padding:10px; border:1px solid var(--line); border-radius:8px; background:var(--hull);
+  }
   .walk-side-stack{
     grid-column:3;
     display:flex; flex-direction:column; gap:10px; min-width:0;
-    max-height:671px;
+    max-height:693px;
   }
   @media (max-width: 1150px){
     .walk-board-row{grid-template-columns:1fr;}
@@ -785,9 +799,11 @@
        doelregel 153px, onderregel 208px). Vier spelers passen daarmee naast elkaar. */
     display:grid; grid-template-columns:repeat(auto-fit, minmax(240px, 1fr));
     gap:8px; align-items:stretch;
-    /* 26px in plaats van de gewenste 15px: de gloed rond de "aan zet"-kaart (box-shadow
-       blur 18px) bleedt buiten de kaartrand en at anders de marge zichtbaar op. */
-    margin-bottom:26px;
+    /* echt 15px, gelijk aan de kloof tussen bord en zijkolom (gebruikerswens: kolommen boven
+       even dicht bij het bord als links/rechts) — kan nu weer omdat de gloed van de
+       "aan zet"-kaart hieronder is ingekort (18px -> 10px blur) tot ruim binnen deze marge
+       blijft, i.p.v. 'm te laten uitbleeden tot over het bord. */
+    margin-bottom:15px;
   }
   /* #walkScore (boven het bord) en #walkScoreActive (in het paneel rechts) krijgen allebei
      dezelfde volledige spelerslijst van renderWalkScore() — welke rijen zichtbaar zijn hangt
@@ -822,7 +838,7 @@
   .walk-player.active{
     border-color:var(--pc); color:var(--text);
     background:linear-gradient(140deg, color-mix(in srgb, var(--pc) 18%, var(--hull)), var(--hull) 75%);
-    box-shadow:0 0 0 1px var(--pc) inset, 0 0 18px color-mix(in srgb, var(--pc) 35%, transparent);
+    box-shadow:0 0 0 1px var(--pc) inset, 0 0 10px color-mix(in srgb, var(--pc) 35%, transparent);
   }
   /* wie niet aan zet is, staat gedempt op de achtergrond */
   #walkScore .walk-player:not(.active):not(.done){opacity:.62;}
@@ -1654,7 +1670,9 @@
        we liever een fractie te klein zitten dan alsnog moeten scrollen.
        Boven de 640px-grens (waar dit blok niet geldt) gelden de vaste desktopwaarden. */
     #board{ --cell: clamp(5px, calc((100vw - 95px) / 40), 18px); }
-    #walkBoard{ --cell: clamp(5px, calc((100vw - 95px) / 40), 16px); }
+    /* +22px t.o.v. #board hierboven: de rand rondom #walkBoard (.walk-board-col .board-outer
+       — 10px padding + 1px rand, aan weerszijden) telt hier ook mee als chrome. */
+    #walkBoard{ --cell: clamp(5px, calc((100vw - 117px) / 40), 16px); }
     .walk-controls{gap:12px;}
     .walk-controls .field{min-width:0; flex:1 1 100%;}
     .sim-heat-grid{ --hcell: clamp(3.5px, calc((100vw - 95px) / 40), 7px); }
