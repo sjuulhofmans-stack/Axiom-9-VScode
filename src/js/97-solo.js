@@ -115,7 +115,7 @@ function soloRebuildSetup(){
       name: isHuman ? soloSeatName(i) : `Speler ${i + 1}`,
       color: WALK_PLAYER_COLORS[i],
       deck: simShuffle(SIM_QUEST_LABELS, soloSetupRand),
-      nextIdx: 0, completed: 0, energy: 0, cards: [], rank: 0, doneCells: [], condenserPending: false,
+      nextIdx: 0, completed: 0, myTurn: 0, energy: 0, cards: [], rank: 0, doneCells: [], condenserPending: false,
       lockedNextTurn: false, rollPenalty: 0, barrierCell: null, reorderBlocked: false, lastDir: -1,
       strategy: isHuman ? null : ENERGY_STRATEGIES[i % ENERGY_STRATEGIES.length],
       startLabel: isHuman ? SIM_START_LABELS[i] : null,   // mens: alvast een unieke standaardplek
@@ -323,7 +323,7 @@ function soloRenderStatusExtras(){
   const rank = soloLiveRank();
   walkStatTilesEl.innerHTML =
     `<div class="walk-stat-tile"><span class="walk-stat-tile-num">${p.completed}/${SIM_QUESTS_TO_WIN}</span><span class="walk-stat-tile-lbl">voltooid</span></div>` +
-    `<div class="walk-stat-tile"><span class="walk-stat-tile-num">${soloTurn}</span><span class="walk-stat-tile-lbl">beurt</span></div>` +
+    `<div class="walk-stat-tile"><span class="walk-stat-tile-num">${p.myTurn}</span><span class="walk-stat-tile-lbl">beurt</span></div>` +
     `<div class="walk-stat-tile"><span class="walk-stat-tile-num">${walkRankLabel(rank)}</span><span class="walk-stat-tile-lbl">positie</span></div>`;
   soloRenderQuestChecklist();
 }
@@ -1419,6 +1419,10 @@ function soloFinishTurn(banked){
 function soloBeginHumanTurn(pIdx){
   soloActiveIdx = pIdx;
   soloTurn++;
+  // beurtnummer van deze speler zelf (i.p.v. soloTurn, dat over ALLE spelers samen telt —
+  // gebruikerswens: de "beurt"-tegel in de statushub moet je eigen beurt tonen, niet die van
+  // het hele potje incl. bot-beurten ertussenin).
+  soloPlayers[pIdx].myTurn++;
   soloUsedEnergyId = null;
   soloUsedCardId = null;
   soloDiscardedCardId = null;
