@@ -263,6 +263,17 @@
               <div class="board-outer">
                 <div id="walkBoard"></div>
               </div>
+
+              <!-- eindscherm: even groot als het bord, met dezelfde rand (zie .board-outer
+                   hierboven) — vervangt het bord zodra het potje afgelopen is (soloEndGame in
+                   97-solo.js). "Toon kaart" verbergt dit weer, het bord staat er dan gewoon nog
+                   onder. Confetti-canvas zit ONDER de middelste kaart in z-index, dus komt daar
+                   nooit overheen (gebruikerswens). -->
+              <div class="walk-endgame" id="walkEndgame" hidden>
+                <canvas class="walk-endgame-confetti" id="walkEndgameConfetti"></canvas>
+                <button type="button" class="small ghost walk-endgame-showmap" id="btnWalkEndgameShowMap">Toon kaart</button>
+                <div class="walk-endgame-card" id="walkEndgameCard"></div>
+              </div>
             </div>
 
             <div class="walk-legend">

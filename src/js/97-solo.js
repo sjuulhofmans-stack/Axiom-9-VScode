@@ -58,6 +58,10 @@ const walkOrSep1El = document.getElementById('walkOrSep1');
 const walkOrSep2El = document.getElementById('walkOrSep2');
 const walkStatTilesEl = document.getElementById('walkStatTiles');
 const walkQuestChecklistEl = document.getElementById('walkQuestChecklist');
+const walkEndgameEl = document.getElementById('walkEndgame');
+const walkEndgameCardEl = document.getElementById('walkEndgameCard');
+const walkEndgameConfettiEl = document.getElementById('walkEndgameConfetti');
+const btnWalkEndgameShowMap = document.getElementById('btnWalkEndgameShowMap');
 
 let soloGraph = null;
 let soloDeck = null;         // gedeelde actiekaart-stapel voor dit potje
@@ -1765,6 +1769,84 @@ function soloFinishRound(){
   soloRoundPos = 0;
   soloAdvanceLoop();
 }
+// ---------- eindscherm (na afloop, gebruikerswens: groot venster i.p.v. het kleine
+// #walkStatus-regeltje alleen) ----------
+// Zelfde grootte/rand als het bord (.walk-endgame in styles.css) en vervangt het zichtbaar
+// zolang het open staat; "Toon kaart" (soloHideEndgame) verbergt 'm weer, het bord staat er
+// dan gewoon nog onder — geen aparte "terugknop" nodig, het potje is toch al afgelopen.
+function soloShowEndgame(trophy, title, sub){
+  if (!walkEndgameEl || !walkEndgameCardEl) return;
+  walkEndgameCardEl.innerHTML =
+    `<span class="walk-endgame-trophy">${trophy}</span>` +
+    `<span class="walk-endgame-title">${title}</span>` +
+    (sub ? `<span class="walk-endgame-sub">${sub}</span>` : '');
+  walkEndgameEl.hidden = false;
+  soloStartConfetti();
+}
+function soloHideEndgame(){
+  if (walkEndgameEl) walkEndgameEl.hidden = true;
+  soloStopConfetti();
+}
+if (btnWalkEndgameShowMap) btnWalkEndgameShowMap.addEventListener('click', soloHideEndgame);
+
+// losse deeltjes op een <canvas> i.p.v. een library — puur decoratief, dus geen dependency
+// waard. Zit qua z-index ONDER .walk-endgame-card (zie styles.css), dus komt daar nooit
+// overheen (gebruikerswens), zonder dat er iets uitgeknipt hoeft te worden.
+let soloConfettiRAF = null;
+let soloConfettiParticles = [];
+let soloConfettiResizeHandler = null;
+const SOLO_CONFETTI_COLORS = WALK_PLAYER_COLORS.concat(['#ffd23d', '#55d68a', '#4fb8e0']);
+function soloConfettiSpawn(canvas, randomY){
+  return {
+    x: Math.random() * canvas.width,
+    y: randomY ? Math.random() * canvas.height : -12,
+    w: 5 + Math.random() * 4,
+    h: 8 + Math.random() * 6,
+    color: SOLO_CONFETTI_COLORS[Math.floor(Math.random() * SOLO_CONFETTI_COLORS.length)],
+    speed: 1.2 + Math.random() * 2,
+    drift: (Math.random() - 0.5) * 1.4,
+    tilt: Math.random() * Math.PI * 2,
+    tiltSpeed: (Math.random() - 0.5) * 0.15,
+  };
+}
+function soloStartConfetti(){
+  const canvas = walkEndgameConfettiEl;
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+  if (!ctx) return;
+  soloStopConfetti();   // vangnet: nooit twee lussen tegelijk als dit ooit dubbel aangeroepen wordt
+  const resize = () => { canvas.width = canvas.clientWidth; canvas.height = canvas.clientHeight; };
+  resize();
+  soloConfettiParticles = Array.from({ length: 130 }, () => soloConfettiSpawn(canvas, true));
+  soloConfettiResizeHandler = resize;
+  window.addEventListener('resize', soloConfettiResizeHandler);
+  function frame(){
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    for (const p of soloConfettiParticles){
+      p.y += p.speed;
+      p.x += p.drift;
+      p.tilt += p.tiltSpeed;
+      if (p.y > canvas.height + 12) Object.assign(p, soloConfettiSpawn(canvas, false));
+      ctx.save();
+      ctx.translate(p.x, p.y);
+      ctx.rotate(p.tilt);
+      ctx.fillStyle = p.color;
+      ctx.fillRect(-p.w / 2, -p.h / 2, p.w, p.h);
+      ctx.restore();
+    }
+    soloConfettiRAF = requestAnimationFrame(frame);
+  }
+  frame();
+}
+function soloStopConfetti(){
+  if (soloConfettiRAF) cancelAnimationFrame(soloConfettiRAF);
+  soloConfettiRAF = null;
+  if (soloConfettiResizeHandler) window.removeEventListener('resize', soloConfettiResizeHandler);
+  soloConfettiResizeHandler = null;
+  const canvas = walkEndgameConfettiEl;
+  if (canvas){ const ctx = canvas.getContext('2d'); if (ctx) ctx.clearRect(0, 0, canvas.width, canvas.height); }
+}
+
 function soloEndGame(stuck){
   soloPhase = 'game-over';
   soloRefreshCardVault();
@@ -1774,19 +1856,33 @@ function soloEndGame(stuck){
   btnWalkSoloSkip.hidden = true;
   renderWalkScore(soloPlayers, -1);
   if (walkMetaEl) walkMetaEl.innerHTML = '';
+  let trophy = '🏆', title, sub;
   if (stuck){
+    trophy = '⏳';
+    title = 'Afgekapt';
+    sub = `niet iedereen was binnen na ${SIM_MAX_TURNS} beurten`;
     walkStatusEl.innerHTML = `<span class="bad">✕ Afgekapt na ${SIM_MAX_TURNS} beurten — niet iedereen was binnen.</span>` +
       (soloPlayers.length > 1 ? `<span class="walk-standings-row">${walkStandings(soloPlayers)}</span>` : '');
   } else if (soloPlayers.length === 1){
+    title = 'Je wint!';
+    sub = `alle ${SIM_QUESTS_TO_WIN} opdrachten voltooid in ${solo() ? solo().finishTurn : soloTurn} beurten`;
     walkStatusEl.innerHTML = `<span class="ok">✓ Alle ${SIM_QUESTS_TO_WIN} opdrachten voltooid in ${solo() ? solo().finishTurn : soloTurn} beurten!</span>`;
   } else {
     const winners = soloPlayers.filter(p => p.rank === 1);
+    if (winners.length === 1){
+      title = winners[0].isHuman ? 'Jij wint!' : `${winners[0].name} wint!`;
+      sub = `vanaf ${winners[0].startLabel} in ${winners[0].finishTurn} beurten`;
+    } else {
+      title = 'Gedeelde winst!';
+      sub = `${winners.map(w => w.isHuman ? 'jij' : w.name).join(' en ')} — gelijke energie en actiekaarten`;
+    }
     const winText = winners.length === 1
       ? (winners[0].isHuman ? `Jij wint vanaf ${winners[0].startLabel} in ${winners[0].finishTurn} beurten` : `${winners[0].name} wint vanaf ${winners[0].startLabel} in ${winners[0].finishTurn} beurten`)
       : `${winners.map(w => w.isHuman ? 'jij' : w.name).join(' en ')} delen de winst (gelijke energie en actiekaarten)`;
     walkStatusEl.innerHTML = `<span class="ok">✓ ${winText} — potje uitgespeeld in ${soloTurn} beurten.</span>` +
       `<span class="walk-standings-row">Eindklassering: ${walkStandings(soloPlayers)}</span>`;
   }
+  soloShowEndgame(trophy, title, sub);
   btnWalkSoloStart.disabled = false;
   if (walkSoloPlayersSel) walkSoloPlayersSel.disabled = false;
   if (walkSoloBotsSel) walkSoloBotsSel.disabled = false;
@@ -1802,6 +1898,7 @@ function stopSoloGame(){
   soloRoundFinishers = []; soloFinished = 0; soloRoundPos = 0;
   soloClearClickable();
   soloHideStepCounter();
+  soloHideEndgame();
   // De spelersbalk bleef anders de stand van het vorige potje tonen (scores, energie,
   // kaarten) terwijl de opzet-UI alweer open stond.
   walkScoreOrder = null;

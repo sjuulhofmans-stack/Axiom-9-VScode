@@ -408,6 +408,39 @@
   .walk-board-col .board-outer{
     padding:10px; border:1px solid var(--line); border-radius:8px; background:var(--hull);
   }
+  /* nodig als ankerpunt voor .walk-endgame hieronder, die het bord exact moet overlappen. */
+  .board-zoom-wrap{position:relative;}
+  /* eindscherm ná afloop van een potje: exact even groot als het bord met dezelfde rand/
+     padding/achtergrond als .board-outer hierboven, zodat het als een gelijkwaardig "venster"
+     aanvoelt i.p.v. iets kleins onderin een hoekje (gebruikerswens: "saai klein overzichtje").
+     `overflow:hidden` houdt de confetti binnen deze rand i.p.v. erbuiten te "morsen". */
+  .walk-endgame{
+    position:absolute; inset:0; z-index:10;
+    display:flex; align-items:center; justify-content:center;
+    padding:10px; border:1px solid var(--line); border-radius:8px; background:var(--hull);
+    overflow:hidden;
+  }
+  .walk-endgame[hidden]{display:none;}
+  /* vult het hele venster, maar zit ONDER de kaart hieronder in z-index — daardoor komt de
+     confetti daar nooit overheen, zonder dat er iets uitgeknipt hoeft te worden
+     (gebruikerswens: "het kader in het midden moet geen confetti overheen komen"). */
+  .walk-endgame-confetti{
+    position:absolute; inset:0; width:100%; height:100%;
+    z-index:1; pointer-events:none;
+  }
+  .walk-endgame-showmap{position:absolute; top:14px; right:14px; z-index:3;}
+  .walk-endgame-card{
+    position:relative; z-index:2;
+    display:flex; flex-direction:column; align-items:center; gap:6px; text-align:center;
+    max-width:80%;
+    background:var(--panel-2); border:1px solid var(--line); border-radius:10px;
+    padding:28px 36px; box-shadow:0 8px 30px rgba(0,0,0,.5);
+  }
+  .walk-endgame-trophy{font-size:40px; line-height:1;}
+  .walk-endgame-title{
+    font-family:var(--font-display); font-size:22px; font-weight:700; color:var(--text);
+  }
+  .walk-endgame-sub{font-family:var(--font-mono); font-size:12.5px; color:var(--text-dim);}
   .walk-side-stack{
     grid-column:3;
     display:flex; flex-direction:column; gap:10px; min-width:0;
