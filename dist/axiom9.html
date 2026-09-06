@@ -456,11 +456,15 @@
     0%,100%{box-shadow:0 0 0 0 color-mix(in srgb, var(--pc, var(--amber)) 55%, transparent);}
     50%{box-shadow:0 0 12px 2px color-mix(in srgb, var(--pc, var(--amber)) 55%, transparent);}
   }
-  .walk-pulse-affordable, #btnWalkSoloRoll:not([hidden]){
+  /* #btnWalkSoloSkip ("Dobbelen") pulst hier ook mee: het is zelf ook gewoon een keuze naast
+     de energieacties (net zo geldig als "geen actie"), dus verdient dezelfde nadruk i.p.v.
+     er statisch naast te staan (gebruikerswens). */
+  .walk-pulse-affordable, #btnWalkSoloRoll:not([hidden]), #btnWalkSoloSkip:not([hidden]){
     animation:walkPcPulse 1.6s ease-in-out infinite;
   }
   #tabWalk.walk-is-paused .walk-pulse-affordable,
-  #tabWalk.walk-is-paused #btnWalkSoloRoll{animation-play-state:paused;}
+  #tabWalk.walk-is-paused #btnWalkSoloRoll,
+  #tabWalk.walk-is-paused #btnWalkSoloSkip{animation-play-state:paused;}
 
   /* dobbelstenen bewegen heel langzaam op en neer zolang je nog niet hebt gegooid (zie
      renderSoloDicePending in 97-solo.js) — stopt vanzelf zodra renderWalkDice() de echte
@@ -2087,7 +2091,7 @@
               <span id="walkPausedFlag" class="walk-paused-flag" hidden>gepauzeerd</span>
               <div class="btn-row">
                 <button id="btnWalkSoloRoll" class="primary" hidden>🎲 Gooi de dobbelstenen</button>
-                <button id="btnWalkSoloSkip" class="ghost" hidden>Geen actie, gewoon dobbelen</button>
+                <button id="btnWalkSoloSkip" class="ghost" hidden>Dobbelen</button>
               </div>
               <!-- alleen zichtbaar tijdens een lopend multiplayer-potje (zie mpEnterPlayView/
                    mpExitPlayView in 99-multiplayer.js) — staat BUITEN walkSoloActions, dat elke
@@ -8746,7 +8750,7 @@ function soloBeginHumanTurn(pIdx){
 
   btnWalkSoloRoll.hidden = true;
   btnWalkSoloSkip.hidden = false;
-  btnWalkSoloSkip.textContent = 'Geen actie, gewoon dobbelen';
+  btnWalkSoloSkip.textContent = 'Dobbelen';
   soloPhase = 'choose-action';
   soloRenderActionPanel();
   soloRefreshCardVault();

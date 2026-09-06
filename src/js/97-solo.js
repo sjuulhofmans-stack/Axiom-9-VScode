@@ -1476,7 +1476,7 @@ function soloBeginHumanTurn(pIdx){
 
   btnWalkSoloRoll.hidden = true;
   btnWalkSoloSkip.hidden = false;
-  btnWalkSoloSkip.textContent = 'Geen actie, gewoon dobbelen';
+  btnWalkSoloSkip.textContent = 'Dobbelen';
   soloPhase = 'choose-action';
   soloRenderActionPanel();
   soloRefreshCardVault();
