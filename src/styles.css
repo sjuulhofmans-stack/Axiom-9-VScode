@@ -711,6 +711,10 @@
      verborgen zijn (bv. 'moving', of het kiezen van een doelwit) — en dat liet .walk-info-panel
      eronder alsnog 36px op en neer springen, exact het probleem dat deze hele sectie oplost. */
   .walk-hud .btn-row{flex-basis:100%; min-height:40px;}
+  /* dobbel-/sla-over-knop zo breed als de kolom i.p.v. hun eigen (smalle) tekstbreedte
+     (gebruikerswens) — ze wisselen elkaar toch af in dezelfde rij, dus allebei even breed
+     voorkomt ook dat de knop van breedte verspringt tussen beurten. */
+  #btnWalkSoloRoll, #btnWalkSoloSkip{width:100%;}
   /* de "verlaat potje"-rij (alleen relevant tijdens multiplayer) mag buiten multiplayer om geen
      40px lege ruimte claimen — anders dan de dobbel-/sla-over-rij hierboven, die haar min-height
      WEL altijd nodig heeft (zie het commentaar bij .walk-hud .btn-row): dat voorkomt dat het

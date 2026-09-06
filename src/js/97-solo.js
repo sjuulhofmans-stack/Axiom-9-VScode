@@ -806,6 +806,7 @@ function soloPlayCard(id){
       soloUsedCardId = 'boostcell';
       walkLog(`Je speelt <b>Stuwlading</b> vóór het dobbelen: gratis derde loopsteen bij deze worp.`, null, p0);
     }
+    renderSoloDicePending();
     soloRenderActionPanel();
     soloRefreshCardVault();
     renderWalkScore(soloPlayers, soloActiveIdx);
@@ -1060,8 +1061,14 @@ function renderSoloDicePending(){
     : energyDieHtml(e, false) + `<span class="walk-die-sum energy">+${e} energie</span>`;
   // walk-die-pending: langzame op-en-neer-animatie zolang je nog niet hebt gedobbeld
   // (gebruikersverzoek) — verdwijnt vanzelf zodra renderWalkDice() straks de echte worp tekent.
+  // Een 3e vraagteken-dobbelsteen zodra Stuwstoot/Stuwlading is ingezet (soloPendingBoost):
+  // die 3e loopsteen is dan al zeker, dus mag je 'm nu al zien staan i.p.v. pas na het
+  // dobbelen (gebruikerswens).
+  const pendingDice = soloPendingBoost
+    ? `<span class="walk-die walk-die-pending">?</span><span class="walk-die walk-die-pending">?</span><span class="walk-die walk-die-pending">?</span>`
+    : `<span class="walk-die walk-die-pending">?</span><span class="walk-die walk-die-pending">?</span>`;
   walkDiceEl.innerHTML =
-    `<span class="walk-dice-row"><span class="walk-die walk-die-pending">?</span><span class="walk-die walk-die-pending">?</span></span>` +
+    `<span class="walk-dice-row">${pendingDice}</span>` +
     `<span class="walk-dice-row">${energyHtml}</span>`;
 }
 // `soloCurrentLegalMoves` voedt niet alleen deze teller maar ook de pijltjestoetsen
@@ -1115,6 +1122,7 @@ function soloProceedToRoll(){
   btnWalkSoloSkip.hidden = true;
   btnWalkSoloRoll.hidden = false;
   btnWalkSoloRoll.textContent = soloPendingBoost ? '🎲 Gooi 3 dobbelstenen' : '🎲 Gooi de dobbelstenen';
+  renderSoloDicePending();
   soloPhase = 'rolling';
   soloRefreshCardVault();
   renderWalkScore(soloPlayers, soloActiveIdx);
