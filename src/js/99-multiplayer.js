@@ -666,6 +666,7 @@ function mpIntercept(action, args){
 const MP_INTENT_HANDLERS = {
   rollDice: () => soloRollDice(),
   proceedToRoll: () => soloProceedToRoll(),
+  skipToRoll: () => soloSkipToRoll(),
   moveClick: (a) => soloHandleMoveClick(a.key),
   useEnergy: (a) => soloUseEnergyAction(a.id),
   playCard: (a) => soloPlayCard(a.id),

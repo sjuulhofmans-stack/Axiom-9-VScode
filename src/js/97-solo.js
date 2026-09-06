@@ -1168,9 +1168,22 @@ function soloRollDice(){
   soloAdvanceMovePhase();
 }
 if (btnWalkSoloRoll) btnWalkSoloRoll.addEventListener('click', soloRollDice);
+// "Dobbelen" (energie overslaan) rolt nu in één klik i.p.v. alleen de losse rolknop te tonen
+// (gebruikerswens: eerst moest je 'm daarna nog een keer aanklikken). Eigen functie i.p.v.
+// hier gewoon soloProceedToRoll() + soloRollDice() na elkaar aanroepen: op een non-host
+// multiplayer-client zou de eerste aanroep een intent versturen én meteen `return`en (de
+// eigen mpIntercept-guard in soloProceedToRoll), waardoor de daaropvolgende soloRollDice()
+// nog vóór dat intent is verwerkt op de nog-oude fase ('choose-action') zou botsen en zelf
+// niks doen — dan komt er nooit een rollDice-intent bij de host terecht. Door dit als één
+// eigen intent ('skipToRoll', zie MP_INTENT_HANDLERS in 99-multiplayer.js) te sturen, voert
+// de host 'm straks in één keer volledig uit.
+function soloSkipToRoll(){
+  if (mpIntercept('skipToRoll', {})) return;
+  soloProceedToRoll();
+  soloRollDice();
+}
 if (btnWalkSoloSkip) btnWalkSoloSkip.addEventListener('click', () => {
-  // 'choose-action' (energie overslaan) gaat direct door naar het dobbelen.
-  if (soloPhase === 'choose-action') soloProceedToRoll();
+  if (soloPhase === 'choose-action') soloSkipToRoll();
 });
 
 function soloAdvanceMovePhase(){
