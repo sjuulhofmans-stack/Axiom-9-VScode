@@ -387,26 +387,27 @@
      — zie .walk-status-col hieronder), in het midden het bord op vaste breedte, rechts
      Dobbelstenen/Energieactie/Actiekaarten. */
   .walk-board-row{
-    display:grid; grid-template-columns: minmax(280px,1fr) 861px minmax(300px,1.4fr);
+    display:grid; grid-template-columns: minmax(280px,1fr) 863px minmax(300px,1.4fr);
     gap:15px; align-items:start;
   }
   /* de statushub en de zijkolom mogen samen nooit hoger worden dan het omkaderde bord
      (gebruikerseis) — #walkBoard zelf is 671px hoog (32 rijen × 20px + 31px tussenruimte),
-     plus de rand eromheen (zie .walk-board-col .board-outer hieronder: 10px padding + 1px
-     rand rondom = 22px erbij) is dat 693px, dus dat is het harde plafond voor allebei. */
+     plus de rand eromheen (zie .walk-board-col .board-outer hieronder: 10px padding + 2px
+     rand rondom = 24px erbij) is dat 695px, dus dat is het harde plafond voor allebei. */
   .walk-status-col{
     grid-column:1;
     display:flex; flex-direction:column; gap:10px; min-width:0;
-    max-height:693px;
+    max-height:695px;
   }
-  .walk-board-col{grid-column:2; min-width:0; max-width:861px;}
+  .walk-board-col{grid-column:2; min-width:0; max-width:863px;}
   /* zichtbare rand rondom het bord (gebruikerswens: iets duidelijker dat het speelveld het
-     midden van de pagina is) — bewust alleen hier en niet op de generieke .board-outer
-     hierboven, want die wordt ook door het tabblad "Speelbord genereren" gebruikt. 10px
-     padding + 1px rand = 22px extra t.o.v. het kale bord (839px -> 861px breed, 671px ->
-     693px hoog), zie de grid-template-columns/max-height hierboven en hieronder. */
+     midden van de pagina is, en later: dikker + donkerder) — bewust alleen hier en niet op de
+     generieke .board-outer hierboven, want die wordt ook door het tabblad "Speelbord
+     genereren" gebruikt. 10px padding + 2px rand = 24px extra t.o.v. het kale bord (839px ->
+     863px breed, 671px -> 695px hoog), zie de grid-template-columns/max-height hierboven en
+     hieronder. */
   .walk-board-col .board-outer{
-    padding:10px; border:1px solid var(--line-dim); border-radius:8px; background:var(--hull);
+    padding:10px; border:2px solid var(--line-dim); border-radius:8px; background:var(--hull);
   }
   /* nodig als ankerpunt voor .walk-endgame hieronder, die het bord exact moet overlappen. */
   .board-zoom-wrap{position:relative;}
@@ -444,7 +445,7 @@
   .walk-side-stack{
     grid-column:3;
     display:flex; flex-direction:column; gap:10px; min-width:0;
-    max-height:693px;
+    max-height:695px;
   }
   @media (max-width: 1150px){
     .walk-board-row{grid-template-columns:1fr;}
@@ -457,8 +458,12 @@
   }
   /* de 3 vakken in de zijkolom mogen niet krimpen (Dobbelstenen/Energieactie/Actiekaarten) —
      in de statuskolom hiernaast geldt dat NIET: .walk-info-panel en .walk-quest-checklist
-     verdelen die kolom onderling (zie hun eigen regels verderop). */
-  .walk-panel-box{flex:none;}
+     verdelen die kolom onderling (zie hun eigen regels verderop).
+     Achtergrond hier gecentraliseerd i.p.v. los per vakje: die stonden op een mix van --hull
+     en --panel-2, waardoor de linker- en rechterkolom niet dezelfde tint hadden
+     (gebruikersmelding "kolommen hebben andere kleuren"). Alle losse background-regels
+     verderop op deze klassen zijn er daarom uitgehaald. */
+  .walk-panel-box{flex:none; background:var(--panel-2);}
   /* "of" tussen twee vakken: je kunt dobbelen ÓF een energie-actie inzetten, en verderop
      ÓF (als dat nu kan) een actiekaart spelen vóór het dobbelen — zie 97-solo.js. */
   .walk-or-sep{
@@ -545,7 +550,7 @@
      blijft staan voor het zeldzame geval dat inhoud er toch niet in past. */
   .walk-solo-panel{
     display:flex; flex-direction:column; gap:10px; flex:none;
-    background:var(--hull); border:1px solid var(--line-dim); border-radius:6px; padding:12px;
+    border:1px solid var(--line-dim); border-radius:6px; padding:12px;
     height:280px; overflow-y:auto;
   }
   .walk-solo-panel[hidden]{display:none;}
@@ -663,7 +668,7 @@
      staan voor het zeldzame geval dat de inhoud toch niet past. */
   .walk-info-panel{
     display:flex; flex-direction:column; gap:10px; flex:none;
-    background:var(--panel-2); border:1px solid var(--line); border-radius:6px; padding:14px;
+    border:1px solid var(--line); border-radius:6px; padding:14px;
     overflow-y:auto; scrollbar-gutter: stable;
   }
   @media (max-width: 1150px){ .walk-info-panel{min-height:280px; max-height:none;} }
@@ -684,7 +689,7 @@
      .walk-info-panel dat zelf ook al deed vóór er iets te tonen viel. */
   .walk-quest-checklist{
     display:flex; flex-direction:column; gap:6px; flex:1 1 auto; min-height:0;
-    background:var(--panel-2); border:1px solid var(--line); border-radius:6px; padding:14px;
+    border:1px solid var(--line); border-radius:6px; padding:14px;
     overflow-y:auto; scrollbar-gutter:stable;
   }
   .walk-quest-checklist:empty{display:none;}
@@ -764,7 +769,7 @@
      de pauze-vlag ernaast. */
   .walk-hud{
     display:flex; align-items:center; gap:16px; flex-wrap:wrap;
-    background:var(--hull); border:1px solid var(--line-dim); border-radius:5px; padding:11px 13px;
+    border:1px solid var(--line-dim); border-radius:5px; padding:11px 13px;
   }
   /* min-height: zonder dit klapt de rij helemaal in tijdens fases waarin BEIDE knoppen
      verborgen zijn (bv. 'moving', of het kiezen van een doelwit) — en dat liet .walk-info-panel
@@ -1209,7 +1214,7 @@
   /* het klikbare vlak onder de dobbelstenen; alleen zichtbaar als je kaarten hebt */
   .walk-card-vault{
     display:flex; align-items:center; gap:11px; width:100%; text-align:left;
-    background:var(--hull); border:1px solid var(--line-dim); border-radius:5px;
+    border:1px solid var(--line-dim); border-radius:5px;
     padding:9px 12px; cursor:pointer;
     transition:border-color .15s, box-shadow .15s, background .15s;
   }
@@ -1242,7 +1247,7 @@
      keuze van je gevraagd wordt (gebruikerswens). */
   .walk-card-actions{
     display:flex; flex-direction:column; gap:10px;
-    background:var(--hull); border:1px solid var(--line-dim); border-radius:6px; padding:12px;
+    border:1px solid var(--line-dim); border-radius:6px; padding:12px;
   }
   .walk-card-actions:empty{display:none;}
 
@@ -1747,9 +1752,9 @@
        we liever een fractie te klein zitten dan alsnog moeten scrollen.
        Boven de 640px-grens (waar dit blok niet geldt) gelden de vaste desktopwaarden. */
     #board{ --cell: clamp(5px, calc((100vw - 95px) / 40), 18px); }
-    /* +22px t.o.v. #board hierboven: de rand rondom #walkBoard (.walk-board-col .board-outer
-       — 10px padding + 1px rand, aan weerszijden) telt hier ook mee als chrome. */
-    #walkBoard{ --cell: clamp(5px, calc((100vw - 117px) / 40), 16px); }
+    /* +24px t.o.v. #board hierboven: de rand rondom #walkBoard (.walk-board-col .board-outer
+       — 10px padding + 2px rand, aan weerszijden) telt hier ook mee als chrome. */
+    #walkBoard{ --cell: clamp(5px, calc((100vw - 119px) / 40), 16px); }
     .walk-controls{gap:12px;}
     .walk-controls .field{min-width:0; flex:1 1 100%;}
     .sim-heat-grid{ --hcell: clamp(3.5px, calc((100vw - 95px) / 40), 7px); }
