@@ -6469,7 +6469,7 @@ function renderWalkBoard(){
           const room = ROOM_NAMES[tileId] || ('Gang ' + tileId);
           div.title = `${val} · ${QUEST_NAMES[val] || val} — ${room}`;
         } else if (type === 'actioncell'){
-          div.title = `${val} — actiekaartvakje`;
+          div.title = 'Extra actiekaart';
         }
       } else if (patternSet.has(dr+'_'+dc)){
         div.classList.add('empty-slot');
