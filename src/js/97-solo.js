@@ -63,6 +63,22 @@ const walkEndgameCardEl = document.getElementById('walkEndgameCard');
 const walkEndgameConfettiEl = document.getElementById('walkEndgameConfetti');
 const btnWalkEndgameShowMap = document.getElementById('btnWalkEndgameShowMap');
 
+// Dobbelknop, energieacties en kaartkluis pulsen alledrie met dezelfde walkPcPulse-animatie
+// (styles.css), maar zijn losse DOM-elementen die op verschillende momenten pulsend worden
+// (de energieknoppen worden zelfs bij elke render van #walkSoloActions helemaal opnieuw
+// aangemaakt) — zonder correctie begint elk element zijn eigen animatie dus op een willekeurig
+// moment, en pulseren ze door elkaar heen i.p.v. gelijk op (gebruikerswens). PULSE_EPOCH is één
+// vast ankerpunt (het moment dat de pagina laadt); syncPulse() zet op ieder element een negatieve
+// animation-delay gelijk aan hoe ver we nu in die cyclus zitten, zodat alle pulserende elementen
+// hetzelfde gedeelde ritme volgen ongeacht wanneer hun eigen DOM-node ontstond.
+const PULSE_EPOCH = performance.now();
+const PULSE_DURATION_MS = 1600;   // moet gelijk blijven aan walkPcPulse's duur in styles.css
+function syncPulse(el){
+  if (!el) return;
+  const elapsed = (performance.now() - PULSE_EPOCH) % PULSE_DURATION_MS;
+  el.style.animationDelay = `-${elapsed.toFixed(0)}ms`;
+}
+
 let soloGraph = null;
 let soloDeck = null;         // gedeelde actiekaart-stapel voor dit potje
 let soloRand = null;
@@ -432,6 +448,8 @@ function soloRenderActionPanel(){
     ? `<p class="hint energy-pick-none">Je hebt <b>${p.energy}</b> energie — te weinig voor een actie. Gooi gewoon; je energiesteen vult je voorraad weer aan.</p>`
     : '';
   walkSoloActionsEl.innerHTML = `<div class="energy-pick-list">${energyBtns}</div>${note}`;
+  // net aangemaakte knoppen beginnen anders allemaal weer bij 0 — zie PULSE_EPOCH hierboven.
+  for (const el of walkSoloActionsEl.querySelectorAll('.walk-pulse-affordable')) syncPulse(el);
   // 2e "of": alleen zichtbaar zolang je vóór het dobbelen zit én Noodrantsoen/Stuwlading nu
   // speelbaar is (dezelfde bron als de kaartkluis-puls, maar dan specifiek voor dit moment)
   if (walkOrSep2El){
@@ -551,6 +569,7 @@ function soloRefreshCardVault(){
     ? `${playable} speelbaar — klik om te bekijken →`
     : 'geen speelbaar op dit moment — klik om te bekijken →';
   walkCardVaultEl.classList.toggle('walk-pulse-affordable', playable > 0);
+  if (playable > 0) syncPulse(walkCardVaultEl);
   if (cardOverlayEl && !cardOverlayEl.hidden) soloRenderCardGrid();
 }
 
@@ -1134,6 +1153,7 @@ function soloProceedToRoll(){
   soloHideStepCounter();
   btnWalkSoloSkip.hidden = true;
   btnWalkSoloRoll.hidden = false;
+  syncPulse(btnWalkSoloRoll);
   btnWalkSoloRoll.textContent = soloPendingBoost ? '🎲 Gooi 3 dobbelstenen' : '🎲 Gooi de dobbelstenen';
   renderSoloDicePending();
   soloPhase = 'rolling';
@@ -1502,6 +1522,7 @@ function soloBeginHumanTurn(pIdx){
 
   btnWalkSoloRoll.hidden = true;
   btnWalkSoloSkip.hidden = false;
+  syncPulse(btnWalkSoloSkip);
   btnWalkSoloSkip.textContent = 'Dobbelen';
   soloPhase = 'choose-action';
   soloRenderActionPanel();
