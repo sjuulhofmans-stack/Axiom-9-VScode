@@ -731,6 +731,12 @@
     font-family:var(--font-mono); font-size:10px; font-weight:700; color:var(--start);
     flex:none;
   }
+  /* "Actief" bij je huidige doel — zelfde badge-stijl als "Voltooid!" hierboven, maar in de
+     kleur van de opdracht zelf (--qtint) i.p.v. het vaste succesgroen (gebruikerswens). */
+  .quest-check-active{
+    font-family:var(--font-mono); font-size:10px; font-weight:700;
+    color:var(--qtint, var(--quest)); flex:none;
+  }
   /* de nieuwe stat-tegels + altijd-zichtbare spelersrij boven het bord vervangen wat #walkMeta
      en #walkScoreActive lieten zien (beurt/voltooid resp. de eigen rij) — die blijven in de DOM
      voor Automatisch-modus (die schrijft er nog steeds in via renderWalkMeta/renderWalkScore),
@@ -7703,6 +7709,7 @@ function soloRenderQuestChecklist(){
         `<span class="quest-check-room">${room}</span>` +
       `</span>` +
       (isDone ? `<span class="quest-check-done">✓ Voltooid!</span>` : '') +
+      (isCurrent ? `<span class="quest-check-active">Actief</span>` : '') +
     `</div>`;
   }).join('');
 }

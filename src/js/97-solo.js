@@ -360,6 +360,7 @@ function soloRenderQuestChecklist(){
         `<span class="quest-check-room">${room}</span>` +
       `</span>` +
       (isDone ? `<span class="quest-check-done">✓ Voltooid!</span>` : '') +
+      (isCurrent ? `<span class="quest-check-active">Actief</span>` : '') +
     `</div>`;
   }).join('');
 }
