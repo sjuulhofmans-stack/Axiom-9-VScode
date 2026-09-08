@@ -406,7 +406,7 @@
      padding + 1px rand = 22px extra t.o.v. het kale bord (839px -> 861px breed, 671px ->
      693px hoog), zie de grid-template-columns/max-height hierboven en hieronder. */
   .walk-board-col .board-outer{
-    padding:10px; border:1px solid var(--line); border-radius:8px; background:var(--hull);
+    padding:10px; border:1px solid var(--line-dim); border-radius:8px; background:var(--hull);
   }
   /* nodig als ankerpunt voor .walk-endgame hieronder, die het bord exact moet overlappen. */
   .board-zoom-wrap{position:relative;}
