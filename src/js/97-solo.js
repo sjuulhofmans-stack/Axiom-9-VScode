@@ -43,6 +43,7 @@ const walkCardVaultEl = document.getElementById('walkCardVault');
 const walkCardVaultThumbsEl = document.getElementById('walkCardVaultThumbs');
 const walkCardVaultCountEl = document.getElementById('walkCardVaultCount');
 const walkCardVaultHintEl = document.getElementById('walkCardVaultHint');
+const walkCardActionsEl = document.getElementById('walkCardActions');
 const cardOverlayEl = document.getElementById('cardOverlay');
 const cardGridEl = document.getElementById('cardGrid');
 const cardPanelHintEl = document.getElementById('cardPanelHint');
@@ -77,6 +78,22 @@ function syncPulse(el){
   if (!el) return;
   const elapsed = (performance.now() - PULSE_EPOCH) % PULSE_DURATION_MS;
   el.style.animationDelay = `-${elapsed.toFixed(0)}ms`;
+}
+
+// ---------- vervolgkeuze van een gespeelde actiekaart (doelwit/richting/Blinde-Vlek-aanbod) ----------
+// Hoort bij de kaart die je net speelde, dus eigen vakje bij de kaartkluis i.p.v. de
+// energiekolom hierboven (gebruikerswens: "die keuze moet in de kolom van de actiekaart komen
+// te staan"). Pulst ook, zodat duidelijk is dat er nu iets van je gevraagd wordt.
+function soloRenderCardActionsPanel(html){
+  if (!walkCardActionsEl) return;
+  walkCardActionsEl.innerHTML = html;
+  walkCardActionsEl.classList.add('walk-pulse-affordable');
+  syncPulse(walkCardActionsEl);
+}
+function soloClearCardActionsPanel(){
+  if (!walkCardActionsEl) return;
+  walkCardActionsEl.innerHTML = '';
+  walkCardActionsEl.classList.remove('walk-pulse-affordable');
 }
 
 let soloGraph = null;
@@ -549,8 +566,14 @@ function soloCanDiscardNow(){ return soloPhase === 'moving' && !soloCardActionUs
 
 // ---------- de kaartkluis onder de dobbelstenen ----------
 function soloRefreshCardVault(){
-  // de kaarten wonen nu in het venster; deze strook is voor energie-acties en keuzepanelen
-  if (walkSoloActionsEl && (soloPhase === 'moving' || soloPhase === 'rolling')) walkSoloActionsEl.innerHTML = '';
+  // de kaarten wonen nu in het venster; deze strook is alleen nog voor energie-acties.
+  // walkCardActionsEl (vervolgkeuze van een gespeelde kaart) is een apart vakje bij de
+  // kaartkluis hieronder, maar deelt dezelfde opruim-voorwaarde als vangnet voor het geval een
+  // aanroeper 'm zelf niet al expliciet leegde.
+  if (soloPhase === 'moving' || soloPhase === 'rolling'){
+    if (walkSoloActionsEl) walkSoloActionsEl.innerHTML = '';
+    soloClearCardActionsPanel();
+  }
   if (!walkCardVaultEl) return;
   const p = solo();
   const cards = p && !p.rank ? p.cards : [];
@@ -721,26 +744,28 @@ function soloEnterTargetPicker(cardId){
   btnWalkSoloSkip.hidden = true;
   btnWalkSoloRoll.hidden = true;
   const label = SOLO_TARGET_PICKER_LABELS[cardId];
-  walkSoloActionsEl.innerHTML =
+  soloRenderCardActionsPanel(
     `<div class="walk-target-picker-hint">Kies een doelwit voor <b>${label}</b>:</div>` +
     `<div class="action-card-row">` + targets.map(t =>
       `<button type="button" class="action-card action-card--lg action-card--plain" data-target="${t.idx}" style="--card-tint:${t.color}" title="${t.name}">
         <span class="action-card-name" style="margin-top:22px;">${t.name}</span>
         <span class="action-card-hint">${t.startLabel} · ${t.completed}/${SIM_QUESTS_TO_WIN}</span>
       </button>`
-    ).join('') + `</div>`;
-  walkSoloActionsEl.dataset.pendingCard = cardId;
+    ).join('') + `</div>`
+  );
+  walkCardActionsEl.dataset.pendingCard = cardId;
 }
-if (walkSoloActionsEl){
-  walkSoloActionsEl.addEventListener('click', (e) => {
+if (walkCardActionsEl){
+  walkCardActionsEl.addEventListener('click', (e) => {
     if (soloPhase !== 'target-pick') return;
     const btn = e.target.closest('button[data-target]');
     if (!btn) return;
-    soloResolveTargetCard(walkSoloActionsEl.dataset.pendingCard, parseInt(btn.dataset.target, 10));
+    soloResolveTargetCard(walkCardActionsEl.dataset.pendingCard, parseInt(btn.dataset.target, 10));
   });
 }
 function soloResolveTargetCard(cardId, targetIdx){
   if (mpIntercept('resolveTarget', { cardId, targetIdx })) return;
+  soloClearCardActionsPanel();
   const p = solo();
   const victim = soloPlayers[targetIdx];
   if (cardId === 'short'){
@@ -1002,17 +1027,18 @@ function soloEnterBootsDirection(){
 
   const names = ['Noord', 'Oost', 'Zuid', 'West'];
   walkLog(`Je speelt <b>Zwaartekracht-laarzen</b> — kies hieronder in welke richting je rechtdoor loopt.`, null, p);
-  walkSoloActionsEl.innerHTML =
+  soloRenderCardActionsPanel(
     `<div class="walk-target-picker-hint">Kies je richting voor <b>Zwaartekracht-laarzen</b>:</div>` +
     `<div class="action-card-row">` + options.map(o =>
     `<button type="button" class="action-card action-card--lg action-card--plain" data-boots-dir="${o.dir}" title="${names[o.dir]} — ${o.path.length - 1} stappen tot muur/rand/tegenstander">
       <span class="action-card-name">${names[o.dir]}</span>
       <span class="action-card-hint">${o.path.length - 1} vakjes tot muur/rand${o.bankedAt !== -1 ? ' — raakt je doel!' : ''}</span>
     </button>`
-  ).join('') + `</div>`;
+  ).join('') + `</div>`
+  );
 }
-if (walkSoloActionsEl){
-  walkSoloActionsEl.addEventListener('click', (e) => {
+if (walkCardActionsEl){
+  walkCardActionsEl.addEventListener('click', (e) => {
     if (soloPhase !== 'boots-direction') return;
     const btn = e.target.closest('button[data-boots-dir]');
     if (!btn) return;
@@ -1023,6 +1049,7 @@ function soloResolveBoots(dir){
   const opt = soloBootsOptions.find(o => o.dir === dir);
   if (!opt) return;
   if (mpIntercept('resolveBoots', { dir })) return;
+  soloClearCardActionsPanel();
   const p = solo();
   // de kaart is al afgelegd in soloEnterBootsDirection, hier alleen nog de zet afhandelen
   soloUsedBoots = true;
@@ -1150,6 +1177,7 @@ document.addEventListener('keydown', (e) => {
 function soloProceedToRoll(){
   if (mpIntercept('proceedToRoll', {})) return;
   walkSoloActionsEl.innerHTML = '';
+  soloClearCardActionsPanel();
   soloHideStepCounter();
   btnWalkSoloSkip.hidden = true;
   btnWalkSoloRoll.hidden = false;
@@ -1258,18 +1286,20 @@ function soloOfferBlindSpot(){
   btnWalkSoloRoll.hidden = true;
   btnWalkSoloSkip.hidden = true;
   walkLog(`Je route wordt geblokkeerd door een tegenstander.`, null, solo());
-  walkSoloActionsEl.innerHTML =
+  soloRenderCardActionsPanel(
     `<div class="walk-target-picker-hint">Speel <b>Blinde Vlek</b> om bezette vakjes deze beurt te negeren?</div>` +
     `<div class="action-card-row">` +
       `<button type="button" class="action-card action-card--lg action-card--plain" data-blind="yes"><span class="action-card-name" style="margin-top:22px;">Ja, speel Blinde Vlek</span></button>` +
       `<button type="button" class="action-card action-card--lg action-card--plain" data-blind="no"><span class="action-card-name" style="margin-top:22px;">Nee</span></button>` +
-    `</div>`;
+    `</div>`
+  );
 }
 // losse naamfunctie (i.p.v. inline in de listener) zodat multiplayer 'm op de host ook kan
 // aanroepen als reactie op een intent van een remote speler — zie mpIntercept in 99-multiplayer.js
 function soloResolveBlindOffer(yes){
   if (soloPhase !== 'blind-offer') return;
   if (mpIntercept('blindOffer', { yes })) return;
+  soloClearCardActionsPanel();
   if (yes){
     useActionCard(solo(), 'blind', soloDeck);
     soloUsedCardId = 'blind';
@@ -1281,14 +1311,13 @@ function soloResolveBlindOffer(yes){
     renderSoloMeta(soloMove.stepsLeft);
     soloRefreshCardVault();   // cardActionUsed is nu true (blind gespeeld), dus niets meer speelbaar
   } else {
-    walkSoloActionsEl.innerHTML = '';
     walkLog(`Doodlopend — geen vervolgstap meer mogelijk.`, null, solo());
     if (soloBankCountThisTurn > 0) soloEndMoveAlreadyBanked();
     else soloFinishTurn(false);
   }
 }
-if (walkSoloActionsEl){
-  walkSoloActionsEl.addEventListener('click', (e) => {
+if (walkCardActionsEl){
+  walkCardActionsEl.addEventListener('click', (e) => {
     if (soloPhase !== 'blind-offer') return;
     const btn = e.target.closest('button[data-blind]');
     if (!btn) return;
@@ -1882,6 +1911,7 @@ function soloEndGame(stuck){
   soloRefreshCardVault();
   clearWalkTarget();
   walkSoloActionsEl.innerHTML = '';
+  soloClearCardActionsPanel();
   btnWalkSoloRoll.hidden = true;
   btnWalkSoloSkip.hidden = true;
   renderWalkScore(soloPlayers, -1);
@@ -1946,6 +1976,7 @@ function stopSoloGame(){
   if (walkStatTilesEl) walkStatTilesEl.innerHTML = '';
   if (walkQuestChecklistEl) walkQuestChecklistEl.innerHTML = '';
   if (walkSoloActionsEl) walkSoloActionsEl.innerHTML = '';
+  soloClearCardActionsPanel();
   if (btnWalkSoloRoll) btnWalkSoloRoll.hidden = true;
   if (btnWalkSoloSkip) btnWalkSoloSkip.hidden = true;
   if (btnWalkSoloStart) btnWalkSoloStart.disabled = false;

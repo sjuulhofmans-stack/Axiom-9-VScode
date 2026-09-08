@@ -1232,6 +1232,20 @@
   }
   .walk-card-vault-text .sub{font-family:var(--font-mono); font-size:10px; color:var(--text-dim);}
 
+  /* vervolgkeuze van een gespeelde actiekaart (doelwit/richting/Blinde-Vlek-aanbod) — hoort nu
+     bij de kaartkluis i.p.v. de energiekolom (gebruikerswens). Geen vaste hoogte zoals
+     .walk-solo-panel: dit vakje is geen permanent onderdeel van de kolom maar een kort,
+     op-zichzelf-staand keuzemoment, dus mag gewoon meegroeien met zijn inhoud (2 t/m 4
+     doelwit-knoppen, of de 4 richtingen, of de Blinde-Vlek ja/nee). `:empty` verbergt 'm
+     vanzelf zodra er niets te kiezen valt — zie soloClearCardActionsPanel in 97-solo.js.
+     `.walk-pulse-affordable` (via soloRenderCardActionsPanel) maakt duidelijk dat hier NU een
+     keuze van je gevraagd wordt (gebruikerswens). */
+  .walk-card-actions{
+    display:flex; flex-direction:column; gap:10px;
+    background:var(--hull); border:1px solid var(--line-dim); border-radius:6px; padding:12px;
+  }
+  .walk-card-actions:empty{display:none;}
+
   /* ---------- tabblad "Speelkaarten": de vitrine ---------- */
   .cards-shelf{
     display:grid; gap:16px; padding:4px 0 2px;

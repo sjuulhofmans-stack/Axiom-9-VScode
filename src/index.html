@@ -343,6 +343,14 @@
               </span>
             </button>
 
+            <!-- vervolgkeuze ná het spelen van een actiekaart (doelwit kiezen, richting voor
+                 Zwaartekracht-laarzen, het Blinde-Vlek-aanbod) — hoort bij de kaart die je net
+                 speelde, dus staat nu bij de kaartkluis i.p.v. hierboven in de energiekolom
+                 (gebruikerswens). Leeg = onzichtbaar (zie .walk-card-actions:empty in
+                 styles.css); soloRenderCardActionsPanel in 97-solo.js zet 'm ook pulserend
+                 zodra je hier echt iets moet kiezen. -->
+            <div class="walk-panel-box walk-card-actions" id="walkCardActions"></div>
+
             <!-- alleen zichtbaar tijdens een lopend multiplayer-potje (zie mpEnterPlayView/
                  mpExitPlayView in 99-multiplayer.js) — dezelfde berichten als op het
                  lobby-tabblad (#mpChatPanel), gewoon een tweede weergave van mpChatMessages. -->
