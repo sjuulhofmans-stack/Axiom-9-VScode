@@ -348,9 +348,17 @@ function soloRenderQuestChecklist(){
     const isCurrent = label === current;
     const cls = 'quest-check-row' + (isDone ? ' is-done' : '') + (isCurrent ? ' is-current' : '');
     const style = isCurrent ? ` style="--qtint:${questTint(label)}"` : '';
+    // kamernaam erbij (gebruikerswens) — zelfde opzoekmethode als de grote opdrachtkaart
+    // ernaast (renderWalkQuestCard in 96-walk.js): via findLabelTile/ROOM_NAMES, verandert dus
+    // automatisch mee als de indeling ooit wijzigt.
+    const tid = findLabelTile(label);
+    const room = tid !== null ? (ROOM_NAMES[tid] || ('Gang ' + tid)) : '—';
     return `<div class="${cls}"${style}>` +
       `<span class="quest-check-label">${label}</span>` +
-      `<span class="quest-check-name">${QUEST_NAMES[label]}</span>` +
+      `<span class="quest-check-text">` +
+        `<span class="quest-check-name">${QUEST_NAMES[label]}</span>` +
+        `<span class="quest-check-room">${room}</span>` +
+      `</span>` +
       (isDone ? `<span class="quest-check-done">✓ Voltooid!</span>` : '') +
     `</div>`;
   }).join('');

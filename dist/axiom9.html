@@ -690,7 +690,7 @@
   .walk-quest-checklist:empty{display:none;}
   @media (max-width: 1150px){ .walk-quest-checklist{flex:none; max-height:none;} }
   .quest-check-row{
-    display:flex; align-items:baseline; flex-wrap:wrap; gap:4px 7px;
+    display:flex; align-items:center; flex-wrap:wrap; gap:4px 7px;
     padding:6px 9px; border-radius:5px;
     background:var(--hull); border:1px solid var(--line-dim); border-left:3px solid var(--qtint, var(--quest));
   }
@@ -698,8 +698,16 @@
     font-family:var(--font-mono); font-size:10.5px; font-weight:700; color:var(--qtint, var(--quest));
     flex:none;
   }
+  /* naam + kamer gestapeld (gebruikerswens: ook de kamer erbij) — zelfde opzet als
+     .energy-pick-text verderop in dit bestand. */
+  .quest-check-text{
+    display:flex; flex-direction:column; gap:0; flex:1 1 auto; min-width:0;
+  }
   .quest-check-name{
-    font-family:var(--font-display); font-size:12px; color:var(--text); flex:1 1 auto; min-width:0;
+    font-family:var(--font-display); font-size:12px; color:var(--text); line-height:1.3;
+  }
+  .quest-check-room{
+    font-family:var(--font-mono); font-size:9.5px; color:var(--text-dim); line-height:1.3;
   }
   /* huidig doel: dezelfde tint als de grote opdrachtkaart ernaast (--qtint, gezet vanuit JS),
      met een iets steviger rand zodat 'm er tussen de rest uit springt — dít is de opdracht die
@@ -709,15 +717,16 @@
     box-shadow:0 0 0 1px color-mix(in srgb, var(--qtint, var(--quest)) 45%, transparent);
   }
   .quest-check-row.is-current .quest-check-name{font-weight:700;}
-  /* voltooid: naam/label doven naar donkerder tekst, maar "Voltooid!" krijgt bewust WEL de
-     succeskleur (zelfde groen als een "hit"-logregel) — zo blijft in één oogopslag zichtbaar
-     wélke opdrachten al klaar zijn, zonder dat de hele rij even fel blijft als een open
-     opdracht (gebruikerswens: tekst donkerder, "Voltooid!" erachter). */
+  /* voltooid: naam/label/kamer doven naar donkerder tekst, maar "Voltooid!" krijgt bewust WEL
+     de succeskleur (zelfde groen als een "hit"-logregel) — zo blijft in één oogopslag
+     zichtbaar wélke opdrachten al klaar zijn, zonder dat de hele rij even fel blijft als een
+     open opdracht (gebruikerswens: tekst donkerder, "Voltooid!" erachter). */
   .quest-check-row.is-done{
     background:transparent; border-left-color:var(--line-dim);
   }
   .quest-check-row.is-done .quest-check-label,
-  .quest-check-row.is-done .quest-check-name{color:var(--text-dim);}
+  .quest-check-row.is-done .quest-check-name,
+  .quest-check-row.is-done .quest-check-room{color:var(--text-dim);}
   .quest-check-done{
     font-family:var(--font-mono); font-size:10px; font-weight:700; color:var(--start);
     flex:none;
@@ -7672,9 +7681,17 @@ function soloRenderQuestChecklist(){
     const isCurrent = label === current;
     const cls = 'quest-check-row' + (isDone ? ' is-done' : '') + (isCurrent ? ' is-current' : '');
     const style = isCurrent ? ` style="--qtint:${questTint(label)}"` : '';
+    // kamernaam erbij (gebruikerswens) — zelfde opzoekmethode als de grote opdrachtkaart
+    // ernaast (renderWalkQuestCard in 96-walk.js): via findLabelTile/ROOM_NAMES, verandert dus
+    // automatisch mee als de indeling ooit wijzigt.
+    const tid = findLabelTile(label);
+    const room = tid !== null ? (ROOM_NAMES[tid] || ('Gang ' + tid)) : '—';
     return `<div class="${cls}"${style}>` +
       `<span class="quest-check-label">${label}</span>` +
-      `<span class="quest-check-name">${QUEST_NAMES[label]}</span>` +
+      `<span class="quest-check-text">` +
+        `<span class="quest-check-name">${QUEST_NAMES[label]}</span>` +
+        `<span class="quest-check-room">${room}</span>` +
+      `</span>` +
       (isDone ? `<span class="quest-check-done">✓ Voltooid!</span>` : '') +
     `</div>`;
   }).join('');
