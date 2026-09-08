@@ -146,10 +146,20 @@ function renderWalkBoard(){
       if (dr === 0 && dc === 0) cls += ' has-badge';
       div.className = cls;
       div.style.cssText = '';
+      div.title = '';
       const type = cellType(val);
       if (type){
         div.classList.add(type);
         if (type === 'walk' && ROOM_NAMES[tileId]) div.classList.add('room-tile');
+        // hover-tooltip op opdracht- en actiekaartvakjes (gebruikerswens) — native title i.p.v.
+        // een eigen popup-component, want dat idioom gebruikt de rest van de app ook al overal
+        // (energie-acties, tegel-editor, enz.).
+        if (type === 'quest'){
+          const room = ROOM_NAMES[tileId] || ('Gang ' + tileId);
+          div.title = `${val} · ${QUEST_NAMES[val] || val} — ${room}`;
+        } else if (type === 'actioncell'){
+          div.title = `${val} — actiekaartvakje`;
+        }
       } else if (patternSet.has(dr+'_'+dc)){
         div.classList.add('empty-slot');
       }
