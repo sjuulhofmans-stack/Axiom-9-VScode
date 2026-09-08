@@ -312,14 +312,20 @@ function walkRollText(d1, d2, d3, roll){
   return d3 ? `${d1}+${d2}+${d3}=${roll}` : `${d1}+${d2}=${roll}`;
 }
 // welke energie-actie deze beurt is ingezet
+// `!ENERGY_ACTIONS[id]` vangt ook soloUsedEnergyId === 'locked' (97-solo.js,
+// soloBeginHumanTurn): dat is een sentinel om het actiepaneel dicht te zetten bij
+// Vergrendeling, geen echte ENERGY_ACTIONS-id — zonder deze guard crashte
+// soloFinishTurn() hier met "Cannot read properties of undefined (reading 'name')",
+// wat de beurt nooit liet afronden en het spel op dat moment liet vastlopen.
 function walkActionNote(id){
-  if (!id) return '';
+  if (!id || !ENERGY_ACTIONS[id]) return '';
   const act = ENERGY_ACTIONS[id];
   return ` <span class="action">▸ ${act.name} (−${act.cost})</span>`;
 }
-// welke beloningskaart deze beurt is gespeeld
+// welke beloningskaart deze beurt is gespeeld — zelfde 'locked'-sentinel-val als hierboven
+// (soloUsedCardId), vandaar dezelfde guard.
 function walkCardNote(id){
-  if (!id) return '';
+  if (!id || !ACTION_CARDS[id]) return '';
   return ` <span class="action">🃏 ${ACTION_CARDS[id].name}</span>`;
 }
 // de handkaarten van een speler als kleine kaart-badges (renderActionCardFace uit

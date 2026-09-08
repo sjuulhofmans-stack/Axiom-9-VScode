@@ -1365,7 +1365,7 @@ function soloHandleMoveClick(key){
 // welke kaart deze beurt is AFGELEGD i.p.v. gespeeld — zelfde badge-stijl als walkActionNote/
 // walkCardNote in 96-walk.js, maar lokaal want dit is een puur-mens-mechaniek (bots leggen nooit af)
 function soloDiscardNote(id){
-  if (!id) return '';
+  if (!id || !ACTION_CARDS[id]) return '';
   return ` <span class="action">🗑 ${ACTION_CARDS[id].name} afgelegd</span>`;
 }
 
