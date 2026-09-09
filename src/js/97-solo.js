@@ -171,16 +171,30 @@ function soloRenderSetupUI(){
     if (walkSoloStartRowEl) walkSoloStartRowEl.hidden = true;
     return;
   }
+  // Twee kolommen (zie .walk-solo-setup in styles.css) i.p.v. alles onder elkaar — nieuwe
+  // spelers komen zo naast elkaar te staan, niet eronder, en de lobby-kolom verspringt daardoor
+  // hooguit één keer (bij de 3e speler) i.p.v. bij elke speler opnieuw (gebruikerswens). Elke
+  // kaart is daarom 2 regels: naam op regel 1, startpositie + voorproefje op regel 2 — dat past
+  // niet meer naast elkaar op de helft van de kolombreedte.
   walkSoloSetupEl.innerHTML = humans.map(p => {
     const opts = SIM_START_LABELS.map(l => `<option value="${l}"${l === p.startLabel ? ' selected' : ''}>${l}</option>`).join('');
     const firstQuest = p.deck[0];
+    const previewTitle = `eerste opdracht: ${firstQuest} — ${QUEST_NAMES[firstQuest] || ''}`;
     return `<div class="walk-solo-setup-player" style="--pc:${p.color}">` +
-      `<span class="walk-solo-setup-dot"></span>` +
-      `<input type="text" class="walk-solo-setup-input" data-name-seat="${p.idx}"` +
-        ` value="${soloCustomNames[p.idx] || ''}" maxlength="18" spellcheck="false"` +
-        ` placeholder="Speler ${p.idx + 1}" aria-label="Naam van speler ${p.idx + 1}">` +
-      `<select data-seat="${p.idx}" aria-label="Startpositie van speler ${p.idx + 1}">${opts}</select>` +
-      `<span class="walk-solo-setup-preview">eerste opdracht: <b>${firstQuest} — ${QUEST_NAMES[firstQuest] || ''}</b></span>` +
+      `<span class="walk-solo-setup-row1">` +
+        `<span class="walk-solo-setup-dot"></span>` +
+        `<input type="text" class="walk-solo-setup-input" data-name-seat="${p.idx}"` +
+          ` value="${soloCustomNames[p.idx] || ''}" maxlength="18" spellcheck="false"` +
+          ` placeholder="Speler ${p.idx + 1}" aria-label="Naam van speler ${p.idx + 1}">` +
+      `</span>` +
+      `<span class="walk-solo-setup-row2">` +
+        `<select data-seat="${p.idx}" aria-label="Startpositie van speler ${p.idx + 1}">${opts}</select>` +
+        // Geen "eerste opdracht: "-label meer ervoor (gebruikt was op de halve kolombreedte
+        // vrijwel de hele beschikbare ruimte op, zodat er van de opdracht zelf niks meer te
+        // lezen viel vóór de ellipsis) — de titel-tooltip zegt nog steeds precies wat er
+        // afgekapt is.
+        `<span class="walk-solo-setup-preview" title="${previewTitle}"><b>${firstQuest} — ${QUEST_NAMES[firstQuest] || ''}</b></span>` +
+      `</span>` +
     `</div>`;
   }).join('');
   if (walkSoloStartRowEl) walkSoloStartRowEl.hidden = false;

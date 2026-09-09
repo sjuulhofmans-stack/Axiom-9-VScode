@@ -586,42 +586,51 @@
 
   /* opzetscherm bij "zelf spelen" met meerdere spelers: per menselijke speler een
      startpositie-keuze + voorproefje van de eerste opdracht, zodat je een weloverwogen
-     keuze kunt maken vóórdat het potje echt begint */
-  /* vaste max-hoogte i.p.v. onbeperkt meegroeien met het aantal spelers (gebruikerswens: de
-     lobby-kolom moet een vaste grootte houden en "Start spel" moet altijd zonder te scrollen
-     bereikbaar blijven, ook bij 4 menselijke spelers). Elke rij is ~74px (2 regels: naam+
-     startpositie op regel 1, opdracht-voorproefje op regel 2, want dat past niet naast elkaar
-     in deze kolombreedte) — bij 148px zie je altijd minstens 2 spelers in één oogopslag, en
-     scrol je alleen dit ene vakje verder als er 3 of 4 zijn, i.p.v. de hele pagina. */
+     keuze kunt maken vóórdat het potje echt begint.
+     Twee kolommen i.p.v. alles onder elkaar (gebruikerswens: "nieuwe spelers moeten naast
+     elkaar komen te staan i.p.v. onder elkaar") — met max. 4 spelers (WALK_MAX_PLAYERS) is dat
+     hooguit 2×2. `grid-template-rows` met een MINMAX (i.p.v. `auto`) reserveert de 2e rij
+     altijd, ook als er nog maar 1-2 spelers zijn: dat is precies wat de lobby-kolom een vaste
+     grootte geeft, ongeacht het aantal spelers (eerdere versie liet 'm nog meegroeien —
+     gebruikersmelding "kolom verschuift nog steeds"). De rijhoogte (86px) is 2 tekstregels per
+     kaart (naam op regel 1, positie+voorproefje op regel 2, zie .walk-solo-setup-row1/2) plus
+     padding — ruim genoeg zodat de kaart nooit hoeft te groeien. */
   .walk-solo-setup{
-    display:flex; flex-direction:column; gap:8px; margin:14px 0 0;
-    max-height:148px; overflow-y:auto; scrollbar-gutter:stable;
+    display:grid; grid-template-columns:1fr 1fr; grid-template-rows:repeat(2, minmax(86px, auto));
+    gap:8px 10px; margin:14px 0 0;
   }
   .walk-solo-setup[hidden], .walk-solo-setup:empty{display:none;}
   .walk-solo-setup-player{
-    display:flex; align-items:center; gap:10px; flex-wrap:wrap;
+    display:flex; flex-direction:column; justify-content:center; gap:6px; min-width:0;
     background:var(--hull); border:1px solid var(--line-dim); border-left:3px solid var(--pc);
-    border-radius:5px; padding:8px 11px;
+    border-radius:5px; padding:8px 10px;
   }
+  .walk-solo-setup-row1, .walk-solo-setup-row2{display:flex; align-items:center; gap:7px; min-width:0;}
   .walk-solo-setup-dot{
     width:10px; height:10px; border-radius:50%; background:var(--pc); flex:none;
     box-shadow:0 0 6px var(--pc);
   }
   /* Eigen naam invullen; leeg laten geeft "Speler N" (de placeholder laat dat ook zien).
-     `input[type=text]` en `select` hierboven zijn allebei op volle breedte gezet; die regels
-     zijn specifieker dan een losse klasse, vandaar het element ervoor. */
+     `input[type=text]` hierboven is al op volle breedte gezet; die regel is specifieker dan een
+     losse klasse, vandaar het element ervoor. `flex:1` (i.p.v. een vaste breedte zoals voorheen)
+     omdat de kaart nu maar half zo breed is — de kolombreedte bepaalt de invulbreedte. */
   input[type=text].walk-solo-setup-input{
-    width:160px; flex:none; background:var(--hull); border:1px solid var(--line);
-    color:var(--text); font-family:var(--font-mono); font-size:12.5px;
-    padding:7px 9px; border-radius:4px;
+    flex:1; min-width:0; background:var(--hull); border:1px solid var(--line);
+    color:var(--text); font-family:var(--font-mono); font-size:12px;
+    padding:6px 8px; border-radius:4px;
   }
   input[type=text].walk-solo-setup-input:focus{
     border-color:var(--pc); box-shadow:0 0 0 2px color-mix(in srgb, var(--pc) 22%, transparent);
   }
   .walk-solo-setup-input::placeholder{color:var(--text-dim);}
-  .walk-solo-setup-player select{width:auto; flex:none; font-size:12.5px; padding:7px 9px;}
+  .walk-solo-setup-player select{width:auto; flex:none; font-size:12px; padding:6px 7px;}
+  /* op de halve kolombreedte past de volledige tekst niet meer naast de startpositie-keuzelijst
+     — 1 regel met ellipsis i.p.v. laten afbreken houdt de kaarthoogte voorspelbaar (belangrijk
+     voor de vaste rijhoogte hierboven); de volledige tekst staat als title= (hover), zelfde
+     idioom als de opdracht-tooltips op het bord zelf (zie renderWalkBoard in 96-walk.js). */
   .walk-solo-setup-preview{
-    font-family:var(--font-mono); font-size:11.5px; color:var(--text-dim);
+    font-family:var(--font-mono); font-size:10.5px; color:var(--text-dim);
+    flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
   }
   .walk-solo-setup-preview b{color:var(--quest);}
 
@@ -7653,16 +7662,30 @@ function soloRenderSetupUI(){
     if (walkSoloStartRowEl) walkSoloStartRowEl.hidden = true;
     return;
   }
+  // Twee kolommen (zie .walk-solo-setup in styles.css) i.p.v. alles onder elkaar — nieuwe
+  // spelers komen zo naast elkaar te staan, niet eronder, en de lobby-kolom verspringt daardoor
+  // hooguit één keer (bij de 3e speler) i.p.v. bij elke speler opnieuw (gebruikerswens). Elke
+  // kaart is daarom 2 regels: naam op regel 1, startpositie + voorproefje op regel 2 — dat past
+  // niet meer naast elkaar op de helft van de kolombreedte.
   walkSoloSetupEl.innerHTML = humans.map(p => {
     const opts = SIM_START_LABELS.map(l => `<option value="${l}"${l === p.startLabel ? ' selected' : ''}>${l}</option>`).join('');
     const firstQuest = p.deck[0];
+    const previewTitle = `eerste opdracht: ${firstQuest} — ${QUEST_NAMES[firstQuest] || ''}`;
     return `<div class="walk-solo-setup-player" style="--pc:${p.color}">` +
-      `<span class="walk-solo-setup-dot"></span>` +
-      `<input type="text" class="walk-solo-setup-input" data-name-seat="${p.idx}"` +
-        ` value="${soloCustomNames[p.idx] || ''}" maxlength="18" spellcheck="false"` +
-        ` placeholder="Speler ${p.idx + 1}" aria-label="Naam van speler ${p.idx + 1}">` +
-      `<select data-seat="${p.idx}" aria-label="Startpositie van speler ${p.idx + 1}">${opts}</select>` +
-      `<span class="walk-solo-setup-preview">eerste opdracht: <b>${firstQuest} — ${QUEST_NAMES[firstQuest] || ''}</b></span>` +
+      `<span class="walk-solo-setup-row1">` +
+        `<span class="walk-solo-setup-dot"></span>` +
+        `<input type="text" class="walk-solo-setup-input" data-name-seat="${p.idx}"` +
+          ` value="${soloCustomNames[p.idx] || ''}" maxlength="18" spellcheck="false"` +
+          ` placeholder="Speler ${p.idx + 1}" aria-label="Naam van speler ${p.idx + 1}">` +
+      `</span>` +
+      `<span class="walk-solo-setup-row2">` +
+        `<select data-seat="${p.idx}" aria-label="Startpositie van speler ${p.idx + 1}">${opts}</select>` +
+        // Geen "eerste opdracht: "-label meer ervoor (gebruikt was op de halve kolombreedte
+        // vrijwel de hele beschikbare ruimte op, zodat er van de opdracht zelf niks meer te
+        // lezen viel vóór de ellipsis) — de titel-tooltip zegt nog steeds precies wat er
+        // afgekapt is.
+        `<span class="walk-solo-setup-preview" title="${previewTitle}"><b>${firstQuest} — ${QUEST_NAMES[firstQuest] || ''}</b></span>` +
+      `</span>` +
     `</div>`;
   }).join('');
   if (walkSoloStartRowEl) walkSoloStartRowEl.hidden = false;
