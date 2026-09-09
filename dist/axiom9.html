@@ -587,8 +587,15 @@
   /* opzetscherm bij "zelf spelen" met meerdere spelers: per menselijke speler een
      startpositie-keuze + voorproefje van de eerste opdracht, zodat je een weloverwogen
      keuze kunt maken vóórdat het potje echt begint */
+  /* vaste max-hoogte i.p.v. onbeperkt meegroeien met het aantal spelers (gebruikerswens: de
+     lobby-kolom moet een vaste grootte houden en "Start spel" moet altijd zonder te scrollen
+     bereikbaar blijven, ook bij 4 menselijke spelers). Elke rij is ~74px (2 regels: naam+
+     startpositie op regel 1, opdracht-voorproefje op regel 2, want dat past niet naast elkaar
+     in deze kolombreedte) — bij 148px zie je altijd minstens 2 spelers in één oogopslag, en
+     scrol je alleen dit ene vakje verder als er 3 of 4 zijn, i.p.v. de hele pagina. */
   .walk-solo-setup{
     display:flex; flex-direction:column; gap:8px; margin:14px 0 0;
+    max-height:148px; overflow-y:auto; scrollbar-gutter:stable;
   }
   .walk-solo-setup[hidden], .walk-solo-setup:empty{display:none;}
   .walk-solo-setup-player{
