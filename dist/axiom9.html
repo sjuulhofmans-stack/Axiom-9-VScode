@@ -369,6 +369,27 @@
   .walk-controls .field{margin:0; min-width:170px;}
   .walk-controls .btn-row{margin-bottom:1px;}
 
+  /* ---------- lobby: nieuw startscherm vóór "Stap voor stap" (gebruikerswens) ----------
+     Eén gecentreerde kolom i.p.v. de rij dropdowns hierboven — alle instellingen komen onder
+     elkaar te staan, met onderaan "Start spel". Overschrijft .walk-controls' rij-opstelling
+     met een kolom, alleen binnen de lobby (elders, bv. in een eventuele toekomstige
+     hergebruik van .walk-controls, blijft de rij-opstelling gewoon staan). */
+  .walk-lobby-col{max-width:400px; margin:0 auto; display:flex; flex-direction:column; gap:16px;}
+  .walk-lobby-fields{flex-direction:column; align-items:stretch; gap:14px;}
+  .walk-lobby-fields .field{min-width:0; width:100%;}
+  .walk-lobby-start-row{display:flex; flex-direction:column;}
+  .walk-lobby-start-row #walkSoloStartRow{display:flex; flex-direction:column;}
+  .walk-lobby-start-row #walkSoloStartRow[hidden]{display:none;}
+  .walk-lobby-start{width:100%; padding:13px; font-size:15px;}
+
+  /* fade-overgang tussen de lobby en het speelscherm (walkFadeToPlay/walkFadeToLobby,
+     96-walk.js) — .walk-fade-out is de tussentoestand vlak vóór/na `hidden` wisselt, zodat de
+     opacity ook echt animeert i.p.v. in één klap te verspringen. */
+  .walk-fade{transition:opacity .4s ease;}
+  .walk-fade.walk-fade-out{opacity:0;}
+
+  .walk-play-topbar{margin-bottom:2px;}
+
   /* standenrij boven, dan bord + één vaste zijkolom ernaast. De standenrij staat hier
      bewust weer BOVEN het bord (gebruikerswens, na eerdere versie ernaast) — dat kan alleen
      zonder het bord te laten springen omdat #walkScore/.walk-player elders al een bewezen
@@ -2026,15 +2047,24 @@
   </div>
 
   <div id="tabWalk" class="tab-panel" role="tabpanel" hidden>
-    <div class="panel">
+
+    <!-- LOBBY: nieuw, makkelijker startscherm vóór je gaat spelen (gebruikerswens) — één
+         gecentreerde kolom met alle instellingen onder elkaar en onderaan één "Start spel"-knop.
+         Fadet weg zodra de indeling geldig is; het speelscherm (#walkPlayArea hieronder) fadet
+         er dan voor in de plaats (walkFadeToPlay() in 96-walk.js). "Stoppen"/"Nieuw potje" in het
+         speelscherm faden weer terug hierheen.
+         TODO: hier komt straks nog een kort introfilmpje na het klikken op "Start spel", vóórdat
+         het bord verschijnt — moet nog gemaakt worden. walkTryStart() in 96-walk.js is de plek
+         om dat later tussen te haken. -->
+    <div class="panel walk-fade" id="walkLobby">
       <h2>Stap voor stap</h2>
-      <div class="controls">
+      <div class="walk-lobby-col">
         <div class="walk-mode-toggle" role="tablist">
           <button class="walk-mode-btn active" id="walkModeAuto" data-mode="auto" role="tab" aria-selected="true">Automatisch</button>
           <button class="walk-mode-btn" id="walkModeSolo" data-mode="solo" role="tab" aria-selected="false">Zelf spelen</button>
         </div>
 
-        <div class="walk-controls" id="walkAutoControls">
+        <div class="walk-controls walk-lobby-fields" id="walkAutoControls">
           <div class="field">
             <label for="walkPlayers">Aantal spelers</label>
             <select id="walkPlayers">
@@ -2062,15 +2092,10 @@
             <label for="walkSpeed">Tempo — <span id="walkSpeedLabel">normaal</span></label>
             <input type="range" id="walkSpeed" min="0" max="4" step="1" value="2">
           </div>
-          <div class="btn-row">
-            <button id="btnWalkStart" class="primary">Simulatie starten</button>
-            <button id="btnWalkPause" class="ghost" disabled>Pauze</button>
-            <button id="btnWalkStop" class="ghost" disabled>Stoppen</button>
-          </div>
         </div>
         <p class="hint" id="walkAutoHint">Speelt één potje op de indeling van het tabblad "Speelbord genereren", met dezelfde regels als de batch-simulatie: elke speler blokkeert de vakjes waar hij staat, en er wordt doorgespeeld tot de één na laatste speler binnen is — bij 4 spelers dus tot en met de nummer 3, want dan ligt de vierde plaats vast. Het tempo kun je tijdens het lopen aanpassen. <span id="walkStartHint" class="sub"></span></p>
 
-        <div class="walk-controls" id="walkSoloControls" hidden>
+        <div class="walk-controls walk-lobby-fields" id="walkSoloControls" hidden>
           <div class="field">
             <label for="walkSoloPlayers">Aantal spelers</label>
             <select id="walkSoloPlayers">
@@ -2085,13 +2110,27 @@
             <select id="walkSoloBots"></select>
           </div>
         </div>
-        <p class="hint" id="walkSoloHint">Jij bestuurt één speler, de rest speelt zichzelf. <b>Volgorde van een beurt:</b> 1. energie-actie kiezen en meteen inzetten — óók Noodrantsoen of Stuwlading spelen kan al op dit moment — 2. dobbelen (2 loopstenen + de energiesteen) — 3. stappen zetten, waarbij je vóór de eerste stap of tussen stappen door hooguit <b>één</b> actiekaart mag spelen of afleggen (als je er nog geen gebruikt hebt). Een actiekaart krijg je door een opdracht te voltooien, of door tijdens je beurt over het actiekaartvakje van een gang te lopen (je zet stopt daar niet voor, en hooguit 1 kaart per beurt op die manier); je houdt er hoogstens drie op hand.</p>
+        <p class="hint" id="walkSoloHint" hidden>Jij bestuurt één speler, de rest speelt zichzelf. <b>Volgorde van een beurt:</b> 1. energie-actie kiezen en meteen inzetten — óók Noodrantsoen of Stuwlading spelen kan al op dit moment — 2. dobbelen (2 loopstenen + de energiesteen) — 3. stappen zetten, waarbij je vóór de eerste stap of tussen stappen door hooguit <b>één</b> actiekaart mag spelen of afleggen (als je er nog geen gebruikt hebt). Een actiekaart krijg je door een opdracht te voltooien, of door tijdens je beurt over het actiekaartvakje van een gang te lopen (je zet stopt daar niet voor, en hooguit 1 kaart per beurt op die manier); je houdt er hoogstens drie op hand.</p>
         <div id="walkSoloSetupPlayers" class="walk-solo-setup"></div>
-        <div class="walk-controls" id="walkSoloStartRow" hidden>
-          <div class="btn-row">
-            <button id="btnWalkSoloStart" class="primary">Potje starten</button>
-            <button id="btnWalkSoloReset" class="ghost" disabled>Nieuw potje</button>
+
+        <div id="walkLobbyStatus" class="reach-status"></div>
+
+        <div class="walk-lobby-start-row">
+          <button id="btnWalkStart" class="primary walk-lobby-start">Start spel</button>
+          <div id="walkSoloStartRow" hidden>
+            <button id="btnWalkSoloStart" class="primary walk-lobby-start">Start spel</button>
           </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SPEELSCHERM: verschijnt (fade-in) zodra je in de lobby op "Start spel" hebt geklikt. -->
+    <div class="panel walk-fade" id="walkPlayArea" hidden>
+      <div class="controls">
+        <div class="btn-row walk-play-topbar" id="walkPlayTopbar">
+          <button id="btnWalkPause" class="ghost" disabled>Pauze</button>
+          <button id="btnWalkStop" class="ghost" disabled>Stoppen</button>
+          <button id="btnWalkSoloReset" class="ghost" disabled>Nieuw potje</button>
         </div>
         <div class="walk-play-layout">
           <!-- standenrij: volle breedte boven bord + zijkolom samen, met bewezen vaste hoogte
@@ -6396,6 +6435,58 @@ const walkPausedFlagEl = document.getElementById('walkPausedFlag');
 const btnWalkStart = document.getElementById('btnWalkStart');
 const btnWalkPause = document.getElementById('btnWalkPause');
 const btnWalkStop = document.getElementById('btnWalkStop');
+const walkLobbyEl = document.getElementById('walkLobby');
+const walkPlayAreaEl = document.getElementById('walkPlayArea');
+const walkPlayTopbarEl = document.getElementById('walkPlayTopbar');
+const walkLobbyStatusEl = document.getElementById('walkLobbyStatus');
+
+// ---------- lobby: nieuw startscherm vóór je gaat spelen (gebruikerswens) ----------
+// Eén gecentreerde kolom met alle instellingen en onderaan "Start spel" (zie index.html,
+// #walkLobby). Fadet naar het speelscherm (#walkPlayArea) zodra de indeling geldig is;
+// "Stoppen"/"Nieuw potje" faden weer terug — zie de btnWalkStop/btnWalkSoloReset-listeners
+// hieronder resp. in 97-solo.js.
+// TODO: hier komt straks nog een kort introfilmpje na het klikken op "Start spel", vóórdat het
+// bord verschijnt (moet nog gemaakt worden) — walkTryStart() hieronder is de plek om dat later
+// tussen te haken, vóór de aanroep van walkFadeToPlay().
+const WALK_FADE_MS = 400;   // moet gelijk blijven aan .walk-fade's transition-duur in styles.css
+function walkFadeSwap(hideEl, showEl){
+  if (!hideEl || !showEl){ if (hideEl) hideEl.hidden = true; if (showEl) showEl.hidden = false; return; }
+  hideEl.classList.add('walk-fade-out');
+  setTimeout(() => {
+    hideEl.hidden = true;
+    hideEl.classList.remove('walk-fade-out');
+    showEl.hidden = false;
+    showEl.classList.add('walk-fade-out');
+    void showEl.offsetWidth;   // reflow forceren, anders animeert de overgang hierna niet
+    showEl.classList.remove('walk-fade-out');
+  }, WALK_FADE_MS);
+}
+function walkFadeToPlay(){ walkFadeSwap(walkLobbyEl, walkPlayAreaEl); }
+function walkFadeToLobby(){ walkFadeSwap(walkPlayAreaEl, walkLobbyEl); }
+
+// Dezelfde controle als runWalkSimulation()/startSoloGame() zelf al doen, maar dan VOORDAT we
+// naar het speelscherm faden — anders zag je eerst een leeg bord en pas daaronder de
+// foutmelding (die normaal in #walkStatus staat, binnenin het speelscherm).
+function walkLobbyValidate(){
+  const reach = analyseCellReachability();
+  if (reach.unreachable.length > 0){
+    return `Dit bord heeft ${reach.unreachable.length} onbereikbare vakjes — pas de indeling aan voordat je speelt.`;
+  }
+  const graph = buildSimGraph();
+  const missing = [...SIM_QUEST_LABELS, ...SIM_START_LABELS].filter(l =>
+    graph.questCells[l] === undefined && graph.startCells[l] === undefined);
+  if (missing.length){
+    return `Deze vakjes ontbreken op het bord: ${missing.join(', ')}.`;
+  }
+  return null;
+}
+function walkTryStart(startFn){
+  const err = walkLobbyValidate();
+  if (walkLobbyStatusEl) walkLobbyStatusEl.innerHTML = err ? `<span class="bad">✕ ${err}</span>` : '';
+  if (err) return;
+  walkFadeToPlay();
+  startFn();
+}
 
 let walkCellEls = null;      // [R][C] -> div, pas opgebouwd bij het eerste gebruik
 const walkRoomLabelEls = []; // per slot: de kamernaam-overlay op de linkerbovenhoek van de tegel
@@ -7368,9 +7459,9 @@ async function runWalkSimulation(){
   setWalkRunning(false);
 }
 
-if (btnWalkStart) btnWalkStart.addEventListener('click', runWalkSimulation);
+if (btnWalkStart) btnWalkStart.addEventListener('click', () => walkTryStart(runWalkSimulation));
 if (btnWalkPause) btnWalkPause.addEventListener('click', () => setWalkPaused(!walkPaused));
-if (btnWalkStop) btnWalkStop.addEventListener('click', stopWalkSimulation);
+if (btnWalkStop) btnWalkStop.addEventListener('click', () => { stopWalkSimulation(); walkFadeToLobby(); });
 if (walkPlayersSel) walkPlayersSel.addEventListener('change', syncWalkStartEnabled);
 if (walkSpeedEl){
   const syncLabel = () => { walkSpeedLabelEl.textContent = walkSpeed().label; };
@@ -7667,6 +7758,23 @@ function setWalkMode(mode){
   if (walkSoloStartRowEl) walkSoloStartRowEl.hidden = true;
   if (walkAutoHintEl) walkAutoHintEl.hidden = !isAuto;
   if (walkSoloHintEl) walkSoloHintEl.hidden = isAuto;
+  // de twee "Start spel"-knoppen in de lobby (index.html, #walkLobby) — telkens maar één
+  // zichtbaar, net als de instellingen erboven.
+  if (btnWalkStart) btnWalkStart.hidden = !isAuto;
+  // het speelscherm-topbalkje (Pauze/Stoppen voor Automatisch, Nieuw potje voor Zelf spelen —
+  // zie #walkPlayTopbar in index.html); onzichtbaar terwijl je nog in de lobby zit maakt niets
+  // uit, maar moet wel kloppen zodra walkFadeToPlay() het speelscherm toont.
+  if (btnWalkPause) btnWalkPause.hidden = !isAuto;
+  if (btnWalkStop) btnWalkStop.hidden = !isAuto;
+  if (btnWalkSoloReset) btnWalkSoloReset.hidden = isAuto;
+  if (walkPlayTopbarEl) walkPlayTopbarEl.hidden = false;
+  if (walkLobbyStatusEl) walkLobbyStatusEl.innerHTML = '';
+  // setWalkMode() is alleen bereikbaar terwijl de lobby al in beeld is (de modusknoppen zitten
+  // erin) of net ná een multiplayer-potje (mpExitPlayView roept setWalkMode('auto') aan) — dus
+  // altijd (opnieuw) naar de lobby klappen kan hier geen kwaad, en repareert meteen de
+  // speelscherm-zichtbaarheid die mpEnterPlayView() had omgezet.
+  if (walkPlayAreaEl) walkPlayAreaEl.hidden = true;
+  if (walkLobbyEl) walkLobbyEl.hidden = false;
   if (walkSoloPanelEl) walkSoloPanelEl.hidden = true;
   if (btnWalkSoloRoll) btnWalkSoloRoll.hidden = true;
   if (btnWalkSoloSkip) btnWalkSoloSkip.hidden = true;
@@ -9467,15 +9575,19 @@ function startSoloGame(){
 
 if (walkModeAutoBtn) walkModeAutoBtn.addEventListener('click', () => setWalkMode('auto'));
 if (walkModeSoloBtn) walkModeSoloBtn.addEventListener('click', () => setWalkMode('solo'));
-if (btnWalkSoloStart) btnWalkSoloStart.addEventListener('click', startSoloGame);
+// walkTryStart() (96-walk.js) doet de reachability-check en faded pas daarna naar het
+// speelscherm — zie de toelichting daar.
+if (btnWalkSoloStart) btnWalkSoloStart.addEventListener('click', () => walkTryStart(startSoloGame));
 // "Nieuw potje" moet een SCHONE lei zijn (energie/opdrachten/posities terug naar 0, nieuwe
 // shuffle) — niet startSoloGame() nogmaals, want die hergebruikt soloPlayers = soloSetupPlayers
 // rechtstreeks (zelfde objecten, geen kopie) zonder ze te resetten. Zonder deze route bleef
 // b.v. Speler 1's energie van het vorige potje gewoon staan en tellen bots' oude startLabel nog
 // mee als "bezet" voor de volgende ronde — vandaar de gemelde bug ("energie blijft oplopen,
 // startposities kloppen niet"). soloRebuildSetup() bouwt frisse spelerobjecten met energie 0,
-// nieuw geschudde stapels en een nieuwe RNG, en toont het startpositie-scherm weer.
-if (btnWalkSoloReset) btnWalkSoloReset.addEventListener('click', soloRebuildSetup);
+// nieuw geschudde stapels en een nieuwe RNG, en vult de lobby-opzet weer — walkFadeToLobby()
+// erna brengt die ook echt weer in beeld (gebruikerswens: "Nieuw potje" gaat terug naar het
+// startscherm, net als "Stoppen" bij Automatisch).
+if (btnWalkSoloReset) btnWalkSoloReset.addEventListener('click', () => { soloRebuildSetup(); walkFadeToLobby(); });
 
 // "Automatisch" is de standaard-actieve tab (zie de HTML), maar zonder deze aanroep bleef de
 // solo-opzet-UI (spelerskeuze + "Potje starten"/"Nieuw potje") gewoon zichtbaar bij het laden
@@ -10309,6 +10421,14 @@ function mpEnterPlayView(){
   window.mpGameActive = true;
   if (mpTabBarEl) mpTabBarEl.classList.add('mp-locked');
   switchTab('walk');
+  // Multiplayer heeft geen lobby-scherm nodig (dat staat al op tabblad "Multiplayer" — hosten/
+  // deelnemen/spelers klaarzetten) en ook geen Pauze/Stoppen/Nieuw potje (dat is "Verlaat potje"
+  // hieronder), dus meteen door naar het speelscherm zonder fade — dit IS de fade-bestemming die
+  // walkFadeToPlay() ook gebruikt (#walkPlayArea), alleen ongeanimeerd want switchTab() wisselt
+  // toch al in één klap van tabblad.
+  if (walkLobbyEl) walkLobbyEl.hidden = true;
+  if (walkPlayAreaEl) walkPlayAreaEl.hidden = false;
+  if (walkPlayTopbarEl) walkPlayTopbarEl.hidden = true;
   if (walkModeAutoBtn) walkModeAutoBtn.hidden = true;
   if (walkModeSoloBtn) walkModeSoloBtn.hidden = true;
   if (walkAutoControlsEl) walkAutoControlsEl.hidden = true;
@@ -10336,7 +10456,13 @@ function mpExitPlayView(){
   if (mpChatPanelGameEl) mpChatPanelGameEl.hidden = true;
   if (walkModeAutoBtn) walkModeAutoBtn.hidden = false;
   if (walkModeSoloBtn) walkModeSoloBtn.hidden = false;
-  if (walkAutoHintEl) walkAutoHintEl.hidden = false;
+  // terug naar een complete, kloppende lobby (ongeanimeerd, zelfde reden als in
+  // mpEnterPlayView) — mpLeaveGame() schakelt hierna toch meteen naar tabblad "Multiplayer",
+  // maar mocht iemand later gewoon weer naar "Stap voor stap" klikken, dan hoort daar het
+  // startscherm te staan, niet het (inmiddels gestopte) speelscherm van het vorige potje.
+  // setWalkMode('auto') doet dat in één keer, inclusief alle velden die mpEnterPlayView()
+  // hierboven had weggestopt (walkAutoControlsEl, walkSoloControlsEl, enz.).
+  setWalkMode('auto');
 }
 
 // ---------- mid-game vertrekken (bereikbaar tijdens 'in-game', zie btnMpLeaveGame) ----------

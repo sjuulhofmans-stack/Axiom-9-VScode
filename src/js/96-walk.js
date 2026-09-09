@@ -44,6 +44,58 @@ const walkPausedFlagEl = document.getElementById('walkPausedFlag');
 const btnWalkStart = document.getElementById('btnWalkStart');
 const btnWalkPause = document.getElementById('btnWalkPause');
 const btnWalkStop = document.getElementById('btnWalkStop');
+const walkLobbyEl = document.getElementById('walkLobby');
+const walkPlayAreaEl = document.getElementById('walkPlayArea');
+const walkPlayTopbarEl = document.getElementById('walkPlayTopbar');
+const walkLobbyStatusEl = document.getElementById('walkLobbyStatus');
+
+// ---------- lobby: nieuw startscherm vóór je gaat spelen (gebruikerswens) ----------
+// Eén gecentreerde kolom met alle instellingen en onderaan "Start spel" (zie index.html,
+// #walkLobby). Fadet naar het speelscherm (#walkPlayArea) zodra de indeling geldig is;
+// "Stoppen"/"Nieuw potje" faden weer terug — zie de btnWalkStop/btnWalkSoloReset-listeners
+// hieronder resp. in 97-solo.js.
+// TODO: hier komt straks nog een kort introfilmpje na het klikken op "Start spel", vóórdat het
+// bord verschijnt (moet nog gemaakt worden) — walkTryStart() hieronder is de plek om dat later
+// tussen te haken, vóór de aanroep van walkFadeToPlay().
+const WALK_FADE_MS = 400;   // moet gelijk blijven aan .walk-fade's transition-duur in styles.css
+function walkFadeSwap(hideEl, showEl){
+  if (!hideEl || !showEl){ if (hideEl) hideEl.hidden = true; if (showEl) showEl.hidden = false; return; }
+  hideEl.classList.add('walk-fade-out');
+  setTimeout(() => {
+    hideEl.hidden = true;
+    hideEl.classList.remove('walk-fade-out');
+    showEl.hidden = false;
+    showEl.classList.add('walk-fade-out');
+    void showEl.offsetWidth;   // reflow forceren, anders animeert de overgang hierna niet
+    showEl.classList.remove('walk-fade-out');
+  }, WALK_FADE_MS);
+}
+function walkFadeToPlay(){ walkFadeSwap(walkLobbyEl, walkPlayAreaEl); }
+function walkFadeToLobby(){ walkFadeSwap(walkPlayAreaEl, walkLobbyEl); }
+
+// Dezelfde controle als runWalkSimulation()/startSoloGame() zelf al doen, maar dan VOORDAT we
+// naar het speelscherm faden — anders zag je eerst een leeg bord en pas daaronder de
+// foutmelding (die normaal in #walkStatus staat, binnenin het speelscherm).
+function walkLobbyValidate(){
+  const reach = analyseCellReachability();
+  if (reach.unreachable.length > 0){
+    return `Dit bord heeft ${reach.unreachable.length} onbereikbare vakjes — pas de indeling aan voordat je speelt.`;
+  }
+  const graph = buildSimGraph();
+  const missing = [...SIM_QUEST_LABELS, ...SIM_START_LABELS].filter(l =>
+    graph.questCells[l] === undefined && graph.startCells[l] === undefined);
+  if (missing.length){
+    return `Deze vakjes ontbreken op het bord: ${missing.join(', ')}.`;
+  }
+  return null;
+}
+function walkTryStart(startFn){
+  const err = walkLobbyValidate();
+  if (walkLobbyStatusEl) walkLobbyStatusEl.innerHTML = err ? `<span class="bad">✕ ${err}</span>` : '';
+  if (err) return;
+  walkFadeToPlay();
+  startFn();
+}
 
 let walkCellEls = null;      // [R][C] -> div, pas opgebouwd bij het eerste gebruik
 const walkRoomLabelEls = []; // per slot: de kamernaam-overlay op de linkerbovenhoek van de tegel
@@ -1016,9 +1068,9 @@ async function runWalkSimulation(){
   setWalkRunning(false);
 }
 
-if (btnWalkStart) btnWalkStart.addEventListener('click', runWalkSimulation);
+if (btnWalkStart) btnWalkStart.addEventListener('click', () => walkTryStart(runWalkSimulation));
 if (btnWalkPause) btnWalkPause.addEventListener('click', () => setWalkPaused(!walkPaused));
-if (btnWalkStop) btnWalkStop.addEventListener('click', stopWalkSimulation);
+if (btnWalkStop) btnWalkStop.addEventListener('click', () => { stopWalkSimulation(); walkFadeToLobby(); });
 if (walkPlayersSel) walkPlayersSel.addEventListener('change', syncWalkStartEnabled);
 if (walkSpeedEl){
   const syncLabel = () => { walkSpeedLabelEl.textContent = walkSpeed().label; };

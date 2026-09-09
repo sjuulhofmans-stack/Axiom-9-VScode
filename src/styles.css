@@ -362,6 +362,27 @@
   .walk-controls .field{margin:0; min-width:170px;}
   .walk-controls .btn-row{margin-bottom:1px;}
 
+  /* ---------- lobby: nieuw startscherm vóór "Stap voor stap" (gebruikerswens) ----------
+     Eén gecentreerde kolom i.p.v. de rij dropdowns hierboven — alle instellingen komen onder
+     elkaar te staan, met onderaan "Start spel". Overschrijft .walk-controls' rij-opstelling
+     met een kolom, alleen binnen de lobby (elders, bv. in een eventuele toekomstige
+     hergebruik van .walk-controls, blijft de rij-opstelling gewoon staan). */
+  .walk-lobby-col{max-width:400px; margin:0 auto; display:flex; flex-direction:column; gap:16px;}
+  .walk-lobby-fields{flex-direction:column; align-items:stretch; gap:14px;}
+  .walk-lobby-fields .field{min-width:0; width:100%;}
+  .walk-lobby-start-row{display:flex; flex-direction:column;}
+  .walk-lobby-start-row #walkSoloStartRow{display:flex; flex-direction:column;}
+  .walk-lobby-start-row #walkSoloStartRow[hidden]{display:none;}
+  .walk-lobby-start{width:100%; padding:13px; font-size:15px;}
+
+  /* fade-overgang tussen de lobby en het speelscherm (walkFadeToPlay/walkFadeToLobby,
+     96-walk.js) — .walk-fade-out is de tussentoestand vlak vóór/na `hidden` wisselt, zodat de
+     opacity ook echt animeert i.p.v. in één klap te verspringen. */
+  .walk-fade{transition:opacity .4s ease;}
+  .walk-fade.walk-fade-out{opacity:0;}
+
+  .walk-play-topbar{margin-bottom:2px;}
+
   /* standenrij boven, dan bord + één vaste zijkolom ernaast. De standenrij staat hier
      bewust weer BOVEN het bord (gebruikerswens, na eerdere versie ernaast) — dat kan alleen
      zonder het bord te laten springen omdat #walkScore/.walk-player elders al een bewezen

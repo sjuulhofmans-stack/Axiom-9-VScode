@@ -151,15 +151,24 @@
   </div>
 
   <div id="tabWalk" class="tab-panel" role="tabpanel" hidden>
-    <div class="panel">
+
+    <!-- LOBBY: nieuw, makkelijker startscherm vóór je gaat spelen (gebruikerswens) — één
+         gecentreerde kolom met alle instellingen onder elkaar en onderaan één "Start spel"-knop.
+         Fadet weg zodra de indeling geldig is; het speelscherm (#walkPlayArea hieronder) fadet
+         er dan voor in de plaats (walkFadeToPlay() in 96-walk.js). "Stoppen"/"Nieuw potje" in het
+         speelscherm faden weer terug hierheen.
+         TODO: hier komt straks nog een kort introfilmpje na het klikken op "Start spel", vóórdat
+         het bord verschijnt — moet nog gemaakt worden. walkTryStart() in 96-walk.js is de plek
+         om dat later tussen te haken. -->
+    <div class="panel walk-fade" id="walkLobby">
       <h2>Stap voor stap</h2>
-      <div class="controls">
+      <div class="walk-lobby-col">
         <div class="walk-mode-toggle" role="tablist">
           <button class="walk-mode-btn active" id="walkModeAuto" data-mode="auto" role="tab" aria-selected="true">Automatisch</button>
           <button class="walk-mode-btn" id="walkModeSolo" data-mode="solo" role="tab" aria-selected="false">Zelf spelen</button>
         </div>
 
-        <div class="walk-controls" id="walkAutoControls">
+        <div class="walk-controls walk-lobby-fields" id="walkAutoControls">
           <div class="field">
             <label for="walkPlayers">Aantal spelers</label>
             <select id="walkPlayers">
@@ -187,15 +196,10 @@
             <label for="walkSpeed">Tempo — <span id="walkSpeedLabel">normaal</span></label>
             <input type="range" id="walkSpeed" min="0" max="4" step="1" value="2">
           </div>
-          <div class="btn-row">
-            <button id="btnWalkStart" class="primary">Simulatie starten</button>
-            <button id="btnWalkPause" class="ghost" disabled>Pauze</button>
-            <button id="btnWalkStop" class="ghost" disabled>Stoppen</button>
-          </div>
         </div>
         <p class="hint" id="walkAutoHint">Speelt één potje op de indeling van het tabblad "Speelbord genereren", met dezelfde regels als de batch-simulatie: elke speler blokkeert de vakjes waar hij staat, en er wordt doorgespeeld tot de één na laatste speler binnen is — bij 4 spelers dus tot en met de nummer 3, want dan ligt de vierde plaats vast. Het tempo kun je tijdens het lopen aanpassen. <span id="walkStartHint" class="sub"></span></p>
 
-        <div class="walk-controls" id="walkSoloControls" hidden>
+        <div class="walk-controls walk-lobby-fields" id="walkSoloControls" hidden>
           <div class="field">
             <label for="walkSoloPlayers">Aantal spelers</label>
             <select id="walkSoloPlayers">
@@ -210,13 +214,27 @@
             <select id="walkSoloBots"></select>
           </div>
         </div>
-        <p class="hint" id="walkSoloHint">Jij bestuurt één speler, de rest speelt zichzelf. <b>Volgorde van een beurt:</b> 1. energie-actie kiezen en meteen inzetten — óók Noodrantsoen of Stuwlading spelen kan al op dit moment — 2. dobbelen (2 loopstenen + de energiesteen) — 3. stappen zetten, waarbij je vóór de eerste stap of tussen stappen door hooguit <b>één</b> actiekaart mag spelen of afleggen (als je er nog geen gebruikt hebt). Een actiekaart krijg je door een opdracht te voltooien, of door tijdens je beurt over het actiekaartvakje van een gang te lopen (je zet stopt daar niet voor, en hooguit 1 kaart per beurt op die manier); je houdt er hoogstens drie op hand.</p>
+        <p class="hint" id="walkSoloHint" hidden>Jij bestuurt één speler, de rest speelt zichzelf. <b>Volgorde van een beurt:</b> 1. energie-actie kiezen en meteen inzetten — óók Noodrantsoen of Stuwlading spelen kan al op dit moment — 2. dobbelen (2 loopstenen + de energiesteen) — 3. stappen zetten, waarbij je vóór de eerste stap of tussen stappen door hooguit <b>één</b> actiekaart mag spelen of afleggen (als je er nog geen gebruikt hebt). Een actiekaart krijg je door een opdracht te voltooien, of door tijdens je beurt over het actiekaartvakje van een gang te lopen (je zet stopt daar niet voor, en hooguit 1 kaart per beurt op die manier); je houdt er hoogstens drie op hand.</p>
         <div id="walkSoloSetupPlayers" class="walk-solo-setup"></div>
-        <div class="walk-controls" id="walkSoloStartRow" hidden>
-          <div class="btn-row">
-            <button id="btnWalkSoloStart" class="primary">Potje starten</button>
-            <button id="btnWalkSoloReset" class="ghost" disabled>Nieuw potje</button>
+
+        <div id="walkLobbyStatus" class="reach-status"></div>
+
+        <div class="walk-lobby-start-row">
+          <button id="btnWalkStart" class="primary walk-lobby-start">Start spel</button>
+          <div id="walkSoloStartRow" hidden>
+            <button id="btnWalkSoloStart" class="primary walk-lobby-start">Start spel</button>
           </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SPEELSCHERM: verschijnt (fade-in) zodra je in de lobby op "Start spel" hebt geklikt. -->
+    <div class="panel walk-fade" id="walkPlayArea" hidden>
+      <div class="controls">
+        <div class="btn-row walk-play-topbar" id="walkPlayTopbar">
+          <button id="btnWalkPause" class="ghost" disabled>Pauze</button>
+          <button id="btnWalkStop" class="ghost" disabled>Stoppen</button>
+          <button id="btnWalkSoloReset" class="ghost" disabled>Nieuw potje</button>
         </div>
         <div class="walk-play-layout">
           <!-- standenrij: volle breedte boven bord + zijkolom samen, met bewezen vaste hoogte

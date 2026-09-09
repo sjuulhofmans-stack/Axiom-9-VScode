@@ -700,6 +700,14 @@ function mpEnterPlayView(){
   window.mpGameActive = true;
   if (mpTabBarEl) mpTabBarEl.classList.add('mp-locked');
   switchTab('walk');
+  // Multiplayer heeft geen lobby-scherm nodig (dat staat al op tabblad "Multiplayer" — hosten/
+  // deelnemen/spelers klaarzetten) en ook geen Pauze/Stoppen/Nieuw potje (dat is "Verlaat potje"
+  // hieronder), dus meteen door naar het speelscherm zonder fade — dit IS de fade-bestemming die
+  // walkFadeToPlay() ook gebruikt (#walkPlayArea), alleen ongeanimeerd want switchTab() wisselt
+  // toch al in één klap van tabblad.
+  if (walkLobbyEl) walkLobbyEl.hidden = true;
+  if (walkPlayAreaEl) walkPlayAreaEl.hidden = false;
+  if (walkPlayTopbarEl) walkPlayTopbarEl.hidden = true;
   if (walkModeAutoBtn) walkModeAutoBtn.hidden = true;
   if (walkModeSoloBtn) walkModeSoloBtn.hidden = true;
   if (walkAutoControlsEl) walkAutoControlsEl.hidden = true;
@@ -727,7 +735,13 @@ function mpExitPlayView(){
   if (mpChatPanelGameEl) mpChatPanelGameEl.hidden = true;
   if (walkModeAutoBtn) walkModeAutoBtn.hidden = false;
   if (walkModeSoloBtn) walkModeSoloBtn.hidden = false;
-  if (walkAutoHintEl) walkAutoHintEl.hidden = false;
+  // terug naar een complete, kloppende lobby (ongeanimeerd, zelfde reden als in
+  // mpEnterPlayView) — mpLeaveGame() schakelt hierna toch meteen naar tabblad "Multiplayer",
+  // maar mocht iemand later gewoon weer naar "Stap voor stap" klikken, dan hoort daar het
+  // startscherm te staan, niet het (inmiddels gestopte) speelscherm van het vorige potje.
+  // setWalkMode('auto') doet dat in één keer, inclusief alle velden die mpEnterPlayView()
+  // hierboven had weggestopt (walkAutoControlsEl, walkSoloControlsEl, enz.).
+  setWalkMode('auto');
 }
 
 // ---------- mid-game vertrekken (bereikbaar tijdens 'in-game', zie btnMpLeaveGame) ----------

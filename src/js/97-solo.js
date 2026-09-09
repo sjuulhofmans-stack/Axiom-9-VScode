@@ -283,6 +283,23 @@ function setWalkMode(mode){
   if (walkSoloStartRowEl) walkSoloStartRowEl.hidden = true;
   if (walkAutoHintEl) walkAutoHintEl.hidden = !isAuto;
   if (walkSoloHintEl) walkSoloHintEl.hidden = isAuto;
+  // de twee "Start spel"-knoppen in de lobby (index.html, #walkLobby) — telkens maar één
+  // zichtbaar, net als de instellingen erboven.
+  if (btnWalkStart) btnWalkStart.hidden = !isAuto;
+  // het speelscherm-topbalkje (Pauze/Stoppen voor Automatisch, Nieuw potje voor Zelf spelen —
+  // zie #walkPlayTopbar in index.html); onzichtbaar terwijl je nog in de lobby zit maakt niets
+  // uit, maar moet wel kloppen zodra walkFadeToPlay() het speelscherm toont.
+  if (btnWalkPause) btnWalkPause.hidden = !isAuto;
+  if (btnWalkStop) btnWalkStop.hidden = !isAuto;
+  if (btnWalkSoloReset) btnWalkSoloReset.hidden = isAuto;
+  if (walkPlayTopbarEl) walkPlayTopbarEl.hidden = false;
+  if (walkLobbyStatusEl) walkLobbyStatusEl.innerHTML = '';
+  // setWalkMode() is alleen bereikbaar terwijl de lobby al in beeld is (de modusknoppen zitten
+  // erin) of net ná een multiplayer-potje (mpExitPlayView roept setWalkMode('auto') aan) — dus
+  // altijd (opnieuw) naar de lobby klappen kan hier geen kwaad, en repareert meteen de
+  // speelscherm-zichtbaarheid die mpEnterPlayView() had omgezet.
+  if (walkPlayAreaEl) walkPlayAreaEl.hidden = true;
+  if (walkLobbyEl) walkLobbyEl.hidden = false;
   if (walkSoloPanelEl) walkSoloPanelEl.hidden = true;
   if (btnWalkSoloRoll) btnWalkSoloRoll.hidden = true;
   if (btnWalkSoloSkip) btnWalkSoloSkip.hidden = true;
@@ -2083,15 +2100,19 @@ function startSoloGame(){
 
 if (walkModeAutoBtn) walkModeAutoBtn.addEventListener('click', () => setWalkMode('auto'));
 if (walkModeSoloBtn) walkModeSoloBtn.addEventListener('click', () => setWalkMode('solo'));
-if (btnWalkSoloStart) btnWalkSoloStart.addEventListener('click', startSoloGame);
+// walkTryStart() (96-walk.js) doet de reachability-check en faded pas daarna naar het
+// speelscherm — zie de toelichting daar.
+if (btnWalkSoloStart) btnWalkSoloStart.addEventListener('click', () => walkTryStart(startSoloGame));
 // "Nieuw potje" moet een SCHONE lei zijn (energie/opdrachten/posities terug naar 0, nieuwe
 // shuffle) — niet startSoloGame() nogmaals, want die hergebruikt soloPlayers = soloSetupPlayers
 // rechtstreeks (zelfde objecten, geen kopie) zonder ze te resetten. Zonder deze route bleef
 // b.v. Speler 1's energie van het vorige potje gewoon staan en tellen bots' oude startLabel nog
 // mee als "bezet" voor de volgende ronde — vandaar de gemelde bug ("energie blijft oplopen,
 // startposities kloppen niet"). soloRebuildSetup() bouwt frisse spelerobjecten met energie 0,
-// nieuw geschudde stapels en een nieuwe RNG, en toont het startpositie-scherm weer.
-if (btnWalkSoloReset) btnWalkSoloReset.addEventListener('click', soloRebuildSetup);
+// nieuw geschudde stapels en een nieuwe RNG, en vult de lobby-opzet weer — walkFadeToLobby()
+// erna brengt die ook echt weer in beeld (gebruikerswens: "Nieuw potje" gaat terug naar het
+// startscherm, net als "Stoppen" bij Automatisch).
+if (btnWalkSoloReset) btnWalkSoloReset.addEventListener('click', () => { soloRebuildSetup(); walkFadeToLobby(); });
 
 // "Automatisch" is de standaard-actieve tab (zie de HTML), maar zonder deze aanroep bleef de
 // solo-opzet-UI (spelerskeuze + "Potje starten"/"Nieuw potje") gewoon zichtbaar bij het laden
