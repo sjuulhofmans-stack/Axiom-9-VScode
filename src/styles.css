@@ -367,7 +367,10 @@
      elkaar te staan, met onderaan "Start spel". Overschrijft .walk-controls' rij-opstelling
      met een kolom, alleen binnen de lobby (elders, bv. in een eventuele toekomstige
      hergebruik van .walk-controls, blijft de rij-opstelling gewoon staan). */
-  .walk-lobby-col{max-width:400px; margin:0 auto; display:flex; flex-direction:column; gap:16px;}
+  /* max-width was 400px — met 4 spelers (2x2 in .walk-solo-setup hieronder) werd elke
+     spelerskaart daardoor zo smal dat naam en opdracht-voorproefje meteen afgekapt werden.
+     560px geeft die kaarten genoeg lucht zonder dat de rij dropdowns erboven raar breed wordt. */
+  .walk-lobby-col{max-width:560px; margin:0 auto; display:flex; flex-direction:column; gap:16px;}
   .walk-lobby-fields{flex-direction:column; align-items:stretch; gap:14px;}
   .walk-lobby-fields .field{min-width:0; width:100%;}
   .walk-lobby-start-row{display:flex; flex-direction:column;}
