@@ -166,6 +166,13 @@
   button.small{padding:6px 10px; font-size:12.5px;}
   button:disabled{opacity:.35; cursor:not-allowed;}
   .btn-row{display:flex; gap:8px; flex-wrap:wrap;}
+  /* zonder deze regel wint `display:flex` hierboven het altijd van de standaard [hidden]-
+     opmaak van de browser (auteurs-CSS gaat vóór user-agent-CSS, ongeacht specificiteit) — een
+     .btn-row met het hidden-attribuut bleef dan als lege, onzichtbare-maar-wél-aanwezige flexbox
+     meetellen in een flex-ouder met gap (bv. .walk-play-topbar in #walkPlayArea > .controls),
+     wat daar een wees-kloof gaf zodra alle knoppen erin verborgen waren maar de rij zelf nog niet
+     (gebruikersmelding: "ruimte aan de bovenzijde van de map nu de knop nieuw potje weg is"). */
+  .btn-row[hidden]{display:none;}
 
   .code-box{
     font-family:var(--font-mono); font-size:11.5px; color:var(--text-dim);
@@ -409,8 +416,16 @@
      zou daar zomaar bovenop komen (stond hier ooit per ongeluk óók op 15px, dus 41px totaal
      i.p.v. 15px — gebruikersmelding "kolommen boven staan verder van de map dan links/
      rechts"). */
+  /* Geen eigen margin-top meer: die stond hier vast voor de kloof met de topbar erboven
+     (Pauze/Stoppen), maar .controls (de gezamenlijke ouder, zie index.html) heeft al een eigen
+     gap:16px tussen zijn kinderen — die twee stapelden op tot een dubbele kloof. Nu de topbar in
+     Zelf spelen helemaal verdwijnt (#walkPlayTopbar[hidden], geen ruimte in de flow) bleef deze
+     margin desondanks staan en gaf dat een wees-kloof bovenaan het bord, zonder dat daar nog een
+     knoppenrij boven stond (gebruikersmelding: "ruimte aan de bovenzijde... moet netjes tegen de
+     kolom zitten, met net zoveel ruimte als de rest"). Met alleen .controls' gap:16px sluit het
+     bord in Zelf spelen nu direct aan op de paneel-padding, precies zoals de andere panelen. */
   .walk-play-layout{
-    display:flex; flex-direction:column; gap:0; margin-top:16px;
+    display:flex; flex-direction:column; gap:0;
   }
   /* de volle breedte hier (bord + zijkolom samen) betekent dat alle 1-4 spelers altijd op één
      regel passen (zie .walk-players-row hierboven), dus is er ruimte om elk vak wat compacter
