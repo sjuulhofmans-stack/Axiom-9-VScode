@@ -37,6 +37,85 @@ const mpChatLogGameEl = document.getElementById('mpChatLogGame');
 const mpChatFormGameEl = document.getElementById('mpChatFormGame');
 const mpChatInputGameEl = document.getElementById('mpChatInputGame');
 
+// ---------- easter egg: typ "bigdaddy" in de chat (gebruikerswens) ----------
+// Zelfde plek/patroon als build_chants() in build.py voor de taunt-mp3's — alleen dan één
+// losse afbeelding i.p.v. een genummerde map. src/assets/bigdaddy.b64 is een auto uit een Age
+// of Empires-screenshot, met de grasachtergrond eruit geknipt (zie het bouwscript dat dat
+// eenmalig deed — de PNG zelf staat al met transparantie in het bestand).
+const BIGDADDY_IMG = 'data:image/png;base64,{{BIGDADDY}}';
+
+// Rijdt van linksboven het scherm naar rechts (zie .bigdaddy-car/@keyframes bigDaddyDrive in
+// styles.css) — position:fixed op <body>, dus zichtbaar ongeacht welk tabblad open staat.
+// Ruimt zichzelf op zodra de animatie afloopt, geen aparte cleanup-timer nodig.
+function mpSpawnBigDaddyCar(){
+  const img = document.createElement('img');
+  img.src = BIGDADDY_IMG;
+  img.alt = '';
+  img.className = 'bigdaddy-car';
+  img.addEventListener('animationend', () => img.remove());
+  document.body.appendChild(img);
+}
+
+// Puur synthetisch (Web Audio API, geen los geluidsbestand nodig): een paar snelle "crank"-
+// schokjes van gefilterde ruis voor de startmotor, gevolgd door een oscillator die optoert en
+// vervolgens naar een licht zwevend stationair toerental zakt — twee lichtjes ontstemde
+// zaagtandtonen samen geven dat "putt-putt"-motorgeluid i.p.v. één steriele toon. Faalt een
+// browser hier stil op (bv. geen AudioContext, of het geluid staat uit) dan speelt de auto
+// gewoon geluidloos — dat is geen reden om de rest van de easter egg te laten mislukken.
+function mpPlayEngineStart(){
+  try {
+    const AudioCtx = window.AudioContext || window.webkitAudioContext;
+    if (!AudioCtx) return;
+    const ctx = new AudioCtx();
+    const t0 = ctx.currentTime;
+    const master = ctx.createGain();
+    master.gain.value = 0.35;
+    master.connect(ctx.destination);
+
+    const noiseBuf = ctx.createBuffer(1, Math.round(ctx.sampleRate * 0.4), ctx.sampleRate);
+    const noiseData = noiseBuf.getChannelData(0);
+    for (let i = 0; i < noiseData.length; i++) noiseData[i] = Math.random() * 2 - 1;
+    for (const dt of [0, 0.09, 0.18, 0.27]){
+      const src = ctx.createBufferSource();
+      src.buffer = noiseBuf;
+      const bandpass = ctx.createBiquadFilter();
+      bandpass.type = 'bandpass'; bandpass.frequency.value = 220; bandpass.Q.value = 3;
+      const g = ctx.createGain();
+      g.gain.setValueAtTime(0.9, t0 + dt);
+      g.gain.exponentialRampToValueAtTime(0.001, t0 + dt + 0.07);
+      src.connect(bandpass).connect(g).connect(master);
+      src.start(t0 + dt); src.stop(t0 + dt + 0.08);
+    }
+
+    const revStart = t0 + 0.35;
+    for (const detune of [0, 3]){   // twee stemmen, 3 cent uit elkaar — lichte zweving
+      const osc = ctx.createOscillator();
+      osc.type = 'sawtooth';
+      osc.detune.value = detune;
+      osc.frequency.setValueAtTime(60, revStart);
+      osc.frequency.linearRampToValueAtTime(160, revStart + 0.35);
+      osc.frequency.linearRampToValueAtTime(95, revStart + 0.9);
+      osc.frequency.linearRampToValueAtTime(100, revStart + 2.6);
+      const oscGain = ctx.createGain();
+      oscGain.gain.setValueAtTime(0, revStart);
+      oscGain.gain.linearRampToValueAtTime(detune ? 0.25 : 0.5, revStart + 0.1);
+      oscGain.gain.setValueAtTime(detune ? 0.25 : 0.5, revStart + 2.2);
+      oscGain.gain.linearRampToValueAtTime(0, revStart + 2.8);
+      osc.connect(oscGain).connect(master);
+      osc.start(revStart); osc.stop(revStart + 2.9);
+    }
+
+    setTimeout(() => { try { ctx.close(); } catch (e){} }, 3500);
+  } catch (e){}
+}
+
+// Eén plek voor "trigger de easter egg" — aangeroepen zowel bij het eigen bericht (meteen) als
+// bij een binnenkomend bericht van een ander (mpOnRemoteChat) of eender wie in de chat.
+function mpTriggerBigDaddy(){
+  mpSpawnBigDaddyCar();
+  mpPlayEngineStart();
+}
+
 // Vaste namespace zodat onze rooms niet botsen met andermans Trystero-apps op dezelfde
 // publieke signaling-relays. Geen geheim, puur een naamruimte.
 const MP_APP_ID = 'axiom9-mapgen-v1';
@@ -568,7 +647,7 @@ function mpApplyState(payload){
   const active = soloPlayers[soloActiveIdx];
   if (active){
     const label = active.deck[active.nextIdx];
-    if (label) markWalkTarget(soloGraph, label, soloTargetKey, active.color);
+    if (label){ markWalkTarget(soloGraph, label, soloTargetKey, active.color); renderWalkQuestCard(label); }
     else clearWalkTarget();
   } else {
     clearWalkTarget();
@@ -811,11 +890,11 @@ function mpChatSenderInfo(peerId){
   const me = peerId === mp.myPeerId ? mpMe() : null;
   return { name: me ? me.name : 'Speler', color: 'var(--text-dim)' };
 }
-// `chant` (nummer) en `text` sluiten elkaar uit — een taunt-bericht heeft text:null en
-// andersom, zie mpSendChatMessage/mpOnRemoteChat hieronder.
-function mpAppendChat(peerId, text, chant){
+// `chant` (nummer), `egg` ("bigdaddy") en `text` sluiten elkaar uit — zie mpSendChatMessage/
+// mpOnRemoteChat hieronder, die zetten er nooit meer dan één van.
+function mpAppendChat(peerId, text, chant, egg){
   const info = mpChatSenderInfo(peerId);
-  mpChatMessages.push({ peerId, name: info.name, color: info.color, text: text || null, chant: chant || null, ts: Date.now() });
+  mpChatMessages.push({ peerId, name: info.name, color: info.color, text: text || null, chant: chant || null, egg: egg || null, ts: Date.now() });
   // simpele cap, puur zodat een heel lang potje niet oneindig DOM/geheugen blijft opstapelen
   if (mpChatMessages.length > 200) mpChatMessages.shift();
   mpRenderChat();
@@ -827,7 +906,9 @@ function mpRenderChat(){
     // — alleen ooit gezet als CHANT_AUDIO[n] echt bestaat), dus veilig direct te tonen.
     const body = msg.chant
       ? `<span class="mp-chant">🔊 taunt #${msg.chant}</span>`
-      : `<span>${mpEscapeHtml(msg.text)}</span>`;
+      : msg.egg
+        ? `<span class="mp-egg">🚗 Big Daddy!</span>`
+        : `<span>${mpEscapeHtml(msg.text)}</span>`;
     return `<div class="mp-chat-msg${mine ? ' mp-chat-me' : ''}">` +
       `<b style="color:${msg.color}">${mpEscapeHtml(msg.name)}:</b>${body}` +
     `</div>`;
@@ -840,10 +921,21 @@ function mpRenderChat(){
 }
 // typ je puur een getal dat een bestaande taunt is (bv. "7"), dan wordt dat een taunt i.p.v.
 // een gewoon tekstbericht — hoorbaar voor jezelf én voor iedereen anders in de room, net als
-// de taunts uit het originele Age of Empires.
+// de taunts uit het originele Age of Empires. "bigdaddy" (los easter-eggetje, gebruikerswens)
+// werkt ZONDER actieve room — daarvoor eerst gecontroleerd, vóór de `!mp.active`-guard die de
+// rest van deze functie (taunts, gewone berichten) wél nodig heeft om ergens heen te sturen.
 function mpSendChatMessage(raw){
   const trimmed = String(raw || '').trim().slice(0, 240);
-  if (!trimmed || !mp.active || !mp.actions || !mp.actions.chat) return;
+  if (!trimmed) return;
+  if (trimmed.toLowerCase() === 'bigdaddy'){
+    mpTriggerBigDaddy();
+    if (mp.active && mp.actions && mp.actions.chat){
+      mpAppendChat(mp.myPeerId, null, null, true);
+      mp.actions.chat.send({ egg: 'bigdaddy' });
+    }
+    return;
+  }
+  if (!mp.active || !mp.actions || !mp.actions.chat) return;
   const n = Number(trimmed);
   if (/^\d+$/.test(trimmed) && CHANT_AUDIO[n]){
     mpAppendChat(mp.myPeerId, null, n);
@@ -858,6 +950,11 @@ function mpSendChatMessage(raw){
 // mp.actions.chat.onMessage in mpRegisterActions hierboven
 function mpOnRemoteChat(peerId, data){
   if (!mp.active) return;
+  if (data && data.egg === 'bigdaddy'){
+    mpAppendChat(peerId, null, null, true);
+    mpTriggerBigDaddy();
+    return;
+  }
   if (data && data.chant){
     const n = Number(data.chant);
     if (!CHANT_AUDIO[n]) return;   // onbekend/verzonnen nummer van een gast — gewoon negeren

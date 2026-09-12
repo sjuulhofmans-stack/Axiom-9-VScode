@@ -2002,3 +2002,24 @@
   .mp-chat-form input[type=text]:focus{
     border-color:var(--quest); box-shadow:0 0 0 2px color-mix(in srgb, var(--quest) 22%, transparent);
   }
+  .mp-egg{color:var(--amber); font-weight:700; letter-spacing:.02em;}
+
+  /* ---------- easter egg: "bigdaddy" in de chat (gebruikerswens) ----------
+     Auto rijdt over het HELE scherm, dus `position:fixed` op <body> i.p.v. ergens binnen een
+     paneel — zichtbaar ongeacht welk tabblad open staat. `pointer-events:none` zodat hij nooit
+     een klik onderschept, `image-rendering:pixelated` om de originele sprite (uitgeknipt uit
+     een Age of Empires-screenshot, zie src/assets/bigdaddy.b64 + mpSpawnBigDaddyCar in
+     99-multiplayer.js) scherp te houden bij het opschalen i.p.v. wazig te worden. De knal-schaduw
+     eronder (drop-shadow) geeft 'm net iets meer "rijdt er echt overheen"-gevoel dan een platte
+     sprite. animationend verwijdert het element weer (zie JS) — geen opruimtimer nodig. */
+  @keyframes bigDaddyDrive{
+    from{ left:-260px; }
+    to{ left:calc(100% + 20px); }
+  }
+  .bigdaddy-car{
+    position:fixed; top:70%; left:-260px; width:220px; height:auto;
+    transform:translateY(-50%);
+    z-index:9999; pointer-events:none; image-rendering:pixelated;
+    filter:drop-shadow(0 10px 12px rgba(0,0,0,.55));
+    animation:bigDaddyDrive 3.2s linear forwards;
+  }

@@ -284,6 +284,12 @@ function walkRoomRing(){
 
 // Zet de markering op het doel van wie aan zet is. `playerColor` blijft de rand van het
 // vakje zelf (wie er heen moet), de opdrachtkleur wordt de gloed en de kamerrand.
+// Ververst BEWUST niet de grote opdrachtkaart in het zijpaneel (renderWalkQuestCard) — deze
+// functie wordt ook gebruikt om te "spieken" door over het opdrachtenoverzicht te hoveren
+// (soloPeekQuest, 97-solo.js), en dat mag alleen de markering op het bord verplaatsen, niet je
+// eigen actieve opdracht in het zijpaneel vervangen door de opdracht waar je toevallig overheen
+// hovert (gebruikersmelding). De écht-actieve aanroepen (96-walk.js hieronder,
+// soloRefreshTarget/99-multiplayer.js) roepen renderWalkQuestCard() daarom zelf apart aan.
 function markWalkTarget(graph, label, key, playerColor){
   walkClearClass('walk-target');
   const tint = questTint(label);
@@ -300,8 +306,6 @@ function markWalkTarget(graph, label, key, playerColor){
   ring.style.setProperty('--rc', Math.floor(C / TILE_W));
   ring.style.setProperty('--qtint', tint);
   ring.hidden = false;
-
-  renderWalkQuestCard(label);
 }
 
 function clearWalkTarget(){
@@ -857,6 +861,7 @@ async function runWalkSimulation(){
       for (const k of player.doneCells) walkCellDiv(graph, k).classList.add('walk-done');
       const targetDiv = walkCellDiv(graph, targetKey);
       markWalkTarget(graph, targetLabel, targetKey, player.color);
+      renderWalkQuestCard(targetLabel);
       paintWalkPawns(graph, players, pIdx);
       renderWalkScore(players, pIdx);
       renderWalkMeta({ player, turn });

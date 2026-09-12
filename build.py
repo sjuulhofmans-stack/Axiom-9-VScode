@@ -71,6 +71,7 @@ def build() -> pathlib.Path:
     template = read(SRC / "index.html")
     css = read(SRC / "styles.css")
     logo = read(SRC / "assets" / "logo.b64").strip()
+    bigdaddy = read(SRC / "assets" / "bigdaddy.b64").strip()
     chants = build_chants()
 
     # --- tegeldata controleren en injecteren ---
@@ -91,11 +92,14 @@ def build() -> pathlib.Path:
     js = "\n\n".join(js_parts)
     js = js.replace("{{TILES}}", json.dumps(tiles, separators=(",", ":")))
     js = js.replace("{{CHANTS}}", json.dumps(chants, separators=(",", ":")))
+    js = js.replace("{{BIGDADDY}}", bigdaddy)
 
     if "{{TILES}}" in js:
         sys.exit("FOUT: {{TILES}} placeholder niet vervangen")
     if "{{CHANTS}}" in js:
         sys.exit("FOUT: {{CHANTS}} placeholder niet vervangen")
+    if "{{BIGDADDY}}" in js:
+        sys.exit("FOUT: {{BIGDADDY}} placeholder niet vervangen")
 
     html = template.replace("{{CSS}}", css)
     html = html.replace("{{JS}}", js)

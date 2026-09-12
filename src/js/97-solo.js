@@ -461,6 +461,7 @@ function soloRefreshTarget(){
   const label = p.deck[p.nextIdx];
   soloTargetKey = soloGraph.questCells[label];
   markWalkTarget(soloGraph, label, soloTargetKey, p.color);
+  renderWalkQuestCard(label);
 }
 
 // ---------- opdrachtenoverzicht: spieken door te hoveren ----------
