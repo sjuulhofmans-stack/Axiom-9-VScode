@@ -412,10 +412,10 @@ function soloRenderQuestChecklist(){
   // De rijen worden hieronder telkens vervangen (innerHTML) — een rij waar de muis toevallig
   // net op stond, verdwijnt dan zonder dat de browser daar een mouseout voor stuurt, en zou
   // soloPeeking anders stuck op true laten staan met een spiek-markering die nooit meer weggaat.
-  // Dit zet 'm veilig terug (geen effect als er toch niet gespiekt werd); staat de muis na de
-  // render nog steeds op dezelfde plek, dan pakt de eerstvolgende mousemove het spieken vanzelf
-  // weer op via de listener hieronder.
-  soloPeekQuestEnd();
+  // Dit zet 'm meteen (niet vertraagd, zie soloPeekReset) veilig terug — geen effect als er toch
+  // niet gespiekt werd; staat de muis na de render nog steeds op dezelfde plek, dan pakt de
+  // eerstvolgende mousemove het spieken vanzelf weer op via de listener hieronder.
+  soloPeekReset();
   const p = solo();
   if (!p){ walkQuestChecklistEl.innerHTML = ''; return; }
   const done = new Set(p.deck.slice(0, p.nextIdx));
@@ -2062,7 +2062,9 @@ function soloEndGame(stuck){
 function stopSoloGame(){
   soloRunId++;
   soloPhase = 'idle';
-  soloPeeking = false;   // anders blokkeert soloPeekQuest() bij het volgende potje zichzelf
+  // geen vertraagde soloPeekQuestEnd() laten hangen op een potje dat hierna niet meer bestaat
+  if (soloPeekEndTimer){ clearTimeout(soloPeekEndTimer); soloPeekEndTimer = null; }
+  soloPeeking = false;
   soloRefreshCardVault();
   soloGraph = null; soloPlayers = []; soloMove = null; soloActiveIdx = -1;
   soloRoundFinishers = []; soloFinished = 0; soloRoundPos = 0;

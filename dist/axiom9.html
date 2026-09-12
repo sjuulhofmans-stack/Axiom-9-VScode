@@ -7994,10 +7994,10 @@ function soloRenderQuestChecklist(){
   // De rijen worden hieronder telkens vervangen (innerHTML) — een rij waar de muis toevallig
   // net op stond, verdwijnt dan zonder dat de browser daar een mouseout voor stuurt, en zou
   // soloPeeking anders stuck op true laten staan met een spiek-markering die nooit meer weggaat.
-  // Dit zet 'm veilig terug (geen effect als er toch niet gespiekt werd); staat de muis na de
-  // render nog steeds op dezelfde plek, dan pakt de eerstvolgende mousemove het spieken vanzelf
-  // weer op via de listener hieronder.
-  soloPeekQuestEnd();
+  // Dit zet 'm meteen (niet vertraagd, zie soloPeekReset) veilig terug — geen effect als er toch
+  // niet gespiekt werd; staat de muis na de render nog steeds op dezelfde plek, dan pakt de
+  // eerstvolgende mousemove het spieken vanzelf weer op via de listener hieronder.
+  soloPeekReset();
   const p = solo();
   if (!p){ walkQuestChecklistEl.innerHTML = ''; return; }
   const done = new Set(p.deck.slice(0, p.nextIdx));
@@ -8051,16 +8051,39 @@ function soloRefreshTarget(){
 // zet (gebruikerswens: "even goed kunnen spieken welke opdracht in welke kamer zit, om de beste
 // tactiek uit te rekenen"). Zodra de muis weggaat komt je échte doel terug via
 // soloRefreshTarget() — dezelfde functie die ook aan het begin van je beurt de markering zet.
+//
+// `mouseout` op rij A en `mouseover` op rij B zijn twee LOSSE events — ook zonder tussenruimte
+// tussen de rijen kan de muis daar precies tussenin een frame "nergens boven" staan. Zonder
+// vertraging knipperde daardoor je eigen opdracht steeds héél even terug bij het doorbewegen
+// over de lijst (gebruikersmelding: "hakkelend, springt continu terug tussen 2 opdrachten").
+// soloPeekQuestEnd() wacht daarom SOLO_PEEK_END_DELAY voordat hij écht terugschakelt, en die
+// wachttijd wordt geannuleerd zodra soloPeekQuest() (op eender welke rij, ook dezelfde) intussen
+// opnieuw afgaat — dus alleen als de muis de hele lijst verlaat, zie je je eigen opdracht terug.
+const SOLO_PEEK_END_DELAY = 120;
 let soloPeeking = false;
+let soloPeekEndTimer = null;
 function soloPeekQuest(label){
-  if (soloPeeking || !soloGraph || !label) return;
+  if (!soloGraph || !label) return;
   const key = soloGraph.questCells[label];
   if (key === undefined) return;
+  if (soloPeekEndTimer){ clearTimeout(soloPeekEndTimer); soloPeekEndTimer = null; }
   const p = solo();
   soloPeeking = true;
   markWalkTarget(soloGraph, label, key, p ? p.color : '#4fb8e0');
 }
 function soloPeekQuestEnd(){
+  if (!soloPeeking || soloPeekEndTimer) return;
+  soloPeekEndTimer = setTimeout(() => {
+    soloPeekEndTimer = null;
+    soloPeekReset();
+  }, SOLO_PEEK_END_DELAY);
+}
+// Directe (niet-vertraagde) versie voor de plekken waar wachten niet kan: bij een her-render van
+// de rijen (soloRenderQuestChecklist) of bij het stoppen van het potje (stopSoloGame) moet de
+// spiek-status meteen kloppen, niet pas over SOLO_PEEK_END_DELAY ms op een DOM/potje dat er dan
+// misschien al niet meer is.
+function soloPeekReset(){
+  if (soloPeekEndTimer){ clearTimeout(soloPeekEndTimer); soloPeekEndTimer = null; }
   if (!soloPeeking) return;
   soloPeeking = false;
   const p = solo();
@@ -9621,7 +9644,9 @@ function soloEndGame(stuck){
 function stopSoloGame(){
   soloRunId++;
   soloPhase = 'idle';
-  soloPeeking = false;   // anders blokkeert soloPeekQuest() bij het volgende potje zichzelf
+  // geen vertraagde soloPeekQuestEnd() laten hangen op een potje dat hierna niet meer bestaat
+  if (soloPeekEndTimer){ clearTimeout(soloPeekEndTimer); soloPeekEndTimer = null; }
+  soloPeeking = false;
   soloRefreshCardVault();
   soloGraph = null; soloPlayers = []; soloMove = null; soloActiveIdx = -1;
   soloRoundFinishers = []; soloFinished = 0; soloRoundPos = 0;
