@@ -2075,7 +2075,13 @@
          TODO: hier komt straks nog een kort introfilmpje na het klikken op "Start spel", vóórdat
          het bord verschijnt — moet nog gemaakt worden. walkTryStart() in 96-walk.js is de plek
          om dat later tussen te haken. -->
-    <div class="panel walk-fade" id="walkLobby">
+    <!-- gedeelde buitenkant (.panel) voor lobby EN speelscherm — blijft altijd op zijn plek
+         staan, alleen de binnenkant (#walkLobby vs. #walkPlayArea) wisselt met walkFadeSwap()
+         in 96-walk.js. Voorheen waren dit twee losse .panel-blokken die om en om verdwenen/
+         verschenen, waardoor de hele kolom leeg faadde en er dan ergens anders een nieuwe
+         opdook (gebruikersmelding). -->
+    <div class="panel" id="walkPanel">
+    <div class="walk-fade" id="walkLobby">
       <h2>Stap voor stap</h2>
       <div class="walk-lobby-col">
         <div class="walk-mode-toggle" role="tablist">
@@ -2144,7 +2150,7 @@
     </div>
 
     <!-- SPEELSCHERM: verschijnt (fade-in) zodra je in de lobby op "Start spel" hebt geklikt. -->
-    <div class="panel walk-fade" id="walkPlayArea" hidden>
+    <div class="walk-fade" id="walkPlayArea" hidden>
       <div class="controls">
         <div class="btn-row walk-play-topbar" id="walkPlayTopbar">
           <button id="btnWalkPause" class="ghost" disabled>Pauze</button>
@@ -2301,6 +2307,7 @@
           </div>
         </div>
       </div>
+    </div>
     </div>
 
   <div id="tabCards" class="tab-panel" role="tabpanel" hidden>
@@ -6461,9 +6468,12 @@ const walkLobbyStatusEl = document.getElementById('walkLobbyStatus');
 
 // ---------- lobby: nieuw startscherm vóór je gaat spelen (gebruikerswens) ----------
 // Eén gecentreerde kolom met alle instellingen en onderaan "Start spel" (zie index.html,
-// #walkLobby). Fadet naar het speelscherm (#walkPlayArea) zodra de indeling geldig is;
-// "Stoppen"/"Nieuw potje" faden weer terug — zie de btnWalkStop/btnWalkSoloReset-listeners
-// hieronder resp. in 97-solo.js.
+// #walkLobby). #walkLobby en #walkPlayArea zitten sámen in één vast #walkPanel (.panel) —
+// dat paneel zelf faadt/verdwijnt nooit, alleen de inhoud van de twee erbinnen wisselt
+// (gebruikersmelding: het zag er anders uit als "de hele kolom verdwijnt en er komt ergens
+// anders een nieuwe"). Fadet naar het speelscherm zodra de indeling geldig is; "Stoppen"/
+// "Nieuw potje" faden weer terug — zie de btnWalkStop/btnWalkSoloReset-listeners hieronder
+// resp. in 97-solo.js.
 // TODO: hier komt straks nog een kort introfilmpje na het klikken op "Start spel", vóórdat het
 // bord verschijnt (moet nog gemaakt worden) — walkTryStart() hieronder is de plek om dat later
 // tussen te haken, vóór de aanroep van walkFadeToPlay().

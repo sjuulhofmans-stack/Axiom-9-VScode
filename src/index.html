@@ -160,7 +160,13 @@
          TODO: hier komt straks nog een kort introfilmpje na het klikken op "Start spel", vóórdat
          het bord verschijnt — moet nog gemaakt worden. walkTryStart() in 96-walk.js is de plek
          om dat later tussen te haken. -->
-    <div class="panel walk-fade" id="walkLobby">
+    <!-- gedeelde buitenkant (.panel) voor lobby EN speelscherm — blijft altijd op zijn plek
+         staan, alleen de binnenkant (#walkLobby vs. #walkPlayArea) wisselt met walkFadeSwap()
+         in 96-walk.js. Voorheen waren dit twee losse .panel-blokken die om en om verdwenen/
+         verschenen, waardoor de hele kolom leeg faadde en er dan ergens anders een nieuwe
+         opdook (gebruikersmelding). -->
+    <div class="panel" id="walkPanel">
+    <div class="walk-fade" id="walkLobby">
       <h2>Stap voor stap</h2>
       <div class="walk-lobby-col">
         <div class="walk-mode-toggle" role="tablist">
@@ -229,7 +235,7 @@
     </div>
 
     <!-- SPEELSCHERM: verschijnt (fade-in) zodra je in de lobby op "Start spel" hebt geklikt. -->
-    <div class="panel walk-fade" id="walkPlayArea" hidden>
+    <div class="walk-fade" id="walkPlayArea" hidden>
       <div class="controls">
         <div class="btn-row walk-play-topbar" id="walkPlayTopbar">
           <button id="btnWalkPause" class="ghost" disabled>Pauze</button>
@@ -386,6 +392,7 @@
           </div>
         </div>
       </div>
+    </div>
     </div>
 
   <div id="tabCards" class="tab-panel" role="tabpanel" hidden>

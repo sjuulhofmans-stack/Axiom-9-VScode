@@ -51,9 +51,12 @@ const walkLobbyStatusEl = document.getElementById('walkLobbyStatus');
 
 // ---------- lobby: nieuw startscherm vóór je gaat spelen (gebruikerswens) ----------
 // Eén gecentreerde kolom met alle instellingen en onderaan "Start spel" (zie index.html,
-// #walkLobby). Fadet naar het speelscherm (#walkPlayArea) zodra de indeling geldig is;
-// "Stoppen"/"Nieuw potje" faden weer terug — zie de btnWalkStop/btnWalkSoloReset-listeners
-// hieronder resp. in 97-solo.js.
+// #walkLobby). #walkLobby en #walkPlayArea zitten sámen in één vast #walkPanel (.panel) —
+// dat paneel zelf faadt/verdwijnt nooit, alleen de inhoud van de twee erbinnen wisselt
+// (gebruikersmelding: het zag er anders uit als "de hele kolom verdwijnt en er komt ergens
+// anders een nieuwe"). Fadet naar het speelscherm zodra de indeling geldig is; "Stoppen"/
+// "Nieuw potje" faden weer terug — zie de btnWalkStop/btnWalkSoloReset-listeners hieronder
+// resp. in 97-solo.js.
 // TODO: hier komt straks nog een kort introfilmpje na het klikken op "Start spel", vóórdat het
 // bord verschijnt (moet nog gemaakt worden) — walkTryStart() hieronder is de plek om dat later
 // tussen te haken, vóór de aanroep van walkFadeToPlay().
