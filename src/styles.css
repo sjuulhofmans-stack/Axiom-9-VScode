@@ -64,17 +64,24 @@
     color:var(--text);
     font-family:var(--font-display);
     min-height:100vh;
-    padding:28px 18px 60px;
+    /* was 28px 18px 60px — de kop nam samen met .logo/header/.tab-bar hieronder zoveel
+       hoogte in dat "Stap voor stap" met een lopend potje niet meer zonder scrollen paste
+       (gebruikersmelding). Boven/onder verkleind; opzij ongemoeid. */
+    padding:14px 18px 40px;
   }
   .wrap{max-width:1600px;margin:0 auto;}
 
   /* ---------- header ---------- */
   header{
     display:flex; flex-wrap:wrap; align-items:flex-end; justify-content:space-between;
-    gap:16px; border-bottom:1px solid var(--line); padding-bottom:16px; margin-bottom:22px;
+    /* padding-bottom was 16px, margin-bottom 22px — zelfde reden als body hierboven. */
+    gap:16px; border-bottom:1px solid var(--line); padding-bottom:10px; margin-bottom:14px;
   }
   .title-block{display:flex; align-items:center; gap:18px;}
-  .logo{height:84px; width:auto; border-radius:3px; display:block;}
+  /* was 84px — samen met de rest van de kop hierboven de grootste losse bijdrage aan de hoogte
+     vóór de tabbladen (gebruikersmelding "alles boven de tabbladen staat ver naar beneden");
+     60px is nog ruim leesbaar naast de titel. */
+  .logo{height:60px; width:auto; border-radius:3px; display:block;}
   h1.spaced-title{
     margin:0; font-family:var(--font-display); font-weight:700;
     font-size:clamp(20px,3vw,30px); letter-spacing:.34em; line-height:1;
@@ -90,14 +97,17 @@
   @keyframes pulse{0%,100%{opacity:1;} 50%{opacity:.35;}}
 
   /* ---------- tabbladen ---------- */
-  .tab-bar{display:flex; gap:4px; margin-bottom:22px; border-bottom:1px solid var(--line);}
+  /* margin-bottom was 22px — zelfde inkorting als body/header hierboven, voor meer ruimte op
+     "Stap voor stap" (gebruikersmelding). */
+  .tab-bar{display:flex; gap:4px; margin-bottom:14px; border-bottom:1px solid var(--line);}
   /* Zonder nowrap brak "Stap voor stap" op een telefoon over drie regels en werd de hele balk
      62px hoog met ongelijke knoppen. Passen ze niet, dan schuift de balk — het gebruikelijke
      patroon voor tabbladen op mobiel — in plaats van de labels te verminken. */
   .tab-btn{white-space:nowrap;}
   .tab-btn{
     font-family:var(--font-mono); font-size:12px; letter-spacing:.14em; text-transform:uppercase;
-    padding:11px 20px; background:transparent; border:1px solid transparent; border-bottom:none;
+    /* verticale padding was 11px, zelfde inkorting als hierboven. */
+    padding:8px 20px; background:transparent; border:1px solid transparent; border-bottom:none;
     border-radius:6px 6px 0 0; color:var(--text-dim); margin-bottom:-1px;
   }
   .tab-btn:hover{color:var(--text); border-color:transparent;}
