@@ -136,8 +136,17 @@ function switchTab(name){
   // verbergt niet vanzelf mee met de rest van dit tabblad, dus hier expliciet herchecken.
   walkSoloResetSyncVisibility();
   // het stap-voor-stap-bord staat verborgen zolang zijn tab dicht is en wordt daarom pas
-  // getekend zodra je hem opent (en opnieuw, want de indeling kan intussen gewijzigd zijn)
-  if (name === 'walk' && !walkRunning) renderWalkBoard();
+  // getekend zodra je hem opent (en opnieuw, want de indeling kan intussen gewijzigd zijn) —
+  // MAAR niet tijdens een lopend potje: renderWalkBoard() bouwt het bord helemaal opnieuw op
+  // (wist alle pionnen, het doelvakje, de kamerrand, enz.) zonder de huidige spelstand ook weer
+  // terug te tekenen, dus wisselde je tijdens "Zelf spelen" naar een ander tabblad en terug, dan
+  // leek het potje gereset — de spelers waren pas weer zichtbaar na de eerstvolgende zet, want
+  // ELKE render-functie in de bot-/mensbeurt (paintWalkPawns, markWalkTarget, ...) tekent ze dan
+  // opnieuw (gebruikersmelding: "spelers niet meer zichtbaar, gaat pas weer goed als je loopt").
+  // walkRunning bewaakt de Automatisch-modus, soloGraph (null buiten een potje) Zelf spelen én
+  // multiplayer — samen dus "loopt er ergens een potje", en zo niet, dan mag het bord gewoon vers
+  // getekend worden zoals hiervoor.
+  if (name === 'walk' && !walkRunning && !soloGraph) renderWalkBoard();
   // de kamernaam op een opdrachtkaart hangt aan de tegel, dus bij elk openen opnieuw opbouwen
   if (name === 'cards') renderCardsTab();
   if (name === 'multi') mpRenderLobby();
