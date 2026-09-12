@@ -1254,10 +1254,19 @@
     z-index:7;
   }
 
+  /* aan/uit-rij voor de legenda en het logboek hieronder — allebei standaard dicht (zie
+     #walkLegend/#walkLog hierbeneden en het commentaar in index.html). */
+  .walk-extras-toggle{margin-top:12px;}
+  .walk-extras-toggle .active{color:#eafcff; border-color:var(--amber-dim);}
+
   .walk-legend{
     display:flex; align-items:center; gap:14px; flex-wrap:wrap; margin-top:12px;
     font-family:var(--font-mono); font-size:10.5px; color:var(--text-dim);
   }
+  /* .walk-legend zet zelf `display:flex` (hierboven), dat wint anders van de standaard
+     [hidden]{display:none} van de browser — zelfde reden als .walk-endgame[hidden] en de
+     overlays verderop in dit bestand. */
+  .walk-legend[hidden]{display:none;}
   .walk-key{display:flex; align-items:center; gap:6px;}
   .walk-swatch{width:11px; height:11px; border-radius:2px; display:inline-block;}
   .walk-swatch.pawn{border-radius:50%; margin-right:-3px;}

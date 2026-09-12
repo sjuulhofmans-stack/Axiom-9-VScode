@@ -39,6 +39,9 @@ const walkScoreEl = document.getElementById('walkScore');
 const walkScoreActiveEl = document.getElementById('walkScoreActive');
 const walkStatusEl = document.getElementById('walkStatus');
 const walkLogEl = document.getElementById('walkLog');
+const walkLegendEl = document.getElementById('walkLegend');
+const btnWalkToggleLegend = document.getElementById('btnWalkToggleLegend');
+const btnWalkToggleLog = document.getElementById('btnWalkToggleLog');
 const walkPanelEl = document.getElementById('tabWalk');
 const walkPausedFlagEl = document.getElementById('walkPausedFlag');
 const btnWalkStart = document.getElementById('btnWalkStart');
@@ -496,6 +499,22 @@ function walkLog(html, cls, player){
   walkLogEl.appendChild(div);
   walkLogEl.scrollTop = walkLogEl.scrollHeight;
 }
+
+// Legenda en logboek staan standaard dicht — allebei onbegrensd in hoogte (het logboek groeit
+// de hele sessie door) en dat was precies waarom "Stap voor stap" niet meer op één pagina paste
+// zonder scrollen (gebruikersmelding). Zelf aan/uit te zetten met deze twee knoppen; niets
+// hiervan onthoudt zich tussen bezoeken — bij een herlaad staan ze weer dicht.
+function walkToggleExtra(btn, panel, label){
+  if (!btn || !panel) return;
+  const show = panel.hidden;   // stond dicht -> we gaan 'm nu juist tonen
+  panel.hidden = !show;
+  btn.setAttribute('aria-pressed', String(show));
+  btn.classList.toggle('active', show);
+  btn.textContent = (show ? 'Verberg ' : 'Toon ') + label;
+  if (show && panel === walkLogEl) walkLogEl.scrollTop = walkLogEl.scrollHeight;
+}
+if (btnWalkToggleLegend) btnWalkToggleLegend.addEventListener('click', () => walkToggleExtra(btnWalkToggleLegend, walkLegendEl, 'legenda'));
+if (btnWalkToggleLog) btnWalkToggleLog.addEventListener('click', () => walkToggleExtra(btnWalkToggleLog, walkLogEl, 'log'));
 
 // ---------- besturing ----------
 function setWalkRunning(on){

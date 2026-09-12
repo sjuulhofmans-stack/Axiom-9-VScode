@@ -1261,10 +1261,19 @@
     z-index:7;
   }
 
+  /* aan/uit-rij voor de legenda en het logboek hieronder — allebei standaard dicht (zie
+     #walkLegend/#walkLog hierbeneden en het commentaar in index.html). */
+  .walk-extras-toggle{margin-top:12px;}
+  .walk-extras-toggle .active{color:#eafcff; border-color:var(--amber-dim);}
+
   .walk-legend{
     display:flex; align-items:center; gap:14px; flex-wrap:wrap; margin-top:12px;
     font-family:var(--font-mono); font-size:10.5px; color:var(--text-dim);
   }
+  /* .walk-legend zet zelf `display:flex` (hierboven), dat wint anders van de standaard
+     [hidden]{display:none} van de browser — zelfde reden als .walk-endgame[hidden] en de
+     overlays verderop in dit bestand. */
+  .walk-legend[hidden]{display:none;}
   .walk-key{display:flex; align-items:center; gap:6px;}
   .walk-swatch{width:11px; height:11px; border-radius:2px; display:inline-block;}
   .walk-swatch.pawn{border-radius:50%; margin-right:-3px;}
@@ -2291,7 +2300,16 @@
               </div>
             </div>
 
-            <div class="walk-legend">
+            <!-- legenda en logboek staan standaard DICHT: allebei onbegrensd in hoogte (het
+                 logboek groeit de hele sessie door) en dat was precies waarom "Stap voor stap"
+                 niet meer op één pagina paste zonder scrollen (gebruikersmelding). Los aan/uit
+                 via deze twee knoppen — zie walkToggleExtra() in 96-walk.js. -->
+            <div class="btn-row walk-extras-toggle">
+              <button type="button" class="small ghost" id="btnWalkToggleLegend" aria-pressed="false">Toon legenda</button>
+              <button type="button" class="small ghost" id="btnWalkToggleLog" aria-pressed="false">Toon log</button>
+            </div>
+
+            <div class="walk-legend" id="walkLegend" hidden>
               <span class="walk-key"><i class="walk-swatch pawn p1"></i><i class="walk-swatch pawn p2"></i><i class="walk-swatch pawn p3"></i><i class="walk-swatch pawn p4"></i>pionnen (speler 1–4)</span>
               <span class="walk-key"><i class="walk-swatch target"></i>doel van wie aan zet is</span>
               <span class="walk-key"><i class="walk-swatch trail"></i>route deze beurt (kleur van wie aan zet is)</span>
@@ -2299,7 +2317,7 @@
               <span class="walk-key"><i class="walk-swatch start"></i>startpositie</span>
             </div>
 
-            <div id="walkLog" class="walk-log"></div>
+            <div id="walkLog" class="walk-log" hidden></div>
           </div>
 
           <!-- rechts van het bord: alleen nog Dobbelstenen / Energieactie / Actiekaarten,
@@ -6549,6 +6567,9 @@ const walkScoreEl = document.getElementById('walkScore');
 const walkScoreActiveEl = document.getElementById('walkScoreActive');
 const walkStatusEl = document.getElementById('walkStatus');
 const walkLogEl = document.getElementById('walkLog');
+const walkLegendEl = document.getElementById('walkLegend');
+const btnWalkToggleLegend = document.getElementById('btnWalkToggleLegend');
+const btnWalkToggleLog = document.getElementById('btnWalkToggleLog');
 const walkPanelEl = document.getElementById('tabWalk');
 const walkPausedFlagEl = document.getElementById('walkPausedFlag');
 const btnWalkStart = document.getElementById('btnWalkStart');
@@ -7006,6 +7027,22 @@ function walkLog(html, cls, player){
   walkLogEl.appendChild(div);
   walkLogEl.scrollTop = walkLogEl.scrollHeight;
 }
+
+// Legenda en logboek staan standaard dicht — allebei onbegrensd in hoogte (het logboek groeit
+// de hele sessie door) en dat was precies waarom "Stap voor stap" niet meer op één pagina paste
+// zonder scrollen (gebruikersmelding). Zelf aan/uit te zetten met deze twee knoppen; niets
+// hiervan onthoudt zich tussen bezoeken — bij een herlaad staan ze weer dicht.
+function walkToggleExtra(btn, panel, label){
+  if (!btn || !panel) return;
+  const show = panel.hidden;   // stond dicht -> we gaan 'm nu juist tonen
+  panel.hidden = !show;
+  btn.setAttribute('aria-pressed', String(show));
+  btn.classList.toggle('active', show);
+  btn.textContent = (show ? 'Verberg ' : 'Toon ') + label;
+  if (show && panel === walkLogEl) walkLogEl.scrollTop = walkLogEl.scrollHeight;
+}
+if (btnWalkToggleLegend) btnWalkToggleLegend.addEventListener('click', () => walkToggleExtra(btnWalkToggleLegend, walkLegendEl, 'legenda'));
+if (btnWalkToggleLog) btnWalkToggleLog.addEventListener('click', () => walkToggleExtra(btnWalkToggleLog, walkLogEl, 'log'));
 
 // ---------- besturing ----------
 function setWalkRunning(on){

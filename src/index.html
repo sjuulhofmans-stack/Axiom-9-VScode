@@ -309,7 +309,16 @@
               </div>
             </div>
 
-            <div class="walk-legend">
+            <!-- legenda en logboek staan standaard DICHT: allebei onbegrensd in hoogte (het
+                 logboek groeit de hele sessie door) en dat was precies waarom "Stap voor stap"
+                 niet meer op één pagina paste zonder scrollen (gebruikersmelding). Los aan/uit
+                 via deze twee knoppen — zie walkToggleExtra() in 96-walk.js. -->
+            <div class="btn-row walk-extras-toggle">
+              <button type="button" class="small ghost" id="btnWalkToggleLegend" aria-pressed="false">Toon legenda</button>
+              <button type="button" class="small ghost" id="btnWalkToggleLog" aria-pressed="false">Toon log</button>
+            </div>
+
+            <div class="walk-legend" id="walkLegend" hidden>
               <span class="walk-key"><i class="walk-swatch pawn p1"></i><i class="walk-swatch pawn p2"></i><i class="walk-swatch pawn p3"></i><i class="walk-swatch pawn p4"></i>pionnen (speler 1–4)</span>
               <span class="walk-key"><i class="walk-swatch target"></i>doel van wie aan zet is</span>
               <span class="walk-key"><i class="walk-swatch trail"></i>route deze beurt (kleur van wie aan zet is)</span>
@@ -317,7 +326,7 @@
               <span class="walk-key"><i class="walk-swatch start"></i>startpositie</span>
             </div>
 
-            <div id="walkLog" class="walk-log"></div>
+            <div id="walkLog" class="walk-log" hidden></div>
           </div>
 
           <!-- rechts van het bord: alleen nog Dobbelstenen / Energieactie / Actiekaarten,
