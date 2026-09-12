@@ -300,13 +300,16 @@ function setWalkMode(mode){
   // de twee "Start spel"-knoppen in de lobby (index.html, #walkLobby) — telkens maar één
   // zichtbaar, net als de instellingen erboven.
   if (btnWalkStart) btnWalkStart.hidden = !isAuto;
-  // het speelscherm-topbalkje (Pauze/Stoppen voor Automatisch, Nieuw potje voor Zelf spelen —
-  // zie #walkPlayTopbar in index.html); onzichtbaar terwijl je nog in de lobby zit maakt niets
-  // uit, maar moet wel kloppen zodra walkFadeToPlay() het speelscherm toont.
+  // het speelscherm-topbalkje (Pauze/Stoppen — alleen voor Automatisch, zie #walkPlayTopbar in
+  // index.html) en "Nieuw potje" (alleen voor Zelf spelen, staat naast het bord in .walk-hud,
+  // niet in de topbar — zie #btnWalkSoloReset in index.html); onzichtbaar terwijl je nog in de
+  // lobby zit maakt niets uit, maar moet wel kloppen zodra walkFadeToPlay() het speelscherm
+  // toont. De topbar zelf is alleen nog nodig in Automatisch — in Zelf spelen staat er niets
+  // meer in, dus die rij verdwijnt daar helemaal i.p.v. leeg boven het bord te blijven staan.
   if (btnWalkPause) btnWalkPause.hidden = !isAuto;
   if (btnWalkStop) btnWalkStop.hidden = !isAuto;
   if (btnWalkSoloReset) btnWalkSoloReset.hidden = isAuto;
-  if (walkPlayTopbarEl) walkPlayTopbarEl.hidden = false;
+  if (walkPlayTopbarEl) walkPlayTopbarEl.hidden = !isAuto;
   if (walkLobbyStatusEl) walkLobbyStatusEl.innerHTML = '';
   // setWalkMode() is alleen bereikbaar terwijl de lobby al in beeld is (de modusknoppen zitten
   // erin) of net ná een multiplayer-potje (mpExitPlayView roept setWalkMode('auto') aan) — dus
@@ -403,6 +406,13 @@ function soloRenderStatusExtras(){
 // doel liever houdt (gebruikerswens). Hangt aan soloRenderStatusExtras zodat hij overal meeloopt.
 function soloRenderQuestChecklist(){
   if (!walkQuestChecklistEl) return;
+  // De rijen worden hieronder telkens vervangen (innerHTML) — een rij waar de muis toevallig
+  // net op stond, verdwijnt dan zonder dat de browser daar een mouseout voor stuurt, en zou
+  // soloPeeking anders stuck op true laten staan met een spiek-markering die nooit meer weggaat.
+  // Dit zet 'm veilig terug (geen effect als er toch niet gespiekt werd); staat de muis na de
+  // render nog steeds op dezelfde plek, dan pakt de eerstvolgende mousemove het spieken vanzelf
+  // weer op via de listener hieronder.
+  soloPeekQuestEnd();
   const p = solo();
   if (!p){ walkQuestChecklistEl.innerHTML = ''; return; }
   const done = new Set(p.deck.slice(0, p.nextIdx));
@@ -417,7 +427,7 @@ function soloRenderQuestChecklist(){
     // automatisch mee als de indeling ooit wijzigt.
     const tid = findLabelTile(label);
     const room = tid !== null ? (ROOM_NAMES[tid] || ('Gang ' + tid)) : '—';
-    return `<div class="${cls}"${style}>` +
+    return `<div class="${cls}"${style} data-label="${label}">` +
       `<span class="quest-check-label">${label}</span>` +
       `<span class="quest-check-text">` +
         `<span class="quest-check-name">${QUEST_NAMES[label]}</span>` +
@@ -447,6 +457,48 @@ function soloRefreshTarget(){
   const label = p.deck[p.nextIdx];
   soloTargetKey = soloGraph.questCells[label];
   markWalkTarget(soloGraph, label, soloTargetKey, p.color);
+}
+
+// ---------- opdrachtenoverzicht: spieken door te hoveren ----------
+// Hover je over een nog niet voltooide opdracht in het overzicht (soloRenderQuestChecklist),
+// dan verschuift de markering op het bord ernaartoe — je eigen actieve doel verdwijnt daarbij
+// even, want markWalkTarget() wist eerst elke bestaande `.walk-target` voordat hij de nieuwe
+// zet (gebruikerswens: "even goed kunnen spieken welke opdracht in welke kamer zit, om de beste
+// tactiek uit te rekenen"). Zodra de muis weggaat komt je échte doel terug via
+// soloRefreshTarget() — dezelfde functie die ook aan het begin van je beurt de markering zet.
+let soloPeeking = false;
+function soloPeekQuest(label){
+  if (soloPeeking || !soloGraph || !label) return;
+  const key = soloGraph.questCells[label];
+  if (key === undefined) return;
+  const p = solo();
+  soloPeeking = true;
+  markWalkTarget(soloGraph, label, key, p ? p.color : '#4fb8e0');
+}
+function soloPeekQuestEnd(){
+  if (!soloPeeking) return;
+  soloPeeking = false;
+  const p = solo();
+  // geen lopend potje (meer) of niemand aan zet: gewoon leeg laten i.p.v. soloRefreshTarget()
+  // aanroepen, die anders op p.deck[p.nextIdx] van een niet-bestaande speler zou struikelen.
+  if (!p || !soloGraph || p.rank) { clearWalkTarget(); return; }
+  soloRefreshTarget();
+}
+// Delegatie op de vaste containerdiv i.p.v. per rij een listener: soloRenderQuestChecklist()
+// vervangt de rijen bij elke render (elke stap, elke beurt), losse listeners zouden dus telkens
+// opnieuw moeten. mouseover/mouseout + relatedTarget-check is de gangbare manier om
+// mouseenter/mouseleave-gedrag te delegeren (die twee bubbelen zelf niet).
+if (walkQuestChecklistEl){
+  walkQuestChecklistEl.addEventListener('mouseover', (e) => {
+    const row = e.target.closest('.quest-check-row:not(.is-done)');
+    if (!row || row.contains(e.relatedTarget)) return;
+    soloPeekQuest(row.dataset.label);
+  });
+  walkQuestChecklistEl.addEventListener('mouseout', (e) => {
+    const row = e.target.closest('.quest-check-row:not(.is-done)');
+    if (!row || row.contains(e.relatedTarget)) return;
+    soloPeekQuestEnd();
+  });
 }
 
 // ---------- actiepaneel (begin van de beurt) ----------
@@ -1984,6 +2036,7 @@ function soloEndGame(stuck){
 function stopSoloGame(){
   soloRunId++;
   soloPhase = 'idle';
+  soloPeeking = false;   // anders blokkeert soloPeekQuest() bij het volgende potje zichzelf
   soloRefreshCardVault();
   soloGraph = null; soloPlayers = []; soloMove = null; soloActiveIdx = -1;
   soloRoundFinishers = []; soloFinished = 0; soloRoundPos = 0;

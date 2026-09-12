@@ -235,10 +235,13 @@
     <!-- SPEELSCHERM: verschijnt (fade-in) zodra je in de lobby op "Start spel" hebt geklikt. -->
     <div id="walkPlayArea" hidden>
       <div class="controls">
+        <!-- alleen voor Automatisch — Zelf spelen heeft hier niets meer staan, zie
+             #btnWalkSoloReset hieronder in .walk-hud (gebruikersmelding: één eenzame knop
+             "Nieuw potje" in een hele rij boven het bord hield het verder van de bovenkant
+             van het paneel dan nodig). -->
         <div class="btn-row walk-play-topbar" id="walkPlayTopbar">
           <button id="btnWalkPause" class="ghost" disabled>Pauze</button>
           <button id="btnWalkStop" class="ghost" disabled>Stoppen</button>
-          <button id="btnWalkSoloReset" class="ghost" disabled>Nieuw potje</button>
         </div>
         <div class="walk-play-layout">
           <!-- standenrij: volle breedte boven bord + zijkolom samen, met bewezen vaste hoogte
@@ -325,6 +328,14 @@
               <div class="btn-row">
                 <button id="btnWalkSoloRoll" class="primary" hidden>🎲 Gooi de dobbelstenen</button>
                 <button id="btnWalkSoloSkip" class="primary" hidden>Dobbelen</button>
+              </div>
+              <!-- "Nieuw potje": alleen in Zelf spelen, hier naast het bord i.p.v. in de topbar
+                   erboven (zie #walkPlayTopbar hierboven) — daar was het in solo-modus de enige
+                   knop in een verder lege rij, en dat hield het bord verder van de bovenkant van
+                   het paneel dan nodig (gebruikersmelding). Zelfde auto-hide-truc als
+                   .walk-mp-leave-row hieronder (styles.css) zodra de knop zelf hidden staat. -->
+              <div class="btn-row walk-solo-reset-row">
+                <button id="btnWalkSoloReset" class="small ghost" disabled>Nieuw potje</button>
               </div>
               <!-- alleen zichtbaar tijdens een lopend multiplayer-potje (zie mpEnterPlayView/
                    mpExitPlayView in 99-multiplayer.js) — staat BUITEN walkSoloActions, dat elke

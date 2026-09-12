@@ -385,6 +385,18 @@
   .walk-lobby-start-row #walkSoloStartRow[hidden]{display:none;}
   .walk-lobby-start{width:100%; padding:13px; font-size:15px;}
 
+  /* #walkLobby en #walkPlayArea liggen als grid-cel bovenop elkaar (i.p.v. onder elkaar) zodat
+     ze tijdens walkFadeSwap() (96-walk.js) tegelijk zichtbaar kunnen zijn en dus echt kunnen
+     crossfaden — met gewone block-layout zou de een pas verschijnen zodra de ander verdwijnt
+     (`hidden`, geen ruimte in de flow), en dat gaf eerder ofwel een leeg tussenmoment (fade na
+     elkaar) of een kale instant-wissel (helemaal geen fade). Zolang er maar één van de twee
+     zichtbaar is (het normale geval, buiten de ~350ms overgang) gedraagt dit zich gewoon als een
+     kolom van één blok, want de andere heeft `hidden` (display:none) en telt niet mee voor de
+     grid-afmeting. */
+  #walkPanel{display:grid;}
+  #walkLobby, #walkPlayArea{grid-area:1/1; transition:opacity .35s ease;}
+  #walkLobby.walk-fade-hidden, #walkPlayArea.walk-fade-hidden{opacity:0; pointer-events:none;}
+
   .walk-play-topbar{margin-bottom:2px;}
 
   /* standenrij boven, dan bord + één vaste zijkolom ernaast. De standenrij staat hier
@@ -740,6 +752,16 @@
     display:flex; align-items:center; flex-wrap:wrap; gap:4px 7px;
     padding:6px 9px; border-radius:5px;
     background:var(--hull); border:1px solid var(--line-dim); border-left:3px solid var(--qtint, var(--quest));
+    transition:background-color .15s, border-color .15s;
+  }
+  /* nog niet voltooide opdrachten zijn hover-baar: even eroverheen bewegen zet de markering op
+     het bord naar DIE opdracht toe (soloPeekQuest in 97-solo.js) — zo kun je spieken waar de rest
+     van je stapel ligt tegenover je huidige positie, om je route/tactiek te plannen
+     (gebruikerswens). Voltooide opdrachten hebben niets meer te spieken. */
+  .quest-check-row:not(.is-done){cursor:pointer;}
+  .quest-check-row:not(.is-done):hover{
+    background:color-mix(in srgb, var(--qtint, var(--quest)) 14%, var(--hull));
+    border-color:color-mix(in srgb, var(--qtint, var(--quest)) 55%, var(--line-dim));
   }
   .quest-check-label{
     font-family:var(--font-mono); font-size:10.5px; font-weight:700; color:var(--qtint, var(--quest));
@@ -827,6 +849,9 @@
      paneel eronder springt op het moment dat BEIDE knoppen daar even verborgen zijn. Vandaar een
      eigen klasse i.p.v. dezelfde regel op alle btn-rows. */
   .walk-hud .btn-row.walk-mp-leave-row:not(:has(> :not([hidden]))){display:none;}
+  /* zelfde truc voor "Nieuw potje" (alleen relevant in Zelf spelen) — geen 40px lege rij
+     tijdens Automatisch, waar #btnWalkSoloReset altijd hidden staat. */
+  .walk-hud .btn-row.walk-solo-reset-row:not(:has(> :not([hidden]))){display:none;}
   /* Twee vaste regels: loopstenen boven, energiesteen eronder. De vaste min-height dekt
      allebei de regels, zodat het blok niet van hoogte verandert als de Stuwstoot een derde
      loopsteen toevoegt. */
@@ -2144,10 +2169,13 @@
     <!-- SPEELSCHERM: verschijnt (fade-in) zodra je in de lobby op "Start spel" hebt geklikt. -->
     <div id="walkPlayArea" hidden>
       <div class="controls">
+        <!-- alleen voor Automatisch — Zelf spelen heeft hier niets meer staan, zie
+             #btnWalkSoloReset hieronder in .walk-hud (gebruikersmelding: één eenzame knop
+             "Nieuw potje" in een hele rij boven het bord hield het verder van de bovenkant
+             van het paneel dan nodig). -->
         <div class="btn-row walk-play-topbar" id="walkPlayTopbar">
           <button id="btnWalkPause" class="ghost" disabled>Pauze</button>
           <button id="btnWalkStop" class="ghost" disabled>Stoppen</button>
-          <button id="btnWalkSoloReset" class="ghost" disabled>Nieuw potje</button>
         </div>
         <div class="walk-play-layout">
           <!-- standenrij: volle breedte boven bord + zijkolom samen, met bewezen vaste hoogte
@@ -2234,6 +2262,14 @@
               <div class="btn-row">
                 <button id="btnWalkSoloRoll" class="primary" hidden>🎲 Gooi de dobbelstenen</button>
                 <button id="btnWalkSoloSkip" class="primary" hidden>Dobbelen</button>
+              </div>
+              <!-- "Nieuw potje": alleen in Zelf spelen, hier naast het bord i.p.v. in de topbar
+                   erboven (zie #walkPlayTopbar hierboven) — daar was het in solo-modus de enige
+                   knop in een verder lege rij, en dat hield het bord verder van de bovenkant van
+                   het paneel dan nodig (gebruikersmelding). Zelfde auto-hide-truc als
+                   .walk-mp-leave-row hieronder (styles.css) zodra de knop zelf hidden staat. -->
+              <div class="btn-row walk-solo-reset-row">
+                <button id="btnWalkSoloReset" class="small ghost" disabled>Nieuw potje</button>
               </div>
               <!-- alleen zichtbaar tijdens een lopend multiplayer-potje (zie mpEnterPlayView/
                    mpExitPlayView in 99-multiplayer.js) — staat BUITEN walkSoloActions, dat elke
@@ -6461,21 +6497,36 @@ const walkLobbyStatusEl = document.getElementById('walkLobbyStatus');
 // ---------- lobby: nieuw startscherm vóór je gaat spelen (gebruikerswens) ----------
 // Eén gecentreerde kolom met alle instellingen en onderaan "Start spel" (zie index.html,
 // #walkLobby). #walkLobby en #walkPlayArea zitten sámen in één vast #walkPanel (.panel) —
-// dat paneel zelf verdwijnt nooit, alleen de inhoud van de twee erbinnen wisselt, en dat
-// wisselen gebeurt bewust in één klap (geen fade meer — een fade-out liet de kolom eerst
-// helemaal transparant/leeg worden vóórdat het speelscherm verscheen, en dat las als "de
-// hele kolom verdwijnt en komt terug", precies de gebruikersmelding die dit moest oplossen).
+// dat paneel zelf verdwijnt nooit, alleen de inhoud van de twee erbinnen wisselt. Dat
+// wisselen is een ECHTE crossfade: de lobby faadt uit terwijl het speelscherm er TEGELIJK
+// overheen infaadt (#walkPanel staat op display:grid met beide kinderen op dezelfde
+// grid-cel, zie styles.css) — geen moment waarop je een lege/transparante kolom ziet (dat
+// gaf eerder de indruk dat "de hele kolom verdwijnt en komt terug", gebruikersmelding), en
+// ook geen kaal instant-omschakelmoment (latere gebruikersmelding: "BOEM ineens in beeld").
 // "Stoppen"/"Nieuw potje" wisselen met dezelfde walkFadeToLobby() terug — zie de
-// btnWalkStop/btnWalkSoloReset-listeners hieronder resp. in 97-solo.js. Ondanks de naam dus
-// geen animatie (meer); de namen walkFadeToPlay/walkFadeToLobby zijn gehouden omdat ze overal
-// als "ga naar het speelscherm/de lobby" aangeroepen worden, zie 99-multiplayer.js voor het
-// (al langer bestaande) ongeanimeerde equivalent.
+// btnWalkStop-listener hieronder resp. #btnWalkSoloReset in 97-solo.js. 99-multiplayer.js
+// wisselt zelf nog rechtstreeks (ongeanimeerd) omdat switchTab() daar toch al in één klap
+// van tabblad wisselt.
 // TODO: hier komt straks nog een kort introfilmpje na het klikken op "Start spel", vóórdat het
 // bord verschijnt (moet nog gemaakt worden) — walkTryStart() hieronder is de plek om dat later
 // tussen te haken.
+const WALK_FADE_MS = 350;   // moet gelijk blijven aan .walk-fade's transition-duur in styles.css
 function walkFadeSwap(hideEl, showEl){
-  if (hideEl) hideEl.hidden = true;
-  if (showEl) showEl.hidden = false;
+  if (!hideEl || !showEl){ if (hideEl) hideEl.hidden = true; if (showEl) showEl.hidden = false; return; }
+  // showEl start onzichtbaar (nog vóór het `hidden` weggaat, anders is er niets om vanaf te
+  // animeren) en een reflow ertussen dwingt de browser die starttoestand ook echt te
+  // registreren — anders springt hij meteen naar opacity 1 in plaats van te transitionen.
+  showEl.classList.add('walk-fade-hidden');
+  showEl.hidden = false;
+  void showEl.offsetWidth;
+  // beide klassewissels in dezelfde tick: hideEl fadet 1→0, showEl fadet tegelijk 0→1 — een
+  // echte crossfade, niet twee na elkaar (dat gaf eerder alsnog een leeg tussenmoment).
+  hideEl.classList.add('walk-fade-hidden');
+  showEl.classList.remove('walk-fade-hidden');
+  setTimeout(() => {
+    hideEl.hidden = true;
+    hideEl.classList.remove('walk-fade-hidden');
+  }, WALK_FADE_MS);
 }
 function walkFadeToPlay(){ walkFadeSwap(walkLobbyEl, walkPlayAreaEl); }
 function walkFadeToLobby(){ walkFadeSwap(walkPlayAreaEl, walkLobbyEl); }
@@ -7791,13 +7842,16 @@ function setWalkMode(mode){
   // de twee "Start spel"-knoppen in de lobby (index.html, #walkLobby) — telkens maar één
   // zichtbaar, net als de instellingen erboven.
   if (btnWalkStart) btnWalkStart.hidden = !isAuto;
-  // het speelscherm-topbalkje (Pauze/Stoppen voor Automatisch, Nieuw potje voor Zelf spelen —
-  // zie #walkPlayTopbar in index.html); onzichtbaar terwijl je nog in de lobby zit maakt niets
-  // uit, maar moet wel kloppen zodra walkFadeToPlay() het speelscherm toont.
+  // het speelscherm-topbalkje (Pauze/Stoppen — alleen voor Automatisch, zie #walkPlayTopbar in
+  // index.html) en "Nieuw potje" (alleen voor Zelf spelen, staat naast het bord in .walk-hud,
+  // niet in de topbar — zie #btnWalkSoloReset in index.html); onzichtbaar terwijl je nog in de
+  // lobby zit maakt niets uit, maar moet wel kloppen zodra walkFadeToPlay() het speelscherm
+  // toont. De topbar zelf is alleen nog nodig in Automatisch — in Zelf spelen staat er niets
+  // meer in, dus die rij verdwijnt daar helemaal i.p.v. leeg boven het bord te blijven staan.
   if (btnWalkPause) btnWalkPause.hidden = !isAuto;
   if (btnWalkStop) btnWalkStop.hidden = !isAuto;
   if (btnWalkSoloReset) btnWalkSoloReset.hidden = isAuto;
-  if (walkPlayTopbarEl) walkPlayTopbarEl.hidden = false;
+  if (walkPlayTopbarEl) walkPlayTopbarEl.hidden = !isAuto;
   if (walkLobbyStatusEl) walkLobbyStatusEl.innerHTML = '';
   // setWalkMode() is alleen bereikbaar terwijl de lobby al in beeld is (de modusknoppen zitten
   // erin) of net ná een multiplayer-potje (mpExitPlayView roept setWalkMode('auto') aan) — dus
@@ -7894,6 +7948,13 @@ function soloRenderStatusExtras(){
 // doel liever houdt (gebruikerswens). Hangt aan soloRenderStatusExtras zodat hij overal meeloopt.
 function soloRenderQuestChecklist(){
   if (!walkQuestChecklistEl) return;
+  // De rijen worden hieronder telkens vervangen (innerHTML) — een rij waar de muis toevallig
+  // net op stond, verdwijnt dan zonder dat de browser daar een mouseout voor stuurt, en zou
+  // soloPeeking anders stuck op true laten staan met een spiek-markering die nooit meer weggaat.
+  // Dit zet 'm veilig terug (geen effect als er toch niet gespiekt werd); staat de muis na de
+  // render nog steeds op dezelfde plek, dan pakt de eerstvolgende mousemove het spieken vanzelf
+  // weer op via de listener hieronder.
+  soloPeekQuestEnd();
   const p = solo();
   if (!p){ walkQuestChecklistEl.innerHTML = ''; return; }
   const done = new Set(p.deck.slice(0, p.nextIdx));
@@ -7908,7 +7969,7 @@ function soloRenderQuestChecklist(){
     // automatisch mee als de indeling ooit wijzigt.
     const tid = findLabelTile(label);
     const room = tid !== null ? (ROOM_NAMES[tid] || ('Gang ' + tid)) : '—';
-    return `<div class="${cls}"${style}>` +
+    return `<div class="${cls}"${style} data-label="${label}">` +
       `<span class="quest-check-label">${label}</span>` +
       `<span class="quest-check-text">` +
         `<span class="quest-check-name">${QUEST_NAMES[label]}</span>` +
@@ -7938,6 +7999,48 @@ function soloRefreshTarget(){
   const label = p.deck[p.nextIdx];
   soloTargetKey = soloGraph.questCells[label];
   markWalkTarget(soloGraph, label, soloTargetKey, p.color);
+}
+
+// ---------- opdrachtenoverzicht: spieken door te hoveren ----------
+// Hover je over een nog niet voltooide opdracht in het overzicht (soloRenderQuestChecklist),
+// dan verschuift de markering op het bord ernaartoe — je eigen actieve doel verdwijnt daarbij
+// even, want markWalkTarget() wist eerst elke bestaande `.walk-target` voordat hij de nieuwe
+// zet (gebruikerswens: "even goed kunnen spieken welke opdracht in welke kamer zit, om de beste
+// tactiek uit te rekenen"). Zodra de muis weggaat komt je échte doel terug via
+// soloRefreshTarget() — dezelfde functie die ook aan het begin van je beurt de markering zet.
+let soloPeeking = false;
+function soloPeekQuest(label){
+  if (soloPeeking || !soloGraph || !label) return;
+  const key = soloGraph.questCells[label];
+  if (key === undefined) return;
+  const p = solo();
+  soloPeeking = true;
+  markWalkTarget(soloGraph, label, key, p ? p.color : '#4fb8e0');
+}
+function soloPeekQuestEnd(){
+  if (!soloPeeking) return;
+  soloPeeking = false;
+  const p = solo();
+  // geen lopend potje (meer) of niemand aan zet: gewoon leeg laten i.p.v. soloRefreshTarget()
+  // aanroepen, die anders op p.deck[p.nextIdx] van een niet-bestaande speler zou struikelen.
+  if (!p || !soloGraph || p.rank) { clearWalkTarget(); return; }
+  soloRefreshTarget();
+}
+// Delegatie op de vaste containerdiv i.p.v. per rij een listener: soloRenderQuestChecklist()
+// vervangt de rijen bij elke render (elke stap, elke beurt), losse listeners zouden dus telkens
+// opnieuw moeten. mouseover/mouseout + relatedTarget-check is de gangbare manier om
+// mouseenter/mouseleave-gedrag te delegeren (die twee bubbelen zelf niet).
+if (walkQuestChecklistEl){
+  walkQuestChecklistEl.addEventListener('mouseover', (e) => {
+    const row = e.target.closest('.quest-check-row:not(.is-done)');
+    if (!row || row.contains(e.relatedTarget)) return;
+    soloPeekQuest(row.dataset.label);
+  });
+  walkQuestChecklistEl.addEventListener('mouseout', (e) => {
+    const row = e.target.closest('.quest-check-row:not(.is-done)');
+    if (!row || row.contains(e.relatedTarget)) return;
+    soloPeekQuestEnd();
+  });
 }
 
 // ---------- actiepaneel (begin van de beurt) ----------
@@ -9475,6 +9578,7 @@ function soloEndGame(stuck){
 function stopSoloGame(){
   soloRunId++;
   soloPhase = 'idle';
+  soloPeeking = false;   // anders blokkeert soloPeekQuest() bij het volgende potje zichzelf
   soloRefreshCardVault();
   soloGraph = null; soloPlayers = []; soloMove = null; soloActiveIdx = -1;
   soloRoundFinishers = []; soloFinished = 0; soloRoundPos = 0;

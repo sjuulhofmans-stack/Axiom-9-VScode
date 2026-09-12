@@ -52,21 +52,36 @@ const walkLobbyStatusEl = document.getElementById('walkLobbyStatus');
 // ---------- lobby: nieuw startscherm vóór je gaat spelen (gebruikerswens) ----------
 // Eén gecentreerde kolom met alle instellingen en onderaan "Start spel" (zie index.html,
 // #walkLobby). #walkLobby en #walkPlayArea zitten sámen in één vast #walkPanel (.panel) —
-// dat paneel zelf verdwijnt nooit, alleen de inhoud van de twee erbinnen wisselt, en dat
-// wisselen gebeurt bewust in één klap (geen fade meer — een fade-out liet de kolom eerst
-// helemaal transparant/leeg worden vóórdat het speelscherm verscheen, en dat las als "de
-// hele kolom verdwijnt en komt terug", precies de gebruikersmelding die dit moest oplossen).
+// dat paneel zelf verdwijnt nooit, alleen de inhoud van de twee erbinnen wisselt. Dat
+// wisselen is een ECHTE crossfade: de lobby faadt uit terwijl het speelscherm er TEGELIJK
+// overheen infaadt (#walkPanel staat op display:grid met beide kinderen op dezelfde
+// grid-cel, zie styles.css) — geen moment waarop je een lege/transparante kolom ziet (dat
+// gaf eerder de indruk dat "de hele kolom verdwijnt en komt terug", gebruikersmelding), en
+// ook geen kaal instant-omschakelmoment (latere gebruikersmelding: "BOEM ineens in beeld").
 // "Stoppen"/"Nieuw potje" wisselen met dezelfde walkFadeToLobby() terug — zie de
-// btnWalkStop/btnWalkSoloReset-listeners hieronder resp. in 97-solo.js. Ondanks de naam dus
-// geen animatie (meer); de namen walkFadeToPlay/walkFadeToLobby zijn gehouden omdat ze overal
-// als "ga naar het speelscherm/de lobby" aangeroepen worden, zie 99-multiplayer.js voor het
-// (al langer bestaande) ongeanimeerde equivalent.
+// btnWalkStop-listener hieronder resp. #btnWalkSoloReset in 97-solo.js. 99-multiplayer.js
+// wisselt zelf nog rechtstreeks (ongeanimeerd) omdat switchTab() daar toch al in één klap
+// van tabblad wisselt.
 // TODO: hier komt straks nog een kort introfilmpje na het klikken op "Start spel", vóórdat het
 // bord verschijnt (moet nog gemaakt worden) — walkTryStart() hieronder is de plek om dat later
 // tussen te haken.
+const WALK_FADE_MS = 350;   // moet gelijk blijven aan .walk-fade's transition-duur in styles.css
 function walkFadeSwap(hideEl, showEl){
-  if (hideEl) hideEl.hidden = true;
-  if (showEl) showEl.hidden = false;
+  if (!hideEl || !showEl){ if (hideEl) hideEl.hidden = true; if (showEl) showEl.hidden = false; return; }
+  // showEl start onzichtbaar (nog vóór het `hidden` weggaat, anders is er niets om vanaf te
+  // animeren) en een reflow ertussen dwingt de browser die starttoestand ook echt te
+  // registreren — anders springt hij meteen naar opacity 1 in plaats van te transitionen.
+  showEl.classList.add('walk-fade-hidden');
+  showEl.hidden = false;
+  void showEl.offsetWidth;
+  // beide klassewissels in dezelfde tick: hideEl fadet 1→0, showEl fadet tegelijk 0→1 — een
+  // echte crossfade, niet twee na elkaar (dat gaf eerder alsnog een leeg tussenmoment).
+  hideEl.classList.add('walk-fade-hidden');
+  showEl.classList.remove('walk-fade-hidden');
+  setTimeout(() => {
+    hideEl.hidden = true;
+    hideEl.classList.remove('walk-fade-hidden');
+  }, WALK_FADE_MS);
 }
 function walkFadeToPlay(){ walkFadeSwap(walkLobbyEl, walkPlayAreaEl); }
 function walkFadeToLobby(){ walkFadeSwap(walkPlayAreaEl, walkLobbyEl); }
