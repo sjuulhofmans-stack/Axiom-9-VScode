@@ -51,6 +51,19 @@ const walkLobbyEl = document.getElementById('walkLobby');
 const walkPlayAreaEl = document.getElementById('walkPlayArea');
 const walkPlayTopbarEl = document.getElementById('walkPlayTopbar');
 const walkLobbyStatusEl = document.getElementById('walkLobbyStatus');
+const pageFooterEl = document.querySelector('footer');
+// De voettekst (copyright/disclaimer) kost onderaan de pagina net genoeg hoogte om "Stap voor
+// stap" tijdens het spelen (met legenda/log ingeklapt, zie walkToggleExtra hieronder) alsnog
+// een klein stukje te laten scrollen in fullscreen (gebruikersmelding) — verstopt 'm daarom
+// zolang het speelscherm in beeld is. Aangeroepen vanuit walkFadeSwap() hieronder (dekt
+// Automatisch + Zelf spelen) en switchTab()/mpEnterPlayView()/mpExitPlayView() (80-controls.js
+// resp. 99-multiplayer.js) voor de gevallen die walkFadeSwap() niet gebruiken.
+function walkFooterSyncVisibility(){
+  if (!pageFooterEl) return;
+  const onWalkTab = !!walkPanelEl && !walkPanelEl.hidden;
+  const playing = !!walkPlayAreaEl && !walkPlayAreaEl.hidden;
+  pageFooterEl.hidden = onWalkTab && playing;
+}
 
 // ---------- lobby: nieuw startscherm vóór je gaat spelen (gebruikerswens) ----------
 // Eén gecentreerde kolom met alle instellingen en onderaan "Start spel" (zie index.html,
@@ -81,9 +94,11 @@ function walkFadeSwap(hideEl, showEl){
   // echte crossfade, niet twee na elkaar (dat gaf eerder alsnog een leeg tussenmoment).
   hideEl.classList.add('walk-fade-hidden');
   showEl.classList.remove('walk-fade-hidden');
+  walkFooterSyncVisibility();   // meteen bij het tonen van het speelscherm verdwijnt de footer
   setTimeout(() => {
     hideEl.hidden = true;
     hideEl.classList.remove('walk-fade-hidden');
+    walkFooterSyncVisibility();   // en komt pas terug zodra je weer echt (en helemaal) in de lobby staat
   }, WALK_FADE_MS);
 }
 function walkFadeToPlay(){ walkFadeSwap(walkLobbyEl, walkPlayAreaEl); }

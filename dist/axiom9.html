@@ -73,8 +73,11 @@
     min-height:100vh;
     /* was 28px 18px 60px — de kop nam samen met .logo/header/.tab-bar hieronder zoveel
        hoogte in dat "Stap voor stap" met een lopend potje niet meer zonder scrollen paste
-       (gebruikersmelding). Boven/onder verkleind; opzij ongemoeid. */
-    padding:14px 18px 40px;
+       (gebruikersmelding). Boven/onder verkleind; opzij ongemoeid. Onder verder verkleind
+       (40px -> 24px) samen met het verbergen van <footer> tijdens het spelen (zie
+       walkFooterSyncVisibility in 96-walk.js) — dat loste een laatste klein restje
+       scroll-ruimte op dat overbleef zelfs met legenda/log ingeklapt. */
+    padding:14px 18px 24px;
   }
   .wrap{max-width:1600px;margin:0 auto;}
 
@@ -415,11 +418,21 @@
      zichtbaar is (het normale geval, buiten de ~350ms overgang) gedraagt dit zich gewoon als een
      kolom van één blok, want de andere heeft `hidden` (display:none) en telt niet mee voor de
      grid-afmeting. */
-  #walkPanel{display:grid;}
+  /* padding was 18px (.panel's standaardwaarde) — iets krapper geeft "Stap voor stap" net
+     genoeg extra lucht om ook in Automatisch (met Pauze/Stoppen erboven, zie
+     .walk-play-topbar) zonder scrollen te passen in fullscreen (gebruikersmelding). Alleen
+     dit paneel: #walkPanel wint van .panel dankzij de ID, andere panelen blijven op 18px. */
+  #walkPanel{display:grid; padding:12px 18px;}
   #walkLobby, #walkPlayArea{grid-area:1/1; transition:opacity .35s ease;}
   #walkLobby.walk-fade-hidden, #walkPlayArea.walk-fade-hidden{opacity:0; pointer-events:none;}
 
   .walk-play-topbar{margin-bottom:2px;}
+  /* alleen deze .controls (scoped via #walkPlayArea, andere panelen met .controls blijven op
+     16px): Pauze/Stoppen (Automatisch) kosten met de standaard 16px gap eronder net genoeg
+     extra hoogte om ook mét ingeklapte legenda/log nog een héél klein stukje te kunnen
+     scrollen in fullscreen (gebruikersmelding). Zelf spelen heeft deze rij niet eens (zie
+     #walkPlayTopbar[hidden] in setWalkMode, 97-solo.js) en raakt hier dus niet aan. */
+  #walkPlayArea > .controls{gap:8px;}
 
   /* standenrij boven, dan bord + één vaste zijkolom ernaast. De standenrij staat hier
      bewust weer BOVEN het bord (gebruikerswens, na eerdere versie ernaast) — dat kan alleen
@@ -1263,7 +1276,7 @@
 
   /* aan/uit-rij voor de legenda en het logboek hieronder — allebei standaard dicht (zie
      #walkLegend/#walkLog hierbeneden en het commentaar in index.html). */
-  .walk-extras-toggle{margin-top:12px;}
+  .walk-extras-toggle{margin-top:8px;}
   .walk-extras-toggle .active{color:#eafcff; border-color:var(--amber-dim);}
 
   .walk-legend{
@@ -4333,6 +4346,10 @@ function switchTab(name){
   // "Nieuw potje" (97-solo.js) leeft in de tabbladenbalk zelf, niet in #tabWalk — die balk
   // verbergt niet vanzelf mee met de rest van dit tabblad, dus hier expliciet herchecken.
   walkSoloResetSyncVisibility();
+  // zelfde soort herchecken voor de voettekst (96-walk.js) — die moet weg zodra je zowel op
+  // dit tabblad zit als er een potje in beeld staat, en switchTab() is het enige punt dat
+  // "welk tabblad" kan wijzigen.
+  walkFooterSyncVisibility();
   // het stap-voor-stap-bord staat verborgen zolang zijn tab dicht is en wordt daarom pas
   // getekend zodra je hem opent (en opnieuw, want de indeling kan intussen gewijzigd zijn) —
   // MAAR niet tijdens een lopend potje: renderWalkBoard() bouwt het bord helemaal opnieuw op
@@ -6588,6 +6605,19 @@ const walkLobbyEl = document.getElementById('walkLobby');
 const walkPlayAreaEl = document.getElementById('walkPlayArea');
 const walkPlayTopbarEl = document.getElementById('walkPlayTopbar');
 const walkLobbyStatusEl = document.getElementById('walkLobbyStatus');
+const pageFooterEl = document.querySelector('footer');
+// De voettekst (copyright/disclaimer) kost onderaan de pagina net genoeg hoogte om "Stap voor
+// stap" tijdens het spelen (met legenda/log ingeklapt, zie walkToggleExtra hieronder) alsnog
+// een klein stukje te laten scrollen in fullscreen (gebruikersmelding) — verstopt 'm daarom
+// zolang het speelscherm in beeld is. Aangeroepen vanuit walkFadeSwap() hieronder (dekt
+// Automatisch + Zelf spelen) en switchTab()/mpEnterPlayView()/mpExitPlayView() (80-controls.js
+// resp. 99-multiplayer.js) voor de gevallen die walkFadeSwap() niet gebruiken.
+function walkFooterSyncVisibility(){
+  if (!pageFooterEl) return;
+  const onWalkTab = !!walkPanelEl && !walkPanelEl.hidden;
+  const playing = !!walkPlayAreaEl && !walkPlayAreaEl.hidden;
+  pageFooterEl.hidden = onWalkTab && playing;
+}
 
 // ---------- lobby: nieuw startscherm vóór je gaat spelen (gebruikerswens) ----------
 // Eén gecentreerde kolom met alle instellingen en onderaan "Start spel" (zie index.html,
@@ -6618,9 +6648,11 @@ function walkFadeSwap(hideEl, showEl){
   // echte crossfade, niet twee na elkaar (dat gaf eerder alsnog een leeg tussenmoment).
   hideEl.classList.add('walk-fade-hidden');
   showEl.classList.remove('walk-fade-hidden');
+  walkFooterSyncVisibility();   // meteen bij het tonen van het speelscherm verdwijnt de footer
   setTimeout(() => {
     hideEl.hidden = true;
     hideEl.classList.remove('walk-fade-hidden');
+    walkFooterSyncVisibility();   // en komt pas terug zodra je weer echt (en helemaal) in de lobby staat
   }, WALK_FADE_MS);
 }
 function walkFadeToPlay(){ walkFadeSwap(walkLobbyEl, walkPlayAreaEl); }
@@ -7973,6 +8005,7 @@ function setWalkMode(mode){
   // speelscherm-zichtbaarheid die mpEnterPlayView() had omgezet.
   if (walkPlayAreaEl) walkPlayAreaEl.hidden = true;
   if (walkLobbyEl) walkLobbyEl.hidden = false;
+  walkFooterSyncVisibility();   // walkPlayAreaEl.hidden wijzigde net hierboven, niet via walkFadeSwap()
   if (walkSoloPanelEl) walkSoloPanelEl.hidden = true;
   if (btnWalkSoloRoll) btnWalkSoloRoll.hidden = true;
   if (btnWalkSoloSkip) btnWalkSoloSkip.hidden = true;
@@ -10735,6 +10768,7 @@ function mpEnterPlayView(){
   // toch al in één klap van tabblad.
   if (walkLobbyEl) walkLobbyEl.hidden = true;
   if (walkPlayAreaEl) walkPlayAreaEl.hidden = false;
+  walkFooterSyncVisibility();   // walkPlayAreaEl.hidden wijzigde net hierboven, niet via walkFadeSwap()
   if (walkPlayTopbarEl) walkPlayTopbarEl.hidden = true;
   if (walkModeAutoBtn) walkModeAutoBtn.hidden = true;
   if (walkModeSoloBtn) walkModeSoloBtn.hidden = true;

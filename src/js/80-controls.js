@@ -135,6 +135,10 @@ function switchTab(name){
   // "Nieuw potje" (97-solo.js) leeft in de tabbladenbalk zelf, niet in #tabWalk — die balk
   // verbergt niet vanzelf mee met de rest van dit tabblad, dus hier expliciet herchecken.
   walkSoloResetSyncVisibility();
+  // zelfde soort herchecken voor de voettekst (96-walk.js) — die moet weg zodra je zowel op
+  // dit tabblad zit als er een potje in beeld staat, en switchTab() is het enige punt dat
+  // "welk tabblad" kan wijzigen.
+  walkFooterSyncVisibility();
   // het stap-voor-stap-bord staat verborgen zolang zijn tab dicht is en wordt daarom pas
   // getekend zodra je hem opent (en opnieuw, want de indeling kan intussen gewijzigd zijn) —
   // MAAR niet tijdens een lopend potje: renderWalkBoard() bouwt het bord helemaal opnieuw op

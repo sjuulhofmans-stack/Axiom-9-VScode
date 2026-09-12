@@ -320,6 +320,7 @@ function setWalkMode(mode){
   // speelscherm-zichtbaarheid die mpEnterPlayView() had omgezet.
   if (walkPlayAreaEl) walkPlayAreaEl.hidden = true;
   if (walkLobbyEl) walkLobbyEl.hidden = false;
+  walkFooterSyncVisibility();   // walkPlayAreaEl.hidden wijzigde net hierboven, niet via walkFadeSwap()
   if (walkSoloPanelEl) walkSoloPanelEl.hidden = true;
   if (btnWalkSoloRoll) btnWalkSoloRoll.hidden = true;
   if (btnWalkSoloSkip) btnWalkSoloSkip.hidden = true;

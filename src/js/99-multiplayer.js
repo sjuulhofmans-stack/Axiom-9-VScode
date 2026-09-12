@@ -707,6 +707,7 @@ function mpEnterPlayView(){
   // toch al in één klap van tabblad.
   if (walkLobbyEl) walkLobbyEl.hidden = true;
   if (walkPlayAreaEl) walkPlayAreaEl.hidden = false;
+  walkFooterSyncVisibility();   // walkPlayAreaEl.hidden wijzigde net hierboven, niet via walkFadeSwap()
   if (walkPlayTopbarEl) walkPlayTopbarEl.hidden = true;
   if (walkModeAutoBtn) walkModeAutoBtn.hidden = true;
   if (walkModeSoloBtn) walkModeSoloBtn.hidden = true;
