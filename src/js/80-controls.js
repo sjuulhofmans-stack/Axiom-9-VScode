@@ -132,6 +132,9 @@ function switchTab(name){
     btn.setAttribute('aria-selected', active ? 'true' : 'false');
   }
   for (const key of Object.keys(tabPanels)) tabPanels[key].hidden = key !== name;
+  // "Nieuw potje" (97-solo.js) leeft in de tabbladenbalk zelf, niet in #tabWalk — die balk
+  // verbergt niet vanzelf mee met de rest van dit tabblad, dus hier expliciet herchecken.
+  walkSoloResetSyncVisibility();
   // het stap-voor-stap-bord staat verborgen zolang zijn tab dicht is en wordt daarom pas
   // getekend zodra je hem opent (en opnieuw, want de indeling kan intussen gewijzigd zijn)
   if (name === 'walk' && !walkRunning) renderWalkBoard();

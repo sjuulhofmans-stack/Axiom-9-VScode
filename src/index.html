@@ -28,6 +28,14 @@
     <button class="tab-btn" id="tabBtnWalk" data-tab="walk" role="tab" aria-selected="false">Stap voor stap</button>
     <button class="tab-btn" id="tabBtnCards" data-tab="cards" role="tab" aria-selected="false">Speelkaarten</button>
     <button class="tab-btn" id="tabBtnMulti" data-tab="multi" role="tab" aria-selected="false">Multiplayer</button>
+    <!-- "Nieuw potje": alleen relevant op tabblad "Stap voor stap" tijdens Zelf spelen — stond
+         eerst boven het bord (waar een misklik naast de dobbelknop meteen het potje weggooide,
+         gebruikersmelding) en daarna ernaast in .walk-hud, maar de gebruiker wilde 'm liever
+         hier, rechtsboven bij de andere tabbladen, uit de buurt van het dobbelen. Zichtbaarheid
+         (welk tabblad + solo-modus + geen multiplayer) via walkSoloResetSyncVisibility() in
+         97-solo.js, aangeroepen vanuit switchTab() (80-controls.js) en setWalkMode()
+         (97-solo.js). Klikken opent nu eerst #walkResetConfirm i.p.v. meteen te resetten. -->
+    <button type="button" id="btnWalkSoloReset" class="small ghost tab-bar-action" disabled hidden>Nieuw potje</button>
   </div>
 
   <div id="tabMap" class="tab-panel" role="tabpanel">
@@ -329,14 +337,6 @@
                 <button id="btnWalkSoloRoll" class="primary" hidden>🎲 Gooi de dobbelstenen</button>
                 <button id="btnWalkSoloSkip" class="primary" hidden>Dobbelen</button>
               </div>
-              <!-- "Nieuw potje": alleen in Zelf spelen, hier naast het bord i.p.v. in de topbar
-                   erboven (zie #walkPlayTopbar hierboven) — daar was het in solo-modus de enige
-                   knop in een verder lege rij, en dat hield het bord verder van de bovenkant van
-                   het paneel dan nodig (gebruikersmelding). Zelfde auto-hide-truc als
-                   .walk-mp-leave-row hieronder (styles.css) zodra de knop zelf hidden staat. -->
-              <div class="btn-row walk-solo-reset-row">
-                <button id="btnWalkSoloReset" class="small ghost" disabled>Nieuw potje</button>
-              </div>
               <!-- alleen zichtbaar tijdens een lopend multiplayer-potje (zie mpEnterPlayView/
                    mpExitPlayView in 99-multiplayer.js) — staat BUITEN walkSoloActions, dat elke
                    broadcast wordt overschreven, en dus ook buiten je eigen beurt bereikbaar is. -->
@@ -575,6 +575,20 @@
             <ul id="editorChecklist" class="checklist"></ul>
           </div>
         </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- bevestiging voor "Nieuw potje" (Zelf spelen, zie #btnWalkSoloReset hierboven in de
+       tabbladenbalk) — zonder dit gooide een misklik meteen het lopende potje weg, zonder
+       enige kans om terug te krabbelen (gebruikersmelding). -->
+  <div id="walkResetConfirm" class="walk-confirm-overlay" hidden>
+    <div class="walk-confirm-panel" role="dialog" aria-modal="true" aria-labelledby="walkResetConfirmTitle">
+      <p id="walkResetConfirmTitle">Wil je een nieuw potje starten?</p>
+      <p class="hint">Het lopende potje gaat dan verloren.</p>
+      <div class="walk-confirm-actions">
+        <button type="button" id="btnWalkResetConfirmYes" class="primary">Ja, nieuw potje</button>
+        <button type="button" id="btnWalkResetConfirmCancel" class="ghost">Annuleren</button>
       </div>
     </div>
   </div>

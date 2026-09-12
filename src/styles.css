@@ -109,6 +109,11 @@
   /* zolang een multiplayer-potje loopt (zie switchTab-guard in 80-controls.js) zijn de andere
      tabbladen niet aanklikbaar — visueel gedimd zodat dat ook zonder klikken duidelijk is */
   .tab-bar.mp-locked .tab-btn:not([data-tab="walk"]){opacity:.35; pointer-events:none;}
+  /* "Nieuw potje" (#btnWalkSoloReset) — margin-left:auto duwt 'm helemaal naar rechts in
+     dezelfde balk als de tabbladen, los van hoeveel tabbladen ervoor staan. align-self:center
+     + eigen margin i.p.v. .tab-btn's padding/margin-bottom: dit is geen tabblad en moet niet
+     de onderrand-illusie van de tabs meedoen (gebruikerswens: rechtsboven, niet nog een tab). */
+  .tab-bar-action{margin:0 0 0 auto; align-self:center;}
 
   /* ---------- layout ---------- */
   .grid-layout{
@@ -842,9 +847,6 @@
      paneel eronder springt op het moment dat BEIDE knoppen daar even verborgen zijn. Vandaar een
      eigen klasse i.p.v. dezelfde regel op alle btn-rows. */
   .walk-hud .btn-row.walk-mp-leave-row:not(:has(> :not([hidden]))){display:none;}
-  /* zelfde truc voor "Nieuw potje" (alleen relevant in Zelf spelen) — geen 40px lege rij
-     tijdens Automatisch, waar #btnWalkSoloReset altijd hidden staat. */
-  .walk-hud .btn-row.walk-solo-reset-row:not(:has(> :not([hidden]))){display:none;}
   /* Twee vaste regels: loopstenen boven, energiesteen eronder. De vaste min-height dekt
      allebei de regels, zodat het blok niet van hoogte verandert als de Stuwstoot een derde
      loopsteen toevoegt. */
@@ -1568,6 +1570,27 @@
     display:flex; align-items:center; justify-content:center; padding:18px; z-index:100;
   }
   .editor-overlay[hidden]{display:none;}
+
+  /* bevestiging vóór "Nieuw potje" (Zelf spelen) — zelfde overlay-opzet als .editor-overlay/
+     .card-overlay hierboven, maar dan een klein blokje met alleen een vraag en twee knoppen.
+     z-index hoger dan de andere overlays: kan in theorie boven het kaartvenster verschijnen
+     (je kunt "Nieuw potje" ook met kaarten op zak indrukken) en moet dan wél zichtbaar zijn. */
+  .walk-confirm-overlay{
+    position:fixed; inset:0; background:rgba(4,7,10,.82); backdrop-filter:blur(3px);
+    display:flex; align-items:center; justify-content:center; padding:18px; z-index:130;
+  }
+  .walk-confirm-overlay[hidden]{display:none;}
+  .walk-confirm-panel{
+    background:linear-gradient(180deg, var(--panel), var(--panel-2));
+    border:1px solid var(--line); border-radius:8px; padding:24px 28px;
+    max-width:380px; width:100%; text-align:center;
+    display:flex; flex-direction:column; gap:14px;
+  }
+  .walk-confirm-panel > p:first-child{
+    margin:0; font-family:var(--font-display); font-size:16px; font-weight:700; color:var(--text);
+  }
+  .walk-confirm-panel .hint{margin:0;}
+  .walk-confirm-actions{display:flex; gap:10px; justify-content:center; flex-wrap:wrap;}
   .editor-panel{
     background:linear-gradient(180deg, var(--panel), var(--panel-2));
     border:1px solid var(--line); border-radius:8px; padding:18px;

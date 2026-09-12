@@ -32,6 +32,9 @@ const walkSoloSetupEl = document.getElementById('walkSoloSetupPlayers');
 const walkSoloStartRowEl = document.getElementById('walkSoloStartRow');
 const btnWalkSoloStart = document.getElementById('btnWalkSoloStart');
 const btnWalkSoloReset = document.getElementById('btnWalkSoloReset');
+const walkResetConfirmEl = document.getElementById('walkResetConfirm');
+const btnWalkResetConfirmYes = document.getElementById('btnWalkResetConfirmYes');
+const btnWalkResetConfirmCancel = document.getElementById('btnWalkResetConfirmCancel');
 const walkSoloPanelEl = document.getElementById('walkSoloPanel');
 const walkSoloActionsEl = document.getElementById('walkSoloActions');
 const btnWalkSoloRoll = document.getElementById('btnWalkSoloRoll');
@@ -301,14 +304,14 @@ function setWalkMode(mode){
   // zichtbaar, net als de instellingen erboven.
   if (btnWalkStart) btnWalkStart.hidden = !isAuto;
   // het speelscherm-topbalkje (Pauze/Stoppen — alleen voor Automatisch, zie #walkPlayTopbar in
-  // index.html) en "Nieuw potje" (alleen voor Zelf spelen, staat naast het bord in .walk-hud,
-  // niet in de topbar — zie #btnWalkSoloReset in index.html); onzichtbaar terwijl je nog in de
-  // lobby zit maakt niets uit, maar moet wel kloppen zodra walkFadeToPlay() het speelscherm
-  // toont. De topbar zelf is alleen nog nodig in Automatisch — in Zelf spelen staat er niets
-  // meer in, dus die rij verdwijnt daar helemaal i.p.v. leeg boven het bord te blijven staan.
+  // index.html); onzichtbaar terwijl je nog in de lobby zit maakt niets uit, maar moet wel
+  // kloppen zodra walkFadeToPlay() het speelscherm toont. "Nieuw potje" staat niet meer hier,
+  // maar rechtsboven in de tabbladenbalk (zie walkSoloResetSyncVisibility hieronder) — de
+  // topbar is daardoor alleen nog nodig in Automatisch en verdwijnt helemaal in Zelf spelen,
+  // i.p.v. leeg boven het bord te blijven staan.
   if (btnWalkPause) btnWalkPause.hidden = !isAuto;
   if (btnWalkStop) btnWalkStop.hidden = !isAuto;
-  if (btnWalkSoloReset) btnWalkSoloReset.hidden = isAuto;
+  walkSoloResetSyncVisibility();
   if (walkPlayTopbarEl) walkPlayTopbarEl.hidden = !isAuto;
   if (walkLobbyStatusEl) walkLobbyStatusEl.innerHTML = '';
   // setWalkMode() is alleen bereikbaar terwijl de lobby al in beeld is (de modusknoppen zitten
@@ -466,16 +469,39 @@ function soloRefreshTarget(){
 // zet (gebruikerswens: "even goed kunnen spieken welke opdracht in welke kamer zit, om de beste
 // tactiek uit te rekenen"). Zodra de muis weggaat komt je échte doel terug via
 // soloRefreshTarget() — dezelfde functie die ook aan het begin van je beurt de markering zet.
+//
+// `mouseout` op rij A en `mouseover` op rij B zijn twee LOSSE events — ook zonder tussenruimte
+// tussen de rijen kan de muis daar precies tussenin een frame "nergens boven" staan. Zonder
+// vertraging knipperde daardoor je eigen opdracht steeds héél even terug bij het doorbewegen
+// over de lijst (gebruikersmelding: "hakkelend, springt continu terug tussen 2 opdrachten").
+// soloPeekQuestEnd() wacht daarom SOLO_PEEK_END_DELAY voordat hij écht terugschakelt, en die
+// wachttijd wordt geannuleerd zodra soloPeekQuest() (op eender welke rij, ook dezelfde) intussen
+// opnieuw afgaat — dus alleen als de muis de hele lijst verlaat, zie je je eigen opdracht terug.
+const SOLO_PEEK_END_DELAY = 120;
 let soloPeeking = false;
+let soloPeekEndTimer = null;
 function soloPeekQuest(label){
-  if (soloPeeking || !soloGraph || !label) return;
+  if (!soloGraph || !label) return;
   const key = soloGraph.questCells[label];
   if (key === undefined) return;
+  if (soloPeekEndTimer){ clearTimeout(soloPeekEndTimer); soloPeekEndTimer = null; }
   const p = solo();
   soloPeeking = true;
   markWalkTarget(soloGraph, label, key, p ? p.color : '#4fb8e0');
 }
 function soloPeekQuestEnd(){
+  if (!soloPeeking || soloPeekEndTimer) return;
+  soloPeekEndTimer = setTimeout(() => {
+    soloPeekEndTimer = null;
+    soloPeekReset();
+  }, SOLO_PEEK_END_DELAY);
+}
+// Directe (niet-vertraagde) versie voor de plekken waar wachten niet kan: bij een her-render van
+// de rijen (soloRenderQuestChecklist) of bij het stoppen van het potje (stopSoloGame) moet de
+// spiek-status meteen kloppen, niet pas over SOLO_PEEK_END_DELAY ms op een DOM/potje dat er dan
+// misschien al niet meer is.
+function soloPeekReset(){
+  if (soloPeekEndTimer){ clearTimeout(soloPeekEndTimer); soloPeekEndTimer = null; }
   if (!soloPeeking) return;
   soloPeeking = false;
   const p = solo();
@@ -2179,7 +2205,41 @@ if (btnWalkSoloStart) btnWalkSoloStart.addEventListener('click', () => walkTrySt
 // nieuw geschudde stapels en een nieuwe RNG, en vult de lobby-opzet weer — walkFadeToLobby()
 // erna brengt die ook echt weer in beeld (gebruikerswens: "Nieuw potje" gaat terug naar het
 // startscherm, net als "Stoppen" bij Automatisch).
-if (btnWalkSoloReset) btnWalkSoloReset.addEventListener('click', () => { soloRebuildSetup(); walkFadeToLobby(); });
+function walkResetConfirmedReset(){
+  if (walkResetConfirmEl) walkResetConfirmEl.hidden = true;
+  soloRebuildSetup();
+  walkFadeToLobby();
+}
+// Klikken opent nu eerst een bevestiging i.p.v. meteen te resetten — de knop staat in de
+// tabbladenbalk, vlak boven de rest van de pagina, en een misklik (bv. net naast de dobbelknop
+// op een telefoon) gooide zonder dit een lopend potje weg zonder enige kans om terug te
+// krabbelen (gebruikersmelding). Klik naast het paneel of Escape = annuleren, net als de
+// andere overlays (zie cardOverlayEl/editorOverlay elders in dit bestand resp. 90-editor.js).
+if (btnWalkSoloReset) btnWalkSoloReset.addEventListener('click', () => {
+  if (walkResetConfirmEl) walkResetConfirmEl.hidden = false;
+});
+if (btnWalkResetConfirmYes) btnWalkResetConfirmYes.addEventListener('click', walkResetConfirmedReset);
+if (btnWalkResetConfirmCancel) btnWalkResetConfirmCancel.addEventListener('click', () => {
+  if (walkResetConfirmEl) walkResetConfirmEl.hidden = true;
+});
+if (walkResetConfirmEl) walkResetConfirmEl.addEventListener('click', (e) => {
+  if (e.target === walkResetConfirmEl) walkResetConfirmEl.hidden = true;   // klik naast het venster sluit het
+});
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape' && walkResetConfirmEl && !walkResetConfirmEl.hidden) walkResetConfirmEl.hidden = true;
+});
+// Zichtbaarheid van de knop zelf: alleen op tabblad "Stap voor stap", alleen in Zelf spelen, en
+// nooit tijdens multiplayer (dat heeft zijn eigen "Verlaat potje", zie 99-multiplayer.js) — de
+// knop leeft nu in de globale tabbladenbalk (index.html), die anders dan #tabWalk niet vanzelf
+// meeverbergt met switchTab(). Aangeroepen vanuit setWalkMode() hierboven en switchTab()
+// (80-controls.js); walkPanelEl (= #tabWalk) komt uit 96-walk.js.
+function walkSoloResetSyncVisibility(){
+  if (!btnWalkSoloReset) return;
+  const onWalkTab = !!walkPanelEl && !walkPanelEl.hidden;
+  const soloActive = !!walkModeSoloBtn && walkModeSoloBtn.classList.contains('active');
+  const inMultiplayer = !!window.mpGameActive;
+  btnWalkSoloReset.hidden = !(onWalkTab && soloActive && !inMultiplayer);
+}
 
 // "Automatisch" is de standaard-actieve tab (zie de HTML), maar zonder deze aanroep bleef de
 // solo-opzet-UI (spelerskeuze + "Potje starten"/"Nieuw potje") gewoon zichtbaar bij het laden
