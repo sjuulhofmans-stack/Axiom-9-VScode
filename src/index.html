@@ -154,19 +154,17 @@
 
     <!-- LOBBY: nieuw, makkelijker startscherm vóór je gaat spelen (gebruikerswens) — één
          gecentreerde kolom met alle instellingen onder elkaar en onderaan één "Start spel"-knop.
-         Fadet weg zodra de indeling geldig is; het speelscherm (#walkPlayArea hieronder) fadet
-         er dan voor in de plaats (walkFadeToPlay() in 96-walk.js). "Stoppen"/"Nieuw potje" in het
-         speelscherm faden weer terug hierheen.
+         #walkLobby en het speelscherm (#walkPlayArea hieronder) delen één blijvende buitenkant
+         (.panel op #walkPanel) — alleen de binnenkant wisselt, in één klap, geen fade
+         (walkFadeToPlay()/walkFadeToLobby() in 96-walk.js). Eerdere versie liet elk zijn eigen
+         .panel-blok zijn dat wegfaadde/verscheen, wat aanvoelde als "de hele kolom verdwijnt en
+         er komt ergens anders een nieuwe" (gebruikersmelding) — vandaar de gedeelde buitenkant.
+         "Stoppen"/"Nieuw potje" in het speelscherm wisselen met dezelfde functie terug hierheen.
          TODO: hier komt straks nog een kort introfilmpje na het klikken op "Start spel", vóórdat
          het bord verschijnt — moet nog gemaakt worden. walkTryStart() in 96-walk.js is de plek
          om dat later tussen te haken. -->
-    <!-- gedeelde buitenkant (.panel) voor lobby EN speelscherm — blijft altijd op zijn plek
-         staan, alleen de binnenkant (#walkLobby vs. #walkPlayArea) wisselt met walkFadeSwap()
-         in 96-walk.js. Voorheen waren dit twee losse .panel-blokken die om en om verdwenen/
-         verschenen, waardoor de hele kolom leeg faadde en er dan ergens anders een nieuwe
-         opdook (gebruikersmelding). -->
     <div class="panel" id="walkPanel">
-    <div class="walk-fade" id="walkLobby">
+    <div id="walkLobby">
       <h2>Stap voor stap</h2>
       <div class="walk-lobby-col">
         <div class="walk-mode-toggle" role="tablist">
@@ -235,7 +233,7 @@
     </div>
 
     <!-- SPEELSCHERM: verschijnt (fade-in) zodra je in de lobby op "Start spel" hebt geklikt. -->
-    <div class="walk-fade" id="walkPlayArea" hidden>
+    <div id="walkPlayArea" hidden>
       <div class="controls">
         <div class="btn-row walk-play-topbar" id="walkPlayTopbar">
           <button id="btnWalkPause" class="ghost" disabled>Pauze</button>

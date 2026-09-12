@@ -378,12 +378,6 @@
   .walk-lobby-start-row #walkSoloStartRow[hidden]{display:none;}
   .walk-lobby-start{width:100%; padding:13px; font-size:15px;}
 
-  /* fade-overgang tussen de lobby en het speelscherm (walkFadeToPlay/walkFadeToLobby,
-     96-walk.js) — .walk-fade-out is de tussentoestand vlak vóór/na `hidden` wisselt, zodat de
-     opacity ook echt animeert i.p.v. in één klap te verspringen. */
-  .walk-fade{transition:opacity .4s ease;}
-  .walk-fade.walk-fade-out{opacity:0;}
-
   .walk-play-topbar{margin-bottom:2px;}
 
   /* standenrij boven, dan bord + één vaste zijkolom ernaast. De standenrij staat hier

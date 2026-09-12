@@ -385,12 +385,6 @@
   .walk-lobby-start-row #walkSoloStartRow[hidden]{display:none;}
   .walk-lobby-start{width:100%; padding:13px; font-size:15px;}
 
-  /* fade-overgang tussen de lobby en het speelscherm (walkFadeToPlay/walkFadeToLobby,
-     96-walk.js) — .walk-fade-out is de tussentoestand vlak vóór/na `hidden` wisselt, zodat de
-     opacity ook echt animeert i.p.v. in één klap te verspringen. */
-  .walk-fade{transition:opacity .4s ease;}
-  .walk-fade.walk-fade-out{opacity:0;}
-
   .walk-play-topbar{margin-bottom:2px;}
 
   /* standenrij boven, dan bord + één vaste zijkolom ernaast. De standenrij staat hier
@@ -2069,19 +2063,17 @@
 
     <!-- LOBBY: nieuw, makkelijker startscherm vóór je gaat spelen (gebruikerswens) — één
          gecentreerde kolom met alle instellingen onder elkaar en onderaan één "Start spel"-knop.
-         Fadet weg zodra de indeling geldig is; het speelscherm (#walkPlayArea hieronder) fadet
-         er dan voor in de plaats (walkFadeToPlay() in 96-walk.js). "Stoppen"/"Nieuw potje" in het
-         speelscherm faden weer terug hierheen.
+         #walkLobby en het speelscherm (#walkPlayArea hieronder) delen één blijvende buitenkant
+         (.panel op #walkPanel) — alleen de binnenkant wisselt, in één klap, geen fade
+         (walkFadeToPlay()/walkFadeToLobby() in 96-walk.js). Eerdere versie liet elk zijn eigen
+         .panel-blok zijn dat wegfaadde/verscheen, wat aanvoelde als "de hele kolom verdwijnt en
+         er komt ergens anders een nieuwe" (gebruikersmelding) — vandaar de gedeelde buitenkant.
+         "Stoppen"/"Nieuw potje" in het speelscherm wisselen met dezelfde functie terug hierheen.
          TODO: hier komt straks nog een kort introfilmpje na het klikken op "Start spel", vóórdat
          het bord verschijnt — moet nog gemaakt worden. walkTryStart() in 96-walk.js is de plek
          om dat later tussen te haken. -->
-    <!-- gedeelde buitenkant (.panel) voor lobby EN speelscherm — blijft altijd op zijn plek
-         staan, alleen de binnenkant (#walkLobby vs. #walkPlayArea) wisselt met walkFadeSwap()
-         in 96-walk.js. Voorheen waren dit twee losse .panel-blokken die om en om verdwenen/
-         verschenen, waardoor de hele kolom leeg faadde en er dan ergens anders een nieuwe
-         opdook (gebruikersmelding). -->
     <div class="panel" id="walkPanel">
-    <div class="walk-fade" id="walkLobby">
+    <div id="walkLobby">
       <h2>Stap voor stap</h2>
       <div class="walk-lobby-col">
         <div class="walk-mode-toggle" role="tablist">
@@ -2150,7 +2142,7 @@
     </div>
 
     <!-- SPEELSCHERM: verschijnt (fade-in) zodra je in de lobby op "Start spel" hebt geklikt. -->
-    <div class="walk-fade" id="walkPlayArea" hidden>
+    <div id="walkPlayArea" hidden>
       <div class="controls">
         <div class="btn-row walk-play-topbar" id="walkPlayTopbar">
           <button id="btnWalkPause" class="ghost" disabled>Pauze</button>
@@ -6469,26 +6461,21 @@ const walkLobbyStatusEl = document.getElementById('walkLobbyStatus');
 // ---------- lobby: nieuw startscherm vóór je gaat spelen (gebruikerswens) ----------
 // Eén gecentreerde kolom met alle instellingen en onderaan "Start spel" (zie index.html,
 // #walkLobby). #walkLobby en #walkPlayArea zitten sámen in één vast #walkPanel (.panel) —
-// dat paneel zelf faadt/verdwijnt nooit, alleen de inhoud van de twee erbinnen wisselt
-// (gebruikersmelding: het zag er anders uit als "de hele kolom verdwijnt en er komt ergens
-// anders een nieuwe"). Fadet naar het speelscherm zodra de indeling geldig is; "Stoppen"/
-// "Nieuw potje" faden weer terug — zie de btnWalkStop/btnWalkSoloReset-listeners hieronder
-// resp. in 97-solo.js.
+// dat paneel zelf verdwijnt nooit, alleen de inhoud van de twee erbinnen wisselt, en dat
+// wisselen gebeurt bewust in één klap (geen fade meer — een fade-out liet de kolom eerst
+// helemaal transparant/leeg worden vóórdat het speelscherm verscheen, en dat las als "de
+// hele kolom verdwijnt en komt terug", precies de gebruikersmelding die dit moest oplossen).
+// "Stoppen"/"Nieuw potje" wisselen met dezelfde walkFadeToLobby() terug — zie de
+// btnWalkStop/btnWalkSoloReset-listeners hieronder resp. in 97-solo.js. Ondanks de naam dus
+// geen animatie (meer); de namen walkFadeToPlay/walkFadeToLobby zijn gehouden omdat ze overal
+// als "ga naar het speelscherm/de lobby" aangeroepen worden, zie 99-multiplayer.js voor het
+// (al langer bestaande) ongeanimeerde equivalent.
 // TODO: hier komt straks nog een kort introfilmpje na het klikken op "Start spel", vóórdat het
 // bord verschijnt (moet nog gemaakt worden) — walkTryStart() hieronder is de plek om dat later
-// tussen te haken, vóór de aanroep van walkFadeToPlay().
-const WALK_FADE_MS = 400;   // moet gelijk blijven aan .walk-fade's transition-duur in styles.css
+// tussen te haken.
 function walkFadeSwap(hideEl, showEl){
-  if (!hideEl || !showEl){ if (hideEl) hideEl.hidden = true; if (showEl) showEl.hidden = false; return; }
-  hideEl.classList.add('walk-fade-out');
-  setTimeout(() => {
-    hideEl.hidden = true;
-    hideEl.classList.remove('walk-fade-out');
-    showEl.hidden = false;
-    showEl.classList.add('walk-fade-out');
-    void showEl.offsetWidth;   // reflow forceren, anders animeert de overgang hierna niet
-    showEl.classList.remove('walk-fade-out');
-  }, WALK_FADE_MS);
+  if (hideEl) hideEl.hidden = true;
+  if (showEl) showEl.hidden = false;
 }
 function walkFadeToPlay(){ walkFadeSwap(walkLobbyEl, walkPlayAreaEl); }
 function walkFadeToLobby(){ walkFadeSwap(walkPlayAreaEl, walkLobbyEl); }

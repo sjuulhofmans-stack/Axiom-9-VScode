@@ -52,26 +52,21 @@ const walkLobbyStatusEl = document.getElementById('walkLobbyStatus');
 // ---------- lobby: nieuw startscherm vóór je gaat spelen (gebruikerswens) ----------
 // Eén gecentreerde kolom met alle instellingen en onderaan "Start spel" (zie index.html,
 // #walkLobby). #walkLobby en #walkPlayArea zitten sámen in één vast #walkPanel (.panel) —
-// dat paneel zelf faadt/verdwijnt nooit, alleen de inhoud van de twee erbinnen wisselt
-// (gebruikersmelding: het zag er anders uit als "de hele kolom verdwijnt en er komt ergens
-// anders een nieuwe"). Fadet naar het speelscherm zodra de indeling geldig is; "Stoppen"/
-// "Nieuw potje" faden weer terug — zie de btnWalkStop/btnWalkSoloReset-listeners hieronder
-// resp. in 97-solo.js.
+// dat paneel zelf verdwijnt nooit, alleen de inhoud van de twee erbinnen wisselt, en dat
+// wisselen gebeurt bewust in één klap (geen fade meer — een fade-out liet de kolom eerst
+// helemaal transparant/leeg worden vóórdat het speelscherm verscheen, en dat las als "de
+// hele kolom verdwijnt en komt terug", precies de gebruikersmelding die dit moest oplossen).
+// "Stoppen"/"Nieuw potje" wisselen met dezelfde walkFadeToLobby() terug — zie de
+// btnWalkStop/btnWalkSoloReset-listeners hieronder resp. in 97-solo.js. Ondanks de naam dus
+// geen animatie (meer); de namen walkFadeToPlay/walkFadeToLobby zijn gehouden omdat ze overal
+// als "ga naar het speelscherm/de lobby" aangeroepen worden, zie 99-multiplayer.js voor het
+// (al langer bestaande) ongeanimeerde equivalent.
 // TODO: hier komt straks nog een kort introfilmpje na het klikken op "Start spel", vóórdat het
 // bord verschijnt (moet nog gemaakt worden) — walkTryStart() hieronder is de plek om dat later
-// tussen te haken, vóór de aanroep van walkFadeToPlay().
-const WALK_FADE_MS = 400;   // moet gelijk blijven aan .walk-fade's transition-duur in styles.css
+// tussen te haken.
 function walkFadeSwap(hideEl, showEl){
-  if (!hideEl || !showEl){ if (hideEl) hideEl.hidden = true; if (showEl) showEl.hidden = false; return; }
-  hideEl.classList.add('walk-fade-out');
-  setTimeout(() => {
-    hideEl.hidden = true;
-    hideEl.classList.remove('walk-fade-out');
-    showEl.hidden = false;
-    showEl.classList.add('walk-fade-out');
-    void showEl.offsetWidth;   // reflow forceren, anders animeert de overgang hierna niet
-    showEl.classList.remove('walk-fade-out');
-  }, WALK_FADE_MS);
+  if (hideEl) hideEl.hidden = true;
+  if (showEl) showEl.hidden = false;
 }
 function walkFadeToPlay(){ walkFadeSwap(walkLobbyEl, walkPlayAreaEl); }
 function walkFadeToLobby(){ walkFadeSwap(walkPlayAreaEl, walkLobbyEl); }
