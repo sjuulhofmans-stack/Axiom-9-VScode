@@ -25,16 +25,16 @@
   <div class="tab-bar" role="tablist">
     <button class="tab-btn active" id="tabBtnMap" data-tab="map" role="tab" aria-selected="true">Speelbord genereren</button>
     <button class="tab-btn" id="tabBtnSimulate" data-tab="simulate" role="tab" aria-selected="false">Simulatie</button>
-    <button class="tab-btn" id="tabBtnWalk" data-tab="walk" role="tab" aria-selected="false">Stap voor stap</button>
+    <button class="tab-btn" id="tabBtnWalk" data-tab="walk" role="tab" aria-selected="false">Zelf spelen</button>
     <button class="tab-btn" id="tabBtnCards" data-tab="cards" role="tab" aria-selected="false">Speelkaarten</button>
-    <button class="tab-btn" id="tabBtnMulti" data-tab="multi" role="tab" aria-selected="false">Multiplayer</button>
-    <!-- "Nieuw potje": alleen relevant op tabblad "Stap voor stap" tijdens Zelf spelen — stond
-         eerst boven het bord (waar een misklik naast de dobbelknop meteen het potje weggooide,
-         gebruikersmelding) en daarna ernaast in .walk-hud, maar de gebruiker wilde 'm liever
-         hier, rechtsboven bij de andere tabbladen, uit de buurt van het dobbelen. Zichtbaarheid
-         (welk tabblad + solo-modus + geen multiplayer) via walkSoloResetSyncVisibility() in
-         97-solo.js, aangeroepen vanuit switchTab() (80-controls.js) en setWalkMode()
-         (97-solo.js). Klikken opent nu eerst #walkResetConfirm i.p.v. meteen te resetten. -->
+    <!-- "Nieuw potje": alleen relevant op tabblad "Zelf spelen" tijdens de modus Zelf spelen —
+         stond eerst boven het bord (waar een misklik naast de dobbelknop meteen het potje
+         weggooide, gebruikersmelding) en daarna ernaast in .walk-hud, maar de gebruiker wilde
+         'm liever hier, rechtsboven bij de andere tabbladen, uit de buurt van het dobbelen.
+         Zichtbaarheid (welk tabblad + solo-modus + geen multiplayer) via
+         walkSoloResetSyncVisibility() in 97-solo.js, aangeroepen vanuit switchTab()
+         (80-controls.js) en setWalkMode() (97-solo.js). Klikken opent nu eerst
+         #walkResetConfirm i.p.v. meteen te resetten. -->
     <button type="button" id="btnWalkSoloReset" class="small ghost tab-bar-action" disabled hidden>Nieuw potje</button>
   </div>
 
@@ -173,11 +173,12 @@
          om dat later tussen te haken. -->
     <div class="panel" id="walkPanel">
     <div id="walkLobby">
-      <h2>Stap voor stap</h2>
+      <h2>Zelf spelen</h2>
       <div class="walk-lobby-col">
         <div class="walk-mode-toggle" role="tablist">
           <button class="walk-mode-btn active" id="walkModeAuto" data-mode="auto" role="tab" aria-selected="true">Automatisch</button>
           <button class="walk-mode-btn" id="walkModeSolo" data-mode="solo" role="tab" aria-selected="false">Zelf spelen</button>
+          <button class="walk-mode-btn" id="walkModeMulti" data-mode="multi" role="tab" aria-selected="false">Multiplayer</button>
         </div>
 
         <div class="walk-controls walk-lobby-fields" id="walkAutoControls">
@@ -228,6 +229,97 @@
         </div>
         <p class="hint" id="walkSoloHint" hidden>Jij bestuurt één speler, de rest speelt zichzelf. <b>Volgorde van een beurt:</b> 1. energie-actie kiezen en meteen inzetten — óók Noodrantsoen of Stuwlading spelen kan al op dit moment — 2. dobbelen (2 loopstenen + de energiesteen) — 3. stappen zetten, waarbij je vóór de eerste stap of tussen stappen door hooguit <b>één</b> actiekaart mag spelen of afleggen (als je er nog geen gebruikt hebt). Een actiekaart krijg je door een opdracht te voltooien, of door tijdens je beurt over het actiekaartvakje van een gang te lopen (je zet stopt daar niet voor, en hooguit 1 kaart per beurt op die manier); je houdt er hoogstens drie op hand.</p>
         <div id="walkSoloSetupPlayers" class="walk-solo-setup"></div>
+
+        <!-- MULTIPLAYER: was een losse tab, nu de derde modus hier (gebruikerswens) — zelfde
+             smalle gecentreerde kolom als Automatisch/Zelf spelen i.p.v. de vroegere brede
+             2-koloms indeling met chat ernaast. Alle id's hieronder zijn ongewijzigd blijven
+             staan (alleen de HTML-locatie is verhuisd), dus 99-multiplayer.js hoefde niet aan
+             te passen wat het met getElementById opzoekt. -->
+        <p class="hint" id="walkMultiHint" hidden>Speel hetzelfde spel als "Zelf spelen", nu met vrienden op afstand. Verbindt rechtstreeks van speler naar speler (peer-to-peer, geen eigen server) zodra je hier daadwerkelijk iets aanklikt — de rest van deze tool blijft gewoon offline werken. Zodra een potje loopt kun je niet meer naar een ander tabblad wisselen, tot het is afgelopen.</p>
+        <div class="walk-controls walk-lobby-fields" id="walkMultiControls" hidden>
+          <div id="mpChoice" class="btn-row">
+            <button type="button" id="btnMpHost" class="primary">Spel hosten</button>
+            <button type="button" id="btnMpJoinShow" class="ghost">Deelnemen aan spel</button>
+          </div>
+
+          <div id="mpHostSetup" class="mp-setup" hidden>
+            <div class="field">
+              <label for="mpHostName">Jouw naam</label>
+              <input type="text" id="mpHostName" maxlength="18" placeholder="Speler 1">
+            </div>
+            <div class="field">
+              <label for="mpHostTotal">Aantal spelers</label>
+              <select id="mpHostTotal">
+                <option value="2">2 spelers</option>
+                <option value="3">3 spelers</option>
+                <option value="4" selected>4 spelers</option>
+              </select>
+            </div>
+            <div class="field">
+              <label for="mpHostFillBots">Lege plekken bij het starten</label>
+              <select id="mpHostFillBots">
+                <option value="bots" selected>vullen met bots</option>
+                <option value="wait">niet starten — wachten tot vol</option>
+              </select>
+            </div>
+            <div class="btn-row">
+              <button type="button" id="btnMpHostCreate" class="primary">Aanmaken</button>
+              <button type="button" id="btnMpHostCancel" class="ghost">Terug</button>
+            </div>
+
+            <div id="mpHostRoom" hidden>
+              <p class="hint">Deel deze code met je vrienden:</p>
+              <div class="mp-room-code">
+                <b id="mpRoomCodeText"></b>
+                <button type="button" id="btnMpCopyCode" class="small ghost">Kopieer</button>
+              </div>
+              <div id="mpHostSeats" class="walk-solo-setup"></div>
+              <div class="btn-row">
+                <button type="button" id="btnMpHostStart" class="primary" disabled>Spel starten</button>
+                <button type="button" id="btnMpHostStop" class="ghost">Spel afbreken</button>
+              </div>
+            </div>
+          </div>
+
+          <div id="mpJoinForm" class="mp-setup" hidden>
+            <div class="field">
+              <label for="mpJoinName">Jouw naam</label>
+              <input type="text" id="mpJoinName" maxlength="18" placeholder="Speler 2">
+            </div>
+            <div class="field">
+              <label for="mpJoinCode">Spelcode</label>
+              <input type="text" id="mpJoinCode" maxlength="8" placeholder="bv. AXQ7K2" style="text-transform:uppercase;">
+            </div>
+            <div class="btn-row">
+              <button type="button" id="btnMpJoinConnect" class="primary">Verbinden</button>
+              <button type="button" id="btnMpJoinCancel" class="ghost">Terug</button>
+            </div>
+          </div>
+
+          <div id="mpJoinWaiting" hidden>
+            <p class="hint">Verbonden — wacht tot de host het spel start.</p>
+            <div id="mpWaitSeats" class="walk-solo-setup"></div>
+            <div class="btn-row">
+              <button type="button" id="btnMpJoinLeave" class="ghost">Verlaten</button>
+            </div>
+          </div>
+
+          <div id="mpStatus" class="reach-status"></div>
+
+          <!-- zelfde berichten (mpChatMessages in 99-multiplayer.js) als de in-gamespiegel
+               (#mpChatPanelGame, verderop in dit bestand bij .walk-side-stack) — een lopend
+               gesprek loopt gewoon door zodra het potje start. class="panel" hier is geen
+               nieuw patroon: #mpChatPanelGame nestelt een .panel al net zo binnen #walkPanel. -->
+          <div class="panel mp-chat-panel" id="mpChatPanel" hidden>
+            <h2>Chat</h2>
+            <div id="mpChatLog" class="mp-chat-log" role="log" aria-live="polite"></div>
+            <form id="mpChatForm" class="mp-chat-form" autocomplete="off">
+              <input type="text" id="mpChatInput" maxlength="240" placeholder="Typ een bericht…" aria-label="Chatbericht">
+              <button type="submit" class="small primary">Stuur</button>
+            </form>
+            <p class="hint">Typ alleen een cijfer (bv. <b>7</b>) voor een taunt — hoorbaar voor iedereen in de room.</p>
+          </div>
+        </div>
 
         <div id="walkLobbyStatus" class="reach-status"></div>
 
@@ -427,96 +519,6 @@
     </div>
   </div>
 
-  <div id="tabMulti" class="tab-panel" role="tabpanel" hidden>
-    <div class="mp-layout">
-      <div class="panel">
-        <h2>Multiplayer</h2>
-        <p class="hint">Speel hetzelfde spel als "Stap voor stap → Zelf spelen", nu met vrienden op afstand. Verbindt rechtstreeks van speler naar speler (peer-to-peer, geen eigen server) zodra je hier daadwerkelijk iets aanklikt — de rest van deze tool blijft gewoon offline werken. Zodra een potje loopt kun je niet meer naar een ander tabblad wisselen, tot het is afgelopen.</p>
-
-        <div id="mpChoice" class="btn-row">
-          <button type="button" id="btnMpHost" class="primary">Spel hosten</button>
-          <button type="button" id="btnMpJoinShow" class="ghost">Deelnemen aan spel</button>
-        </div>
-
-        <div id="mpHostSetup" class="mp-setup" hidden>
-          <div class="field">
-            <label for="mpHostName">Jouw naam</label>
-            <input type="text" id="mpHostName" maxlength="18" placeholder="Speler 1">
-          </div>
-          <div class="field">
-            <label for="mpHostTotal">Aantal spelers</label>
-            <select id="mpHostTotal">
-              <option value="2">2 spelers</option>
-              <option value="3">3 spelers</option>
-              <option value="4" selected>4 spelers</option>
-            </select>
-          </div>
-          <div class="field">
-            <label for="mpHostFillBots">Lege plekken bij het starten</label>
-            <select id="mpHostFillBots">
-              <option value="bots" selected>vullen met bots</option>
-              <option value="wait">niet starten — wachten tot vol</option>
-            </select>
-          </div>
-          <div class="btn-row">
-            <button type="button" id="btnMpHostCreate" class="primary">Aanmaken</button>
-            <button type="button" id="btnMpHostCancel" class="ghost">Terug</button>
-          </div>
-
-          <div id="mpHostRoom" hidden>
-            <p class="hint">Deel deze code met je vrienden:</p>
-            <div class="mp-room-code">
-              <b id="mpRoomCodeText"></b>
-              <button type="button" id="btnMpCopyCode" class="small ghost">Kopieer</button>
-            </div>
-            <div id="mpHostSeats" class="walk-solo-setup"></div>
-            <div class="btn-row">
-              <button type="button" id="btnMpHostStart" class="primary" disabled>Spel starten</button>
-              <button type="button" id="btnMpHostStop" class="ghost">Spel afbreken</button>
-            </div>
-          </div>
-        </div>
-
-        <div id="mpJoinForm" class="mp-setup" hidden>
-          <div class="field">
-            <label for="mpJoinName">Jouw naam</label>
-            <input type="text" id="mpJoinName" maxlength="18" placeholder="Speler 2">
-          </div>
-          <div class="field">
-            <label for="mpJoinCode">Spelcode</label>
-            <input type="text" id="mpJoinCode" maxlength="8" placeholder="bv. AXQ7K2" style="text-transform:uppercase;">
-          </div>
-          <div class="btn-row">
-            <button type="button" id="btnMpJoinConnect" class="primary">Verbinden</button>
-            <button type="button" id="btnMpJoinCancel" class="ghost">Terug</button>
-          </div>
-        </div>
-
-        <div id="mpJoinWaiting" hidden>
-          <p class="hint">Verbonden — wacht tot de host het spel start.</p>
-          <div id="mpWaitSeats" class="walk-solo-setup"></div>
-          <div class="btn-row">
-            <button type="button" id="btnMpJoinLeave" class="ghost">Verlaten</button>
-          </div>
-        </div>
-
-        <div id="mpStatus" class="reach-status"></div>
-      </div>
-
-      <!-- chat, rechts naast de lobby — dezelfde berichten (mpChatMessages in 99-multiplayer.js)
-           worden ook getekend in het speelscherm (#mpChatPanelGame, tabblad "Stap voor stap"),
-           zodat een lopend gesprek gewoon doorloopt zodra het potje start. -->
-      <div class="panel mp-chat-panel" id="mpChatPanel" hidden>
-        <h2>Chat</h2>
-        <div id="mpChatLog" class="mp-chat-log" role="log" aria-live="polite"></div>
-        <form id="mpChatForm" class="mp-chat-form" autocomplete="off">
-          <input type="text" id="mpChatInput" maxlength="240" placeholder="Typ een bericht…" aria-label="Chatbericht">
-          <button type="submit" class="small primary">Stuur</button>
-        </form>
-        <p class="hint">Typ alleen een cijfer (bv. <b>7</b>) voor een taunt — hoorbaar voor iedereen in de room.</p>
-      </div>
-    </div>
-  </div>
   </div>
 
   <footer>AXIOM-9 · MILITAIR BEVOORRADINGSSCHIP · JAAR 2150 — alles draait lokaal in dit bestand. Alleen als je zelf Multiplayer gebruikt, verbind je peer-to-peer met de spelers die je uitnodigt; er is geen eigen server en niets wordt opgeslagen.</footer>

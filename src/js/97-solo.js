@@ -22,10 +22,13 @@ const SOLO_PRE_ROLL_CARDS = ['ration', 'boostcell'];
 
 const walkModeAutoBtn = document.getElementById('walkModeAuto');
 const walkModeSoloBtn = document.getElementById('walkModeSolo');
+const walkModeMultiBtn = document.getElementById('walkModeMulti');
 const walkAutoControlsEl = document.getElementById('walkAutoControls');
 const walkSoloControlsEl = document.getElementById('walkSoloControls');
+const walkMultiControlsEl = document.getElementById('walkMultiControls');
 const walkSoloHintEl = document.getElementById('walkSoloHint');
 const walkAutoHintEl = document.getElementById('walkAutoHint');
+const walkMultiHintEl = document.getElementById('walkMultiHint');
 const walkSoloPlayersSel = document.getElementById('walkSoloPlayers');
 const walkSoloBotsSel = document.getElementById('walkSoloBots');
 const walkSoloSetupEl = document.getElementById('walkSoloSetupPlayers');
@@ -288,20 +291,32 @@ function soloOccupied(){
 }
 
 // ---------- modus wisselen ----------
+// Drie modi sinds multiplayer geen eigen tabblad meer heeft, maar een derde knop hier
+// (gebruikerswens) — mode is 'auto' | 'solo' | 'multi'. Let op bij toekomstige aanpassingen:
+// met drie modi is "niet auto" niet meer hetzelfde als "solo" — regels die specifiek de
+// solo-opzet-UI aan/uit zetten moeten dus op `!isSolo` testen, niet op `isAuto`/`!isAuto`
+// (dat ging hier eerder mis: de solo-knoppenrij en "Start spel" bleven staan zodra multiplayer
+// als derde modus werd toegevoegd, vóórdat dat hier werd rechtgezet).
 function setWalkMode(mode){
   stopWalkSimulation();
   stopSoloGame();
   const isAuto = mode === 'auto';
+  const isSolo = mode === 'solo';
+  const isMulti = mode === 'multi';
   if (walkModeAutoBtn){ walkModeAutoBtn.classList.toggle('active', isAuto); walkModeAutoBtn.setAttribute('aria-selected', String(isAuto)); }
-  if (walkModeSoloBtn){ walkModeSoloBtn.classList.toggle('active', !isAuto); walkModeSoloBtn.setAttribute('aria-selected', String(!isAuto)); }
+  if (walkModeSoloBtn){ walkModeSoloBtn.classList.toggle('active', isSolo); walkModeSoloBtn.setAttribute('aria-selected', String(isSolo)); }
+  if (walkModeMultiBtn){ walkModeMultiBtn.classList.toggle('active', isMulti); walkModeMultiBtn.setAttribute('aria-selected', String(isMulti)); }
   if (walkAutoControlsEl) walkAutoControlsEl.hidden = !isAuto;
-  if (walkSoloControlsEl) walkSoloControlsEl.hidden = isAuto;
-  if (walkSoloSetupEl) walkSoloSetupEl.hidden = isAuto;
+  if (walkSoloControlsEl) walkSoloControlsEl.hidden = !isSolo;
+  if (walkSoloSetupEl) walkSoloSetupEl.hidden = !isSolo;
+  if (walkMultiControlsEl) walkMultiControlsEl.hidden = !isMulti;
   if (walkSoloStartRowEl) walkSoloStartRowEl.hidden = true;
   if (walkAutoHintEl) walkAutoHintEl.hidden = !isAuto;
-  if (walkSoloHintEl) walkSoloHintEl.hidden = isAuto;
+  if (walkSoloHintEl) walkSoloHintEl.hidden = !isSolo;
+  if (walkMultiHintEl) walkMultiHintEl.hidden = !isMulti;
   // de twee "Start spel"-knoppen in de lobby (index.html, #walkLobby) — telkens maar één
-  // zichtbaar, net als de instellingen erboven.
+  // zichtbaar, net als de instellingen erboven. Multiplayer heeft geen "Start spel"-knop:
+  // die start via "Aanmaken"/"Verbinden" in #walkMultiControls zelf.
   if (btnWalkStart) btnWalkStart.hidden = !isAuto;
   // het speelscherm-topbalkje (Pauze/Stoppen — alleen voor Automatisch, zie #walkPlayTopbar in
   // index.html); onzichtbaar terwijl je nog in de lobby zit maakt niets uit, maar moet wel
@@ -315,9 +330,10 @@ function setWalkMode(mode){
   if (walkPlayTopbarEl) walkPlayTopbarEl.hidden = !isAuto;
   if (walkLobbyStatusEl) walkLobbyStatusEl.innerHTML = '';
   // setWalkMode() is alleen bereikbaar terwijl de lobby al in beeld is (de modusknoppen zitten
-  // erin) of net ná een multiplayer-potje (mpExitPlayView roept setWalkMode('auto') aan) — dus
-  // altijd (opnieuw) naar de lobby klappen kan hier geen kwaad, en repareert meteen de
-  // speelscherm-zichtbaarheid die mpEnterPlayView() had omgezet.
+  // erin) of net ná een multiplayer-potje (mpExitPlayView roept setWalkMode('multi') aan om
+  // terug te keren naar de multiplayer-lobby, niet naar Automatisch) — dus altijd (opnieuw)
+  // naar de lobby klappen kan hier geen kwaad, en repareert meteen de speelscherm-
+  // zichtbaarheid die mpEnterPlayView() had omgezet.
   if (walkPlayAreaEl) walkPlayAreaEl.hidden = true;
   if (walkLobbyEl) walkLobbyEl.hidden = false;
   walkFooterSyncVisibility();   // walkPlayAreaEl.hidden wijzigde net hierboven, niet via walkFadeSwap()
@@ -331,7 +347,13 @@ function setWalkMode(mode){
   if (walkScoreActiveEl) walkScoreActiveEl.innerHTML = '';
   if (walkStatusEl) walkStatusEl.innerHTML = '';
   if (walkLogEl) walkLogEl.innerHTML = '';
-  if (!isAuto) soloRebuildSetup();
+  if (isSolo) soloRebuildSetup();
+  // toont het juiste deelscherm (kiezen/hosten/deelnemen/wachten) op basis van mp.phase, dat
+  // zelf ongemoeid blijft — een lopende kamer overleeft dus het heen-en-weer schakelen tussen
+  // modi. mpRenderLobby() staat in 99-multiplayer.js, dat na dit bestand wordt samengevoegd;
+  // veilig omdat functiedeclaraties over het hele script heen gehoist worden en setWalkMode()
+  // pas ten tijde van een klik wordt aangeroepen, niet tijdens het laden.
+  if (isMulti) mpRenderLobby();
 }
 
 // ---------- bord: welke vakjes zijn nu aanklikbaar ----------
@@ -2197,6 +2219,7 @@ function startSoloGame(){
 
 if (walkModeAutoBtn) walkModeAutoBtn.addEventListener('click', () => setWalkMode('auto'));
 if (walkModeSoloBtn) walkModeSoloBtn.addEventListener('click', () => setWalkMode('solo'));
+if (walkModeMultiBtn) walkModeMultiBtn.addEventListener('click', () => setWalkMode('multi'));
 // walkTryStart() (96-walk.js) doet de reachability-check en faded pas daarna naar het
 // speelscherm — zie de toelichting daar.
 if (btnWalkSoloStart) btnWalkSoloStart.addEventListener('click', () => walkTryStart(startSoloGame));

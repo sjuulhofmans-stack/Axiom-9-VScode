@@ -1944,7 +1944,11 @@
   }
 
   /* ---------- multiplayer ---------- */
-  .mp-setup{display:flex; flex-direction:column; gap:14px; max-width:360px; margin-top:14px;}
+  /* max-width was 360px — de multiplayer-lobby zat op een eigen losse tab met een brede
+     2-koloms indeling (zie de weggehaalde .mp-layout hieronder); nu leeft dit binnen dezelfde
+     560px .walk-lobby-col als Automatisch/Zelf spelen (gebruikerswens), dus geen eigen cap
+     meer nodig — .walk-lobby-fields regelt de breedte al net als bij de andere twee modi. */
+  .mp-setup{display:flex; flex-direction:column; gap:14px; margin-top:14px;}
   .mp-setup[hidden]{display:none;}
   #mpJoinWaiting[hidden]{display:none;}
   .mp-room-code{
@@ -1954,7 +1958,10 @@
   .mp-room-code b{
     font-family:var(--font-mono); font-size:22px; letter-spacing:.16em; color:var(--quest);
   }
-  #mpHostSeats, #mpWaitSeats{max-width:360px; margin-bottom:14px;}
+  /* max-width was 360px, zelfde reden als .mp-setup hierboven — nu op volle kolombreedte,
+     zodat deze spelerskaartjes er via de gedeelde .walk-solo-setup-klasse identiek uitzien
+     als die van de solo-lobby (gebruikerswens: "net zo netjes als nu"). */
+  #mpHostSeats, #mpWaitSeats{margin-bottom:14px;}
   #mpHostSeats:empty, #mpWaitSeats:empty{display:none;}
   .mp-seat-you{color:var(--start) !important;}
   .mp-seat-host{color:var(--amber) !important;}
@@ -1964,17 +1971,17 @@
   }
   select.mp-seat-start{margin-left:auto;}
 
-  /* lobby: twee kolommen, 2/5 - 3/5 (lobby-paneel resp. chat) — zelfde grid-opzet als
-     .walk-play-layout, maar met align-items:stretch (i.p.v. start) zodat beide panelen altijd
-     even hoog zijn: de chatkolom wordt precies zo hoog als het lobby-paneel ernaast, en het
-     berichtenvak (flex:1 hieronder) vult daarbinnen exact de resterende ruimte — dus niet de
-     kolommen die groeien zodra er meer berichten komen, maar alleen een scrollbalk daarbinnen. */
-  .mp-layout{
-    display:grid; grid-template-columns: 2fr 3fr; gap:20px; align-items:stretch;
-  }
-  @media (max-width: 880px){ .mp-layout{grid-template-columns:1fr;} }
-  .mp-chat-panel{display:flex; flex-direction:column; gap:10px; min-height:320px;}
+  /* de multiplayer-lobby zat hier in een aparte brede 2-koloms .mp-layout-grid (lobby-paneel
+     + chat naast elkaar, align-items:stretch zodat de chatkolom exact zo hoog werd als de
+     lobby ernaast) — verwijderd nu chat gewoon ONDER de rest van de lobby staat, in dezelfde
+     .walk-lobby-col-kolom als Automatisch/Zelf spelen (gebruikerswens). */
+  .mp-chat-panel{display:flex; flex-direction:column; gap:10px;}
   .mp-chat-panel[hidden]{display:none;}
+  /* alleen de lobby-instantie (#mpChatPanel) krijgt een lagere cap dan de gedeelde 520px
+     hieronder — anders overheerst een gevulde spelerslijst + chat de hele smalle kolom vóór
+     het potje al is gestart. De in-game spiegel (#mpChatPanelGame, in .walk-side-stack) houdt
+     gewoon de volle 520px. */
+  #mpChatPanel .mp-chat-log{max-height:260px;}
   .mp-chat-log{
     /* flex:1 + min-height:0 laat 'm in de lobby (gestretchte kolom, zie .mp-layout hierboven)
        precies de resterende ruimte vullen; max-height is de HARDE bovengrens die ook geldt in

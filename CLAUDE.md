@@ -40,10 +40,10 @@ src/
     80-controls.js    knoppen: seed, dobbelsteen, herstel, draaien, legenda
     90-editor.js      tegel-editor (vakjes aan/uit klikken)
     95-simulate.js    batch-spelsimulatie (2xD6, geen U-turn, bezette vakjes blokkeren)
-    96-walk.js        stap-voor-stap: automatische simulatie van 1-4 spelers, eigen tabblad
-    97-solo.js        stap-voor-stap "zelf spelen": eigen speler besturen tussen bots, energiekaarten
+    96-walk.js        tabblad "Zelf spelen": modus Automatisch, automatische simulatie van 1-4 spelers
+    97-solo.js        tabblad "Zelf spelen": modus Zelf spelen, eigen speler besturen tussen bots, energiekaarten
     98-cards.js       kaartvenster/zoom voor opdracht- en actiekaarten
-    99-multiplayer.js multiplayer-tabblad: lobby + peer-to-peer spelen met vrienden (WebRTC)
+    99-multiplayer.js tabblad "Zelf spelen": modus Multiplayer, lobby + peer-to-peer spelen met vrienden (WebRTC)
 build.py              plakt alles tot dist/axiom9.html
 dist/axiom9.html      GEBOUWD — niet handmatig bewerken
 ```
@@ -66,7 +66,8 @@ aangeroepen (functiedeclaraties worden gehoist, `const`/`let` niet).
 | een knop toevoegen                          | `index.html` + `80-controls.js` |
 | iets aan de tegel-editor                    | `90-editor.js`        |
 | de spelsimulatie aanpassen                  | `95-simulate.js`      |
-| iets aan "stap voor stap" (pion, tempo)     | `96-walk.js`          |
+| iets aan "Zelf spelen" → Automatisch (pion, tempo) | `96-walk.js`   |
+| de modus-schakelaar zelf (Automatisch/Zelf spelen/Multiplayer) | `97-solo.js` (`setWalkMode`) |
 | het actiekaartvakje van een gang verplaatsen | tegel-editor in de tool (of `src/data/tiles.json`, labels `4.1`–`4.10`) |
 
 ## Spelregels die in de code zitten
@@ -145,14 +146,22 @@ Check minimaal:
 7. Onderaan de simulatie: tabel "koudste tegels" — geen enkele tegel mag op
    0,0% verkeer staan. Gebeurt dat toch, dan is er een dode lus ontstaan en
    klopt `deadTileCount` in `70-generator.js` niet meer.
-8. Tabblad "Stap voor stap" → "Simulatie starten" → de pion loopt zichtbaar,
-   de dobbelstenen rollen, en het potje eindigt met "Gewonnen vanaf 3.x".
-   Tempo moet je tijdens het lopen kunnen wijzigen; "Stoppen" moet de pion
-   echt stilzetten (geen achtergrondlus die doorloopt).
+8. Tabblad "Zelf spelen" → modus "Automatisch" → "Start spel" → de pion loopt
+   zichtbaar, de dobbelstenen rollen, en het potje eindigt met "Gewonnen
+   vanaf 3.x". Tempo moet je tijdens het lopen kunnen wijzigen; "Stoppen"
+   moet de pion echt stilzetten (geen achtergrondlus die doorloopt).
 9. Elke gangtegel heeft één paars actiekaartvakje op het bord (legenda
-   "Actiekaartvakje (4.x)"). Loopt een pion er tijdens "Stap voor stap"
+   "Actiekaartvakje (4.x)"). Loopt een pion er tijdens "Zelf spelen"
    overheen, dan verschijnt een logregel "trekt een beloningskaart" en loopt
    de pion gewoon door — de beurt stopt er niet voor.
+10. Tabblad "Zelf spelen" → modus "Multiplayer" is sinds kort geen eigen
+    tabblad meer maar de derde knop naast Automatisch/Zelf spelen (zelfde
+    smalle kolomstijl). Check: "Spel hosten" geeft een kamercode + een
+    spelerskaartje in dezelfde 2-koloms stijl als de Zelf-spelen-opzet, chat
+    staat eronder (niet meer ernaast). Laat een tweede speler meedoen, start
+    een potje, en klik daarna (als host én als gast) op "Verlaat potje" —
+    dat moet terugkeren naar déze multiplayer-lobby (kamercode/spelers nog
+    intact), niet naar de modus Automatisch.
 
 ## Nog te doen
 

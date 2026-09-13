@@ -416,9 +416,10 @@ function mpOnPeerLeave(peerId, explicit){
     // naar soloPlayers[soloActiveIdx] i.p.v. naar de meegegeven peerId.)
     if (peerId !== mp.hostPeerId) return;
     mpSetStatus('De host heeft het spel verlaten — het potje is gestopt.', 'bad');
+    // geen switchTab meer nodig — multiplayer heeft geen eigen tabblad, je zit al op "Zelf
+    // spelen" (mpExitPlayView() zet die modus daar via setWalkMode('multi') ook meteen goed)
     mpExitPlayView();
     mpTeardown();
-    switchTab('multi');
     mpRenderLobby();
   }
 }
@@ -779,17 +780,18 @@ function mpEnterPlayView(){
   window.mpGameActive = true;
   if (mpTabBarEl) mpTabBarEl.classList.add('mp-locked');
   switchTab('walk');
-  // Multiplayer heeft geen lobby-scherm nodig (dat staat al op tabblad "Multiplayer" — hosten/
-  // deelnemen/spelers klaarzetten) en ook geen Pauze/Stoppen/Nieuw potje (dat is "Verlaat potje"
-  // hieronder), dus meteen door naar het speelscherm zonder fade — dit IS de fade-bestemming die
-  // walkFadeToPlay() ook gebruikt (#walkPlayArea), alleen ongeanimeerd want switchTab() wisselt
-  // toch al in één klap van tabblad.
+  // Multiplayer heeft geen apart lobby-scherm meer nodig (dat is de modus "Multiplayer" hier
+  // binnen #walkLobby — hosten/deelnemen/spelers klaarzetten) en ook geen Pauze/Stoppen/Nieuw
+  // potje (dat is "Verlaat potje" hieronder), dus meteen door naar het speelscherm zonder fade
+  // — dit IS de fade-bestemming die walkFadeToPlay() ook gebruikt (#walkPlayArea), alleen
+  // ongeanimeerd want switchTab() wisselt toch al in één klap van tabblad.
   if (walkLobbyEl) walkLobbyEl.hidden = true;
   if (walkPlayAreaEl) walkPlayAreaEl.hidden = false;
   walkFooterSyncVisibility();   // walkPlayAreaEl.hidden wijzigde net hierboven, niet via walkFadeSwap()
   if (walkPlayTopbarEl) walkPlayTopbarEl.hidden = true;
   if (walkModeAutoBtn) walkModeAutoBtn.hidden = true;
   if (walkModeSoloBtn) walkModeSoloBtn.hidden = true;
+  if (walkModeMultiBtn) walkModeMultiBtn.hidden = true;
   if (walkAutoControlsEl) walkAutoControlsEl.hidden = true;
   if (walkSoloControlsEl) walkSoloControlsEl.hidden = true;
   if (walkSoloSetupEl) walkSoloSetupEl.hidden = true;
@@ -815,13 +817,15 @@ function mpExitPlayView(){
   if (mpChatPanelGameEl) mpChatPanelGameEl.hidden = true;
   if (walkModeAutoBtn) walkModeAutoBtn.hidden = false;
   if (walkModeSoloBtn) walkModeSoloBtn.hidden = false;
-  // terug naar een complete, kloppende lobby (ongeanimeerd, zelfde reden als in
-  // mpEnterPlayView) — mpLeaveGame() schakelt hierna toch meteen naar tabblad "Multiplayer",
-  // maar mocht iemand later gewoon weer naar "Stap voor stap" klikken, dan hoort daar het
-  // startscherm te staan, niet het (inmiddels gestopte) speelscherm van het vorige potje.
-  // setWalkMode('auto') doet dat in één keer, inclusief alle velden die mpEnterPlayView()
-  // hierboven had weggestopt (walkAutoControlsEl, walkSoloControlsEl, enz.).
-  setWalkMode('auto');
+  if (walkModeMultiBtn) walkModeMultiBtn.hidden = false;
+  // terug naar een complete, kloppende multiplayer-LOBBY (ongeanimeerd, zelfde reden als in
+  // mpEnterPlayView) — dus setWalkMode('multi'), niet 'auto': multiplayer heeft geen eigen
+  // tabblad meer om naartoe te wisselen (zie de mpRenderLobby()-aanroepen die na deze functie
+  // volgen bij elke aanroeper), dus dit moet zelf meteen de juiste modus-sectie terugzetten,
+  // inclusief alle velden die mpEnterPlayView() hierboven had weggestopt (walkAutoControlsEl,
+  // walkSoloControlsEl, enz.) — precies zoals setWalkMode('auto') dat vroeger voor de losse
+  // multiplayer-tab deed.
+  setWalkMode('multi');
 }
 
 // ---------- mid-game vertrekken (bereikbaar tijdens 'in-game', zie btnMpLeaveGame) ----------
@@ -831,17 +835,18 @@ function mpExitPlayView(){
 // pad van "host is weg" (mpOnPeerLeave) resp. de bestaande mpJoinLeave().
 function mpLeaveGame(){
   if (!mp.active || mp.phase !== 'in-game') return;
+  // geen switchTab meer nodig hieronder — multiplayer heeft geen eigen tabblad, je blijft
+  // gewoon op "Zelf spelen" (mpExitPlayView() zet de modus daar via setWalkMode('multi') zelf
+  // al terug op de lobby).
   if (mp.isHost){
     if (mp.actions && mp.actions.stop) mp.actions.stop.send({});
     if (mp.broadcastTimer){ clearInterval(mp.broadcastTimer); mp.broadcastTimer = null; }
     mp.phase = 'hosting';
     mpExitPlayView();
-    switchTab('multi');
     mpRenderLobby();
   } else {
     mpExitPlayView();
     mpTeardown();   // stuurt zelf een 'leave'-bericht, zie mpTeardown — host zet deze speler dan om in een bot
-    switchTab('multi');
     mpRenderLobby();
   }
 }
@@ -852,7 +857,6 @@ function mpClientOnStop(){
   mpSetStatus('De host heeft dit potje gestopt.', '');
   mpExitPlayView();
   mp.phase = 'joining';
-  switchTab('multi');
   mpRenderLobby();
 }
 
