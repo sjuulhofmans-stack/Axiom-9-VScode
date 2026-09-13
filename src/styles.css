@@ -413,9 +413,12 @@
   }
   /* Multiplayer breekt met opzet uit de standaard 560px zodra er een kamer is (zie
      .mp-room-layout hieronder): 560px is te smal voor twee leesbare kolommen naast elkaar
-     (informatie + chat, gebruikerswens). Puur CSS via :has() — zelfde techniek als
+     (informatie + chat, gebruikerswens). 1160px (i.p.v. het eerdere 920px) geeft de chat
+     daadwerkelijk veel bredere ruimte i.p.v. een smal, benard vakje (gebruikersmelding) — de
+     informatiekolom hoeft niet breder dan haar inhoud (zie .mp-room-info hieronder), dus alle
+     extra breedte hier gaat naar chat. Puur CSS via :has() — zelfde techniek als
      .walk-mp-leave-row verderop in dit bestand — dus geen JS nodig om dit bij te houden. */
-  .walk-lobby-col:has(.mp-chat-panel:not([hidden])){max-width:920px;}
+  .walk-lobby-col:has(.mp-chat-panel:not([hidden])){max-width:1160px;}
   .walk-lobby-fields{flex-direction:column; align-items:stretch; gap:14px;}
   .walk-lobby-fields .field{min-width:0; width:100%;}
   .walk-lobby-start-row{display:flex; flex-direction:column;}
@@ -1995,12 +1998,16 @@
   /* .mp-room-layout: 1 kolom zolang er geen kamer is (chat staat dan uit); met :has() (zelfde
      techniek als .walk-mp-leave-row verderop in dit bestand) vanzelf 2 kolommen zodra de chat
      verschijnt — links alle host/deelnemen-informatie, rechts de chat (gebruikerswens: "geef
-     me terug de 2 kolommen, maar dan binnen de kolom die vast staat"). align-items:stretch is
-     grid's eigen standaard en laat de chatkolom daardoor automatisch even hoog worden als de
+     me terug de 2 kolommen, maar dan binnen de kolom die vast staat"). De informatiekolom staat
+     op een VASTE breedte (i.p.v. flexibel/1fr) — precies genoeg voor de spelerskaartjes, niet
+     breder — en blijft daardoor links staan i.p.v. zelf op te rekken; chat krijgt met 1fr al
+     het overige van de (nu 1160px brede, zie .walk-lobby-col hierboven) kolom, wat 'm van een
+     smal benard vakje naar écht breed brengt (gebruikersmelding). align-items:stretch is grid's
+     eigen standaard en laat de chatkolom daardoor automatisch even hoog worden als de
      informatiekolom ernaast, zodat #mpChatPanel's berichtenvak (flex:1 hieronder) precies de
      resterende ruimte vult i.p.v. zelf een hoogte te verzinnen. */
   .mp-room-layout{display:grid; grid-template-columns:1fr; gap:16px; min-height:0;}
-  .mp-room-layout:has(> .mp-chat-panel:not([hidden])){grid-template-columns:minmax(0,1fr) 320px;}
+  .mp-room-layout:has(> .mp-chat-panel:not([hidden])){grid-template-columns:440px minmax(320px,1fr);}
   .mp-room-info{display:flex; flex-direction:column; gap:14px; min-width:0; min-height:0;}
   .mp-chat-panel{display:flex; flex-direction:column; gap:10px; min-height:0;}
   .mp-chat-panel[hidden]{display:none;}
