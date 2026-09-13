@@ -21,6 +21,7 @@
 const mpTabBarEl = document.querySelector('.tab-bar');
 const mpChoiceEl = document.getElementById('mpChoice');
 const mpHostSetupEl = document.getElementById('mpHostSetup');
+const mpHostFormEl = document.getElementById('mpHostForm');
 const mpHostRoomEl = document.getElementById('mpHostRoom');
 const mpJoinFormEl = document.getElementById('mpJoinForm');
 const mpJoinWaitingEl = document.getElementById('mpJoinWaiting');
@@ -440,7 +441,19 @@ function mpRegisterActions(room){
 
 // ---------- host: lobby ----------
 async function mpHostCreate(){
-  const name = soloCleanName(document.getElementById('mpHostName').value) || 'Speler 1';
+  // Naam is verplicht (gebruikerswens) — voorheen viel een leeg veld stil terug op "Speler 1",
+  // waardoor medespelers je nooit bij je eigen naam zagen. Rood veld + foutmelding, zelfde
+  // patroon als de spelcode-check in mpJoinConnect() hieronder (mpSetStatus(..., 'bad')), plus
+  // .mp-field-invalid (styles.css) voor de rode rand rond het veld zelf.
+  const nameInput = document.getElementById('mpHostName');
+  const name = soloCleanName(nameInput.value);
+  if (!name){
+    nameInput.classList.add('mp-field-invalid');
+    mpSetStatus('Vul eerst je naam in.', 'bad');
+    nameInput.focus();
+    return;
+  }
+  nameInput.classList.remove('mp-field-invalid');
   mp.totalSeats = Math.max(2, Math.min(WALK_MAX_PLAYERS, parseInt(document.getElementById('mpHostTotal').value, 10) || 4));
   mp.fillBots = document.getElementById('mpHostFillBots').value === 'bots';
   const code = mpGenRoomCode();
@@ -457,6 +470,12 @@ async function mpHostCreate(){
   mp.hostPeerId = mp.myPeerId;
   mp.seats = [{ peerId: mp.myPeerId, name, isHost: true, startLabel: SIM_START_LABELS[0] }];
   mpRoomCodeTextEl.textContent = code;
+  // rechtstreekse DOM-aanpassing i.p.v. de volledige mpRenderLobby() — vandaar dat #mpHostForm
+  // (naam/spelersaantal/bots + Aanmaken/Terug, geen functie meer zodra de kamer bestaat) hier
+  // ook expliciet mee moet, anders blijft-ie hangen boven #mpHostRoom en duwt "Spel starten"/
+  // "Spel afbreken" straks onder de rand van de niet-scrollende infokolom uit
+  // (gebruikersmelding: "niet te zien en te lezen").
+  if (mpHostFormEl) mpHostFormEl.hidden = true;
   mpHostRoomEl.hidden = false;
   if (mpChatPanelEl) mpChatPanelEl.hidden = false;
   mpSetStatus('', '');
@@ -1087,6 +1106,11 @@ function mpRenderLobby(){
   const show = (el, on) => { if (el) el.hidden = !on; };
   show(mpChoiceEl, mp.phase === 'idle');
   show(mpHostSetupEl, mp.phase === 'host-setup' || mp.phase === 'hosting');
+  // #mpHostForm (naam/spelersaantal/bot-keuze + Aanmaken/Terug) hoort alleen bij het INSTELLEN
+  // van een kamer — eenmaal aan het hosten heeft dat formulier geen functie meer en verdween
+  // #mpHostRoom (de kamercode + spelers + Start/Afbreken) er anders onder, want .mp-room-info
+  // scrollt bewust niet mee (gebruikersmelding: "2 knoppen linksonder niet te zien").
+  show(mpHostFormEl, mp.phase === 'host-setup');
   show(mpHostRoomEl, mp.phase === 'hosting');
   show(mpJoinFormEl, mp.phase === 'join-form');
   show(mpJoinWaitingEl, mp.phase === 'joining');
@@ -1229,6 +1253,12 @@ if (btnMpJoinShow) btnMpJoinShow.addEventListener('click', () => { mp.phase = 'j
 if (btnMpHostCancel) btnMpHostCancel.addEventListener('click', () => { mp.phase = 'idle'; mpRenderLobby(); });
 if (btnMpJoinCancel) btnMpJoinCancel.addEventListener('click', () => { mp.phase = 'idle'; mpRenderLobby(); });
 if (btnMpHostCreate) btnMpHostCreate.addEventListener('click', mpHostCreate);
+// rode rand (mpHostCreate hierboven) verdwijnt weer zodra je zelf iets invult — geen reden om
+// 'm te laten staan tot de volgende klik op "Aanmaken".
+const mpHostNameFieldEl = document.getElementById('mpHostName');
+if (mpHostNameFieldEl) mpHostNameFieldEl.addEventListener('input', () => {
+  if (soloCleanName(mpHostNameFieldEl.value)) mpHostNameFieldEl.classList.remove('mp-field-invalid');
+});
 if (btnMpJoinConnect) btnMpJoinConnect.addEventListener('click', mpJoinConnect);
 if (btnMpHostStart) btnMpHostStart.addEventListener('click', mpHostStartGame);
 if (btnMpHostStop) btnMpHostStop.addEventListener('click', mpHostStop);

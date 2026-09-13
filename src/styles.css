@@ -164,6 +164,10 @@
     outline:none;
   }
   input[type=text]:focus{border-color:var(--amber-dim); box-shadow:0 0 0 2px rgba(255,181,69,.12);}
+  /* verplicht-veld-fout (nu alleen #mpHostName, zie mpHostCreate in 99-multiplayer.js) — rode
+     rand + gloed i.p.v. de normale amber-focusring, generiek genoeg voor hergebruik elders. */
+  input[type=text].mp-field-invalid{border-color:var(--danger);}
+  input[type=text].mp-field-invalid:focus{box-shadow:0 0 0 2px rgba(255,93,93,.18);}
   button{
     font-family:var(--font-display); font-weight:600; font-size:14px; letter-spacing:.02em;
     border-radius:4px; border:1px solid var(--line); background:var(--panel-2); color:var(--text);
@@ -1978,6 +1982,19 @@
      chat is, zie .mp-room-layout hieronder en .walk-lobby-col:has(...) hierboven.) */
   .mp-setup{display:flex; flex-direction:column; gap:14px; margin-top:14px;}
   .mp-setup[hidden]{display:none;}
+  /* #mpHostForm: eigen wrapper om het instelformulier (naam/spelersaantal/bots + Aanmaken/
+     Terug) los van #mpHostRoom te kunnen verbergen zodra er eenmaal gehost wordt (zie
+     mpRenderLobby/mpHostCreateRoom in 99-multiplayer.js) — dezelfde kolom-opmaak als .mp-setup
+     hierboven, want dat leverden voorheen de fields/knoppenrij hun 14px-tussenruimte via de
+     ouder (#mpHostSetup zelf, .mp-setup); nu #mpHostForm daartussen zit moet die het zelf
+     overnemen. De [hidden]-regel is hier WEL nodig (eerder abusievelijk weggelaten, zie
+     .btn-row[hidden]/#walkSoloStartRow[hidden] verderop in dit bestand voor dezelfde categorie
+     bug): `display:flex` hierboven wint anders altijd van de standaard [hidden]-opmaak van de
+     browser (auteurs-CSS gaat vóór user-agent-CSS, ongeacht specificiteit) — zonder deze regel
+     bleef #mpHostForm dus gewoon zichtbaar met `hidden`, en duwde het "Spel starten"/"Spel
+     afbreken" verderop bleef weg (gebruikersmelding: "niet te zien en te lezen"). */
+  #mpHostForm{display:flex; flex-direction:column; gap:14px;}
+  #mpHostForm[hidden]{display:none;}
   #mpJoinWaiting[hidden]{display:none;}
   .mp-room-code{
     display:flex; align-items:center; gap:10px; margin:8px 0 16px;

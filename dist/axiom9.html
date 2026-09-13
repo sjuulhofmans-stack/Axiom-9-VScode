@@ -171,6 +171,10 @@
     outline:none;
   }
   input[type=text]:focus{border-color:var(--amber-dim); box-shadow:0 0 0 2px rgba(255,181,69,.12);}
+  /* verplicht-veld-fout (nu alleen #mpHostName, zie mpHostCreate in 99-multiplayer.js) — rode
+     rand + gloed i.p.v. de normale amber-focusring, generiek genoeg voor hergebruik elders. */
+  input[type=text].mp-field-invalid{border-color:var(--danger);}
+  input[type=text].mp-field-invalid:focus{box-shadow:0 0 0 2px rgba(255,93,93,.18);}
   button{
     font-family:var(--font-display); font-weight:600; font-size:14px; letter-spacing:.02em;
     border-radius:4px; border:1px solid var(--line); background:var(--panel-2); color:var(--text);
@@ -1985,6 +1989,19 @@
      chat is, zie .mp-room-layout hieronder en .walk-lobby-col:has(...) hierboven.) */
   .mp-setup{display:flex; flex-direction:column; gap:14px; margin-top:14px;}
   .mp-setup[hidden]{display:none;}
+  /* #mpHostForm: eigen wrapper om het instelformulier (naam/spelersaantal/bots + Aanmaken/
+     Terug) los van #mpHostRoom te kunnen verbergen zodra er eenmaal gehost wordt (zie
+     mpRenderLobby/mpHostCreateRoom in 99-multiplayer.js) — dezelfde kolom-opmaak als .mp-setup
+     hierboven, want dat leverden voorheen de fields/knoppenrij hun 14px-tussenruimte via de
+     ouder (#mpHostSetup zelf, .mp-setup); nu #mpHostForm daartussen zit moet die het zelf
+     overnemen. De [hidden]-regel is hier WEL nodig (eerder abusievelijk weggelaten, zie
+     .btn-row[hidden]/#walkSoloStartRow[hidden] verderop in dit bestand voor dezelfde categorie
+     bug): `display:flex` hierboven wint anders altijd van de standaard [hidden]-opmaak van de
+     browser (auteurs-CSS gaat vóór user-agent-CSS, ongeacht specificiteit) — zonder deze regel
+     bleef #mpHostForm dus gewoon zichtbaar met `hidden`, en duwde het "Spel starten"/"Spel
+     afbreken" verderop bleef weg (gebruikersmelding: "niet te zien en te lezen"). */
+  #mpHostForm{display:flex; flex-direction:column; gap:14px;}
+  #mpHostForm[hidden]{display:none;}
   #mpJoinWaiting[hidden]{display:none;}
   .mp-room-code{
     display:flex; align-items:center; gap:10px; margin:8px 0 16px;
@@ -2413,28 +2430,38 @@
               </div>
 
               <div id="mpHostSetup" class="mp-setup" hidden>
-                <div class="field">
-                  <label for="mpHostName">Jouw naam</label>
-                  <input type="text" id="mpHostName" maxlength="18" placeholder="Speler 1">
-                </div>
-                <div class="field">
-                  <label for="mpHostTotal">Aantal spelers</label>
-                  <select id="mpHostTotal">
-                    <option value="2">2 spelers</option>
-                    <option value="3">3 spelers</option>
-                    <option value="4" selected>4 spelers</option>
-                  </select>
-                </div>
-                <div class="field">
-                  <label for="mpHostFillBots">Lege plekken bij het starten</label>
-                  <select id="mpHostFillBots">
-                    <option value="bots" selected>vullen met bots</option>
-                    <option value="wait">niet starten — wachten tot vol</option>
-                  </select>
-                </div>
-                <div class="btn-row">
-                  <button type="button" id="btnMpHostCreate" class="primary">Aanmaken</button>
-                  <button type="button" id="btnMpHostCancel" class="ghost">Terug</button>
+                <!-- alleen tijdens het INSTELLEN van een kamer (phase 'host-setup') — zodra die
+                     bestaat (phase 'hosting') heeft dit formulier geen functie meer (de naam/
+                     spelersaantal/bot-keuze liggen al vast) en kostte het alleen maar hoogte
+                     boven #mpHostRoom hieronder, waardoor "Spel starten"/"Spel afbreken" op een
+                     kleiner scherm onder de rand van de (bewust niet-scrollende, zie
+                     .mp-room-info hieronder) kolom verdwenen (gebruikersmelding: "niet te zien
+                     en te lezen"). Eigen wrapper zodat dit los van #mpHostRoom verborgen kan
+                     worden — zie mpHostFormEl/mpRenderLobby in 99-multiplayer.js. -->
+                <div id="mpHostForm">
+                  <div class="field">
+                    <label for="mpHostName">Jouw naam</label>
+                    <input type="text" id="mpHostName" maxlength="18" placeholder="Speler 1">
+                  </div>
+                  <div class="field">
+                    <label for="mpHostTotal">Aantal spelers</label>
+                    <select id="mpHostTotal">
+                      <option value="2">2 spelers</option>
+                      <option value="3">3 spelers</option>
+                      <option value="4" selected>4 spelers</option>
+                    </select>
+                  </div>
+                  <div class="field">
+                    <label for="mpHostFillBots">Lege plekken bij het starten</label>
+                    <select id="mpHostFillBots">
+                      <option value="bots" selected>vullen met bots</option>
+                      <option value="wait">niet starten — wachten tot vol</option>
+                    </select>
+                  </div>
+                  <div class="btn-row">
+                    <button type="button" id="btnMpHostCreate" class="primary">Aanmaken</button>
+                    <button type="button" id="btnMpHostCancel" class="ghost">Terug</button>
+                  </div>
                 </div>
 
                 <div id="mpHostRoom" hidden>
@@ -10308,6 +10335,7 @@ document.addEventListener('keydown', e => {
 const mpTabBarEl = document.querySelector('.tab-bar');
 const mpChoiceEl = document.getElementById('mpChoice');
 const mpHostSetupEl = document.getElementById('mpHostSetup');
+const mpHostFormEl = document.getElementById('mpHostForm');
 const mpHostRoomEl = document.getElementById('mpHostRoom');
 const mpJoinFormEl = document.getElementById('mpJoinForm');
 const mpJoinWaitingEl = document.getElementById('mpJoinWaiting');
@@ -10727,7 +10755,19 @@ function mpRegisterActions(room){
 
 // ---------- host: lobby ----------
 async function mpHostCreate(){
-  const name = soloCleanName(document.getElementById('mpHostName').value) || 'Speler 1';
+  // Naam is verplicht (gebruikerswens) — voorheen viel een leeg veld stil terug op "Speler 1",
+  // waardoor medespelers je nooit bij je eigen naam zagen. Rood veld + foutmelding, zelfde
+  // patroon als de spelcode-check in mpJoinConnect() hieronder (mpSetStatus(..., 'bad')), plus
+  // .mp-field-invalid (styles.css) voor de rode rand rond het veld zelf.
+  const nameInput = document.getElementById('mpHostName');
+  const name = soloCleanName(nameInput.value);
+  if (!name){
+    nameInput.classList.add('mp-field-invalid');
+    mpSetStatus('Vul eerst je naam in.', 'bad');
+    nameInput.focus();
+    return;
+  }
+  nameInput.classList.remove('mp-field-invalid');
   mp.totalSeats = Math.max(2, Math.min(WALK_MAX_PLAYERS, parseInt(document.getElementById('mpHostTotal').value, 10) || 4));
   mp.fillBots = document.getElementById('mpHostFillBots').value === 'bots';
   const code = mpGenRoomCode();
@@ -10744,6 +10784,12 @@ async function mpHostCreate(){
   mp.hostPeerId = mp.myPeerId;
   mp.seats = [{ peerId: mp.myPeerId, name, isHost: true, startLabel: SIM_START_LABELS[0] }];
   mpRoomCodeTextEl.textContent = code;
+  // rechtstreekse DOM-aanpassing i.p.v. de volledige mpRenderLobby() — vandaar dat #mpHostForm
+  // (naam/spelersaantal/bots + Aanmaken/Terug, geen functie meer zodra de kamer bestaat) hier
+  // ook expliciet mee moet, anders blijft-ie hangen boven #mpHostRoom en duwt "Spel starten"/
+  // "Spel afbreken" straks onder de rand van de niet-scrollende infokolom uit
+  // (gebruikersmelding: "niet te zien en te lezen").
+  if (mpHostFormEl) mpHostFormEl.hidden = true;
   mpHostRoomEl.hidden = false;
   if (mpChatPanelEl) mpChatPanelEl.hidden = false;
   mpSetStatus('', '');
@@ -11374,6 +11420,11 @@ function mpRenderLobby(){
   const show = (el, on) => { if (el) el.hidden = !on; };
   show(mpChoiceEl, mp.phase === 'idle');
   show(mpHostSetupEl, mp.phase === 'host-setup' || mp.phase === 'hosting');
+  // #mpHostForm (naam/spelersaantal/bot-keuze + Aanmaken/Terug) hoort alleen bij het INSTELLEN
+  // van een kamer — eenmaal aan het hosten heeft dat formulier geen functie meer en verdween
+  // #mpHostRoom (de kamercode + spelers + Start/Afbreken) er anders onder, want .mp-room-info
+  // scrollt bewust niet mee (gebruikersmelding: "2 knoppen linksonder niet te zien").
+  show(mpHostFormEl, mp.phase === 'host-setup');
   show(mpHostRoomEl, mp.phase === 'hosting');
   show(mpJoinFormEl, mp.phase === 'join-form');
   show(mpJoinWaitingEl, mp.phase === 'joining');
@@ -11516,6 +11567,12 @@ if (btnMpJoinShow) btnMpJoinShow.addEventListener('click', () => { mp.phase = 'j
 if (btnMpHostCancel) btnMpHostCancel.addEventListener('click', () => { mp.phase = 'idle'; mpRenderLobby(); });
 if (btnMpJoinCancel) btnMpJoinCancel.addEventListener('click', () => { mp.phase = 'idle'; mpRenderLobby(); });
 if (btnMpHostCreate) btnMpHostCreate.addEventListener('click', mpHostCreate);
+// rode rand (mpHostCreate hierboven) verdwijnt weer zodra je zelf iets invult — geen reden om
+// 'm te laten staan tot de volgende klik op "Aanmaken".
+const mpHostNameFieldEl = document.getElementById('mpHostName');
+if (mpHostNameFieldEl) mpHostNameFieldEl.addEventListener('input', () => {
+  if (soloCleanName(mpHostNameFieldEl.value)) mpHostNameFieldEl.classList.remove('mp-field-invalid');
+});
 if (btnMpJoinConnect) btnMpJoinConnect.addEventListener('click', mpJoinConnect);
 if (btnMpHostStart) btnMpHostStart.addEventListener('click', mpHostStartGame);
 if (btnMpHostStop) btnMpHostStop.addEventListener('click', mpHostStop);

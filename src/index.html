@@ -251,28 +251,38 @@
               </div>
 
               <div id="mpHostSetup" class="mp-setup" hidden>
-                <div class="field">
-                  <label for="mpHostName">Jouw naam</label>
-                  <input type="text" id="mpHostName" maxlength="18" placeholder="Speler 1">
-                </div>
-                <div class="field">
-                  <label for="mpHostTotal">Aantal spelers</label>
-                  <select id="mpHostTotal">
-                    <option value="2">2 spelers</option>
-                    <option value="3">3 spelers</option>
-                    <option value="4" selected>4 spelers</option>
-                  </select>
-                </div>
-                <div class="field">
-                  <label for="mpHostFillBots">Lege plekken bij het starten</label>
-                  <select id="mpHostFillBots">
-                    <option value="bots" selected>vullen met bots</option>
-                    <option value="wait">niet starten — wachten tot vol</option>
-                  </select>
-                </div>
-                <div class="btn-row">
-                  <button type="button" id="btnMpHostCreate" class="primary">Aanmaken</button>
-                  <button type="button" id="btnMpHostCancel" class="ghost">Terug</button>
+                <!-- alleen tijdens het INSTELLEN van een kamer (phase 'host-setup') — zodra die
+                     bestaat (phase 'hosting') heeft dit formulier geen functie meer (de naam/
+                     spelersaantal/bot-keuze liggen al vast) en kostte het alleen maar hoogte
+                     boven #mpHostRoom hieronder, waardoor "Spel starten"/"Spel afbreken" op een
+                     kleiner scherm onder de rand van de (bewust niet-scrollende, zie
+                     .mp-room-info hieronder) kolom verdwenen (gebruikersmelding: "niet te zien
+                     en te lezen"). Eigen wrapper zodat dit los van #mpHostRoom verborgen kan
+                     worden — zie mpHostFormEl/mpRenderLobby in 99-multiplayer.js. -->
+                <div id="mpHostForm">
+                  <div class="field">
+                    <label for="mpHostName">Jouw naam</label>
+                    <input type="text" id="mpHostName" maxlength="18" placeholder="Speler 1">
+                  </div>
+                  <div class="field">
+                    <label for="mpHostTotal">Aantal spelers</label>
+                    <select id="mpHostTotal">
+                      <option value="2">2 spelers</option>
+                      <option value="3">3 spelers</option>
+                      <option value="4" selected>4 spelers</option>
+                    </select>
+                  </div>
+                  <div class="field">
+                    <label for="mpHostFillBots">Lege plekken bij het starten</label>
+                    <select id="mpHostFillBots">
+                      <option value="bots" selected>vullen met bots</option>
+                      <option value="wait">niet starten — wachten tot vol</option>
+                    </select>
+                  </div>
+                  <div class="btn-row">
+                    <button type="button" id="btnMpHostCreate" class="primary">Aanmaken</button>
+                    <button type="button" id="btnMpHostCancel" class="ghost">Terug</button>
+                  </div>
                 </div>
 
                 <div id="mpHostRoom" hidden>
