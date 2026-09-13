@@ -28,7 +28,10 @@ const mpStatusEl = document.getElementById('mpStatus');
 const mpHostSeatsEl = document.getElementById('mpHostSeats');
 const mpWaitSeatsEl = document.getElementById('mpWaitSeats');
 const mpRoomCodeTextEl = document.getElementById('mpRoomCodeText');
-const mpChatPanelEl = document.getElementById('mpChatPanel');
+// mpChatPanelEl staat NIET hier maar in het const-blok van 97-solo.js — setWalkMode() daar
+// leest 'm ook tijdens de allereerste, synchrone setWalkMode('auto')-aanroep bij het laden van
+// de pagina (nog vóór dit bestand is uitgevoerd), en zou anders op een TDZ ReferenceError
+// stuiten ("Cannot access before initialization"). Zie de toelichting daar.
 const mpChatLogEl = document.getElementById('mpChatLog');
 const mpChatFormEl = document.getElementById('mpChatForm');
 const mpChatInputEl = document.getElementById('mpChatInput');

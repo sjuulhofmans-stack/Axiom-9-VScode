@@ -29,6 +29,12 @@ const walkMultiControlsEl = document.getElementById('walkMultiControls');
 const walkSoloHintEl = document.getElementById('walkSoloHint');
 const walkAutoHintEl = document.getElementById('walkAutoHint');
 const walkMultiHintEl = document.getElementById('walkMultiHint');
+// Hoort inhoudelijk bij 99-multiplayer.js (zie de andere mpXxxEl-consts daar), maar moet HIER
+// staan: setWalkMode() hieronder leest 'm ook tijdens de allereerste, synchrone
+// setWalkMode('auto')-aanroep bij het laden van de pagina — dat gebeurt vóór 99-multiplayer.js
+// is uitgevoerd, dus een const daar zou op dat moment nog in zijn temporal dead zone zitten
+// ("Cannot access 'mpChatPanelEl' before initialization").
+const mpChatPanelEl = document.getElementById('mpChatPanel');
 const walkSoloPlayersSel = document.getElementById('walkSoloPlayers');
 const walkSoloBotsSel = document.getElementById('walkSoloBots');
 const walkSoloSetupEl = document.getElementById('walkSoloSetupPlayers');
@@ -348,6 +354,18 @@ function setWalkMode(mode){
   if (walkStatusEl) walkStatusEl.innerHTML = '';
   if (walkLogEl) walkLogEl.innerHTML = '';
   if (isSolo) soloRebuildSetup();
+  // #mpChatPanel's EIGEN hidden-attribuut (niet zichtbaarheid via een verborgen voorouder!)
+  // bepaalt via :has() in styles.css of .walk-lobby-col verbreedt naar 1160px, de 2-koloms
+  // indeling aangaat en #walkMultiHint verbergt. mpRenderLobby() (99-multiplayer.js) zet dat
+  // attribuut alleen aan/uit op basis van mp.phase — die blijft "hosting"/"joining" ook als je
+  // hierboven naar Automatisch/Zelf spelen wisselt (een lopende kamer overleeft dat bewust).
+  // Zonder deze regel bleef #mpChatPanel dus "niet hidden" staan (alleen onzichtbaar doordat
+  // de hele #walkMultiControls om 'm heen hidden is), en dachten die :has()-regels nog steeds
+  // dat er chat te zien was — de kolom (en dus de modusknoppen erboven) bleef dan breed staan,
+  // ook in Automatisch/Zelf spelen (gebruikersmelding: "de knoppen blijven zo lang"). Hier dus
+  // expliciet dicht zodra je NIET in Multiplayer zit; mpRenderLobby() hieronder zet 'm gewoon
+  // weer open zodra je terugkeert naar een kamer die nog loopt.
+  if (!isMulti && mpChatPanelEl) mpChatPanelEl.hidden = true;
   // toont het juiste deelscherm (kiezen/hosten/deelnemen/wachten) op basis van mp.phase, dat
   // zelf ongemoeid blijft — een lopende kamer overleeft dus het heen-en-weer schakelen tussen
   // modi. mpRenderLobby() staat in 99-multiplayer.js, dat na dit bestand wordt samengevoegd;
