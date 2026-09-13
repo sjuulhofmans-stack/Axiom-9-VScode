@@ -2132,3 +2132,31 @@
     animation:partycarSpin 1.1s linear infinite;
   }
   .partycar-wheel.is-rear{ left:75.85%; top:83.68%; }
+
+  /* ---------- easter egg: "kaboem" in de chat (gebruikerswens) ----------
+     Drie fases, allemaal in mpTriggerKaboem (99-multiplayer.js): (1) het plaatje verschijnt
+     gecentreerd op een gedimde achtergrond en pulseert lichtjes ("opbouw") terwijl er 5
+     seconden een tikkend aftel-geluid speelt; (2) na die 5s verdwijnt het plaatje en knalt het
+     uiteen in een raster van stukjes die met zwaartekracht + rotatie alle kanten op vliegen
+     (canvas, want CSS kan een <img> niet in losse, apart bewegende scherven knippen) — zie
+     mpExplodeImage; (3) de gedimde achtergrond faadt daarna nog even na, zodat de knal er goed
+     op afsteekt, en ruimt zichzelf op. `pointer-events:none` overal, dus dit blokkeert nooit de
+     rest van de tool terwijl het afspeelt. */
+  .kaboem-overlay{
+    position:fixed; inset:0; z-index:9998;
+    display:flex; align-items:center; justify-content:center;
+    background:rgba(0,0,0,.6);
+    pointer-events:none;
+    transition:opacity .4s ease;
+  }
+  .kaboem-overlay.kaboem-fade-out{ opacity:0; }
+  @keyframes kaboemPulse{
+    0%, 100%{ transform:scale(1) rotate(0deg); }
+    50%{ transform:scale(1.035) rotate(-1deg); }
+  }
+  .kaboem-img{
+    max-height:55vh; max-width:70vw; width:auto; height:auto;
+    border-radius:8px; box-shadow:0 20px 60px rgba(0,0,0,.6);
+    animation:kaboemPulse .5s ease-in-out infinite;
+  }
+  .kaboem-canvas{ position:fixed; inset:0; z-index:9999; pointer-events:none; }

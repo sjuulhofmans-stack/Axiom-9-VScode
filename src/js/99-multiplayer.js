@@ -171,6 +171,173 @@ function mpTriggerPaintracer(){
   mpSpawnPartycar(PARTYCAR_PASSES, audio);
 }
 
+// ---------- easter egg: typ "kaboem" in de chat (gebruikerswens) ----------
+// Zelfde OPTIONELE-asset-patroon als BIGDADDY_IMG/PARTYCAR_*_IMG hierboven — ontbreekt
+// src/assets/kaboem.b64, dan blijft dit een lege data-URI en doet de easter egg simpelweg
+// niets zichtbaars (het geluid speelt dan nog wel, want dat hangt er niet van af).
+const KABOEM_IMG = 'data:image/png;base64,{{KABOEM}}';
+const KABOEM_COUNTDOWN_MS = 5000;   // "een timergeluid van 5 seconden" (gebruikerswens)
+
+// Drie fases: plaatje tonen + 5s aftellen (mpPlayKaboemTimer), dan ontploffen (mpExplodeImage +
+// mpPlayExplosionBoom), dan de gedimde achtergrond laten wegfaden. `img` blijft na het
+// onzichtbaar maken gewoon bestaan als losstaand element — drawImage() in mpExplodeImage heeft
+// alleen een GELADEN <img> nodig, niet eentje die nog in de DOM zit.
+function mpTriggerKaboem(){
+  const overlay = document.createElement('div');
+  overlay.className = 'kaboem-overlay';
+  const img = document.createElement('img');
+  img.className = 'kaboem-img';
+  img.src = KABOEM_IMG;
+  img.alt = '';
+  overlay.appendChild(img);
+  document.body.appendChild(overlay);
+
+  mpPlayKaboemTimer();
+
+  setTimeout(() => {
+    img.style.visibility = 'hidden';
+    mpPlayExplosionBoom();
+    mpExplodeImage(img, () => {
+      overlay.classList.add('kaboem-fade-out');
+      setTimeout(() => overlay.remove(), 500);
+    });
+  }, KABOEM_COUNTDOWN_MS);
+}
+
+// Vijf korte "ticks", oplopend in toonhoogte (bouwt spanning op), precies over de 5 seconden
+// verdeeld — allemaal vooraf ingepland op ÉÉN AudioContext-klok i.p.v. met setInterval om ze
+// één voor één te starten, want dat laatste kan wegdriften t.o.v. de (wél exacte) setTimeout
+// hierboven die de explosie zelf op precies 5000ms triggert.
+function mpPlayKaboemTimer(){
+  try {
+    const AudioCtx = window.AudioContext || window.webkitAudioContext;
+    if (!AudioCtx) return;
+    const ctx = new AudioCtx();
+    const t0 = ctx.currentTime;
+    for (let i = 0; i < 5; i++){
+      const at = t0 + i;
+      const osc = ctx.createOscillator();
+      osc.type = 'square';
+      osc.frequency.value = 820 + i * 60;
+      const g = ctx.createGain();
+      g.gain.setValueAtTime(0, at);
+      g.gain.linearRampToValueAtTime(0.25, at + 0.01);
+      g.gain.exponentialRampToValueAtTime(0.001, at + 0.09);
+      osc.connect(g).connect(ctx.destination);
+      osc.start(at); osc.stop(at + 0.1);
+    }
+    setTimeout(() => { try { ctx.close(); } catch (e){} }, 5300);
+  } catch (e){}
+}
+
+// Puur synthetisch (zelfde aanpak als mpPlayEngineStart hierboven): een sub-bass "thud" die
+// snel in toonhoogte zakt, plus een ruisknal door een lowpass-filter dat dichtklapt — samen
+// geven die de klassieke "boem" (lage dreun + krakende knal), zonder dat er een los
+// geluidsbestand voor nodig is.
+function mpPlayExplosionBoom(){
+  try {
+    const AudioCtx = window.AudioContext || window.webkitAudioContext;
+    if (!AudioCtx) return;
+    const ctx = new AudioCtx();
+    const t0 = ctx.currentTime;
+    const master = ctx.createGain();
+    master.gain.value = 0.6;
+    master.connect(ctx.destination);
+
+    const thud = ctx.createOscillator();
+    thud.type = 'sine';
+    thud.frequency.setValueAtTime(160, t0);
+    thud.frequency.exponentialRampToValueAtTime(35, t0 + 0.35);
+    const thudGain = ctx.createGain();
+    thudGain.gain.setValueAtTime(1, t0);
+    thudGain.gain.exponentialRampToValueAtTime(0.001, t0 + 0.9);
+    thud.connect(thudGain).connect(master);
+    thud.start(t0); thud.stop(t0 + 1);
+
+    const noiseBuf = ctx.createBuffer(1, Math.round(ctx.sampleRate * 0.8), ctx.sampleRate);
+    const noiseData = noiseBuf.getChannelData(0);
+    for (let i = 0; i < noiseData.length; i++) noiseData[i] = Math.random() * 2 - 1;
+    const noise = ctx.createBufferSource();
+    noise.buffer = noiseBuf;
+    const lp = ctx.createBiquadFilter();
+    lp.type = 'lowpass';
+    lp.frequency.setValueAtTime(4000, t0);
+    lp.frequency.exponentialRampToValueAtTime(200, t0 + 0.7);
+    const noiseGain = ctx.createGain();
+    noiseGain.gain.setValueAtTime(0.9, t0);
+    noiseGain.gain.exponentialRampToValueAtTime(0.001, t0 + 0.8);
+    noise.connect(lp).connect(noiseGain).connect(master);
+    noise.start(t0); noise.stop(t0 + 0.8);
+
+    setTimeout(() => { try { ctx.close(); } catch (e){} }, 1500);
+  } catch (e){}
+}
+
+// Knipt de afbeelding in een raster van stukjes en laat ze met zwaartekracht + rotatie vanuit
+// het midden uiteenspatten, getekend op een los canvas boven alles — CSS kan een <img> niet in
+// scherven knippen die onafhankelijk van elkaar bewegen, canvas wel (elk stukje is gewoon een
+// eigen drawImage() met een eigen stukje van de bron als "source rect"). Roept `onDone` aan
+// zodra alle stukjes weggefaded zijn, zodat de overlay daarna pas zelf opruimt.
+function mpExplodeImage(imgEl, onDone){
+  if (!imgEl.complete || !imgEl.naturalWidth){ if (onDone) onDone(); return; }
+  const rect = imgEl.getBoundingClientRect();
+  const canvas = document.createElement('canvas');
+  canvas.className = 'kaboem-canvas';
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
+  document.body.appendChild(canvas);
+  const ctx = canvas.getContext('2d');
+
+  const cols = 6, rows = 9;
+  const pieceW = rect.width / cols, pieceH = rect.height / rows;
+  const srcPieceW = imgEl.naturalWidth / cols, srcPieceH = imgEl.naturalHeight / rows;
+  const cx = rect.left + rect.width / 2, cy = rect.top + rect.height / 2;
+
+  const pieces = [];
+  for (let r = 0; r < rows; r++){
+    for (let c = 0; c < cols; c++){
+      const px = rect.left + c * pieceW + pieceW / 2;
+      const py = rect.top + r * pieceH + pieceH / 2;
+      const dx = px - cx, dy = py - cy;
+      const dist = Math.hypot(dx, dy) || 1;
+      const speed = 240 + Math.random() * 260;
+      pieces.push({
+        sx: c * srcPieceW, sy: r * srcPieceH, sw: srcPieceW, sh: srcPieceH,
+        x: px, y: py,
+        vx: (dx / dist) * speed + (Math.random() - 0.5) * 120,
+        vy: (dy / dist) * speed + (Math.random() - 0.5) * 120 - 140,   // lichte knal omhoog
+        rot: 0, vrot: (Math.random() - 0.5) * 8,
+      });
+    }
+  }
+
+  const duration = 1.3;   // seconden tot alle stukjes helemaal vervaagd zijn
+  let last = null, start = null;
+  function frame(ts){
+    if (start === null) start = ts;
+    const dt = Math.min(0.05, last === null ? 0 : (ts - last) / 1000);
+    last = ts;
+    const elapsed = (ts - start) / 1000;
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    const alpha = Math.max(0, 1 - elapsed / duration);
+    for (const p of pieces){
+      p.vy += 700 * dt;   // zwaartekracht
+      p.x += p.vx * dt;
+      p.y += p.vy * dt;
+      p.rot += p.vrot * dt;
+      ctx.save();
+      ctx.globalAlpha = alpha;
+      ctx.translate(p.x, p.y);
+      ctx.rotate(p.rot);
+      ctx.drawImage(imgEl, p.sx, p.sy, p.sw, p.sh, -pieceW / 2, -pieceH / 2, pieceW, pieceH);
+      ctx.restore();
+    }
+    if (elapsed < duration) requestAnimationFrame(frame);
+    else { canvas.remove(); if (onDone) onDone(); }
+  }
+  requestAnimationFrame(frame);
+}
+
 // Vaste namespace zodat onze rooms niet botsen met andermans Trystero-apps op dezelfde
 // publieke signaling-relays. Geen geheim, puur een naamruimte.
 const MP_APP_ID = 'axiom9-mapgen-v1';
@@ -952,7 +1119,7 @@ function mpChatSenderInfo(peerId){
 // `chant` (nummer), `egg` (naam van het easter-eggetje: 'bigdaddy'/'paintracer') en `text`
 // sluiten elkaar uit — zie mpSendChatMessage/mpOnRemoteChat hieronder, die zetten er nooit meer
 // dan één van.
-const MP_EGG_LABELS = { bigdaddy: '🚗 Big Daddy!', paintracer: '🏎️ Paintracer!' };
+const MP_EGG_LABELS = { bigdaddy: '🚗 Big Daddy!', paintracer: '🏎️ Paintracer!', kaboem: '💥 Kaboem!' };
 function mpAppendChat(peerId, text, chant, egg){
   const info = mpChatSenderInfo(peerId);
   mpChatMessages.push({ peerId, name: info.name, color: info.color, text: text || null, chant: chant || null, egg: egg || null, ts: Date.now() });
@@ -982,7 +1149,7 @@ function mpRenderChat(){
 }
 // Eén trefwoord -> welke easter egg — houdt mpSendChatMessage/mpOnRemoteChat hieronder kort,
 // nieuwe eastereggetjes toevoegen is dan alleen deze tabel + de trigger-functie zelf.
-const MP_EGG_TRIGGERS = { bigdaddy: mpTriggerBigDaddy, paintracer: mpTriggerPaintracer };
+const MP_EGG_TRIGGERS = { bigdaddy: mpTriggerBigDaddy, paintracer: mpTriggerPaintracer, kaboem: mpTriggerKaboem };
 // typ je puur een getal dat een bestaande taunt is (bv. "7"), dan wordt dat een taunt i.p.v.
 // een gewoon tekstbericht — hoorbaar voor jezelf én voor iedereen anders in de room, net als
 // de taunts uit het originele Age of Empires. Een easter-eggetje uit MP_EGG_TRIGGERS werkt

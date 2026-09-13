@@ -94,6 +94,7 @@ def build() -> pathlib.Path:
     # zie .partycar-wheel/@keyframes partycarSpin in styles.css.
     partycar_body = read_optional_b64(SRC / "assets" / "partycar-body.b64")
     partycar_wheel = read_optional_b64(SRC / "assets" / "partycar-wheel.b64")
+    kaboem = read_optional_b64(SRC / "assets" / "kaboem.b64")
     chants = build_chants()
 
     # --- tegeldata controleren en injecteren ---
@@ -117,6 +118,7 @@ def build() -> pathlib.Path:
     js = js.replace("{{BIGDADDY}}", bigdaddy)
     js = js.replace("{{PARTYCAR_BODY}}", partycar_body)
     js = js.replace("{{PARTYCAR_WHEEL}}", partycar_wheel)
+    js = js.replace("{{KABOEM}}", kaboem)
 
     if "{{TILES}}" in js:
         sys.exit("FOUT: {{TILES}} placeholder niet vervangen")
@@ -128,6 +130,8 @@ def build() -> pathlib.Path:
         sys.exit("FOUT: {{PARTYCAR_BODY}} placeholder niet vervangen")
     if "{{PARTYCAR_WHEEL}}" in js:
         sys.exit("FOUT: {{PARTYCAR_WHEEL}} placeholder niet vervangen")
+    if "{{KABOEM}}" in js:
+        sys.exit("FOUT: {{KABOEM}} placeholder niet vervangen")
 
     html = template.replace("{{CSS}}", css)
     html = html.replace("{{JS}}", js)
