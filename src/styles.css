@@ -398,18 +398,20 @@
   /* height (niet min-height!): Automatisch/Zelf spelen/Multiplayer hebben alle drie een andere
      hoeveelheid inhoud, waardoor #walkPanel per modus een andere hoogte had — hinderlijk omdat
      je bij het wisselen van modus de pagina zag springen (gebruikersmelding: "alle drie een
-     andere grootte"). Eerst met min-height opgelost, maar dat liet de kolom nog steeds groeien
-     zodra de inhoud niet paste (bv. Multiplayer met een gevulde spelerslijst + chat) — de
-     gebruiker wilde juist dat de kolom NOOIT meer groeit: vaste `height` + `overflow-y:auto`
-     zodat te lange inhoud intern scrolt i.p.v. de kolom zelf op te rekken. 274px = de vaste
-     ruimte erboven en eronder die nooit meegroeit, gemeten (niet berekend — te veel losse
-     regels tellen op om met de hand kloppend te houden): 184px vanaf de bovenkant van de pagina
-     tot deze kolom (body-padding + header + tabbalk + #walkPanel's eigen padding-top + de
-     "Zelf spelen"-titel erboven) + 90px erna tot de onderkant van de pagina (#walkPanel's
-     padding-bottom + <footer> met zijn margin-top + body-padding-bottom). */
+     andere grootte"). 274px = de vaste ruimte erboven en eronder die nooit meegroeit, gemeten
+     (niet berekend — te veel losse regels tellen op om met de hand kloppend te houden): 184px
+     vanaf de bovenkant van de pagina tot deze kolom (body-padding + header + tabbalk +
+     #walkPanel's eigen padding-top + de "Zelf spelen"-titel erboven) + 90px erna tot de
+     onderkant van de pagina (#walkPanel's padding-bottom + <footer> met zijn margin-top +
+     body-padding-bottom).
+     overflow-y:hidden (niet auto!) — de kolom zelf mag GEEN scrollbalk krijgen, ook niet een
+     eigen interne (gebruikerswens: "alles vast, alleen de chat mag scrollen"). Enige plek die
+     wél mag scrollen is het berichtenvak van de chat, #mpChatLog/#mpChatLogGame via
+     .mp-chat-log{overflow-y:auto} — die zit met flex:1 binnen deze vaste hoogte en vangt te
+     veel berichten dus altijd zelf op, zonder dat de kolom eromheen ooit hoeft te bewegen. */
   .walk-lobby-col{
     max-width:560px; margin:0 auto; display:flex; flex-direction:column; gap:16px;
-    height:calc(100vh - 274px); overflow-y:auto;
+    height:calc(100vh - 274px); overflow-y:hidden;
   }
   /* Multiplayer breekt met opzet uit de standaard 560px zodra er een kamer is (zie
      .mp-room-layout hieronder): 560px is te smal voor twee leesbare kolommen naast elkaar
@@ -419,6 +421,12 @@
      extra breedte hier gaat naar chat. Puur CSS via :has() — zelfde techniek als
      .walk-mp-leave-row verderop in dit bestand — dus geen JS nodig om dit bij te houden. */
   .walk-lobby-col:has(.mp-chat-panel:not([hidden])){max-width:1160px;}
+  /* zodra er een kamer + chat is, verdwijnt de uitleg-tekst erboven (#walkMultiHint, "Speel
+     hetzelfde spel als...") — die is alleen nuttig VOORDAT je host/deelneemt, en met de kolom
+     nu op een vaste hoogte (overflow-y:hidden hierboven) heeft de informatiekolom die 2 regels
+     tekst + marge er hard nodig om zelf niet af te snijden (gebruikersmelding: "Spel starten"-
+     knop viel weg). */
+  .walk-lobby-col:has(.mp-chat-panel:not([hidden])) #walkMultiHint{display:none;}
   .walk-lobby-fields{flex-direction:column; align-items:stretch; gap:14px;}
   .walk-lobby-fields .field{min-width:0; width:100%;}
   .walk-lobby-start-row{display:flex; flex-direction:column;}
@@ -2006,9 +2014,25 @@
      eigen standaard en laat de chatkolom daardoor automatisch even hoog worden als de
      informatiekolom ernaast, zodat #mpChatPanel's berichtenvak (flex:1 hieronder) precies de
      resterende ruimte vult i.p.v. zelf een hoogte te verzinnen. */
-  .mp-room-layout{display:grid; grid-template-columns:1fr; gap:16px; min-height:0;}
+  /* #walkMultiControls (de flex-kolom eromheen) en .mp-room-layout zelf moeten óók flex:1 +
+     min-height:0 krijgen, anders werkt geen enkele min-height/flex:1 verderop in de keten
+     (.mp-chat-log hieronder): zonder een DEFINITIEVE hoogte op elke tussenliggende schakel
+     valt een grid-rij met de standaard auto-hoogte terug op de natuurlijke (onbegrensde)
+     inhoud van zijn items — dus juist de chat, die als enige onbegrensd kan groeien — in
+     plaats van die inhoud netjes te begrenzen tot wat er past. Zonder deze regels werd de
+     hele kolom bij veel chatberichten alsnog groter dan de vaste hoogte hierboven en sneed
+     overflow-y:hidden het chat-typvak gewoon af (gebruikersmelding). */
+  #walkMultiControls{flex:1; min-height:0;}
+  .mp-room-layout{
+    display:grid; grid-template-columns:1fr; grid-template-rows:minmax(0,1fr); gap:16px;
+    flex:1; min-height:0;
+  }
   .mp-room-layout:has(> .mp-chat-panel:not([hidden])){grid-template-columns:440px minmax(320px,1fr);}
-  .mp-room-info{display:flex; flex-direction:column; gap:14px; min-width:0; min-height:0;}
+  /* overflow-y:hidden, niet auto — ook de informatiekolom mag geen eigen scrollbalk krijgen
+     (gebruikerswens: alleen de chat mag scrollen). Bij normaal gebruik (max. 4 spelers) past
+     dit ruim binnen de vaste hoogte; mocht dat ooit toch niet zo zijn, dan verdwijnt het
+     teveel stil i.p.v. dat er een scrollbalk verschijnt. */
+  .mp-room-info{display:flex; flex-direction:column; gap:14px; min-width:0; min-height:0; overflow-y:hidden;}
   .mp-chat-panel{display:flex; flex-direction:column; gap:10px; min-height:0;}
   .mp-chat-panel[hidden]{display:none;}
   .mp-chat-log{
@@ -2062,19 +2086,26 @@
 
   /* ---------- easter egg: "paintracer" in de chat (gebruikerswens) ----------
      Zelfde opzet als .bigdaddy-car hierboven (position:fixed op <body>, dus zichtbaar op elk
-     tabblad), met twee verschillen die de gebruiker expliciet vroeg: (1) het wagentje beweegt
-     al rijdend een beetje op en neer — vandaar TWEE los lopende animaties tegelijk op hetzelfde
-     element (`animation:` accepteert een kommagescheiden lijst): partycarDrive verplaatst
-     `left` van links naar rechts (1 keer, `forwards`), partycarBob wiebelt er los overheen via
-     `transform` (oneindig herhalend — maakt niet uit, het element is toch weg zodra de rit
-     erop zit). (2) ná het wegrijden nog 3x opnieuw, telkens op een andere hoogte: dat regelt
-     mpSpawnPartycar in 99-multiplayer.js door een NIEUW element te spawnen met een nieuwe
-     willekeurige `top` zodra de vorige zijn animationend haalt — geen CSS-herhaling (die zou
-     op dezelfde hoogte blijven rijden), bewust JS-aangestuurd.
-     `translateY(-50%)` in elke stap van partycarBob is de basis-centrering op de `top` die JS
-     per keer zet (staat NIET los in de regel-CSS zoals bij .bigdaddy-car, want een lopende
-     keyframe-animatie op `transform` overschrijft een statische transform-waarde volledig
-     zolang hij loopt — de -50% moet dus in elke keyframe-stap zelf herhaald worden). */
+     tabblad), met een paar verschillen die de gebruiker expliciet vroeg:
+     (1) rustig tempo — een eerdere, snellere versie ("veeeeel te snel") reed de rit in 2,6s;
+     nu 7s, en de op-en-neer-wiebel (partycarBob) evenredig trager mee (1,8s i.p.v. 0,5s per
+     cyclus), anders oogde het wiebelen zelf nog steeds gejaagd bij zo'n langzame rit.
+     (2) draaiende wielen: dat kán niet met één platte afbeelding, dus is het wagentje
+     opgeknipt (zie mpSpawnPartycar in 99-multiplayer.js) in .partycar-body (de carrosserie,
+     met de wielen eruit gegumd) + twee losse .partycar-wheel-afbeeldingen die er bovenop
+     liggen en zelf ronddraaien (partycarSpin). .partycar-car is daardoor geen <img> meer maar
+     een <div> met die drie lagen erin; partycarDrive/partycarBob blijven op DIE omhullende
+     div staan (positie/wiebel voor het geheel), partycarSpin zit los op elk wiel (rotatie
+     voor dat ene onderdeel) — meerdere elementen kunnen zo onafhankelijk animeren zonder
+     elkaars `transform` te overschrijven, wat met alles op één <img> niet zou kunnen.
+     (3) ná het wegrijden nog 3x opnieuw, telkens op een andere hoogte: dat regelt
+     mpSpawnPartycar door een NIEUW element te spawnen met een nieuwe willekeurige `top`
+     zodra de vorige zijn animationend haalt — geen CSS-herhaling (die zou op dezelfde hoogte
+     blijven rijden), bewust JS-aangestuurd. Bij de laatste rit stopt daar ook de muziek weer
+     (playChant() geeft het Audio-element terug, zie 06-chants.js/mpTriggerPaintracer).
+     De wiel-posities (16,34%/83,16% en 75,85%/83,68%, wielbreedte 19,02%) zijn met de hand
+     opgemeten uit src/assets/partycar-body.b64/-wheel.b64 (205×95px bronbeeld) — verander je
+     ooit de plaatjes, dan moeten deze percentages opnieuw. */
   @keyframes partycarDrive{
     from{ left:-220px; }
     to{ left:calc(100% + 20px); }
@@ -2086,9 +2117,22 @@
     75%{ transform:translateY(-50%) translateY(14px); }
     100%{ transform:translateY(-50%) translateY(0); }
   }
-  .partycar-car{
-    position:fixed; left:-220px; width:180px; height:auto;
-    z-index:9999; pointer-events:none; image-rendering:pixelated;
-    filter:drop-shadow(0 8px 10px rgba(0,0,0,.5));
-    animation:partycarDrive 2.6s linear forwards, partycarBob .5s ease-in-out infinite;
+  @keyframes partycarSpin{
+    from{ transform:translate(-50%,-50%) rotate(0deg); }
+    to{ transform:translate(-50%,-50%) rotate(360deg); }
   }
+  .partycar-car{
+    position:fixed; left:-220px; width:180px; aspect-ratio:205/95;
+    z-index:9999; pointer-events:none;
+    filter:drop-shadow(0 8px 10px rgba(0,0,0,.5));
+    animation:partycarDrive 7s linear forwards, partycarBob 1.8s ease-in-out infinite;
+  }
+  .partycar-body{
+    position:absolute; inset:0; width:100%; height:100%; image-rendering:pixelated;
+  }
+  .partycar-wheel{
+    position:absolute; width:19.02%; height:auto; image-rendering:pixelated;
+    left:16.34%; top:83.16%;
+    animation:partycarSpin 1.1s linear infinite;
+  }
+  .partycar-wheel.is-rear{ left:75.85%; top:83.68%; }
