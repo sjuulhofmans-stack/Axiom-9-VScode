@@ -117,43 +117,55 @@ function mpTriggerBigDaddy(){
 }
 
 // ---------- easter egg: typ "paintracer" in de chat (gebruikerswens) ----------
-// Zelfde patroon als BIGDADDY_IMG hierboven, alleen ontbreekt dit plaatje nog (geen bron-
-// afbeelding beschikbaar toen dit gebouwd werd) — src/assets/partycar.b64 is daarom OPTIONEEL
-// (zie read_optional_b64 in build.py, i.p.v. het verplichte read() dat bigdaddy.b64/logo.b64
-// gebruiken): ontbreekt het bestand, dan blijft PARTYCAR_IMG een lege data-URI en tekent de
-// browser simpelweg niets — de rest van de app blijft gewoon werken. Zet zelf het autootje
-// (transparante achtergrond, zelfde aanpak als bigdaddy.b64) op die plek en bouw opnieuw.
-const PARTYCAR_IMG = 'data:image/png;base64,{{PARTYCAR}}';
+// Zelfde patroon als BIGDADDY_IMG hierboven (optioneel, zie read_optional_b64 in build.py:
+// ontbreekt een bestand, dan blijft dat plaatje een lege data-URI en tekent de browser
+// simpelweg niets — de rest van de app blijft gewoon werken), maar nu TWEE lagen i.p.v. één
+// vlakke afbeelding: de carrosserie (wielen eruit gegumd) en één los wiel, dat twee keer wordt
+// hergebruikt en zelf ronddraait (zie .partycar-body/.partycar-wheel/@keyframes partycarSpin
+// in styles.css voor waarom dat met één platte <img> niet kan — gebruikerswens "wielen moeten
+// draaien").
+const PARTYCAR_BODY_IMG = 'data:image/png;base64,{{PARTYCAR_BODY}}';
+const PARTYCAR_WHEEL_IMG = 'data:image/png;base64,{{PARTYCAR_WHEEL}}';
 // Het geluid hergebruikt de BESTAANDE taunt-infrastructuur (06-chants.js/build_chants() in
 // build.py) i.p.v. een eigen mechanisme: playChant() zoekt toch al op in CHANT_AUDIO, en die
 // tabel accepteert sinds build_chants() nu ook namen (niet alleen taunt-nummers) gewoon de
-// sleutel 'paintracer' — zet src/assets/chants/paintracer.mp3 neer en het geluid speelt vanzelf
-// mee, zonder dat hier iets aan hoeft te veranderen.
+// sleutel 'paintracer' — zet src/assets/chants/paintracer.mp3 (of .ogg/.wav) neer en het
+// geluid speelt vanzelf mee, zonder dat hier iets aan hoeft te veranderen. playChant() geeft
+// tegenwoordig het Audio-element terug (i.p.v. alleen true/false), zodat mpTriggerPaintracer
+// hieronder het weer kan stoppen zodra de laatste rit voorbij is (gebruikerswens).
 const PARTYCAR_PASSES = 4;   // 1x + "nog 3 keer" (gebruikerswens), zie mpSpawnPartycar
 
 // Rijdt van links naar rechts met een op-en-neer-wiebel (partycarDrive + partycarBob, samen op
-// .partycar-car in styles.css — zie de toelichting daar) en herhaalt zichzelf na aankomst nog
-// PARTYCAR_PASSES-1 keer, telkens op een nieuwe, willekeurige hoogte ("op een andere locatie",
-// gebruikerswens) — vandaar dat dit een nieuw element per rit spawnt i.p.v. één keer een CSS-
-// animatie te laten loopen: alleen zo verspringt de hoogte ook echt bij elke doorgang.
-// `e.animationName`-check negeert de partycarBob-tik (die is `infinite` en vuurt sowieso nooit
-// een animationend, maar expliciet checken is duidelijker dan op die aanname leunen).
-function mpSpawnPartycar(passesLeft){
-  const img = document.createElement('img');
-  img.src = PARTYCAR_IMG;
-  img.alt = '';
-  img.className = 'partycar-car';
-  img.style.top = `${20 + Math.random() * 55}%`;
-  img.addEventListener('animationend', (e) => {
+// de omhullende .partycar-car-div in styles.css — zie de toelichting daar) en herhaalt zichzelf
+// na aankomst nog PARTYCAR_PASSES-1 keer, telkens op een nieuwe, willekeurige hoogte ("op een
+// andere locatie", gebruikerswens) — vandaar dat dit een nieuw element per rit spawnt i.p.v.
+// één keer een CSS-animatie te laten loopen: alleen zo verspringt de hoogte ook echt bij elke
+// doorgang. `audio` reist mee door de recursie zodat alleen de ALLERLAATSTE rit 'm stopt, niet
+// elke tussenliggende. `e.animationName`-check negeert de partycarBob/-Spin-tikken (die zijn
+// `infinite` en vuren sowieso nooit een animationend, maar expliciet checken is duidelijker dan
+// op die aanname leunen).
+function mpSpawnPartycar(passesLeft, audio){
+  const wrap = document.createElement('div');
+  wrap.className = 'partycar-car';
+  wrap.style.top = `${20 + Math.random() * 55}%`;
+  wrap.innerHTML =
+    `<img class="partycar-body" src="${PARTYCAR_BODY_IMG}" alt="">` +
+    `<img class="partycar-wheel" src="${PARTYCAR_WHEEL_IMG}" alt="">` +
+    `<img class="partycar-wheel is-rear" src="${PARTYCAR_WHEEL_IMG}" alt="">`;
+  wrap.addEventListener('animationend', (e) => {
     if (e.animationName !== 'partycarDrive') return;
-    img.remove();
-    if (passesLeft > 1) mpSpawnPartycar(passesLeft - 1);
+    wrap.remove();
+    if (passesLeft > 1){
+      mpSpawnPartycar(passesLeft - 1, audio);
+    } else if (audio){
+      try { audio.pause(); audio.currentTime = 0; } catch (err){}
+    }
   });
-  document.body.appendChild(img);
+  document.body.appendChild(wrap);
 }
 function mpTriggerPaintracer(){
-  mpSpawnPartycar(PARTYCAR_PASSES);
-  playChant('paintracer');   // stil als het bestand (nog) ontbreekt, zie CHANT_AUDIO hierboven
+  const audio = playChant('paintracer');   // null als het bestand (nog) ontbreekt
+  mpSpawnPartycar(PARTYCAR_PASSES, audio);
 }
 
 // Vaste namespace zodat onze rooms niet botsen met andermans Trystero-apps op dezelfde

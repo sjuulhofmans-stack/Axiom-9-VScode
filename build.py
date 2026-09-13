@@ -90,7 +90,10 @@ def build() -> pathlib.Path:
     css = read(SRC / "styles.css")
     logo = read(SRC / "assets" / "logo.b64").strip()
     bigdaddy = read(SRC / "assets" / "bigdaddy.b64").strip()
-    partycar = read_optional_b64(SRC / "assets" / "partycar.b64")
+    # los lijf + los wiel (i.p.v. één vlakke afbeelding), zodat het wiel apart kan ronddraaien —
+    # zie .partycar-wheel/@keyframes partycarSpin in styles.css.
+    partycar_body = read_optional_b64(SRC / "assets" / "partycar-body.b64")
+    partycar_wheel = read_optional_b64(SRC / "assets" / "partycar-wheel.b64")
     chants = build_chants()
 
     # --- tegeldata controleren en injecteren ---
@@ -112,7 +115,8 @@ def build() -> pathlib.Path:
     js = js.replace("{{TILES}}", json.dumps(tiles, separators=(",", ":")))
     js = js.replace("{{CHANTS}}", json.dumps(chants, separators=(",", ":")))
     js = js.replace("{{BIGDADDY}}", bigdaddy)
-    js = js.replace("{{PARTYCAR}}", partycar)
+    js = js.replace("{{PARTYCAR_BODY}}", partycar_body)
+    js = js.replace("{{PARTYCAR_WHEEL}}", partycar_wheel)
 
     if "{{TILES}}" in js:
         sys.exit("FOUT: {{TILES}} placeholder niet vervangen")
@@ -120,8 +124,10 @@ def build() -> pathlib.Path:
         sys.exit("FOUT: {{CHANTS}} placeholder niet vervangen")
     if "{{BIGDADDY}}" in js:
         sys.exit("FOUT: {{BIGDADDY}} placeholder niet vervangen")
-    if "{{PARTYCAR}}" in js:
-        sys.exit("FOUT: {{PARTYCAR}} placeholder niet vervangen")
+    if "{{PARTYCAR_BODY}}" in js:
+        sys.exit("FOUT: {{PARTYCAR_BODY}} placeholder niet vervangen")
+    if "{{PARTYCAR_WHEEL}}" in js:
+        sys.exit("FOUT: {{PARTYCAR_WHEEL}} placeholder niet vervangen")
 
     html = template.replace("{{CSS}}", css)
     html = html.replace("{{JS}}", js)
