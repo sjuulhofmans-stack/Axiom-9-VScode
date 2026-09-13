@@ -116,6 +116,46 @@ function mpTriggerBigDaddy(){
   mpPlayEngineStart();
 }
 
+// ---------- easter egg: typ "paintracer" in de chat (gebruikerswens) ----------
+// Zelfde patroon als BIGDADDY_IMG hierboven, alleen ontbreekt dit plaatje nog (geen bron-
+// afbeelding beschikbaar toen dit gebouwd werd) — src/assets/partycar.b64 is daarom OPTIONEEL
+// (zie read_optional_b64 in build.py, i.p.v. het verplichte read() dat bigdaddy.b64/logo.b64
+// gebruiken): ontbreekt het bestand, dan blijft PARTYCAR_IMG een lege data-URI en tekent de
+// browser simpelweg niets — de rest van de app blijft gewoon werken. Zet zelf het autootje
+// (transparante achtergrond, zelfde aanpak als bigdaddy.b64) op die plek en bouw opnieuw.
+const PARTYCAR_IMG = 'data:image/png;base64,{{PARTYCAR}}';
+// Het geluid hergebruikt de BESTAANDE taunt-infrastructuur (06-chants.js/build_chants() in
+// build.py) i.p.v. een eigen mechanisme: playChant() zoekt toch al op in CHANT_AUDIO, en die
+// tabel accepteert sinds build_chants() nu ook namen (niet alleen taunt-nummers) gewoon de
+// sleutel 'paintracer' — zet src/assets/chants/paintracer.mp3 neer en het geluid speelt vanzelf
+// mee, zonder dat hier iets aan hoeft te veranderen.
+const PARTYCAR_PASSES = 4;   // 1x + "nog 3 keer" (gebruikerswens), zie mpSpawnPartycar
+
+// Rijdt van links naar rechts met een op-en-neer-wiebel (partycarDrive + partycarBob, samen op
+// .partycar-car in styles.css — zie de toelichting daar) en herhaalt zichzelf na aankomst nog
+// PARTYCAR_PASSES-1 keer, telkens op een nieuwe, willekeurige hoogte ("op een andere locatie",
+// gebruikerswens) — vandaar dat dit een nieuw element per rit spawnt i.p.v. één keer een CSS-
+// animatie te laten loopen: alleen zo verspringt de hoogte ook echt bij elke doorgang.
+// `e.animationName`-check negeert de partycarBob-tik (die is `infinite` en vuurt sowieso nooit
+// een animationend, maar expliciet checken is duidelijker dan op die aanname leunen).
+function mpSpawnPartycar(passesLeft){
+  const img = document.createElement('img');
+  img.src = PARTYCAR_IMG;
+  img.alt = '';
+  img.className = 'partycar-car';
+  img.style.top = `${20 + Math.random() * 55}%`;
+  img.addEventListener('animationend', (e) => {
+    if (e.animationName !== 'partycarDrive') return;
+    img.remove();
+    if (passesLeft > 1) mpSpawnPartycar(passesLeft - 1);
+  });
+  document.body.appendChild(img);
+}
+function mpTriggerPaintracer(){
+  mpSpawnPartycar(PARTYCAR_PASSES);
+  playChant('paintracer');   // stil als het bestand (nog) ontbreekt, zie CHANT_AUDIO hierboven
+}
+
 // Vaste namespace zodat onze rooms niet botsen met andermans Trystero-apps op dezelfde
 // publieke signaling-relays. Geen geheim, puur een naamruimte.
 const MP_APP_ID = 'axiom9-mapgen-v1';
@@ -894,8 +934,10 @@ function mpChatSenderInfo(peerId){
   const me = peerId === mp.myPeerId ? mpMe() : null;
   return { name: me ? me.name : 'Speler', color: 'var(--text-dim)' };
 }
-// `chant` (nummer), `egg` ("bigdaddy") en `text` sluiten elkaar uit — zie mpSendChatMessage/
-// mpOnRemoteChat hieronder, die zetten er nooit meer dan één van.
+// `chant` (nummer), `egg` (naam van het easter-eggetje: 'bigdaddy'/'paintracer') en `text`
+// sluiten elkaar uit — zie mpSendChatMessage/mpOnRemoteChat hieronder, die zetten er nooit meer
+// dan één van.
+const MP_EGG_LABELS = { bigdaddy: '🚗 Big Daddy!', paintracer: '🏎️ Paintracer!' };
 function mpAppendChat(peerId, text, chant, egg){
   const info = mpChatSenderInfo(peerId);
   mpChatMessages.push({ peerId, name: info.name, color: info.color, text: text || null, chant: chant || null, egg: egg || null, ts: Date.now() });
@@ -911,7 +953,7 @@ function mpRenderChat(){
     const body = msg.chant
       ? `<span class="mp-chant">🔊 taunt #${msg.chant}</span>`
       : msg.egg
-        ? `<span class="mp-egg">🚗 Big Daddy!</span>`
+        ? `<span class="mp-egg">${MP_EGG_LABELS[msg.egg] || msg.egg}</span>`
         : `<span>${mpEscapeHtml(msg.text)}</span>`;
     return `<div class="mp-chat-msg${mine ? ' mp-chat-me' : ''}">` +
       `<b style="color:${msg.color}">${mpEscapeHtml(msg.name)}:</b>${body}` +
@@ -923,19 +965,23 @@ function mpRenderChat(){
     el.scrollTop = el.scrollHeight;
   }
 }
+// Eén trefwoord -> welke easter egg — houdt mpSendChatMessage/mpOnRemoteChat hieronder kort,
+// nieuwe eastereggetjes toevoegen is dan alleen deze tabel + de trigger-functie zelf.
+const MP_EGG_TRIGGERS = { bigdaddy: mpTriggerBigDaddy, paintracer: mpTriggerPaintracer };
 // typ je puur een getal dat een bestaande taunt is (bv. "7"), dan wordt dat een taunt i.p.v.
 // een gewoon tekstbericht — hoorbaar voor jezelf én voor iedereen anders in de room, net als
-// de taunts uit het originele Age of Empires. "bigdaddy" (los easter-eggetje, gebruikerswens)
-// werkt ZONDER actieve room — daarvoor eerst gecontroleerd, vóór de `!mp.active`-guard die de
-// rest van deze functie (taunts, gewone berichten) wél nodig heeft om ergens heen te sturen.
+// de taunts uit het originele Age of Empires. Een easter-eggetje uit MP_EGG_TRIGGERS werkt
+// ZONDER actieve room — daarvoor eerst gecontroleerd, vóór de `!mp.active`-guard die de rest
+// van deze functie (taunts, gewone berichten) wél nodig heeft om ergens heen te sturen.
 function mpSendChatMessage(raw){
   const trimmed = String(raw || '').trim().slice(0, 240);
   if (!trimmed) return;
-  if (trimmed.toLowerCase() === 'bigdaddy'){
-    mpTriggerBigDaddy();
+  const eggName = trimmed.toLowerCase();
+  if (MP_EGG_TRIGGERS[eggName]){
+    MP_EGG_TRIGGERS[eggName]();
     if (mp.active && mp.actions && mp.actions.chat){
-      mpAppendChat(mp.myPeerId, null, null, true);
-      mp.actions.chat.send({ egg: 'bigdaddy' });
+      mpAppendChat(mp.myPeerId, null, null, eggName);
+      mp.actions.chat.send({ egg: eggName });
     }
     return;
   }
@@ -954,9 +1000,9 @@ function mpSendChatMessage(raw){
 // mp.actions.chat.onMessage in mpRegisterActions hierboven
 function mpOnRemoteChat(peerId, data){
   if (!mp.active) return;
-  if (data && data.egg === 'bigdaddy'){
-    mpAppendChat(peerId, null, null, true);
-    mpTriggerBigDaddy();
+  if (data && MP_EGG_TRIGGERS[data.egg]){
+    mpAppendChat(peerId, null, null, data.egg);
+    MP_EGG_TRIGGERS[data.egg]();
     return;
   }
   if (data && data.chant){

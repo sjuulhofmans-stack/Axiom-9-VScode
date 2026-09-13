@@ -52,18 +52,36 @@ def read(path: pathlib.Path) -> str:
     return path.read_text(encoding="utf-8")
 
 
+def read_optional_b64(path: pathlib.Path) -> str:
+    """Zelfde tolerantie als build_chants() hieronder: dit is decoratie voor een easter egg,
+    geen spelregel — ontbreekt het bestand, dan bouwt de tool gewoon door en blijft de
+    bijbehorende afbeelding/geluid leeg (de easter egg doet dan simpelweg niets, i.p.v. dat de
+    hele build breekt zoals bij tiles.json/logo.b64 wél hoort)."""
+    return path.read_text(encoding="utf-8").strip() if path.exists() else ""
+
+
+CHANT_MIME = {".mp3": "audio/mpeg", ".ogg": "audio/ogg", ".wav": "audio/wav"}
+
+
 def build_chants() -> dict:
-    """src/assets/chants/<nummer>.mp3 -> {nummer: data-URI}. Optioneel: ontbreekt de map of
-    een bestand, dan speelt die taunt straks gewoon niet af (geen harde build-fout, in
-    tegenstelling tot tiles.json — dit is decoratie, geen spelregel)."""
+    """src/assets/chants/<naam>.<mp3|ogg|wav> -> {naam: data-URI}. Puur numerieke bestandsnamen
+    (1.mp3, 2.mp3, ...) zijn de originele Age of Empires-taunts (getal intypen in de chat = die
+    taunt afspelen, zie mpSendChatMessage in 99-multiplayer.js); een naam zoals paintracer.ogg is
+    een los easter-eggetje dat via playChant('paintracer') wordt opgezocht i.p.v. via een getal —
+    zelfde CHANT_AUDIO-tabel, alleen de sleutel verschilt (en, zoals hier, evengoed een ander
+    audioformaat: het mimetype hangt gewoon van de bestandsextensie af, zie CHANT_MIME). Optioneel:
+    ontbreekt de map of een bestand, dan speelt dat stukje straks gewoon niet af (geen harde
+    build-fout, in tegenstelling tot tiles.json — dit is decoratie, geen spelregel)."""
     chants_dir = SRC / "assets" / "chants"
     chants = {}
     if chants_dir.exists():
-        for f in sorted(chants_dir.glob("*.mp3")):
-            if not f.stem.isdigit():
+        for f in sorted(chants_dir.iterdir()):
+            mime = CHANT_MIME.get(f.suffix.lower())
+            if not mime:
                 continue
             data = base64.b64encode(f.read_bytes()).decode("ascii")
-            chants[int(f.stem)] = f"data:audio/mpeg;base64,{data}"
+            key = int(f.stem) if f.stem.isdigit() else f.stem
+            chants[key] = f"data:{mime};base64,{data}"
     return chants
 
 
@@ -72,6 +90,7 @@ def build() -> pathlib.Path:
     css = read(SRC / "styles.css")
     logo = read(SRC / "assets" / "logo.b64").strip()
     bigdaddy = read(SRC / "assets" / "bigdaddy.b64").strip()
+    partycar = read_optional_b64(SRC / "assets" / "partycar.b64")
     chants = build_chants()
 
     # --- tegeldata controleren en injecteren ---
@@ -93,6 +112,7 @@ def build() -> pathlib.Path:
     js = js.replace("{{TILES}}", json.dumps(tiles, separators=(",", ":")))
     js = js.replace("{{CHANTS}}", json.dumps(chants, separators=(",", ":")))
     js = js.replace("{{BIGDADDY}}", bigdaddy)
+    js = js.replace("{{PARTYCAR}}", partycar)
 
     if "{{TILES}}" in js:
         sys.exit("FOUT: {{TILES}} placeholder niet vervangen")
@@ -100,6 +120,8 @@ def build() -> pathlib.Path:
         sys.exit("FOUT: {{CHANTS}} placeholder niet vervangen")
     if "{{BIGDADDY}}" in js:
         sys.exit("FOUT: {{BIGDADDY}} placeholder niet vervangen")
+    if "{{PARTYCAR}}" in js:
+        sys.exit("FOUT: {{PARTYCAR}} placeholder niet vervangen")
 
     html = template.replace("{{CSS}}", css)
     html = html.replace("{{JS}}", js)

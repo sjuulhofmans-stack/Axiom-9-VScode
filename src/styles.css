@@ -395,7 +395,23 @@
   /* max-width was 400px — met 4 spelers (2x2 in .walk-solo-setup hieronder) werd elke
      spelerskaart daardoor zo smal dat naam en opdracht-voorproefje meteen afgekapt werden.
      560px geeft die kaarten genoeg lucht zonder dat de rij dropdowns erboven raar breed wordt. */
-  .walk-lobby-col{max-width:560px; margin:0 auto; display:flex; flex-direction:column; gap:16px;}
+  /* min-height: Automatisch/Zelf spelen/Multiplayer hebben alle drie een andere hoeveelheid
+     inhoud (Multiplayer in de "kies host of deelnemen"-stand is bijvoorbeeld veel korter dan
+     Zelf spelen met een gevulde spelerslijst), waardoor #walkPanel per modus een andere hoogte
+     had — hinderlijk omdat je bij het wisselen van modus de pagina zag springen, en de kortere
+     modi hielden ver voor de onderkant van de pagina op (gebruikersmelding: "alle drie een
+     andere grootte"). 274px = de vaste ruimte erboven en eronder die nooit meegroeit, gemeten
+     (niet berekend — te veel losse regels tellen op om met de hand kloppend te houden): 184px
+     vanaf de bovenkant van de pagina tot deze kolom (body-padding + header + tabbalk +
+     #walkPanel's eigen padding-top + de "Zelf spelen"-titel erboven) + 90px erna tot de
+     onderkant van de pagina (#walkPanel's padding-bottom + <footer> met zijn margin-top +
+     body-padding-bottom). Bij kortere inhoud vult dit de rest met lege ruimte tot de onderkant
+     van de pagina; bij langere inhoud (bv. Zelf spelen met 4 spelers) doet min-height niets en
+     groeit de kolom gewoon verder, precies zoals eerst. */
+  .walk-lobby-col{
+    max-width:560px; margin:0 auto; display:flex; flex-direction:column; gap:16px;
+    min-height:calc(100vh - 274px);
+  }
   .walk-lobby-fields{flex-direction:column; align-items:stretch; gap:14px;}
   .walk-lobby-fields .field{min-width:0; width:100%;}
   .walk-lobby-start-row{display:flex; flex-direction:column;}
@@ -2029,4 +2045,37 @@
     z-index:9999; pointer-events:none; image-rendering:pixelated;
     filter:drop-shadow(0 10px 12px rgba(0,0,0,.55));
     animation:bigDaddyDrive 3.2s linear forwards;
+  }
+
+  /* ---------- easter egg: "paintracer" in de chat (gebruikerswens) ----------
+     Zelfde opzet als .bigdaddy-car hierboven (position:fixed op <body>, dus zichtbaar op elk
+     tabblad), met twee verschillen die de gebruiker expliciet vroeg: (1) het wagentje beweegt
+     al rijdend een beetje op en neer — vandaar TWEE los lopende animaties tegelijk op hetzelfde
+     element (`animation:` accepteert een kommagescheiden lijst): partycarDrive verplaatst
+     `left` van links naar rechts (1 keer, `forwards`), partycarBob wiebelt er los overheen via
+     `transform` (oneindig herhalend — maakt niet uit, het element is toch weg zodra de rit
+     erop zit). (2) ná het wegrijden nog 3x opnieuw, telkens op een andere hoogte: dat regelt
+     mpSpawnPartycar in 99-multiplayer.js door een NIEUW element te spawnen met een nieuwe
+     willekeurige `top` zodra de vorige zijn animationend haalt — geen CSS-herhaling (die zou
+     op dezelfde hoogte blijven rijden), bewust JS-aangestuurd.
+     `translateY(-50%)` in elke stap van partycarBob is de basis-centrering op de `top` die JS
+     per keer zet (staat NIET los in de regel-CSS zoals bij .bigdaddy-car, want een lopende
+     keyframe-animatie op `transform` overschrijft een statische transform-waarde volledig
+     zolang hij loopt — de -50% moet dus in elke keyframe-stap zelf herhaald worden). */
+  @keyframes partycarDrive{
+    from{ left:-220px; }
+    to{ left:calc(100% + 20px); }
+  }
+  @keyframes partycarBob{
+    0%{ transform:translateY(-50%) translateY(0); }
+    25%{ transform:translateY(-50%) translateY(-14px); }
+    50%{ transform:translateY(-50%) translateY(0); }
+    75%{ transform:translateY(-50%) translateY(14px); }
+    100%{ transform:translateY(-50%) translateY(0); }
+  }
+  .partycar-car{
+    position:fixed; left:-220px; width:180px; height:auto;
+    z-index:9999; pointer-events:none; image-rendering:pixelated;
+    filter:drop-shadow(0 8px 10px rgba(0,0,0,.5));
+    animation:partycarDrive 2.6s linear forwards, partycarBob .5s ease-in-out infinite;
   }
