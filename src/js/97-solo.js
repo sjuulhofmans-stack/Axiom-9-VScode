@@ -324,16 +324,10 @@ function setWalkMode(mode){
   // zichtbaar, net als de instellingen erboven. Multiplayer heeft geen "Start spel"-knop:
   // die start via "Aanmaken"/"Verbinden" in #walkMultiControls zelf.
   if (btnWalkStart) btnWalkStart.hidden = !isAuto;
-  // het speelscherm-topbalkje (Pauze/Stoppen — alleen voor Automatisch, zie #walkPlayTopbar in
-  // index.html); onzichtbaar terwijl je nog in de lobby zit maakt niets uit, maar moet wel
-  // kloppen zodra walkFadeToPlay() het speelscherm toont. "Nieuw potje" staat niet meer hier,
-  // maar rechtsboven in de tabbladenbalk (zie walkSoloResetSyncVisibility hieronder) — de
-  // topbar is daardoor alleen nog nodig in Automatisch en verdwijnt helemaal in Zelf spelen,
-  // i.p.v. leeg boven het bord te blijven staan.
-  if (btnWalkPause) btnWalkPause.hidden = !isAuto;
-  if (btnWalkStop) btnWalkStop.hidden = !isAuto;
+  // "Nieuw potje" (Zelf spelen) en Pauze/Stoppen (Automatisch) staan rechtsboven in de
+  // tabbladenbalk; hun zichtbaarheid hangt van de modus af. Pauze/Stoppen worden verderop
+  // bijgewerkt via walkFooterSyncVisibility() → walkPauseStopSyncVisibility() (96-walk.js).
   walkSoloResetSyncVisibility();
-  if (walkPlayTopbarEl) walkPlayTopbarEl.hidden = !isAuto;
   if (walkLobbyStatusEl) walkLobbyStatusEl.innerHTML = '';
   // setWalkMode() is alleen bereikbaar terwijl de lobby al in beeld is (de modusknoppen zitten
   // erin) of net ná een multiplayer-potje (mpExitPlayView roept setWalkMode('multi') aan om

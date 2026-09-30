@@ -133,7 +133,16 @@
      dezelfde balk als de tabbladen, los van hoeveel tabbladen ervoor staan. align-self:center
      + eigen margin i.p.v. .tab-btn's padding/margin-bottom: dit is geen tabblad en moet niet
      de onderrand-illusie van de tabs meedoen (gebruikerswens: rechtsboven, niet nog een tab). */
-  .tab-bar-action{margin:0 0 0 auto; align-self:center;}
+  /* Pauze/Stoppen (Automatisch) zitten sinds kort in dezelfde groep. Letterstijl = die van
+     .tab-btn, en .tab-bar staat op align-items:baseline zodat de knoptekst op exact dezelfde
+     lijn staat als de tabtekst; de knop zelf is lager dan een tab en blijft zo los van de
+     onderrand (voorheen: ander lettertype, align-self:center, hing over de lijn = "scheef"). */
+  .tab-bar{align-items:baseline;}
+  .tab-bar-actions{margin-left:auto; display:flex; gap:6px; align-items:baseline;}
+  .tab-bar-action{
+    font-family:var(--font-mono); font-size:12px; letter-spacing:.14em; text-transform:uppercase;
+    padding:4px 12px; border-radius:6px; white-space:nowrap;
+  }
 
   /* ---------- layout ---------- */
   .grid-layout{
@@ -453,20 +462,11 @@
      kolom van één blok, want de andere heeft `hidden` (display:none) en telt niet mee voor de
      grid-afmeting. */
   /* padding was 18px (.panel's standaardwaarde) — iets krapper geeft "Stap voor stap" net
-     genoeg extra lucht om ook in Automatisch (met Pauze/Stoppen erboven, zie
-     .walk-play-topbar) zonder scrollen te passen in fullscreen (gebruikersmelding). Alleen
+     genoeg extra lucht om ook in Automatisch zonder scrollen te passen in fullscreen (gebruikersmelding). Alleen
      dit paneel: #walkPanel wint van .panel dankzij de ID, andere panelen blijven op 18px. */
   #walkPanel{display:grid; padding:12px 18px;}
   #walkLobby, #walkPlayArea{grid-area:1/1; transition:opacity .35s ease;}
   #walkLobby.walk-fade-hidden, #walkPlayArea.walk-fade-hidden{opacity:0; pointer-events:none;}
-
-  .walk-play-topbar{margin-bottom:2px;}
-  /* alleen deze .controls (scoped via #walkPlayArea, andere panelen met .controls blijven op
-     16px): Pauze/Stoppen (Automatisch) kosten met de standaard 16px gap eronder net genoeg
-     extra hoogte om ook mét ingeklapte legenda/log nog een héél klein stukje te kunnen
-     scrollen in fullscreen (gebruikersmelding). Zelf spelen heeft deze rij niet eens (zie
-     #walkPlayTopbar[hidden] in setWalkMode, 97-solo.js) en raakt hier dus niet aan. */
-  #walkPlayArea > .controls{gap:8px;}
 
   /* standenrij boven, dan bord + één vaste zijkolom ernaast. De standenrij staat hier
      bewust weer BOVEN het bord (gebruikerswens, na eerdere versie ernaast) — dat kan alleen
@@ -2220,7 +2220,14 @@
          walkSoloResetSyncVisibility() in 97-solo.js, aangeroepen vanuit switchTab()
          (80-controls.js) en setWalkMode() (97-solo.js). Klikken opent nu eerst
          #walkResetConfirm i.p.v. meteen te resetten. -->
-    <button type="button" id="btnWalkSoloReset" class="small ghost tab-bar-action" disabled hidden>Nieuw potje</button>
+    <!-- Pauze/Stoppen (Automatisch) staan hier om dezelfde reden rechtsboven, niet meer in een
+         eigen rij boven de spelers (gebruikerswens). Zichtbaar alleen tijdens het speelscherm
+         van Automatisch — walkPauseStopSyncVisibility() in 96-walk.js. -->
+    <div class="tab-bar-actions">
+      <button type="button" id="btnWalkSoloReset" class="ghost tab-bar-action" disabled hidden>Nieuw potje</button>
+      <button type="button" id="btnWalkPause" class="ghost tab-bar-action" disabled hidden>Pauze</button>
+      <button type="button" id="btnWalkStop" class="ghost tab-bar-action" disabled hidden>Stoppen</button>
+    </div>
   </div>
 
   <div id="tabMap" class="tab-panel" role="tabpanel">
@@ -2540,14 +2547,8 @@
     <!-- SPEELSCHERM: verschijnt (fade-in) zodra je in de lobby op "Start spel" hebt geklikt. -->
     <div id="walkPlayArea" hidden>
       <div class="controls">
-        <!-- alleen voor Automatisch — Zelf spelen heeft hier niets meer staan, zie
-             #btnWalkSoloReset hieronder in .walk-hud (gebruikersmelding: één eenzame knop
-             "Nieuw potje" in een hele rij boven het bord hield het verder van de bovenkant
-             van het paneel dan nodig). -->
-        <div class="btn-row walk-play-topbar" id="walkPlayTopbar">
-          <button id="btnWalkPause" class="ghost" disabled>Pauze</button>
-          <button id="btnWalkStop" class="ghost" disabled>Stoppen</button>
-        </div>
+        <!-- Pauze/Stoppen stonden hier vroeger in een eigen rij; nu rechtsboven in de
+             tabbladenbalk (.tab-bar-actions), net als "Nieuw potje". -->
         <div class="walk-play-layout">
           <!-- standenrij: volle breedte boven bord + zijkolom samen, met bewezen vaste hoogte
                (zie #walkScore/.walk-player in styles.css) zodat hij het bord nooit kan raken. -->
@@ -6815,7 +6816,6 @@ const btnWalkPause = document.getElementById('btnWalkPause');
 const btnWalkStop = document.getElementById('btnWalkStop');
 const walkLobbyEl = document.getElementById('walkLobby');
 const walkPlayAreaEl = document.getElementById('walkPlayArea');
-const walkPlayTopbarEl = document.getElementById('walkPlayTopbar');
 const walkLobbyStatusEl = document.getElementById('walkLobbyStatus');
 const pageFooterEl = document.querySelector('footer');
 // De voettekst (copyright/disclaimer) kost onderaan de pagina net genoeg hoogte om "Stap voor
@@ -6829,6 +6829,20 @@ function walkFooterSyncVisibility(){
   const onWalkTab = !!walkPanelEl && !walkPanelEl.hidden;
   const playing = !!walkPlayAreaEl && !walkPlayAreaEl.hidden;
   pageFooterEl.hidden = onWalkTab && playing;
+  walkPauseStopSyncVisibility();   // hangt van precies dezelfde momenten af
+}
+
+// Pauze/Stoppen staan rechtsboven in de globale tabbladenbalk (index.html, .tab-bar-actions),
+// die anders dan #tabWalk niet vanzelf meeverbergt — dus zelf bijhouden: alleen op dit
+// tabblad, alleen in modus Automatisch, alleen terwijl het speelscherm in beeld is.
+function walkPauseStopSyncVisibility(){
+  const onWalkTab = !!walkPanelEl && !walkPanelEl.hidden;
+  const playing = !!walkPlayAreaEl && !walkPlayAreaEl.hidden;
+  const autoBtn = document.getElementById('walkModeAuto');
+  const isAuto = !!autoBtn && autoBtn.classList.contains('active') && !window.mpGameActive;
+  const show = onWalkTab && playing && isAuto;
+  if (btnWalkPause) btnWalkPause.hidden = !show;
+  if (btnWalkStop) btnWalkStop.hidden = !show;
 }
 
 // ---------- lobby: nieuw startscherm vóór je gaat spelen (gebruikerswens) ----------
@@ -8226,16 +8240,10 @@ function setWalkMode(mode){
   // zichtbaar, net als de instellingen erboven. Multiplayer heeft geen "Start spel"-knop:
   // die start via "Aanmaken"/"Verbinden" in #walkMultiControls zelf.
   if (btnWalkStart) btnWalkStart.hidden = !isAuto;
-  // het speelscherm-topbalkje (Pauze/Stoppen — alleen voor Automatisch, zie #walkPlayTopbar in
-  // index.html); onzichtbaar terwijl je nog in de lobby zit maakt niets uit, maar moet wel
-  // kloppen zodra walkFadeToPlay() het speelscherm toont. "Nieuw potje" staat niet meer hier,
-  // maar rechtsboven in de tabbladenbalk (zie walkSoloResetSyncVisibility hieronder) — de
-  // topbar is daardoor alleen nog nodig in Automatisch en verdwijnt helemaal in Zelf spelen,
-  // i.p.v. leeg boven het bord te blijven staan.
-  if (btnWalkPause) btnWalkPause.hidden = !isAuto;
-  if (btnWalkStop) btnWalkStop.hidden = !isAuto;
+  // "Nieuw potje" (Zelf spelen) en Pauze/Stoppen (Automatisch) staan rechtsboven in de
+  // tabbladenbalk; hun zichtbaarheid hangt van de modus af. Pauze/Stoppen worden verderop
+  // bijgewerkt via walkFooterSyncVisibility() → walkPauseStopSyncVisibility() (96-walk.js).
   walkSoloResetSyncVisibility();
-  if (walkPlayTopbarEl) walkPlayTopbarEl.hidden = !isAuto;
   if (walkLobbyStatusEl) walkLobbyStatusEl.innerHTML = '';
   // setWalkMode() is alleen bereikbaar terwijl de lobby al in beeld is (de modusknoppen zitten
   // erin) of net ná een multiplayer-potje (mpExitPlayView roept setWalkMode('multi') aan om
@@ -11349,7 +11357,6 @@ function mpEnterPlayView(){
   if (walkLobbyEl) walkLobbyEl.hidden = true;
   if (walkPlayAreaEl) walkPlayAreaEl.hidden = false;
   walkFooterSyncVisibility();   // walkPlayAreaEl.hidden wijzigde net hierboven, niet via walkFadeSwap()
-  if (walkPlayTopbarEl) walkPlayTopbarEl.hidden = true;
   if (walkModeAutoBtn) walkModeAutoBtn.hidden = true;
   if (walkModeSoloBtn) walkModeSoloBtn.hidden = true;
   if (walkModeMultiBtn) walkModeMultiBtn.hidden = true;

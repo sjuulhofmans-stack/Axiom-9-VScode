@@ -49,7 +49,6 @@ const btnWalkPause = document.getElementById('btnWalkPause');
 const btnWalkStop = document.getElementById('btnWalkStop');
 const walkLobbyEl = document.getElementById('walkLobby');
 const walkPlayAreaEl = document.getElementById('walkPlayArea');
-const walkPlayTopbarEl = document.getElementById('walkPlayTopbar');
 const walkLobbyStatusEl = document.getElementById('walkLobbyStatus');
 const pageFooterEl = document.querySelector('footer');
 // De voettekst (copyright/disclaimer) kost onderaan de pagina net genoeg hoogte om "Stap voor
@@ -63,6 +62,20 @@ function walkFooterSyncVisibility(){
   const onWalkTab = !!walkPanelEl && !walkPanelEl.hidden;
   const playing = !!walkPlayAreaEl && !walkPlayAreaEl.hidden;
   pageFooterEl.hidden = onWalkTab && playing;
+  walkPauseStopSyncVisibility();   // hangt van precies dezelfde momenten af
+}
+
+// Pauze/Stoppen staan rechtsboven in de globale tabbladenbalk (index.html, .tab-bar-actions),
+// die anders dan #tabWalk niet vanzelf meeverbergt — dus zelf bijhouden: alleen op dit
+// tabblad, alleen in modus Automatisch, alleen terwijl het speelscherm in beeld is.
+function walkPauseStopSyncVisibility(){
+  const onWalkTab = !!walkPanelEl && !walkPanelEl.hidden;
+  const playing = !!walkPlayAreaEl && !walkPlayAreaEl.hidden;
+  const autoBtn = document.getElementById('walkModeAuto');
+  const isAuto = !!autoBtn && autoBtn.classList.contains('active') && !window.mpGameActive;
+  const show = onWalkTab && playing && isAuto;
+  if (btnWalkPause) btnWalkPause.hidden = !show;
+  if (btnWalkStop) btnWalkStop.hidden = !show;
 }
 
 // ---------- lobby: nieuw startscherm vóór je gaat spelen (gebruikerswens) ----------

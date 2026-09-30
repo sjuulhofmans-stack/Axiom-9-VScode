@@ -126,7 +126,16 @@
      dezelfde balk als de tabbladen, los van hoeveel tabbladen ervoor staan. align-self:center
      + eigen margin i.p.v. .tab-btn's padding/margin-bottom: dit is geen tabblad en moet niet
      de onderrand-illusie van de tabs meedoen (gebruikerswens: rechtsboven, niet nog een tab). */
-  .tab-bar-action{margin:0 0 0 auto; align-self:center;}
+  /* Pauze/Stoppen (Automatisch) zitten sinds kort in dezelfde groep. Letterstijl = die van
+     .tab-btn, en .tab-bar staat op align-items:baseline zodat de knoptekst op exact dezelfde
+     lijn staat als de tabtekst; de knop zelf is lager dan een tab en blijft zo los van de
+     onderrand (voorheen: ander lettertype, align-self:center, hing over de lijn = "scheef"). */
+  .tab-bar{align-items:baseline;}
+  .tab-bar-actions{margin-left:auto; display:flex; gap:6px; align-items:baseline;}
+  .tab-bar-action{
+    font-family:var(--font-mono); font-size:12px; letter-spacing:.14em; text-transform:uppercase;
+    padding:4px 12px; border-radius:6px; white-space:nowrap;
+  }
 
   /* ---------- layout ---------- */
   .grid-layout{
@@ -446,20 +455,11 @@
      kolom van één blok, want de andere heeft `hidden` (display:none) en telt niet mee voor de
      grid-afmeting. */
   /* padding was 18px (.panel's standaardwaarde) — iets krapper geeft "Stap voor stap" net
-     genoeg extra lucht om ook in Automatisch (met Pauze/Stoppen erboven, zie
-     .walk-play-topbar) zonder scrollen te passen in fullscreen (gebruikersmelding). Alleen
+     genoeg extra lucht om ook in Automatisch zonder scrollen te passen in fullscreen (gebruikersmelding). Alleen
      dit paneel: #walkPanel wint van .panel dankzij de ID, andere panelen blijven op 18px. */
   #walkPanel{display:grid; padding:12px 18px;}
   #walkLobby, #walkPlayArea{grid-area:1/1; transition:opacity .35s ease;}
   #walkLobby.walk-fade-hidden, #walkPlayArea.walk-fade-hidden{opacity:0; pointer-events:none;}
-
-  .walk-play-topbar{margin-bottom:2px;}
-  /* alleen deze .controls (scoped via #walkPlayArea, andere panelen met .controls blijven op
-     16px): Pauze/Stoppen (Automatisch) kosten met de standaard 16px gap eronder net genoeg
-     extra hoogte om ook mét ingeklapte legenda/log nog een héél klein stukje te kunnen
-     scrollen in fullscreen (gebruikersmelding). Zelf spelen heeft deze rij niet eens (zie
-     #walkPlayTopbar[hidden] in setWalkMode, 97-solo.js) en raakt hier dus niet aan. */
-  #walkPlayArea > .controls{gap:8px;}
 
   /* standenrij boven, dan bord + één vaste zijkolom ernaast. De standenrij staat hier
      bewust weer BOVEN het bord (gebruikerswens, na eerdere versie ernaast) — dat kan alleen
