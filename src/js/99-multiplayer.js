@@ -709,6 +709,7 @@ function mpHostStartGame(){
   for (const p of players) p.pos = graph.startCells[p.startLabel];
 
   soloGraph = graph;
+  soloBotViewSpeed = null;   // bot-beurten zichtbaar afspelen is alleen voor Zelf spelen (97-solo.js)
   soloPlayers = players;
   soloSetupRand = soloSeedRand;
   soloRand = soloSeedRand;

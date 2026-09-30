@@ -2418,6 +2418,18 @@
             <label for="walkSoloBots">Aantal bots</label>
             <select id="walkSoloBots"></select>
           </div>
+          <!-- meteen doorspelen (zoals altijd) of elke bot-beurt zichtbaar op het bord afspelen:
+               dobbelstenen rollen, pion loopt stap voor stap. Waarde = index in WALK_SPEEDS
+               (96-walk.js). Zie soloAnimateBotTurn() in 97-solo.js. -->
+          <div class="field">
+            <label for="walkSoloBotView">Beurten van de bots</label>
+            <select id="walkSoloBotView">
+              <option value="instant" selected>Meteen doorspelen</option>
+              <option value="3">Laten zien — snel</option>
+              <option value="2">Laten zien — normaal</option>
+              <option value="1">Laten zien — langzaam</option>
+            </select>
+          </div>
         </div>
         <p class="hint" id="walkSoloHint" hidden>Jij bestuurt één speler, de rest speelt zichzelf. <b>Volgorde van een beurt:</b> 1. energie-actie kiezen en meteen inzetten — óók Noodrantsoen of Stuwlading spelen kan al op dit moment — 2. dobbelen (2 loopstenen + de energiesteen) — 3. stappen zetten, waarbij je vóór de eerste stap of tussen stappen door hooguit <b>één</b> actiekaart mag spelen of afleggen (als je er nog geen gebruikt hebt). Een actiekaart krijg je door een opdracht te voltooien, of door tijdens je beurt over het actiekaartvakje van een gang te lopen (je zet stopt daar niet voor, en hooguit 1 kaart per beurt op die manier); je houdt er hoogstens drie op hand.</p>
         <div id="walkSoloSetupPlayers" class="walk-solo-setup"></div>
@@ -7953,6 +7965,7 @@ const walkMultiHintEl = document.getElementById('walkMultiHint');
 const mpChatPanelEl = document.getElementById('mpChatPanel');
 const walkSoloPlayersSel = document.getElementById('walkSoloPlayers');
 const walkSoloBotsSel = document.getElementById('walkSoloBots');
+const walkSoloBotViewSel = document.getElementById('walkSoloBotView');
 const walkSoloSetupEl = document.getElementById('walkSoloSetupPlayers');
 const walkSoloStartRowEl = document.getElementById('walkSoloStartRow');
 const btnWalkSoloStart = document.getElementById('btnWalkSoloStart');
@@ -8089,6 +8102,9 @@ function soloRebuildSetup(){
     });
   }
   soloRenderSetupUI();
+  // "Beurten van de bots" heeft zonder bots niets te doen
+  const botViewField = walkSoloBotViewSel && walkSoloBotViewSel.closest('.field');
+  if (botViewField) botViewField.hidden = bots === 0;
 }
 
 function soloRenderSetupUI(){
@@ -8173,8 +8189,13 @@ let soloTargetKey = null;
 // ingezet. Dan 'rolling' = dobbelen. Dan 'moving' = stappen zetten; kaarten spelen/afleggen kan op
 // elk moment tijdens 'moving' (via de kaartkluis, zie soloRefreshCardVault), vóór of tussen de stappen door, hooguit
 // 1 kaart per beurt — er is dus geen aparte fase vóór de worp om een kaart te spelen.
+// + 'bots' = een bot-beurt wordt zichtbaar afgespeeld (soloAnimateBotTurn), niets klikbaar
 let soloPhase = 'idle';
 let soloRunId = 0;
+// Lobby-optie "Beurten van de bots": null = meteen doorspelen (zoals altijd), anders een
+// index in WALK_SPEEDS en wordt elke bot-beurt zichtbaar afgespeeld. Vastgezet bij
+// startSoloGame(); multiplayer zet 'm zelf op null (gasten zien alleen de gedeelde staat).
+let soloBotViewSpeed = null;
 let soloMove = null;            // { d1, d2, d3, roll, stepsLeft, lastDir, path }
 let soloEnergyRoll = 0;
 let soloEnergyGain = { gained: 0, wasted: 0 };
@@ -9622,11 +9643,13 @@ function soloBeginHumanTurn(pIdx){
 // ---------- bot-beurt: meteen afgehandeld, geen animatie ----------
 // niet-geanimeerde kopie van de bot-logica uit 96-walk.js/simulateOneGame — zelfde regels,
 // alleen zonder walkTick()/walkPath()-vertragingen, want de bots hoeven niet op jou te wachten
-// en jij niet op hen.
+// en jij niet op hen. Geeft een samenvatting terug (startvakje, worp, gelopen route) zodat
+// soloAnimateBotTurn() de beurt daarna zichtbaar kan naspelen als die lobby-optie aan staat.
 function soloResolveBotTurn(player){
   soloTurn++;
   soloActionCellDrawnThisTurn = false;
   const pIdx = player.idx;
+  const startPos = player.pos;
   // Energie-acties en kaarten hebben ELK hun eigen actie-slot per beurt (max 1 van elk) —
   // zelfde opzet als simulateOneGame() in 95-simulate.js, zie de uitgebreide toelichting daar
   // voor de drie paren (Stuwlading/Stuwstoot, Herkalibratie/Herprioritering, Blinde Vlek/
@@ -9765,18 +9788,21 @@ function soloResolveBotTurn(player){
   for (const other of soloPlayers) if (other.idx !== pIdx && !other.rank) occupied.add(other.pos);
   if (player.barrierCell !== null){ occupied.add(player.barrierCell); player.barrierCell = null; }
 
-  let move, roll = 0, usedBoots = false, allowUturn = false;
+  // d1/d2/d3 los bewaard (alleen voor de weergave in soloAnimateBotTurn) — zelfde aantal
+  // simRollD6-aanroepen in dezelfde volgorde als voorheen, dus de uitkomst verandert niet
+  let move, roll = 0, d1 = 0, d2 = 0, d3 = null, usedBoots = false, allowUturn = false, jumpPath = null;
   if (!cardActionUsed && player.cards.includes('boots')){
     const bootsMove = resolveGravityBoots(soloGraph, player.pos, 10, occupied, targetKey);
     if (bootsMove){ move = bootsMove; usedBoots = true; useActionCard(player, 'boots', soloDeck); cardActionUsed = true; }
   }
   if (!usedBoots){
     let dice = 2;
-    roll = simRollD6(soloRand) + simRollD6(soloRand);
+    d1 = simRollD6(soloRand); d2 = simRollD6(soloRand);
+    roll = d1 + d2;
     if (!cardActionUsed && player.cards.includes('boostcell')){
-      roll += simRollD6(soloRand); dice = 3; useActionCard(player, 'boostcell', soloDeck); cardActionUsed = true;
+      d3 = simRollD6(soloRand); roll += d3; dice = 3; useActionCard(player, 'boostcell', soloDeck); cardActionUsed = true;
     } else if (!energyActionUsed && player.strategy === 'boost' && player.energy >= ENERGY_ACTIONS.boost.cost){
-      roll += simRollD6(soloRand); dice = 3; player.energy -= ENERGY_ACTIONS.boost.cost; player.actionUses++; energyActionUsed = true;
+      d3 = simRollD6(soloRand); roll += d3; dice = 3; player.energy -= ENERGY_ACTIONS.boost.cost; player.actionUses++; energyActionUsed = true;
     }
     if (player.rollPenalty){ roll = Math.max(1, roll - player.rollPenalty); player.rollPenalty = 0; }
     if (!cardActionUsed && player.cards.includes('fastlane')){
@@ -9786,8 +9812,9 @@ function soloResolveBotTurn(player){
     move = resolveMove(soloGraph, player.pos, roll, occupied, targets, soloRand, undefined, allowUturn);
     // Koerscorrectie: tegenvallende worp overdoen (zie simulateOneGame voor de drempel)
     if (!move.bankedQuest && !cardActionUsed && player.cards.includes('reroll') && roll < dice * 3.5){
-      roll = 0;
-      for (let d = 0; d < dice; d++) roll += simRollD6(soloRand);
+      d1 = simRollD6(soloRand); d2 = simRollD6(soloRand);
+      if (dice === 3) d3 = simRollD6(soloRand);
+      roll = d1 + d2 + (dice === 3 ? d3 : 0);
       useActionCard(player, 'reroll', soloDeck);
       cardActionUsed = true;
       walkLog(`${player.name} gebruikt <b>Koerscorrectie</b> en gooit opnieuw: ${roll}.`, null, player);
@@ -9804,6 +9831,7 @@ function soloResolveBotTurn(player){
     const jump = resolveEnergyJump(soloGraph, player.pos, ENERGY_JUMP_RANGE, targetKey);
     if (jump){
       player.energy -= ENERGY_ACTIONS.jump.cost; player.actionUses++; energyActionUsed = true;
+      jumpPath = jump.path;
       if (pathHasActionCell(soloGraph, jump.path)) soloGrantActionCellReward(player, false);
       move = jump.banked
         ? { key: jump.key, path: [jump.key], stepsUsed: 0, bankedCount: 1, bankedQuest: true, wasBlocked: false }
@@ -9843,9 +9871,94 @@ function soloResolveBotTurn(player){
     walkLog(`Beurt ${soloTurn}: <b>${player.name}</b> onderweg naar ${targetLabel}${move.wasBlocked ? ' · liep tegen een bezette route aan' : ''}`, null, player);
   }
   renderWalkScore(soloPlayers, -1);
+  return { startPos, jumpPath, path: move.path, usedBoots, d1, d2, d3, energyRoll, targetLabel, targetKey };
 }
 
-// ---------- de ronde-lus: bots meteen, mensen interactief ----------
+// ---------- bot-beurt zichtbaar naspelen (lobby-optie "Beurten van de bots") ----------
+// soloResolveBotTurn() heeft de beurt al volledig afgehandeld; dit speelt 'm alleen nog na op
+// het bord: bot oplichten in de spelersbalk, doel markeren, dobbelstenen laten rollen, pion
+// stap voor stap langs de route. De logregels van die beurt worden pas getoond als de pion is
+// aangekomen (anders stond "voltooit 2.x" er al terwijl hij nog liep). Geeft false terug als
+// het potje ondertussen gestopt/herstart is (soloRunId veranderd).
+async function soloAnimateBotTurn(player, replay, logNodes, runId){
+  const sp = WALK_SPEEDS[soloBotViewSpeed] || WALK_SPEEDS[2];
+  const alive = () => runId === soloRunId;
+  const pIdx = player.idx;
+  const finalPos = player.pos;
+  // pion tekenen, ook als de bot deze beurt binnenkwam (paintWalkPawns slaat die over)
+  const paint = () => {
+    paintWalkPawns(soloGraph, soloPlayers, pIdx);
+    if (walkIsIn(player)){
+      const el = walkCellDiv(soloGraph, player.pos);
+      el.style.setProperty('--pawn', player.color);
+      el.classList.add('walk-pawn', 'walk-pawn-active');
+      walkPaintedPawns.push(el);
+    }
+  };
+
+  soloPhase = 'bots';
+  btnWalkSoloRoll.hidden = true;
+  btnWalkSoloSkip.hidden = true;
+  if (walkSoloActionsEl) walkSoloActionsEl.innerHTML = '';
+  soloClearCardActionsPanel();
+  soloHideStepCounter();
+  soloRefreshCardVault();
+
+  player.pos = replay.startPos;
+  if (replay.targetKey !== undefined) markWalkTarget(soloGraph, replay.targetLabel, replay.targetKey, player.color);
+  renderWalkScore(soloPlayers, pIdx);
+  renderWalkMeta({ player, turn: soloTurn });
+  paint();
+
+  const shakeSteps = Math.max(1, Math.round(sp.rollMs / 90));
+  for (let i = 0; i < shakeSteps; i++){
+    renderWalkDice(1 + Math.floor(Math.random()*6), 1 + Math.floor(Math.random()*6),
+                   ENERGY_DIE_FACES[Math.floor(Math.random()*ENERGY_DIE_FACES.length)], true);
+    await walkSleep(90);
+    if (!alive()) return false;
+  }
+  if (replay.usedBoots){
+    walkDiceEl.innerHTML =
+      `<span class="walk-dice-row">` +
+        `<span class="walk-die boost" title="Zwaartekracht-laarzen">B</span>` +
+        `<span class="walk-die-sum">${replay.path.length - 1} stappen rechtdoor</span>` +
+      `</span>` +
+      `<span class="walk-dice-row">` +
+        energyDieHtml(replay.energyRoll, false) +
+        `<span class="walk-die-sum energy">+${replay.energyRoll} energie</span>` +
+      `</span>`;
+  } else {
+    renderWalkDice(replay.d1, replay.d2, replay.energyRoll, false, replay.d3);
+  }
+  await walkSleep(Math.min(500, sp.rollMs));
+  if (!alive()) return false;
+
+  const segments = [];
+  if (replay.jumpPath) segments.push({ path: replay.jumpPath, special: true });
+  segments.push({ path: replay.path, special: replay.usedBoots });
+  for (const seg of segments){
+    for (let i = 1; i < seg.path.length; i++){
+      const leaving = walkCellDiv(soloGraph, player.pos);
+      leaving.style.setProperty('--pc', player.color);
+      leaving.classList.add('walk-trail');
+      if (seg.special) leaving.classList.add('walk-jump');
+      player.pos = seg.path[i];
+      paint();
+      await walkSleep(sp.stepMs);
+      if (!alive()) return false;
+    }
+  }
+  player.pos = finalPos;
+  paint();
+  for (const n of logNodes) walkLogEl.appendChild(n);
+  walkLogEl.scrollTop = walkLogEl.scrollHeight;
+  renderWalkScore(soloPlayers, pIdx);
+  // even blijven staan zodat je ziet waar hij eindigde, dan pas de volgende speler
+  await walkSleep(sp.rollMs);
+  return alive();
+}
+
+// ---------- de ronde-lus: bots meteen (of zichtbaar, zie soloBotViewSpeed), mensen interactief ----------
 function soloContinueLoop(){
   soloRoundPos++;
   soloAdvanceLoop();
@@ -9858,6 +9971,22 @@ function soloAdvanceLoop(){
     if (player.isHuman){
       soloBeginHumanTurn(pIdx);
       return;   // wacht op klik-interactie; soloContinueLoop() gaat verder zodra de beurt klaar is
+    }
+    if (soloBotViewSpeed !== null){
+      // zichtbaar naspelen: logregels van deze beurt even achterhouden tot de pion er is, en
+      // pas na de animatie verder met de volgende speler (of het einde van de ronde)
+      const logStart = walkLogEl.children.length;
+      const replay = soloResolveBotTurn(player);
+      const logNodes = [...walkLogEl.children].slice(logStart);
+      for (const n of logNodes) n.remove();
+      soloRoundPos++;
+      const runId = soloRunId;
+      soloAnimateBotTurn(player, replay, logNodes, runId).then(ok => {
+        if (!ok || runId !== soloRunId) return;
+        if (soloTurn >= SIM_MAX_TURNS) soloFinishRound();
+        else soloAdvanceLoop();
+      });
+      return;
     }
     soloResolveBotTurn(player);
     soloRoundPos++;
@@ -10012,8 +10141,9 @@ function soloEndGame(stuck){
 
 // ---------- potje starten/stoppen ----------
 function stopSoloGame(){
-  soloRunId++;
+  soloRunId++;   // breekt ook een lopende soloAnimateBotTurn() af
   soloPhase = 'idle';
+  soloBotViewSpeed = null;
   // geen vertraagde soloPeekQuestEnd() laten hangen op een potje dat hierna niet meer bestaat
   if (soloPeekEndTimer){ clearTimeout(soloPeekEndTimer); soloPeekEndTimer = null; }
   soloPeeking = false;
@@ -10080,6 +10210,8 @@ function startSoloGame(){
   soloGraph = graph;
   soloRand = soloSetupRand;
   soloPlayers = soloSetupPlayers;
+  const botView = walkSoloBotViewSel ? walkSoloBotViewSel.value : 'instant';
+  soloBotViewSpeed = botView === 'instant' ? null : (parseInt(botView, 10) || 2);
   // startposities: mensen hebben net gekozen; bots krijgen de overgebleven posities willekeurig
   const taken = new Set(soloPlayers.filter(p => p.isHuman).map(p => p.startLabel));
   const free = simShuffle(SIM_START_LABELS.filter(l => !taken.has(l)), soloRand);
@@ -11037,6 +11169,7 @@ function mpHostStartGame(){
   for (const p of players) p.pos = graph.startCells[p.startLabel];
 
   soloGraph = graph;
+  soloBotViewSpeed = null;   // bot-beurten zichtbaar afspelen is alleen voor Zelf spelen (97-solo.js)
   soloPlayers = players;
   soloSetupRand = soloSeedRand;
   soloRand = soloSeedRand;
