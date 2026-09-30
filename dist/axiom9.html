@@ -556,6 +556,42 @@
     font-family:var(--font-display); font-size:22px; font-weight:700; color:var(--text);
   }
   .walk-endgame-sub{font-family:var(--font-mono); font-size:12.5px; color:var(--text-dim);}
+  /* "Toon uitslag": zelfde hoek als "Toon kaart", maar ligt op het bord zelf — daarom een
+     dichte achtergrond, anders schemeren de bordvakjes erdoor. */
+  .walk-endgame-showresult{z-index:11; background:var(--panel-2); box-shadow:0 4px 14px rgba(0,0,0,.45);}
+  /* eindklassering in het winscherm: plaats 1 t/m 4 onder elkaar. Goud/zilver/brons alleen op
+     het plaatsnummer; de kleurstip + linkerrand is de spelerskleur (zelfde --pc als overal). */
+  .walk-rank-list{
+    list-style:none; margin:14px 0 0; padding:0; width:min(340px, 100%);
+    display:flex; flex-direction:column; gap:6px; text-align:left;
+  }
+  .walk-rank-row{
+    display:flex; align-items:center; gap:10px;
+    padding:8px 12px; border:1px solid var(--line); border-left:3px solid var(--pc);
+    border-radius:6px; background:var(--panel);
+  }
+  .walk-rank-row.r1{background:linear-gradient(90deg, rgba(255,210,61,.14), var(--panel) 70%);}
+  .walk-rank-pos{
+    flex:none; width:26px; height:26px; border-radius:50%;
+    display:flex; align-items:center; justify-content:center;
+    font-family:var(--font-mono); font-size:13px; font-weight:700;
+    color:var(--text-dim); border:1px solid var(--line);
+  }
+  .walk-rank-row.r1 .walk-rank-pos{color:#1a1400; background:#ffd23d; border-color:#ffd23d;}
+  .walk-rank-row.r2 .walk-rank-pos{color:#15181c; background:#c9d2dc; border-color:#c9d2dc;}
+  .walk-rank-row.r3 .walk-rank-pos{color:#1c0f05; background:#d08a4e; border-color:#d08a4e;}
+  .walk-rank-dot{flex:none; width:10px; height:10px; border-radius:50%; background:var(--pc);}
+  .walk-rank-name{flex:1; min-width:0; font-weight:600; color:var(--text); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+  .walk-rank-name .you{
+    margin-left:8px; padding:1px 6px; border-radius:4px; vertical-align:1px;
+    font-family:var(--font-mono); font-size:10px; letter-spacing:.08em; text-transform:uppercase;
+    color:var(--pc); border:1px solid var(--pc);
+  }
+  .walk-rank-score{
+    flex:none; display:flex; flex-direction:column; align-items:flex-end; line-height:1.2;
+    font-family:var(--font-mono); font-size:13px; font-weight:700; color:var(--text);
+  }
+  .walk-rank-status{font-size:10px; font-weight:400; color:var(--text-dim); text-transform:uppercase; letter-spacing:.06em;}
   .walk-side-stack{
     grid-column:3;
     display:flex; flex-direction:column; gap:10px; min-width:0;
@@ -2617,6 +2653,9 @@
                 <button type="button" class="small ghost walk-endgame-showmap" id="btnWalkEndgameShowMap">Toon kaart</button>
                 <div class="walk-endgame-card" id="walkEndgameCard"></div>
               </div>
+              <!-- terug naar het winscherm na "Toon kaart" — zelfde plek als die knop, zodat je
+                   heen en weer kunt klikken (soloEndgameShowMap/soloReopenEndgame, 97-solo.js) -->
+              <button type="button" class="small walk-endgame-showmap walk-endgame-showresult" id="btnWalkEndgameShowResult" hidden>Toon uitslag</button>
             </div>
 
             <!-- legenda en logboek staan standaard DICHT: allebei onbegrensd in hoogte (het
@@ -8004,6 +8043,7 @@ const walkEndgameEl = document.getElementById('walkEndgame');
 const walkEndgameCardEl = document.getElementById('walkEndgameCard');
 const walkEndgameConfettiEl = document.getElementById('walkEndgameConfetti');
 const btnWalkEndgameShowMap = document.getElementById('btnWalkEndgameShowMap');
+const btnWalkEndgameShowResult = document.getElementById('btnWalkEndgameShowResult');
 
 // Dobbelknop, energieacties en kaartkluis pulsen alledrie met dezelfde walkPcPulse-animatie
 // (styles.css), maar zijn losse DOM-elementen die op verschillende momenten pulsend worden
@@ -10021,22 +10061,56 @@ function soloFinishRound(){
 // ---------- eindscherm (na afloop, gebruikerswens: groot venster i.p.v. het kleine
 // #walkStatus-regeltje alleen) ----------
 // Zelfde grootte/rand als het bord (.walk-endgame in styles.css) en vervangt het zichtbaar
-// zolang het open staat; "Toon kaart" (soloHideEndgame) verbergt 'm weer, het bord staat er
-// dan gewoon nog onder — geen aparte "terugknop" nodig, het potje is toch al afgelopen.
+// zolang het open staat; "Toon kaart" (soloEndgameShowMap) verbergt 'm weer, het bord staat er
+// dan gewoon nog onder, en "Toon uitslag" op dezelfde plek (#btnWalkEndgameShowResult) haalt 'm
+// terug (gebruikersmelding: je kon niet meer terug naar het winscherm).
+// Onder de titel staat het klassement 1 t/m 4 (soloEndgameRankingHtml), bij meer dan 1 speler.
 function soloShowEndgame(trophy, title, sub){
   if (!walkEndgameEl || !walkEndgameCardEl) return;
   walkEndgameCardEl.innerHTML =
     `<span class="walk-endgame-trophy">${trophy}</span>` +
     `<span class="walk-endgame-title">${title}</span>` +
-    (sub ? `<span class="walk-endgame-sub">${sub}</span>` : '');
+    (sub ? `<span class="walk-endgame-sub">${sub}</span>` : '') +
+    (soloPlayers.length > 1 ? soloEndgameRankingHtml() : '');
+  soloReopenEndgame();
+}
+// eindklassering als lijstje: plaats, kleurstip, naam, voortgang. Zelfde volgorde als
+// walkStandings() (96-walk.js); gedeelde plaatsen krijgen hetzelfde nummer.
+function soloEndgameRankingHtml(){
+  const rows = walkOrderPlayers(soloPlayers).map(p => {
+    const place = p.rank || '—';
+    const status = walkIsIn(p)
+      ? 'binnen'
+      : p.rank ? 'niet binnen' : 'afgekapt';
+    const you = p.isHuman && soloPlayers.filter(q => q.isHuman).length === 1 ? '<span class="you">jij</span>' : '';
+    return `<li class="walk-rank-row${p.rank >= 1 && p.rank <= 3 ? ' r' + p.rank : ''}" style="--pc:${p.color}">` +
+      `<span class="walk-rank-pos">${place}</span>` +
+      `<span class="walk-rank-dot"></span>` +
+      `<span class="walk-rank-name">${p.name}${you}</span>` +
+      `<span class="walk-rank-score">${p.completed}/${SIM_QUESTS_TO_WIN}<span class="walk-rank-status">${status}</span></span>` +
+    `</li>`;
+  });
+  return `<ol class="walk-rank-list">${rows.join('')}</ol>`;
+}
+function soloReopenEndgame(){
+  if (!walkEndgameEl) return;
   walkEndgameEl.hidden = false;
+  if (btnWalkEndgameShowResult) btnWalkEndgameShowResult.hidden = true;
   soloStartConfetti();
 }
+// "Toon kaart": winscherm weg, knop om 'm terug te halen erbij
+function soloEndgameShowMap(){
+  soloHideEndgame();
+  if (btnWalkEndgameShowResult) btnWalkEndgameShowResult.hidden = false;
+}
+// helemaal weg (nieuw potje/stoppen): ook geen "Toon uitslag" meer
 function soloHideEndgame(){
   if (walkEndgameEl) walkEndgameEl.hidden = true;
+  if (btnWalkEndgameShowResult) btnWalkEndgameShowResult.hidden = true;
   soloStopConfetti();
 }
-if (btnWalkEndgameShowMap) btnWalkEndgameShowMap.addEventListener('click', soloHideEndgame);
+if (btnWalkEndgameShowMap) btnWalkEndgameShowMap.addEventListener('click', soloEndgameShowMap);
+if (btnWalkEndgameShowResult) btnWalkEndgameShowResult.addEventListener('click', soloReopenEndgame);
 
 // losse deeltjes op een <canvas> i.p.v. een library — puur decoratief, dus geen dependency
 // waard. Zit qua z-index ONDER .walk-endgame-card (zie styles.css), dus komt daar nooit

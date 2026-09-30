@@ -432,6 +432,9 @@
                 <button type="button" class="small ghost walk-endgame-showmap" id="btnWalkEndgameShowMap">Toon kaart</button>
                 <div class="walk-endgame-card" id="walkEndgameCard"></div>
               </div>
+              <!-- terug naar het winscherm na "Toon kaart" — zelfde plek als die knop, zodat je
+                   heen en weer kunt klikken (soloEndgameShowMap/soloReopenEndgame, 97-solo.js) -->
+              <button type="button" class="small walk-endgame-showmap walk-endgame-showresult" id="btnWalkEndgameShowResult" hidden>Toon uitslag</button>
             </div>
 
             <!-- legenda en logboek staan standaard DICHT: allebei onbegrensd in hoogte (het
