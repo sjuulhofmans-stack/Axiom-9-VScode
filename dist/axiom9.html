@@ -11046,7 +11046,12 @@ function mpRegisterActions(room){
   mp.actions.start.onMessage = (data) => { if (!mp.isHost) mpClientOnStart(data); };
   mp.actions.state.onMessage = (data) => { if (!mp.isHost) mpApplyState(data); };
   mp.actions.intent.onMessage = (data, { peerId }) => { if (mp.isHost) mpHandleIntent(peerId, data); };
-  mp.actions.leave.onMessage = (data, { peerId }) => { mpOnPeerLeave(peerId, true); };
+  mp.actions.leave.onMessage = (data, { peerId }) => {
+    // een 'leave' MET reden is een weigering van de host aan ons (naam bezet / kamer vol) —
+    // alleen de host stuurt die, en alleen zolang wij nog aan het aanmelden zijn
+    if (!mp.isHost && mp.phase === 'joining' && data && data.reason){ mpJoinRejected(data); return; }
+    mpOnPeerLeave(peerId, true);
+  };
   // host stopt het lopende potje bewust (zie btnMpLeaveGame) terwijl de room open blijft —
   // anders dan 'leave' verlaat niemand de room hierbij, gasten gaan terug naar de wachtkamer.
   mp.actions.stop.onMessage = () => { if (!mp.isHost) mpClientOnStop(); };
@@ -11057,7 +11062,7 @@ function mpRegisterActions(room){
   // er echt een verbinding tot stand komt, niet meteen na het aanroepen van joinRoom().
   room.onPeerJoin = (peerId) => {
     if (mp.isHost) mpHostOnPeerJoin(peerId);
-    else if (mp.pendingName) mp.actions.hello.send({ name: mp.pendingName });
+    else if (mp.pendingName !== null) mp.actions.hello.send({ name: mp.pendingName });
   };
   room.onPeerLeave = (peerId) => { mpOnPeerLeave(peerId, false); };
 }
@@ -11104,17 +11109,33 @@ async function mpHostCreate(){
   mpSetStatus('', '');
   mpRenderHostSeats();
 }
+// vergelijkingssleutel voor namen: hoofdletterongevoelig, spaties genormaliseerd
+function mpNameKey(name){ return soloCleanName(name || '').toLowerCase(); }
 function mpHostOnHello(peerId, data){
   if (mp.seats.some(s => s.peerId === peerId)) return;
   if (mp.seats.length >= mp.totalSeats){
     mp.actions.leave.send({ reason: 'vol' }, peerId);
     return;
   }
-  const name = soloCleanName(data && data.name) || `Speler ${mp.seats.length + 1}`;
+  // Naam moet uniek zijn in de kamer (gebruikerswens) — hoofdletters en spaties tellen niet,
+  // "Anna" en " anna " zijn dus dezelfde. Wie een bezette naam kiest wordt geweigerd en kiest
+  // aan zijn kant een andere (zie mpJoinRejected). Geen naam ingevuld: de host kiest zelf een
+  // vrije "Speler N", zodat twee lege namen elkaar niet blokkeren.
+  const taken = new Set(mp.seats.map(s => mpNameKey(s.name)));
+  let name = soloCleanName((data && data.name) || '');
+  if (name && taken.has(mpNameKey(name))){
+    mp.actions.leave.send({ reason: 'naam', name }, peerId);
+    return;
+  }
+  if (!name){
+    for (let n = mp.seats.length + 1; ; n++){
+      if (!taken.has(mpNameKey(`Speler ${n}`))){ name = `Speler ${n}`; break; }
+    }
+  }
   // eerste nog vrije startvakje toewijzen — met 4 labels en hoogstens 4 zitplaatsen is er
   // altijd één vrij; de speler kan 'm hierna zelf nog wisselen (zie mpHostSetSeatStart)
-  const taken = new Set(mp.seats.map(s => s.startLabel));
-  const startLabel = SIM_START_LABELS.find(l => !taken.has(l)) || SIM_START_LABELS[0];
+  const takenStarts = new Set(mp.seats.map(s => s.startLabel));
+  const startLabel = SIM_START_LABELS.find(l => !takenStarts.has(l)) || SIM_START_LABELS[0];
   mp.seats.push({ peerId, name, isHost: false, startLabel });
   mpBroadcastLobby();
   mpRenderHostSeats();
@@ -11198,7 +11219,9 @@ async function mpJoinConnect(){
   mp.active = true;
   mp.isHost = false;
   mp.phase = 'joining';
-  mp.pendingName = name || 'Speler';
+  // leeg mag: de host kiest dan zelf een vrije "Speler N" (zie mpHostOnHello) — voorheen werd
+  // dat hier "Speler", waardoor een tweede gast zonder naam als dubbele naam geweigerd zou worden
+  mp.pendingName = name;
   mp.actions.hello.send({ name: mp.pendingName });   // meteen proberen; onPeerJoin herhaalt 'm zodra de verbinding er echt is
   mpJoinWaitingEl.hidden = false;
   if (mpChatPanelEl) mpChatPanelEl.hidden = false;
@@ -11218,6 +11241,23 @@ function mpClientOnLobby(data){
 function mpJoinLeave(){
   mpTeardown();
   mpRenderLobby();
+}
+// De host weigerde ons (zie mpHostOnHello): verbinding netjes verbreken en terug naar het
+// deelnameformulier, met de spelcode nog ingevuld. Voorheen werd een weigering ('vol') hier
+// genegeerd en bleef je eindeloos op "wachten op de host" staan.
+function mpJoinRejected(data){
+  mpTeardown();
+  mp.phase = 'join-form';
+  mpRenderLobby();
+  const nameInput = document.getElementById('mpJoinName');
+  if (data.reason === 'naam'){
+    mpSetStatus(`De naam "${mpEscapeHtml(data.name || '')}" is al bezet in deze kamer — kies een andere naam.`, 'bad');
+    if (nameInput){ nameInput.classList.add('mp-field-invalid'); nameInput.focus(); nameInput.select(); }
+  } else if (data.reason === 'vol'){
+    mpSetStatus('Deze kamer is al vol.', 'bad');
+  } else {
+    mpSetStatus('De host heeft je niet toegelaten.', 'bad');
+  }
 }
 
 // ---------- vertrek/opruimen ----------
@@ -11299,12 +11339,21 @@ function mpHostStartGame(){
   const freeLabels = simShuffle(SIM_START_LABELS.filter(l => !takenLabels.has(l)), soloSeedRand);
   let freeIdx = 0;
   const players = [];
+  // bots heten "Speler N" — maar nooit hetzelfde als een mens in de kamer (die mag zichzelf
+  // bv. "Speler 3" noemen), anders stonden er twee spelers met dezelfde naam in het potje
+  const usedNames = new Set(humans.map(s => mpNameKey(s.name)));
+  const botName = (i) => {
+    for (let n = i + 1; ; n++){
+      const cand = `Speler ${n}`;
+      if (!usedNames.has(mpNameKey(cand))){ usedNames.add(mpNameKey(cand)); return cand; }
+    }
+  };
   for (let i = 0; i < total; i++){
     const seat = humans[i];
     const isHuman = !!seat;
     players.push({
       idx: i, isHuman,
-      name: isHuman ? seat.name : `Speler ${i + 1}`,
+      name: isHuman ? seat.name : botName(i),
       color: WALK_PLAYER_COLORS[i],
       deck: simShuffle(SIM_QUEST_LABELS, soloSeedRand),
       // myTurn: eigen beurtenteller (zie soloBeginHumanTurn/soloResolveBotTurn) — ontbrak hier,
@@ -11903,6 +11952,9 @@ const mpHostNameFieldEl = document.getElementById('mpHostName');
 if (mpHostNameFieldEl) mpHostNameFieldEl.addEventListener('input', () => {
   if (soloCleanName(mpHostNameFieldEl.value)) mpHostNameFieldEl.classList.remove('mp-field-invalid');
 });
+// zelfde voor het naamveld bij deelnemen (rood na "naam al bezet", zie mpJoinRejected)
+const mpJoinNameFieldEl = document.getElementById('mpJoinName');
+if (mpJoinNameFieldEl) mpJoinNameFieldEl.addEventListener('input', () => mpJoinNameFieldEl.classList.remove('mp-field-invalid'));
 if (btnMpJoinConnect) btnMpJoinConnect.addEventListener('click', mpJoinConnect);
 if (btnMpHostStart) btnMpHostStart.addEventListener('click', mpHostStartGame);
 if (btnMpHostStop) btnMpHostStop.addEventListener('click', mpHostStop);
