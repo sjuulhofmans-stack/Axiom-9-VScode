@@ -420,6 +420,9 @@
   .walk-lobby-col{
     max-width:1160px; margin:0 auto; display:flex; flex-direction:column; gap:16px;
     height:calc(100vh - 274px); overflow-y:hidden;
+    /* expliciet: met alleen overflow-y:hidden maakt de browser overflow-x vanzelf "auto", en
+       dan kan de kolom bij de kleinste uitsteker een paar px zijwaarts scrollen. */
+    overflow-x:hidden;
   }
   /* zodra er een kamer + chat is, verdwijnt de uitleg-tekst erboven (#walkMultiHint, "Speel
      hetzelfde spel als...") — die is alleen nuttig VOORDAT je host/deelneemt, en met de kolom
@@ -636,7 +639,10 @@
     font-family:var(--font-mono); font-size:8px; letter-spacing:.06em; text-transform:uppercase;
     color:var(--text-dim); text-align:center;
   }
-  input[type=range]{width:100%; accent-color:var(--quest); cursor:pointer;}
+  /* margin-inline:0 — de browser geeft een schuifbalk standaard 2px marge links/rechts, wat
+     bij width:100% 4px te breed werd; in .walk-lobby-col (Tempo-schuif) gaf dat een klein beetje
+     zijwaarts scrollen (gebruikersmelding). */
+  input[type=range]{width:100%; margin-left:0; margin-right:0; accent-color:var(--quest); cursor:pointer;}
 
   /* jouw beurt in de solo-modus: kies hooguit één actie, of gooi meteen. Dit vakje wisselt van
      inhoud tussen 5 heel verschillende deelschermen (energiekeuze, doelwit-kiezer, laarzen-
