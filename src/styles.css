@@ -136,6 +136,14 @@
     font-family:var(--font-mono); font-size:12px; letter-spacing:.14em; text-transform:uppercase;
     padding:4px 12px; border-radius:6px; white-space:nowrap;
   }
+  /* tempo-schuif tijdens Automatisch (zie #walkSpeedPlay in index.html) */
+  .tab-bar-tempo{
+    display:flex; align-items:center; gap:8px; margin-right:6px;
+    font-family:var(--font-mono); font-size:12px; letter-spacing:.14em; text-transform:uppercase;
+    color:var(--text-dim); white-space:nowrap;
+  }
+  .tab-bar-tempo[hidden]{display:none;}
+  .tab-bar-tempo input[type=range]{width:110px;}
 
   /* ---------- layout ---------- */
   .grid-layout{
@@ -590,7 +598,25 @@
     display:flex; flex-direction:column; gap:10px; min-width:0;
     max-height:711px;
   }
-  @media (max-width: 1150px){
+  /* Tussengebied (laptop / half scherm): de drie kolommen op volle maat (280 + 879 + 300px +
+     tussenruimte) zijn samen ±1525px breed, en tot de omschakeling naar één kolom hieronder
+     viel de rechterkolom (dobbelstenen, laatste spelerskaart) daardoor buiten beeld, zonder
+     scrollbalk (gebruikersmelding). Hier krimpen de bordvakjes mee met de schermbreedte (min.
+     14px) zodat alles precies past; de kolommen ernaast houden hun maat. --wcell staat op de
+     rij zodat ook het hoogteplafond van de zijkolommen (= bordhoogte) mee kan schalen. */
+  @media (min-width: 1361px) and (max-width: 1620px){
+    .walk-board-row{
+      --wcell: clamp(14px, calc((100vw - 800px) / 40), 20px);
+      grid-template-columns: minmax(280px,1fr) auto minmax(300px,1.4fr);
+    }
+    /* .walk-board-row ervoor: moet winnen van de algemene #walkBoard{--cell:20px} verderop */
+    .walk-board-row #walkBoard{ --cell: var(--wcell); }
+    .walk-board-col{max-width:none;}
+    .walk-status-col, .walk-side-stack{max-height:calc(var(--wcell) * 32 + 71px);}
+  }
+  /* was 1150px — onder de 1360px zou het bord hierboven kleiner dan 14px per vakje worden,
+     dan liever alles onder elkaar met een bord op volle maat */
+  @media (max-width: 1360px){
     .walk-board-row{grid-template-columns:1fr;}
     .walk-status-col, .walk-board-col, .walk-side-stack{grid-column:1;}
     /* zelfde volgorde als vóór de statushub-verhuizing: bord eerst, dan dobbelen/energie/
@@ -834,7 +860,7 @@
     border:1px solid var(--line-dim); border-radius:6px; padding:14px;
     overflow-y:auto; scrollbar-gutter: stable;
   }
-  @media (max-width: 1150px){ .walk-info-panel{min-height:280px; max-height:none;} }
+  @media (max-width: 1360px){ .walk-info-panel{min-height:280px; max-height:none;} }
   /* Voordat er een potje loopt is alles hierbinnen leeg, en dan stond er alleen een omkaderd
      blok van ~160px (de min-height van .walk-meta) zonder inhoud. Zodra er ook maar iets in
      staat — een beurtregel, een stand of een statusmelding — komt het paneel vanzelf weer
@@ -856,7 +882,7 @@
     overflow-y:auto; scrollbar-gutter:stable;
   }
   .walk-quest-checklist:empty{display:none;}
-  @media (max-width: 1150px){ .walk-quest-checklist{flex:none; max-height:none;} }
+  @media (max-width: 1360px){ .walk-quest-checklist{flex:none; max-height:none;} }
   .quest-check-row{
     display:flex; align-items:center; flex-wrap:wrap; gap:4px 7px;
     padding:6px 9px; border-radius:5px;
@@ -982,6 +1008,8 @@
   .walk-die-sum{
     font-family:var(--font-mono); font-size:12.5px; color:var(--amber); letter-spacing:.04em;
   }
+  /* Stroomonderbreking-straf achter de som (renderWalkDice in 96-walk.js) */
+  .walk-die-penalty{color:#ff6b6b;}
   /* energiesteen: zelfde vorm, andere kleur én een bliksemschichtje naast het cijfer, zodat
      je 'm niet voor een loopsteen aanziet */
   .walk-die.energy{

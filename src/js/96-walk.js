@@ -76,6 +76,10 @@ function walkPauseStopSyncVisibility(){
   const show = onWalkTab && playing && isAuto;
   if (btnWalkPause) btnWalkPause.hidden = !show;
   if (btnWalkStop) btnWalkStop.hidden = !show;
+  const tempo = document.getElementById('walkSpeedPlayWrap');
+  if (tempo) tempo.hidden = !show;
+  // "Nieuw potje" (Zelf spelen) hangt van dezelfde momenten af (alleen tijdens het speelscherm)
+  walkSoloResetSyncVisibility();
 }
 
 // ---------- lobby: nieuw startscherm vóór je gaat spelen (gebruikerswens) ----------
@@ -381,10 +385,17 @@ function energyDieHtml(value, rolling){
     `<span class="walk-die-num">${txt}</span></span>`;
 }
 
-function renderWalkDice(a, b, e, rolling, boost){
+// `total` (optioneel): het aantal stappen dat echt gelopen mag worden, als dat afwijkt van de
+// som van de stenen — Stroomonderbreking trekt er 2 vanaf. Zonder dit stond er "= 9 stappen"
+// terwijl je er 7 mocht zetten (alleen het logboek noemde de straf).
+function renderWalkDice(a, b, e, rolling, boost, total){
   const cls = 'walk-die' + (rolling ? ' rolling' : '');
   const third = boost ? `<span class="${cls} boost" title="Stuwstoot">${boost}</span>` : '';
-  const sum = rolling ? '' : `<span class="walk-die-sum">= ${a + b + (boost || 0)} stappen</span>`;
+  const diceSum = a + b + (boost || 0);
+  const steps = (total === undefined || total === null) ? diceSum : total;
+  const penalty = steps < diceSum
+    ? ` <span class="walk-die-penalty" title="Stroomonderbreking">(−${diceSum - steps})</span>` : '';
+  const sum = rolling ? '' : `<span class="walk-die-sum">= ${steps} stappen${penalty}</span>`;
   const energy = rolling ? '' : `<span class="walk-die-sum energy">+${e} energie</span>`;
   // Twee vaste regels: loopstenen boven, energiesteen eronder. Als één rij die mocht wrappen
   // sprong de energiesteen naar de tweede regel zodra de Stuwstoot een derde loopsteen
@@ -703,6 +714,7 @@ async function runWalkSimulation(){
       const player = players[pIdx];
       if (player.rank) continue;   // binnen: speelt niet meer mee
       turn++;
+      player.ownTurns = (player.ownTurns || 0) + 1;   // eigen beurten, voor "wint in N beurten"
       // Energie-acties en kaarten hebben ELK hun eigen actie-slot per beurt (max 1 van elk) —
       // zelfde opzet als simulateOneGame() in 95-simulate.js, zie de uitgebreide toelichting
       // daar voor de drie paren (Stuwlading/Stuwstoot, Herkalibratie/Herprioritering, Blinde
@@ -977,7 +989,7 @@ async function runWalkSimulation(){
           useActionCard(player, 'fastlane', deck);
           cardActionUsed = true; usedCardId = 'fastlane';
         }
-        renderWalkDice(d1, d2, energyRoll, false, d3);
+        renderWalkDice(d1, d2, energyRoll, false, d3, roll);
       }
       if (aborted()) return;
       await walkTick(Math.min(500, walkSpeed().rollMs));
@@ -1080,7 +1092,8 @@ async function runWalkSimulation(){
           // rank wordt NIET meteen toegekend — pas ná deze hele ronde (zie resolveRoundFinishers
           // in 95-simulate.js), zodat wie later in de beurtvolgorde zit deze ronde nog evenveel
           // kans krijgt om ook zijn 6e opdracht te halen, i.p.v. dat beurtvolgorde de plaats bepaalt
-          player.finishTurn = turn;
+          // eigen beurten van deze speler (niet `turn`, dat telt alle spelers samen)
+          player.finishTurn = player.ownTurns;
           clearWalkTarget();
           walkLog(`${player.name} heeft alle ${SIM_QUESTS_TO_WIN} opdrachten voltooid (beurt ${turn}) en verlaat het bord — wacht op de rest van deze ronde.`, 'hit', player);
           roundFinishers.push(player);
@@ -1126,7 +1139,7 @@ async function runWalkSimulation(){
     const winText = winners.length === 1
       ? `${winners[0].name} wint vanaf ${winners[0].startLabel} in ${winners[0].finishTurn} beurten`
       : `${winners.map(w => w.name).join(' en ')} delen de winst (gelijke energie en actiekaarten)`;
-    walkStatusEl.innerHTML = `<span class="ok">✓ ${winText} — potje uitgespeeld in ${turn} beurten.</span>${standings}`;
+    walkStatusEl.innerHTML = `<span class="ok">✓ ${winText} — potje uitgespeeld in ${turn} beurten (alle spelers samen).</span>${standings}`;
   } else {
     walkStatusEl.innerHTML = `<span class="bad">✕ Afgekapt na ${SIM_MAX_TURNS} beurten — niet iedereen was binnen.</span><span class="walk-standings-row">${walkStandings(players)}</span>`;
   }
@@ -1137,10 +1150,23 @@ if (btnWalkStart) btnWalkStart.addEventListener('click', () => walkTryStart(runW
 if (btnWalkPause) btnWalkPause.addEventListener('click', () => setWalkPaused(!walkPaused));
 if (btnWalkStop) btnWalkStop.addEventListener('click', () => { stopWalkSimulation(); walkFadeToLobby(); });
 if (walkPlayersSel) walkPlayersSel.addEventListener('change', syncWalkStartEnabled);
+// Twee tempo-schuiven die hetzelfde tempo regelen: #walkSpeed in de lobby (vooraf instellen) en
+// #walkSpeedPlay rechtsboven in de tabbladenbalk (tijdens het lopen — de lobby is dan weg,
+// gebruikersmelding "tempo tijdens het lopen aanpassen kan nergens"). walkSpeed() leest altijd
+// #walkSpeed; de andere wordt gewoon meegezet.
+const walkSpeedPlayEl = document.getElementById('walkSpeedPlay');
 if (walkSpeedEl){
-  const syncLabel = () => { walkSpeedLabelEl.textContent = walkSpeed().label; };
-  walkSpeedEl.addEventListener('input', syncLabel);
-  syncLabel();
+  const syncSpeed = (from) => {
+    if (walkSpeedPlayEl){
+      if (from === walkSpeedPlayEl) walkSpeedEl.value = walkSpeedPlayEl.value;
+      else walkSpeedPlayEl.value = walkSpeedEl.value;
+      walkSpeedPlayEl.title = 'Tempo: ' + walkSpeed().label;
+    }
+    walkSpeedLabelEl.textContent = walkSpeed().label;
+  };
+  walkSpeedEl.addEventListener('input', () => syncSpeed(walkSpeedEl));
+  if (walkSpeedPlayEl) walkSpeedPlayEl.addEventListener('input', () => syncSpeed(walkSpeedPlayEl));
+  syncSpeed(walkSpeedEl);
 }
 refreshWalkStartOptions();
 syncWalkStartEnabled();

@@ -143,6 +143,14 @@
     font-family:var(--font-mono); font-size:12px; letter-spacing:.14em; text-transform:uppercase;
     padding:4px 12px; border-radius:6px; white-space:nowrap;
   }
+  /* tempo-schuif tijdens Automatisch (zie #walkSpeedPlay in index.html) */
+  .tab-bar-tempo{
+    display:flex; align-items:center; gap:8px; margin-right:6px;
+    font-family:var(--font-mono); font-size:12px; letter-spacing:.14em; text-transform:uppercase;
+    color:var(--text-dim); white-space:nowrap;
+  }
+  .tab-bar-tempo[hidden]{display:none;}
+  .tab-bar-tempo input[type=range]{width:110px;}
 
   /* ---------- layout ---------- */
   .grid-layout{
@@ -597,7 +605,25 @@
     display:flex; flex-direction:column; gap:10px; min-width:0;
     max-height:711px;
   }
-  @media (max-width: 1150px){
+  /* Tussengebied (laptop / half scherm): de drie kolommen op volle maat (280 + 879 + 300px +
+     tussenruimte) zijn samen ±1525px breed, en tot de omschakeling naar één kolom hieronder
+     viel de rechterkolom (dobbelstenen, laatste spelerskaart) daardoor buiten beeld, zonder
+     scrollbalk (gebruikersmelding). Hier krimpen de bordvakjes mee met de schermbreedte (min.
+     14px) zodat alles precies past; de kolommen ernaast houden hun maat. --wcell staat op de
+     rij zodat ook het hoogteplafond van de zijkolommen (= bordhoogte) mee kan schalen. */
+  @media (min-width: 1361px) and (max-width: 1620px){
+    .walk-board-row{
+      --wcell: clamp(14px, calc((100vw - 800px) / 40), 20px);
+      grid-template-columns: minmax(280px,1fr) auto minmax(300px,1.4fr);
+    }
+    /* .walk-board-row ervoor: moet winnen van de algemene #walkBoard{--cell:20px} verderop */
+    .walk-board-row #walkBoard{ --cell: var(--wcell); }
+    .walk-board-col{max-width:none;}
+    .walk-status-col, .walk-side-stack{max-height:calc(var(--wcell) * 32 + 71px);}
+  }
+  /* was 1150px — onder de 1360px zou het bord hierboven kleiner dan 14px per vakje worden,
+     dan liever alles onder elkaar met een bord op volle maat */
+  @media (max-width: 1360px){
     .walk-board-row{grid-template-columns:1fr;}
     .walk-status-col, .walk-board-col, .walk-side-stack{grid-column:1;}
     /* zelfde volgorde als vóór de statushub-verhuizing: bord eerst, dan dobbelen/energie/
@@ -841,7 +867,7 @@
     border:1px solid var(--line-dim); border-radius:6px; padding:14px;
     overflow-y:auto; scrollbar-gutter: stable;
   }
-  @media (max-width: 1150px){ .walk-info-panel{min-height:280px; max-height:none;} }
+  @media (max-width: 1360px){ .walk-info-panel{min-height:280px; max-height:none;} }
   /* Voordat er een potje loopt is alles hierbinnen leeg, en dan stond er alleen een omkaderd
      blok van ~160px (de min-height van .walk-meta) zonder inhoud. Zodra er ook maar iets in
      staat — een beurtregel, een stand of een statusmelding — komt het paneel vanzelf weer
@@ -863,7 +889,7 @@
     overflow-y:auto; scrollbar-gutter:stable;
   }
   .walk-quest-checklist:empty{display:none;}
-  @media (max-width: 1150px){ .walk-quest-checklist{flex:none; max-height:none;} }
+  @media (max-width: 1360px){ .walk-quest-checklist{flex:none; max-height:none;} }
   .quest-check-row{
     display:flex; align-items:center; flex-wrap:wrap; gap:4px 7px;
     padding:6px 9px; border-radius:5px;
@@ -989,6 +1015,8 @@
   .walk-die-sum{
     font-family:var(--font-mono); font-size:12.5px; color:var(--amber); letter-spacing:.04em;
   }
+  /* Stroomonderbreking-straf achter de som (renderWalkDice in 96-walk.js) */
+  .walk-die-penalty{color:#ff6b6b;}
   /* energiesteen: zelfde vorm, andere kleur én een bliksemschichtje naast het cijfer, zodat
      je 'm niet voor een loopsteen aanziet */
   .walk-die.energy{
@@ -2246,9 +2274,11 @@
   <div class="tab-bar" role="tablist">
     <button class="tab-btn active" id="tabBtnMap" data-tab="map" role="tab" aria-selected="true">Speelbord genereren</button>
     <button class="tab-btn" id="tabBtnSimulate" data-tab="simulate" role="tab" aria-selected="false">Simulatie</button>
-    <button class="tab-btn" id="tabBtnWalk" data-tab="walk" role="tab" aria-selected="false">Zelf spelen</button>
+    <button class="tab-btn" id="tabBtnWalk" data-tab="walk" role="tab" aria-selected="false">Spelen</button>
     <button class="tab-btn" id="tabBtnCards" data-tab="cards" role="tab" aria-selected="false">Speelkaarten</button>
-    <!-- "Nieuw potje": alleen relevant op tabblad "Zelf spelen" tijdens de modus Zelf spelen —
+    <!-- Het tabblad heette eerst ook "Zelf spelen", net als de modusknop erin — verwarrend, want
+         daar zit ook Automatisch (waar je juist niet zelf speelt). Nu "Spelen".
+         "Nieuw potje": alleen relevant op tabblad "Spelen" tijdens de modus Zelf spelen —
          stond eerst boven het bord (waar een misklik naast de dobbelknop meteen het potje
          weggooide, gebruikersmelding) en daarna ernaast in .walk-hud, maar de gebruiker wilde
          'm liever hier, rechtsboven bij de andere tabbladen, uit de buurt van het dobbelen.
@@ -2261,6 +2291,10 @@
          van Automatisch — walkPauseStopSyncVisibility() in 96-walk.js. -->
     <div class="tab-bar-actions">
       <button type="button" id="btnWalkSoloReset" class="ghost tab-bar-action" disabled hidden>Nieuw potje</button>
+      <!-- tempo tijdens het lopen (Automatisch) — gekoppeld aan #walkSpeed in de lobby, zie 96-walk.js -->
+      <label class="tab-bar-tempo" id="walkSpeedPlayWrap" hidden>Tempo
+        <input type="range" id="walkSpeedPlay" min="0" max="4" step="1" value="2" aria-label="Tempo">
+      </label>
       <button type="button" id="btnWalkPause" class="ghost tab-bar-action" disabled hidden>Pauze</button>
       <button type="button" id="btnWalkStop" class="ghost tab-bar-action" disabled hidden>Stoppen</button>
     </div>
@@ -2401,7 +2435,7 @@
          om dat later tussen te haken. -->
     <div class="panel" id="walkPanel">
     <div id="walkLobby">
-      <h2>Zelf spelen</h2>
+      <h2>Spelen</h2>
       <div class="walk-lobby-col">
         <div class="walk-mode-toggle" role="tablist">
           <button class="walk-mode-btn active" id="walkModeAuto" data-mode="auto" role="tab" aria-selected="true">Automatisch</button>
@@ -2438,7 +2472,7 @@
             <input type="range" id="walkSpeed" min="0" max="4" step="1" value="2">
           </div>
         </div>
-        <p class="hint" id="walkAutoHint">Speelt één potje op de indeling van het tabblad "Speelbord genereren", met dezelfde regels als de batch-simulatie: elke speler blokkeert de vakjes waar hij staat, en er wordt doorgespeeld tot de één na laatste speler binnen is — bij 4 spelers dus tot en met de nummer 3, want dan ligt de vierde plaats vast. Het tempo kun je tijdens het lopen aanpassen. <span id="walkStartHint" class="sub"></span></p>
+        <p class="hint" id="walkAutoHint">Speelt één potje op de indeling van het tabblad "Speelbord genereren", met dezelfde regels als de batch-simulatie: elke speler blokkeert de vakjes waar hij staat, en er wordt doorgespeeld tot de één na laatste speler binnen is — bij 4 spelers dus tot en met de nummer 3, want dan ligt de vierde plaats vast. Het tempo kun je tijdens het lopen aanpassen met de schuif rechtsboven. <span id="walkStartHint" class="sub"></span></p>
 
         <div class="walk-controls walk-lobby-fields" id="walkSoloControls" hidden>
           <div class="field">
@@ -6894,6 +6928,10 @@ function walkPauseStopSyncVisibility(){
   const show = onWalkTab && playing && isAuto;
   if (btnWalkPause) btnWalkPause.hidden = !show;
   if (btnWalkStop) btnWalkStop.hidden = !show;
+  const tempo = document.getElementById('walkSpeedPlayWrap');
+  if (tempo) tempo.hidden = !show;
+  // "Nieuw potje" (Zelf spelen) hangt van dezelfde momenten af (alleen tijdens het speelscherm)
+  walkSoloResetSyncVisibility();
 }
 
 // ---------- lobby: nieuw startscherm vóór je gaat spelen (gebruikerswens) ----------
@@ -7199,10 +7237,17 @@ function energyDieHtml(value, rolling){
     `<span class="walk-die-num">${txt}</span></span>`;
 }
 
-function renderWalkDice(a, b, e, rolling, boost){
+// `total` (optioneel): het aantal stappen dat echt gelopen mag worden, als dat afwijkt van de
+// som van de stenen — Stroomonderbreking trekt er 2 vanaf. Zonder dit stond er "= 9 stappen"
+// terwijl je er 7 mocht zetten (alleen het logboek noemde de straf).
+function renderWalkDice(a, b, e, rolling, boost, total){
   const cls = 'walk-die' + (rolling ? ' rolling' : '');
   const third = boost ? `<span class="${cls} boost" title="Stuwstoot">${boost}</span>` : '';
-  const sum = rolling ? '' : `<span class="walk-die-sum">= ${a + b + (boost || 0)} stappen</span>`;
+  const diceSum = a + b + (boost || 0);
+  const steps = (total === undefined || total === null) ? diceSum : total;
+  const penalty = steps < diceSum
+    ? ` <span class="walk-die-penalty" title="Stroomonderbreking">(−${diceSum - steps})</span>` : '';
+  const sum = rolling ? '' : `<span class="walk-die-sum">= ${steps} stappen${penalty}</span>`;
   const energy = rolling ? '' : `<span class="walk-die-sum energy">+${e} energie</span>`;
   // Twee vaste regels: loopstenen boven, energiesteen eronder. Als één rij die mocht wrappen
   // sprong de energiesteen naar de tweede regel zodra de Stuwstoot een derde loopsteen
@@ -7521,6 +7566,7 @@ async function runWalkSimulation(){
       const player = players[pIdx];
       if (player.rank) continue;   // binnen: speelt niet meer mee
       turn++;
+      player.ownTurns = (player.ownTurns || 0) + 1;   // eigen beurten, voor "wint in N beurten"
       // Energie-acties en kaarten hebben ELK hun eigen actie-slot per beurt (max 1 van elk) —
       // zelfde opzet als simulateOneGame() in 95-simulate.js, zie de uitgebreide toelichting
       // daar voor de drie paren (Stuwlading/Stuwstoot, Herkalibratie/Herprioritering, Blinde
@@ -7795,7 +7841,7 @@ async function runWalkSimulation(){
           useActionCard(player, 'fastlane', deck);
           cardActionUsed = true; usedCardId = 'fastlane';
         }
-        renderWalkDice(d1, d2, energyRoll, false, d3);
+        renderWalkDice(d1, d2, energyRoll, false, d3, roll);
       }
       if (aborted()) return;
       await walkTick(Math.min(500, walkSpeed().rollMs));
@@ -7898,7 +7944,8 @@ async function runWalkSimulation(){
           // rank wordt NIET meteen toegekend — pas ná deze hele ronde (zie resolveRoundFinishers
           // in 95-simulate.js), zodat wie later in de beurtvolgorde zit deze ronde nog evenveel
           // kans krijgt om ook zijn 6e opdracht te halen, i.p.v. dat beurtvolgorde de plaats bepaalt
-          player.finishTurn = turn;
+          // eigen beurten van deze speler (niet `turn`, dat telt alle spelers samen)
+          player.finishTurn = player.ownTurns;
           clearWalkTarget();
           walkLog(`${player.name} heeft alle ${SIM_QUESTS_TO_WIN} opdrachten voltooid (beurt ${turn}) en verlaat het bord — wacht op de rest van deze ronde.`, 'hit', player);
           roundFinishers.push(player);
@@ -7944,7 +7991,7 @@ async function runWalkSimulation(){
     const winText = winners.length === 1
       ? `${winners[0].name} wint vanaf ${winners[0].startLabel} in ${winners[0].finishTurn} beurten`
       : `${winners.map(w => w.name).join(' en ')} delen de winst (gelijke energie en actiekaarten)`;
-    walkStatusEl.innerHTML = `<span class="ok">✓ ${winText} — potje uitgespeeld in ${turn} beurten.</span>${standings}`;
+    walkStatusEl.innerHTML = `<span class="ok">✓ ${winText} — potje uitgespeeld in ${turn} beurten (alle spelers samen).</span>${standings}`;
   } else {
     walkStatusEl.innerHTML = `<span class="bad">✕ Afgekapt na ${SIM_MAX_TURNS} beurten — niet iedereen was binnen.</span><span class="walk-standings-row">${walkStandings(players)}</span>`;
   }
@@ -7955,10 +8002,23 @@ if (btnWalkStart) btnWalkStart.addEventListener('click', () => walkTryStart(runW
 if (btnWalkPause) btnWalkPause.addEventListener('click', () => setWalkPaused(!walkPaused));
 if (btnWalkStop) btnWalkStop.addEventListener('click', () => { stopWalkSimulation(); walkFadeToLobby(); });
 if (walkPlayersSel) walkPlayersSel.addEventListener('change', syncWalkStartEnabled);
+// Twee tempo-schuiven die hetzelfde tempo regelen: #walkSpeed in de lobby (vooraf instellen) en
+// #walkSpeedPlay rechtsboven in de tabbladenbalk (tijdens het lopen — de lobby is dan weg,
+// gebruikersmelding "tempo tijdens het lopen aanpassen kan nergens"). walkSpeed() leest altijd
+// #walkSpeed; de andere wordt gewoon meegezet.
+const walkSpeedPlayEl = document.getElementById('walkSpeedPlay');
 if (walkSpeedEl){
-  const syncLabel = () => { walkSpeedLabelEl.textContent = walkSpeed().label; };
-  walkSpeedEl.addEventListener('input', syncLabel);
-  syncLabel();
+  const syncSpeed = (from) => {
+    if (walkSpeedPlayEl){
+      if (from === walkSpeedPlayEl) walkSpeedEl.value = walkSpeedPlayEl.value;
+      else walkSpeedPlayEl.value = walkSpeedEl.value;
+      walkSpeedPlayEl.title = 'Tempo: ' + walkSpeed().label;
+    }
+    walkSpeedLabelEl.textContent = walkSpeed().label;
+  };
+  walkSpeedEl.addEventListener('input', () => syncSpeed(walkSpeedEl));
+  if (walkSpeedPlayEl) walkSpeedPlayEl.addEventListener('input', () => syncSpeed(walkSpeedPlayEl));
+  syncSpeed(walkSpeedEl);
 }
 refreshWalkStartOptions();
 syncWalkStartEnabled();
@@ -9020,7 +9080,7 @@ function soloPlayCard(id){
     soloMove.stepsLeft += d3;
     useActionCard(p, 'boostcell', soloDeck);
     soloUsedCardId = 'boostcell';
-    renderWalkDice(soloMove.d1, soloMove.d2, soloEnergyRoll, false, soloMove.d3);
+    renderWalkDice(soloMove.d1, soloMove.d2, soloEnergyRoll, false, soloMove.d3, soloMove.roll);
     walkLog(`Je speelt <b>Stuwlading</b>: gratis derde loopsteen (${d3}) → ${soloMove.stepsLeft} stappen te gaan.`, null, p);
     soloAfterCardAction();
   } else if (id === 'fastlane'){
@@ -9336,7 +9396,6 @@ function soloRollDice(){
   const d1 = simRollD6(soloRand), d2 = simRollD6(soloRand);
   const d3 = soloPendingBoost ? simRollD6(soloRand) : null;
   soloRollEnergyForTurn();
-  renderWalkDice(d1, d2, soloEnergyRoll, false, d3);
   let roll = d1 + d2 + (d3 || 0);
   const p = solo();
   if (p.rollPenalty){
@@ -9345,6 +9404,7 @@ function soloRollDice(){
     roll = nieuw;
     p.rollPenalty = 0;
   }
+  renderWalkDice(d1, d2, soloEnergyRoll, false, d3, roll);   // na de straf: toont de echte stappen
   soloMove = { d1, d2, d3, roll, stepsLeft: roll, lastDir: -1, path: [p.pos] };
   btnWalkSoloRoll.hidden = true;
   renderWalkScore(soloPlayers, soloActiveIdx);
@@ -9485,7 +9545,9 @@ function soloBankCurrentQuest(){
   }
 
   if (p.completed >= SIM_QUESTS_TO_WIN){
-    p.finishTurn = soloTurn;
+    // eigen beurten van deze speler, niet soloTurn (= alle spelers samen) — anders stond er
+    // in het winscherm "in 77 beurten" terwijl de winnaar er zelf maar ±19 had gespeeld
+    p.finishTurn = p.myTurn;
     soloRoundFinishers.push(p);
     walkLog(`Je hebt alle ${SIM_QUESTS_TO_WIN} opdrachten voltooid en verlaat het bord — wacht op de rest van deze ronde.`, 'hit', p);
     clearWalkTarget();
@@ -9596,7 +9658,7 @@ function soloFinishTurn(banked){
     }
 
     if (p.completed >= SIM_QUESTS_TO_WIN){
-      p.finishTurn = soloTurn;
+      p.finishTurn = p.myTurn;   // eigen beurten, zie soloBankCurrentQuest
       soloRoundFinishers.push(p);
       walkLog(`Je hebt alle ${SIM_QUESTS_TO_WIN} opdrachten voltooid en verlaat het bord — wacht op de rest van deze ronde.`, 'hit', p);
       paintWalkPawns(soloGraph, soloPlayers, p.idx);
@@ -9687,6 +9749,7 @@ function soloBeginHumanTurn(pIdx){
 // soloAnimateBotTurn() de beurt daarna zichtbaar kan naspelen als die lobby-optie aan staat.
 function soloResolveBotTurn(player){
   soloTurn++;
+  player.myTurn++;   // eigen beurtenteller, net als bij een mens (soloBeginHumanTurn)
   soloActionCellDrawnThisTurn = false;
   const pIdx = player.idx;
   const startPos = player.pos;
@@ -9903,7 +9966,7 @@ function soloResolveBotTurn(player){
       : '';
     walkLog(`Beurt ${soloTurn}: <b>${player.name}</b> voltooit <span class="hit">${targetLabel} ${QUEST_NAMES[targetLabel] || ''}</span>${chainNote} · ${player.completed}/${SIM_QUESTS_TO_WIN}`, 'hit', player);
     if (player.completed >= SIM_QUESTS_TO_WIN){
-      player.finishTurn = soloTurn;
+      player.finishTurn = player.myTurn;   // eigen beurten, zie soloBankCurrentQuest
       soloRoundFinishers.push(player);
       walkLog(`<b>${player.name} heeft alle ${SIM_QUESTS_TO_WIN} opdrachten voltooid</b> en verlaat het bord — wacht op de rest van deze ronde.`, 'hit', player);
     }
@@ -9911,7 +9974,7 @@ function soloResolveBotTurn(player){
     walkLog(`Beurt ${soloTurn}: <b>${player.name}</b> onderweg naar ${targetLabel}${move.wasBlocked ? ' · liep tegen een bezette route aan' : ''}`, null, player);
   }
   renderWalkScore(soloPlayers, -1);
-  return { startPos, jumpPath, path: move.path, usedBoots, d1, d2, d3, energyRoll, targetLabel, targetKey };
+  return { startPos, jumpPath, path: move.path, usedBoots, d1, d2, d3, roll, energyRoll, targetLabel, targetKey };
 }
 
 // ---------- bot-beurt zichtbaar naspelen (lobby-optie "Beurten van de bots") ----------
@@ -9920,6 +9983,7 @@ function soloResolveBotTurn(player){
 // stap voor stap langs de route. De logregels van die beurt worden pas getoond als de pion is
 // aangekomen (anders stond "voltooit 2.x" er al terwijl hij nog liep). Geeft false terug als
 // het potje ondertussen gestopt/herstart is (soloRunId veranderd).
+let replayScoreBefore = null;   // gezet door soloAdvanceLoop vlak vóór soloResolveBotTurn
 async function soloAnimateBotTurn(player, replay, logNodes, runId){
   const sp = WALK_SPEEDS[soloBotViewSpeed] || WALK_SPEEDS[2];
   const alive = () => runId === soloRunId;
@@ -9946,7 +10010,7 @@ async function soloAnimateBotTurn(player, replay, logNodes, runId){
 
   player.pos = replay.startPos;
   if (replay.targetKey !== undefined) markWalkTarget(soloGraph, replay.targetLabel, replay.targetKey, player.color);
-  renderWalkScore(soloPlayers, pIdx);
+  renderWalkScore(replayScoreBefore || soloPlayers, pIdx);
   renderWalkMeta({ player, turn: soloTurn });
   paint();
 
@@ -9968,7 +10032,7 @@ async function soloAnimateBotTurn(player, replay, logNodes, runId){
         `<span class="walk-die-sum energy">+${replay.energyRoll} energie</span>` +
       `</span>`;
   } else {
-    renderWalkDice(replay.d1, replay.d2, replay.energyRoll, false, replay.d3);
+    renderWalkDice(replay.d1, replay.d2, replay.energyRoll, false, replay.d3, replay.roll);
   }
   await walkSleep(Math.min(500, sp.rollMs));
   if (!alive()) return false;
@@ -10016,6 +10080,10 @@ function soloAdvanceLoop(){
       // zichtbaar naspelen: logregels van deze beurt even achterhouden tot de pion er is, en
       // pas na de animatie verder met de volgende speler (of het einde van de ronde)
       const logStart = walkLogEl.children.length;
+      // stand van vóór de beurt (score/energie/kaarten), zodat de spelersbalk tijdens het lopen
+      // nog niet vooruitloopt op wat de pion pas bij aankomst haalt. Zelfde indexen als
+      // soloPlayers, want renderWalkScore zoekt via walkScoreOrder op index.
+      replayScoreBefore = soloPlayers.map(q => ({ ...q, cards: q.cards.slice() }));
       const replay = soloResolveBotTurn(player);
       const logNodes = [...walkLogEl.children].slice(logStart);
       for (const n of logNodes) n.remove();
@@ -10082,7 +10150,7 @@ function soloEndgameRankingHtml(){
     const status = walkIsIn(p)
       ? 'binnen'
       : p.rank ? 'niet binnen' : 'afgekapt';
-    const you = p.isHuman && soloPlayers.filter(q => q.isHuman).length === 1 ? '<span class="you">jij</span>' : '';
+    const you = soloIsMe(p) ? '<span class="you">jij</span>' : '';
     return `<li class="walk-rank-row${p.rank >= 1 && p.rank <= 3 ? ' r' + p.rank : ''}" style="--pc:${p.color}">` +
       `<span class="walk-rank-pos">${place}</span>` +
       `<span class="walk-rank-dot"></span>` +
@@ -10170,6 +10238,48 @@ function soloStopConfetti(){
   if (canvas){ const ctx = canvas.getContext('2d'); if (ctx) ctx.clearRect(0, 0, canvas.width, canvas.height); }
 }
 
+// "Ben ik dit?" voor het winscherm. Multiplayer (spelers hebben daar een peerId-veld): alleen
+// je eigen stoel (mp.myIdx). Lokaal: alleen als er precies één mens meespeelt — met meerdere
+// mensen op één scherm is "jij" dubbelzinnig, dan gewoon de naam. Voorheen gold elke mens als
+// "jij", dus bij Multiplayer las iedereen "Jij wint!" als een andere mens won.
+function soloIsMe(p){
+  if (soloPlayers.some(q => q.peerId !== undefined)) return typeof mp !== 'undefined' && p.idx === mp.myIdx;
+  return p.isHuman && soloPlayers.filter(q => q.isHuman).length === 1;
+}
+// titel/ondertitel/statusregel voor het einde van een potje — gedeeld door de host/lokaal
+// (soloEndGame) en een multiplayer-gast (mpApplyState in 99-multiplayer.js), die alleen de
+// gedeelde stand binnenkrijgt maar hetzelfde winscherm moet zien.
+function soloEndgameTexts(stuck){
+  const nameOf = p => soloIsMe(p) ? 'jij' : p.name;
+  if (stuck){
+    return {
+      trophy: '⏳', title: 'Afgekapt', sub: `niet iedereen was binnen na ${SIM_MAX_TURNS} beurten`,
+      statusHtml: `<span class="bad">✕ Afgekapt na ${SIM_MAX_TURNS} beurten — niet iedereen was binnen.</span>` +
+        (soloPlayers.length > 1 ? `<span class="walk-standings-row">${walkStandings(soloPlayers)}</span>` : ''),
+    };
+  }
+  if (soloPlayers.length === 1){
+    const n = soloPlayers[0].finishTurn;
+    return {
+      trophy: '🏆', title: 'Je wint!', sub: `alle ${SIM_QUESTS_TO_WIN} opdrachten voltooid in ${n} beurten`,
+      statusHtml: `<span class="ok">✓ Alle ${SIM_QUESTS_TO_WIN} opdrachten voltooid in ${n} beurten!</span>`,
+    };
+  }
+  const winners = soloPlayers.filter(p => p.rank === 1);
+  const w = winners[0];
+  const title = winners.length === 1 ? (soloIsMe(w) ? 'Jij wint!' : `${w.name} wint!`) : 'Gedeelde winst!';
+  const sub = winners.length === 1
+    ? `vanaf ${w.startLabel} in ${w.finishTurn} eigen beurten`
+    : `${winners.map(nameOf).join(' en ')} — gelijke energie en actiekaarten`;
+  const winText = winners.length === 1
+    ? `${soloIsMe(w) ? 'Jij wint' : w.name + ' wint'} vanaf ${w.startLabel} in ${w.finishTurn} beurten`
+    : `${winners.map(nameOf).join(' en ')} delen de winst (gelijke energie en actiekaarten)`;
+  return {
+    trophy: '🏆', title, sub,
+    statusHtml: `<span class="ok">✓ ${winText} — potje uitgespeeld in ${soloTurn} beurten (alle spelers samen).</span>` +
+      `<span class="walk-standings-row">Eindklassering: ${walkStandings(soloPlayers)}</span>`,
+  };
+}
 function soloEndGame(stuck){
   soloPhase = 'game-over';
   soloRefreshCardVault();
@@ -10180,33 +10290,9 @@ function soloEndGame(stuck){
   btnWalkSoloSkip.hidden = true;
   renderWalkScore(soloPlayers, -1);
   if (walkMetaEl) walkMetaEl.innerHTML = '';
-  let trophy = '🏆', title, sub;
-  if (stuck){
-    trophy = '⏳';
-    title = 'Afgekapt';
-    sub = `niet iedereen was binnen na ${SIM_MAX_TURNS} beurten`;
-    walkStatusEl.innerHTML = `<span class="bad">✕ Afgekapt na ${SIM_MAX_TURNS} beurten — niet iedereen was binnen.</span>` +
-      (soloPlayers.length > 1 ? `<span class="walk-standings-row">${walkStandings(soloPlayers)}</span>` : '');
-  } else if (soloPlayers.length === 1){
-    title = 'Je wint!';
-    sub = `alle ${SIM_QUESTS_TO_WIN} opdrachten voltooid in ${solo() ? solo().finishTurn : soloTurn} beurten`;
-    walkStatusEl.innerHTML = `<span class="ok">✓ Alle ${SIM_QUESTS_TO_WIN} opdrachten voltooid in ${solo() ? solo().finishTurn : soloTurn} beurten!</span>`;
-  } else {
-    const winners = soloPlayers.filter(p => p.rank === 1);
-    if (winners.length === 1){
-      title = winners[0].isHuman ? 'Jij wint!' : `${winners[0].name} wint!`;
-      sub = `vanaf ${winners[0].startLabel} in ${winners[0].finishTurn} beurten`;
-    } else {
-      title = 'Gedeelde winst!';
-      sub = `${winners.map(w => w.isHuman ? 'jij' : w.name).join(' en ')} — gelijke energie en actiekaarten`;
-    }
-    const winText = winners.length === 1
-      ? (winners[0].isHuman ? `Jij wint vanaf ${winners[0].startLabel} in ${winners[0].finishTurn} beurten` : `${winners[0].name} wint vanaf ${winners[0].startLabel} in ${winners[0].finishTurn} beurten`)
-      : `${winners.map(w => w.isHuman ? 'jij' : w.name).join(' en ')} delen de winst (gelijke energie en actiekaarten)`;
-    walkStatusEl.innerHTML = `<span class="ok">✓ ${winText} — potje uitgespeeld in ${soloTurn} beurten.</span>` +
-      `<span class="walk-standings-row">Eindklassering: ${walkStandings(soloPlayers)}</span>`;
-  }
-  soloShowEndgame(trophy, title, sub);
+  const t = soloEndgameTexts(stuck);
+  walkStatusEl.innerHTML = t.statusHtml;
+  soloShowEndgame(t.trophy, t.title, t.sub);
   btnWalkSoloStart.disabled = false;
   if (walkSoloPlayersSel) walkSoloPlayersSel.disabled = false;
   if (walkSoloBotsSel) walkSoloBotsSel.disabled = false;
@@ -10399,7 +10485,10 @@ function walkSoloResetSyncVisibility(){
   const onWalkTab = !!walkPanelEl && !walkPanelEl.hidden;
   const soloActive = !!walkModeSoloBtn && walkModeSoloBtn.classList.contains('active');
   const inMultiplayer = !!window.mpGameActive;
-  btnWalkSoloReset.hidden = !(onWalkTab && soloActive && !inMultiplayer);
+  // alleen tijdens het speelscherm — in de lobby stond hij er eerst al (uitgeschakeld) terwijl
+  // er nog geen potje was om opnieuw te beginnen (gebruikersmelding)
+  const playing = !!walkPlayAreaEl && !walkPlayAreaEl.hidden;
+  btnWalkSoloReset.hidden = !(onWalkTab && soloActive && playing && !inMultiplayer);
 }
 
 // "Automatisch" is de standaard-actieve tab (zie de HTML), maar zonder deze aanroep bleef de
@@ -11218,7 +11307,9 @@ function mpHostStartGame(){
       name: isHuman ? seat.name : `Speler ${i + 1}`,
       color: WALK_PLAYER_COLORS[i],
       deck: simShuffle(SIM_QUEST_LABELS, soloSeedRand),
-      nextIdx: 0, completed: 0, energy: 0, cards: [], rank: 0, doneCells: [],
+      // myTurn: eigen beurtenteller (zie soloBeginHumanTurn/soloResolveBotTurn) — ontbrak hier,
+      // waardoor "beurt" en "wint in N beurten" in multiplayer NaN werden
+      nextIdx: 0, completed: 0, myTurn: 0, energy: 0, cards: [], rank: 0, doneCells: [],
       condenserPending: false, lockedNextTurn: false, rollPenalty: 0, barrierCell: null,
       reorderBlocked: false, lastDir: -1,
       strategy: isHuman ? null : ENERGY_STRATEGIES[i % ENERGY_STRATEGIES.length],
@@ -11436,7 +11527,7 @@ function mpApplyState(payload){
   mpRefreshCardVault();
 
   if (soloMove && soloMove.d1 !== undefined && soloPhase !== 'choose-action' && soloPhase !== 'rolling'){
-    renderWalkDice(soloMove.d1, soloMove.d2, soloEnergyRoll, false, soloMove.d3);
+    renderWalkDice(soloMove.d1, soloMove.d2, soloEnergyRoll, false, soloMove.d3, soloMove.roll);
   } else if (soloEnergyRoll !== null && soloPhase === 'rolling'){
     renderSoloDicePending();
   }
@@ -11467,7 +11558,16 @@ function mpOnGameOver(){
   if (!window.mpGameActive) return;
   window.mpGameActive = false;
   if (mpTabBarEl) mpTabBarEl.classList.remove('mp-locked');
-  if (btnMpLeaveGame) btnMpLeaveGame.hidden = true;
+  // Knop blijft staan als "Terug naar lobby" — voorheen verdween hij hier en was er na afloop
+  // geen weg meer terug naar de kamer (zie mpLeaveGame, mp.gameOverView).
+  mp.gameOverView = true;
+  if (btnMpLeaveGame){ btnMpLeaveGame.textContent = 'Terug naar lobby'; btnMpLeaveGame.hidden = false; }
+  // de host kreeg het winscherm al via soloEndGame(); een gast krijgt alleen de gedeelde stand
+  // binnen, dus die bouwt hetzelfde winscherm (met klassement) hier zelf op
+  if (!mp.isHost){
+    const t = soloEndgameTexts(!soloPlayers.some(p => p.rank === 1));
+    soloShowEndgame(t.trophy, t.title, t.sub);
+  }
   // de 200ms-broadcasttick tikte hierna anders onnodig door tot de host handmatig "Stop
   // hosting" deed — en mp.phase bleef op 'in-game' staan, terwijl er geen potje meer loopt.
   if (mp.broadcastTimer){ clearInterval(mp.broadcastTimer); mp.broadcastTimer = null; }
@@ -11578,7 +11678,9 @@ function mpEnterPlayView(){
   // alle andere tabbladen zitten op slot (.mp-locked) zolang dit potje loopt — dit knopje leeft
   // BUITEN walkSoloActionsEl (dat wordt elke broadcast overschreven) en is dus altijd bereikbaar,
   // ook als het niet jouw beurt is. Zie mpLeaveGame().
-  if (btnMpLeaveGame) btnMpLeaveGame.hidden = false;
+  mp.gameOverView = false;
+  if (btnMpLeaveGame){ btnMpLeaveGame.textContent = 'Verlaat potje'; btnMpLeaveGame.hidden = false; }
+  soloHideEndgame();   // winscherm van een vorig potje weg
   // chat verhuist niet echt (zie mpRenderChat) — hij staat hier gewoon al klaar met dezelfde
   // berichten die in de lobby ook al zichtbaar waren.
   if (mpChatPanelGameEl) mpChatPanelGameEl.hidden = false;
@@ -11587,6 +11689,7 @@ function mpEnterPlayView(){
 }
 function mpExitPlayView(){
   window.mpGameActive = false;
+  mp.gameOverView = false;
   if (mpTabBarEl) mpTabBarEl.classList.remove('mp-locked');
   if (btnMpLeaveGame) btnMpLeaveGame.hidden = true;
   if (mpChatPanelGameEl) mpChatPanelGameEl.hidden = true;
@@ -11609,6 +11712,13 @@ function mpExitPlayView(){
 // Gast: verlaat de room helemaal en gaat terug naar het join-scherm — hergebruikt exact het
 // pad van "host is weg" (mpOnPeerLeave) resp. de bestaande mpJoinLeave().
 function mpLeaveGame(){
+  // na afloop ("Terug naar lobby", zie mpOnGameOver): de kamer/verbinding blijft gewoon
+  // bestaan, alleen het speelscherm dicht — host ziet zijn hostkamer, gast wacht op de host
+  if (mp.active && mp.gameOverView){
+    mpExitPlayView();
+    mpRenderLobby();
+    return;
+  }
   if (!mp.active || mp.phase !== 'in-game') return;
   // geen switchTab meer nodig hieronder — multiplayer heeft geen eigen tabblad, je blijft
   // gewoon op "Zelf spelen" (mpExitPlayView() zet de modus daar via setWalkMode('multi') zelf

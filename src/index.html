@@ -25,9 +25,11 @@
   <div class="tab-bar" role="tablist">
     <button class="tab-btn active" id="tabBtnMap" data-tab="map" role="tab" aria-selected="true">Speelbord genereren</button>
     <button class="tab-btn" id="tabBtnSimulate" data-tab="simulate" role="tab" aria-selected="false">Simulatie</button>
-    <button class="tab-btn" id="tabBtnWalk" data-tab="walk" role="tab" aria-selected="false">Zelf spelen</button>
+    <button class="tab-btn" id="tabBtnWalk" data-tab="walk" role="tab" aria-selected="false">Spelen</button>
     <button class="tab-btn" id="tabBtnCards" data-tab="cards" role="tab" aria-selected="false">Speelkaarten</button>
-    <!-- "Nieuw potje": alleen relevant op tabblad "Zelf spelen" tijdens de modus Zelf spelen —
+    <!-- Het tabblad heette eerst ook "Zelf spelen", net als de modusknop erin — verwarrend, want
+         daar zit ook Automatisch (waar je juist niet zelf speelt). Nu "Spelen".
+         "Nieuw potje": alleen relevant op tabblad "Spelen" tijdens de modus Zelf spelen —
          stond eerst boven het bord (waar een misklik naast de dobbelknop meteen het potje
          weggooide, gebruikersmelding) en daarna ernaast in .walk-hud, maar de gebruiker wilde
          'm liever hier, rechtsboven bij de andere tabbladen, uit de buurt van het dobbelen.
@@ -40,6 +42,10 @@
          van Automatisch — walkPauseStopSyncVisibility() in 96-walk.js. -->
     <div class="tab-bar-actions">
       <button type="button" id="btnWalkSoloReset" class="ghost tab-bar-action" disabled hidden>Nieuw potje</button>
+      <!-- tempo tijdens het lopen (Automatisch) — gekoppeld aan #walkSpeed in de lobby, zie 96-walk.js -->
+      <label class="tab-bar-tempo" id="walkSpeedPlayWrap" hidden>Tempo
+        <input type="range" id="walkSpeedPlay" min="0" max="4" step="1" value="2" aria-label="Tempo">
+      </label>
       <button type="button" id="btnWalkPause" class="ghost tab-bar-action" disabled hidden>Pauze</button>
       <button type="button" id="btnWalkStop" class="ghost tab-bar-action" disabled hidden>Stoppen</button>
     </div>
@@ -180,7 +186,7 @@
          om dat later tussen te haken. -->
     <div class="panel" id="walkPanel">
     <div id="walkLobby">
-      <h2>Zelf spelen</h2>
+      <h2>Spelen</h2>
       <div class="walk-lobby-col">
         <div class="walk-mode-toggle" role="tablist">
           <button class="walk-mode-btn active" id="walkModeAuto" data-mode="auto" role="tab" aria-selected="true">Automatisch</button>
@@ -217,7 +223,7 @@
             <input type="range" id="walkSpeed" min="0" max="4" step="1" value="2">
           </div>
         </div>
-        <p class="hint" id="walkAutoHint">Speelt één potje op de indeling van het tabblad "Speelbord genereren", met dezelfde regels als de batch-simulatie: elke speler blokkeert de vakjes waar hij staat, en er wordt doorgespeeld tot de één na laatste speler binnen is — bij 4 spelers dus tot en met de nummer 3, want dan ligt de vierde plaats vast. Het tempo kun je tijdens het lopen aanpassen. <span id="walkStartHint" class="sub"></span></p>
+        <p class="hint" id="walkAutoHint">Speelt één potje op de indeling van het tabblad "Speelbord genereren", met dezelfde regels als de batch-simulatie: elke speler blokkeert de vakjes waar hij staat, en er wordt doorgespeeld tot de één na laatste speler binnen is — bij 4 spelers dus tot en met de nummer 3, want dan ligt de vierde plaats vast. Het tempo kun je tijdens het lopen aanpassen met de schuif rechtsboven. <span id="walkStartHint" class="sub"></span></p>
 
         <div class="walk-controls walk-lobby-fields" id="walkSoloControls" hidden>
           <div class="field">

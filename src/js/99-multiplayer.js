@@ -684,7 +684,9 @@ function mpHostStartGame(){
       name: isHuman ? seat.name : `Speler ${i + 1}`,
       color: WALK_PLAYER_COLORS[i],
       deck: simShuffle(SIM_QUEST_LABELS, soloSeedRand),
-      nextIdx: 0, completed: 0, energy: 0, cards: [], rank: 0, doneCells: [],
+      // myTurn: eigen beurtenteller (zie soloBeginHumanTurn/soloResolveBotTurn) — ontbrak hier,
+      // waardoor "beurt" en "wint in N beurten" in multiplayer NaN werden
+      nextIdx: 0, completed: 0, myTurn: 0, energy: 0, cards: [], rank: 0, doneCells: [],
       condenserPending: false, lockedNextTurn: false, rollPenalty: 0, barrierCell: null,
       reorderBlocked: false, lastDir: -1,
       strategy: isHuman ? null : ENERGY_STRATEGIES[i % ENERGY_STRATEGIES.length],
@@ -902,7 +904,7 @@ function mpApplyState(payload){
   mpRefreshCardVault();
 
   if (soloMove && soloMove.d1 !== undefined && soloPhase !== 'choose-action' && soloPhase !== 'rolling'){
-    renderWalkDice(soloMove.d1, soloMove.d2, soloEnergyRoll, false, soloMove.d3);
+    renderWalkDice(soloMove.d1, soloMove.d2, soloEnergyRoll, false, soloMove.d3, soloMove.roll);
   } else if (soloEnergyRoll !== null && soloPhase === 'rolling'){
     renderSoloDicePending();
   }
@@ -933,7 +935,16 @@ function mpOnGameOver(){
   if (!window.mpGameActive) return;
   window.mpGameActive = false;
   if (mpTabBarEl) mpTabBarEl.classList.remove('mp-locked');
-  if (btnMpLeaveGame) btnMpLeaveGame.hidden = true;
+  // Knop blijft staan als "Terug naar lobby" — voorheen verdween hij hier en was er na afloop
+  // geen weg meer terug naar de kamer (zie mpLeaveGame, mp.gameOverView).
+  mp.gameOverView = true;
+  if (btnMpLeaveGame){ btnMpLeaveGame.textContent = 'Terug naar lobby'; btnMpLeaveGame.hidden = false; }
+  // de host kreeg het winscherm al via soloEndGame(); een gast krijgt alleen de gedeelde stand
+  // binnen, dus die bouwt hetzelfde winscherm (met klassement) hier zelf op
+  if (!mp.isHost){
+    const t = soloEndgameTexts(!soloPlayers.some(p => p.rank === 1));
+    soloShowEndgame(t.trophy, t.title, t.sub);
+  }
   // de 200ms-broadcasttick tikte hierna anders onnodig door tot de host handmatig "Stop
   // hosting" deed — en mp.phase bleef op 'in-game' staan, terwijl er geen potje meer loopt.
   if (mp.broadcastTimer){ clearInterval(mp.broadcastTimer); mp.broadcastTimer = null; }
@@ -1044,7 +1055,9 @@ function mpEnterPlayView(){
   // alle andere tabbladen zitten op slot (.mp-locked) zolang dit potje loopt — dit knopje leeft
   // BUITEN walkSoloActionsEl (dat wordt elke broadcast overschreven) en is dus altijd bereikbaar,
   // ook als het niet jouw beurt is. Zie mpLeaveGame().
-  if (btnMpLeaveGame) btnMpLeaveGame.hidden = false;
+  mp.gameOverView = false;
+  if (btnMpLeaveGame){ btnMpLeaveGame.textContent = 'Verlaat potje'; btnMpLeaveGame.hidden = false; }
+  soloHideEndgame();   // winscherm van een vorig potje weg
   // chat verhuist niet echt (zie mpRenderChat) — hij staat hier gewoon al klaar met dezelfde
   // berichten die in de lobby ook al zichtbaar waren.
   if (mpChatPanelGameEl) mpChatPanelGameEl.hidden = false;
@@ -1053,6 +1066,7 @@ function mpEnterPlayView(){
 }
 function mpExitPlayView(){
   window.mpGameActive = false;
+  mp.gameOverView = false;
   if (mpTabBarEl) mpTabBarEl.classList.remove('mp-locked');
   if (btnMpLeaveGame) btnMpLeaveGame.hidden = true;
   if (mpChatPanelGameEl) mpChatPanelGameEl.hidden = true;
@@ -1075,6 +1089,13 @@ function mpExitPlayView(){
 // Gast: verlaat de room helemaal en gaat terug naar het join-scherm — hergebruikt exact het
 // pad van "host is weg" (mpOnPeerLeave) resp. de bestaande mpJoinLeave().
 function mpLeaveGame(){
+  // na afloop ("Terug naar lobby", zie mpOnGameOver): de kamer/verbinding blijft gewoon
+  // bestaan, alleen het speelscherm dicht — host ziet zijn hostkamer, gast wacht op de host
+  if (mp.active && mp.gameOverView){
+    mpExitPlayView();
+    mpRenderLobby();
+    return;
+  }
   if (!mp.active || mp.phase !== 'in-game') return;
   // geen switchTab meer nodig hieronder — multiplayer heeft geen eigen tabblad, je blijft
   // gewoon op "Zelf spelen" (mpExitPlayView() zet de modus daar via setWalkMode('multi') zelf
