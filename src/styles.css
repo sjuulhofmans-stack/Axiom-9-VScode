@@ -351,10 +351,25 @@
     break-inside:avoid; margin:0 0 14px;
     background:var(--hull); border:1px solid var(--line-dim); border-radius:6px; padding:0 14px;
   }
+  /* kaarttitel: groter en dikgedrukt (gebruikerswens: "overzichtelijker") — in de display-letter
+     i.p.v. de kleine grijze mono van .sim-subhead, met een dunne lijn eronder zodat titel en
+     inhoud duidelijk gescheiden zijn */
   .sim-section > summary.sim-subhead{
-    cursor:pointer; list-style:none; display:flex; align-items:center; gap:9px;
-    margin:0; padding:12px 0; border-top:none;
+    cursor:pointer; list-style:none; display:flex; align-items:center; gap:10px;
+    margin:0 0 10px; padding:13px 0 10px; border-top:none; border-bottom:1px solid var(--line-dim);
+    font-family:var(--font-display); font-size:15px; font-weight:700; letter-spacing:.04em;
+    text-transform:none; color:var(--text);
     transition:color .12s;
+  }
+  .sim-section:not([open]) > summary.sim-subhead{margin-bottom:0; border-bottom-color:transparent;}
+  .sim-section > summary.sim-subhead::before{color:var(--quest);}
+  /* percentage met een balkje erachter (barCell in renderSimResults); --w is een kaal getal
+     0–100, want een percentage maal een percentage kan calc() niet */
+  .sim-bar-cell{position:relative; min-width:110px;}
+  .sim-bar{
+    position:absolute; left:8px; top:50%; height:6px; transform:translateY(-50%);
+    width:calc((100% - 70px) * var(--w) / 100); border-radius:3px;
+    background:color-mix(in srgb, var(--amber) 45%, transparent);
   }
   .sim-section-body{padding:0 0 14px;}
   .sim-section-body .hint{font-size:12px; line-height:1.5;}
@@ -371,7 +386,7 @@
     transition:transform .15s;
   }
   .sim-section[open] > summary::before{transform:rotate(90deg);}
-  .sim-section > summary:hover{color:var(--text);}
+  .sim-section > summary:hover{color:var(--quest);}
   .sim-section-body > .sim-table:first-child,
   .sim-section-body > p:first-child{margin-top:0;}
 

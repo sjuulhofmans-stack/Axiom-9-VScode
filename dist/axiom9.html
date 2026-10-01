@@ -358,10 +358,25 @@
     break-inside:avoid; margin:0 0 14px;
     background:var(--hull); border:1px solid var(--line-dim); border-radius:6px; padding:0 14px;
   }
+  /* kaarttitel: groter en dikgedrukt (gebruikerswens: "overzichtelijker") — in de display-letter
+     i.p.v. de kleine grijze mono van .sim-subhead, met een dunne lijn eronder zodat titel en
+     inhoud duidelijk gescheiden zijn */
   .sim-section > summary.sim-subhead{
-    cursor:pointer; list-style:none; display:flex; align-items:center; gap:9px;
-    margin:0; padding:12px 0; border-top:none;
+    cursor:pointer; list-style:none; display:flex; align-items:center; gap:10px;
+    margin:0 0 10px; padding:13px 0 10px; border-top:none; border-bottom:1px solid var(--line-dim);
+    font-family:var(--font-display); font-size:15px; font-weight:700; letter-spacing:.04em;
+    text-transform:none; color:var(--text);
     transition:color .12s;
+  }
+  .sim-section:not([open]) > summary.sim-subhead{margin-bottom:0; border-bottom-color:transparent;}
+  .sim-section > summary.sim-subhead::before{color:var(--quest);}
+  /* percentage met een balkje erachter (barCell in renderSimResults); --w is een kaal getal
+     0–100, want een percentage maal een percentage kan calc() niet */
+  .sim-bar-cell{position:relative; min-width:110px;}
+  .sim-bar{
+    position:absolute; left:8px; top:50%; height:6px; transform:translateY(-50%);
+    width:calc((100% - 70px) * var(--w) / 100); border-radius:3px;
+    background:color-mix(in srgb, var(--amber) 45%, transparent);
   }
   .sim-section-body{padding:0 0 14px;}
   .sim-section-body .hint{font-size:12px; line-height:1.5;}
@@ -378,7 +393,7 @@
     transition:transform .15s;
   }
   .sim-section[open] > summary::before{transform:rotate(90deg);}
-  .sim-section > summary:hover{color:var(--text);}
+  .sim-section > summary:hover{color:var(--quest);}
   .sim-section-body > .sim-table:first-child,
   .sim-section-body > p:first-child{margin-top:0;}
 
@@ -5996,6 +6011,22 @@ function simShuffle(arr, rand){
 }
 function simRollD6(rand){ return 1 + Math.floor(rand() * 6); }
 
+// "Pech-reeksen": zoektochten van 12 beurten of langer komen in één bak
+const SIM_SEARCH_HIST_MAX = 12;
+// een zoektocht vanaf zoveel beurten telt als "pech" (zie Pech-reeksen in de uitslag)
+const SIM_LONG_SEARCH = 8;
+// aan het eind van een uitgespeeld potje: achterstand van de winnaar halverwege, en of er een
+// lange pech-reeks in zat. Gedeelde winst telt per winnaar naar rato mee.
+function recordGameEndStats(players, halfway, extra){
+  if (halfway){
+    const lead = Math.max(...halfway);
+    const winners = players.filter(p => p.rank === 1);
+    for (const w of winners) extra.comebackHist[Math.min(lead - halfway[w.idx], 3)] += 1 / winners.length;
+    extra.comebackGames++;
+  }
+  if (players.some(p => p.longestSearch >= SIM_LONG_SEARCH)) extra.gamesWithLongSearch++;
+}
+
 // speelt één potje; telt onderweg mee in `heatmap` (bezoeken per cel), `questStats`
 // (hoe lang duurde het om elk opdrachtvakje te bereiken) en `extra` (blokkeren,
 // voorsprong bij winst) — allemaal gedeeld over de hele batch, dus geen allocatie
@@ -6009,6 +6040,7 @@ function simulateOneGame(graph, rand, heatmap, questStats, extra){
     nextIdx: 0,
     completed: 0,
     turnsOnTarget: 0,
+    longestSearch: 0,      // langste zoektocht naar één opdracht (beurten), voor "Pech-reeksen"
     energy: 0,
     strategy: 'none',
     actionUses: 0,
@@ -6033,6 +6065,7 @@ function simulateOneGame(graph, rand, heatmap, questStats, extra){
   const finishTarget = simFinishTarget(players.length);
   let finished = 0;
   let turnCount = 0;
+  let halfway = null;   // stand (opdrachten per speler) halverwege, zie het eind van elke ronde
 
   while (turnCount < SIM_MAX_TURNS){
     const roundFinishers = [];   // spelers die deze ronde hun 6e opdracht voltooien
@@ -6051,6 +6084,7 @@ function simulateOneGame(graph, rand, heatmap, questStats, extra){
       // je bv. gratis Herkalibratie én betaalde Herprioritering in dezelfde beurt kunnen stapelen
       // voor een dubbele/onzinnige swap.
       let energyActionUsed = false;   // hooguit 1 energie-actie per beurt
+      let energyUsedId = null;        // welke energie-actie deze beurt (voor de statistiek)
       let cardActionUsed = false;     // hooguit 1 kaart spelen per beurt
       let actionCellCrossed = false;  // hooguit 1 beloningskaart per beurt via een actiekaartvakje
       // Vergrendeling: geraakt in een vorige beurt betekent dat je NU zowel je energie- als je
@@ -6200,10 +6234,18 @@ function simulateOneGame(graph, rand, heatmap, questStats, extra){
         player.energy -= ENERGY_ACTIONS.reorder.cost;
         player.actionUses++;
         energyActionUsed = true;
+        energyUsedId = 'reorder';
         const swapped = energyReorderTarget(graph, player, player.pos);
         if (swapped !== null){
           if (player.reorderBlocked){ player.reorderBlocked = false; applyReorderSwap(player); }
-          else targetLabel = swapped;
+          else {
+            // voor "Wat levert een energie-actie op?": hoeveel vakjes scheelt de wissel?
+            const stamp = simBfsDistances(graph, player.pos);
+            const st = extra.energyStats.reorder;
+            st.swaps++;
+            st.saved += simDistLookup(stamp, graph.questCells[targetLabel]) - simDistLookup(stamp, graph.questCells[swapped]);
+            targetLabel = swapped;
+          }
         }
       }
       const targetKey = graph.questCells[targetLabel];
@@ -6237,6 +6279,10 @@ function simulateOneGame(graph, rand, heatmap, questStats, extra){
           player.energy -= ENERGY_ACTIONS[pre.kind].cost;
           player.actionUses++;
           energyActionUsed = true;
+          energyUsedId = pre.kind;
+          const st = extra.energyStats[pre.kind];
+          st.steps += pre.path.length - 1;
+          if (pre.bankedCount) st.direct++;
         }
       }
       const rollFrom = pre ? pre.key : player.pos;
@@ -6257,10 +6303,13 @@ function simulateOneGame(graph, rand, heatmap, questStats, extra){
           useActionCard(player, 'boostcell', deck, extra);
           cardActionUsed = true;
         } else if (!energyActionUsed && player.strategy === 'boost' && player.energy >= ENERGY_ACTIONS.boost.cost){
-          roll += simRollD6(rand); dice = 3;
+          const extraDie = simRollD6(rand);
+          roll += extraDie; dice = 3;
           player.energy -= ENERGY_ACTIONS.boost.cost;
           player.actionUses++;
           energyActionUsed = true;
+          energyUsedId = 'boost';
+          extra.energyStats.boost.steps += extraDie;
         }
         if (player.rollPenalty){
           rollPenalty = player.rollPenalty;
@@ -6312,6 +6361,15 @@ function simulateOneGame(graph, rand, heatmap, questStats, extra){
       if (move.wasBlocked) extra.blockedTurns++;
       for (let p = 1; p < move.path.length; p++) heatmap[move.path[p]]++;
       if (pathHasActionCell(graph, move.path)) actionCellCrossed = true;
+      // "Wat levert een energie-actie op?": haalde deze beurt een opdracht, mét of zonder actie
+      if (energyUsedId){
+        const st = extra.energyStats[energyUsedId];
+        st.uses++;
+        if (move.bankedQuest) st.banked++;
+      } else {
+        extra.noEnergyTurns++;
+        if (move.bankedQuest) extra.noEnergyBanked++;
+      }
 
       // actiekaartvakje (gang): levert een kaart op net als een opdracht, maar onderbreekt de
       // zet niet en levert hooguit 1x per beurt op, ook als je onderweg meerdere van deze
@@ -6330,6 +6388,13 @@ function simulateOneGame(graph, rand, heatmap, questStats, extra){
         const qs = questStats[label];
         qs.turns += player.turnsOnTarget;
         qs.count++;
+        // "Pech-reeksen": hoeveel beurten zat deze speler achter deze opdracht aan? (0 = een 2e
+        // opdracht in dezelfde beurt, die telt hier niet als zoektocht)
+        if (player.turnsOnTarget > 0){
+          extra.searchHist[Math.min(player.turnsOnTarget, SIM_SEARCH_HIST_MAX)]++;
+          if (player.turnsOnTarget > player.longestSearch) player.longestSearch = player.turnsOnTarget;
+          if (player.turnsOnTarget > extra.longestSearch) extra.longestSearch = player.turnsOnTarget;
+        }
         player.completed++;
         player.nextIdx++;
         player.turnsOnTarget = 0;
@@ -6351,6 +6416,11 @@ function simulateOneGame(graph, rand, heatmap, questStats, extra){
       if (turnCount >= SIM_MAX_TURNS){ hitTurnCap = true; break; }
     }
 
+    // "Kan de achterste nog terugkomen?": de stand aan het eind van de ronde waarin de eerste
+    // speler zijn 3e opdracht haalt (= halverwege) — aan het eind van het potje vergeleken met
+    // wie er won
+    if (!halfway && players.some(p => p.completed >= SIM_QUESTS_TO_WIN / 2)) halfway = players.map(p => p.completed);
+
     if (roundFinishers.length){
       if (finished === 0){
         // spanning meten bij de EERSTE keer dat iemand deze potje binnenkomt, over de spelers
@@ -6367,6 +6437,7 @@ function simulateOneGame(graph, rand, heatmap, questStats, extra){
       if (finished >= finishTarget){
         // de achterblijver(s) hebben verloren zonder dat ze nog iets kunnen doen
         for (const p of players) if (!p.rank) p.rank = finished + 1;
+        recordGameEndStats(players, halfway, extra);
         return { stuck: false, turns: turnCount, players };
       }
     }
@@ -6685,6 +6756,38 @@ function renderSimResults({ n, stuckCount, startWins, startTurnsSum, startRanks,
   html += simSectionOpen('Spanning en blokkeren');
   html += `<p class="hint">De nummer 2 stond bij winst gemiddeld <b>${nl(avgGap, 1)}</b> opdracht(en) achter — <b>${nl(nailBiterPct, 0)}%</b> van de potjes werd met precies 1 opdracht verschil beslist. In <b>${nl(blockedPct, 1)}%</b> van de beurten kwam een speler ergens in zijn zoektocht naar de beste route een bezet vakje tegen (niet per se de uiteindelijk gekozen route).</p>`;
 
+  // percentage met een klein balkje erachter (schaal: `max` = volle breedte)
+  const barCell = (pct, max) =>
+    `<td class="num sim-bar-cell"><span class="sim-bar" style="--w:${max ? Math.min(100, pct / max * 100).toFixed(1) : 0}"></span>${nl(pct, 1)}%</td>`;
+
+  // ---------- Kan de achterste nog terugkomen? ----------
+  const cbN = extra.comebackGames;
+  const cbPct = (i) => cbN ? extra.comebackHist[i] / cbN * 100 : 0;
+  const cbMax = Math.max(...[0, 1, 2, 3].map(cbPct));
+  const cbRows = [['Stond voor (of gedeeld)', 0], ['1 opdracht achter', 1], ['2 opdrachten achter', 2], ['3 of meer achter', 3]]
+    .map(([label, i]) => `<tr><td>${label}</td>${barCell(cbPct(i), cbMax)}</tr>`).join('');
+  html += simSectionOpen('Kan de achterste nog terugkomen?');
+  html += `<p class="hint">Halverwege is het eind van de ronde waarin de eerste speler zijn ${SIM_QUESTS_TO_WIN / 2}e opdracht haalt. Hoe ver lag de latere winnaar toen achter op de koploper?</p>`;
+  html += `<table class="sim-table"><thead><tr><th>Winnaar halverwege</th><th>Potjes</th></tr></thead><tbody>${cbRows}</tbody></table>`;
+  html += `<p class="hint">In <b>${nl(100 - cbPct(0), 0)}%</b> van de potjes won iemand die halverwege níet (mede)koploper was — hoe hoger, hoe langer een potje spannend blijft.</p>`;
+
+  // ---------- Pech-reeksen ----------
+  const sh = extra.searchHist;
+  const shTotal = sh.reduce((a, b) => a + b, 0);
+  const shSum = (from, to) => { let s = 0; for (let i = from; i <= Math.min(to, SIM_SEARCH_HIST_MAX); i++) s += sh[i]; return s; };
+  const shAvg = shTotal ? sh.reduce((s, c, i) => s + c * i, 0) / shTotal : 0;
+  const shBuckets = [['1 beurt', 1, 1], ['2 beurten', 2, 2], ['3 beurten', 3, 3], ['4–5 beurten', 4, 5],
+    ['6–7 beurten', 6, 7], [`${SIM_LONG_SEARCH}–${SIM_SEARCH_HIST_MAX - 1} beurten`, SIM_LONG_SEARCH, SIM_SEARCH_HIST_MAX - 1],
+    [`${SIM_SEARCH_HIST_MAX} of meer`, SIM_SEARCH_HIST_MAX, SIM_SEARCH_HIST_MAX]];
+  const shPcts = shBuckets.map(([, a, b]) => shTotal ? shSum(a, b) / shTotal * 100 : 0);
+  const shMax = Math.max(...shPcts);
+  const shRows = shBuckets.map(([label], i) => `<tr><td>${label}</td>${barCell(shPcts[i], shMax)}</tr>`).join('');
+  const longPct = played ? extra.gamesWithLongSearch / played * 100 : 0;
+  html += simSectionOpen('Pech-reeksen');
+  html += `<p class="hint">Hoeveel eigen beurten zat een speler achter één opdracht aan, tot hij 'm had? Gemiddeld <b>${nl(shAvg, 1)}</b>; de langste zoektocht duurde <b>${extra.longestSearch}</b> beurten.</p>`;
+  html += `<table class="sim-table"><thead><tr><th>Zoektocht duurde</th><th>Opdrachten</th></tr></thead><tbody>${shRows}</tbody></table>`;
+  html += `<p class="hint">In <b>${nl(longPct, 0)}%</b> van de potjes zat minstens één speler ${SIM_LONG_SEARCH} beurten of langer achter dezelfde opdracht aan — zo'n reeks voelt aan tafel als pech, ook als het gemiddelde klopt.</p>`;
+
   // ---------- energie ----------
   // Zolang er niets uitgegeven wordt, is dit een nulmeting: hoeveel komt er binnen, hoe snel
   // zit je aan het plafond en hoe vaak kun je een actie van N energie betalen. Precies de
@@ -6731,6 +6834,28 @@ function renderSimResults({ n, stuckCount, startWins, startTurnsSum, startRanks,
   html += simSectionOpen('Welke energie-actie wint?');
   html += `<table class="sim-table"><thead><tr><th>Strategie</th><th>Winst% (±95%-marge)</th><th>Top 2</th><th>Gem. plaats</th><th>Keer ingezet</th></tr></thead><tbody>${stratRows}</tbody></table>`;
   html += `<p class="hint">4 spelers, ${ENERGY_STRATEGIES.length} strategieën — elk potje speelt elke strategie één keer, geloot over de startposities (zie pickEnergyStrategies). "Geen energie" (nooit uitgeven) telt niet mee: dat komt in het echt niet voor en trok het plafondverlies hierboven kunstmatig omhoog. Bots spelen met dezelfde tijdsregels als jij: een energie-actie kies je vóór de worp, en de energiesteen van deze beurt geef je pas volgende beurt uit. Herprioritering zet een bot in als zijn opdracht verder dan ${REORDER_PEEK_THRESHOLD} vakjes weg ligt (hij bekijkt dan zijn volgende kaart en wisselt als die dichterbij ligt), de laarzen als een rechte lijn hem dichter bij zijn doel brengt, en Noodtransport als zijn doel verder dan ${JUMP_BOT_MIN_DIST} vakjes weg ligt. Bij gelijkwaardige strategieën staat iedereen op 25% winst en gemiddelde plaats 2,50; wie daar significant boven zit, is te sterk.</p>`;
+
+  // ---------- Wat levert een energie-actie op? ----------
+  const pctOf = (a, b) => b ? a / b * 100 : 0;
+  const yieldText = (id, st) => {
+    if (!st.uses) return '—';
+    if (id === 'boost') return `+${nl(st.steps / st.uses, 1)} stappen (3e steen)`;
+    if (id === 'reorder') return `wisselt in ${nl(pctOf(st.swaps, st.uses), 0)}% · scheelt dan gem. ${nl(st.swaps ? st.saved / st.swaps : 0, 1)} vakjes`;
+    if (id === 'gravity') return `gem. ${nl(st.steps / st.uses, 1)} vakjes rechtdoor · ${nl(pctOf(st.direct, st.uses), 0)}% pakt meteen de opdracht`;
+    if (id === 'jump') return `gem. ${nl(st.steps / st.uses, 1)} vakjes gesprongen · ${nl(pctOf(st.direct, st.uses), 0)}% landt precies op de opdracht`;
+    return '—';
+  };
+  const yieldRows = ENERGY_STRATEGIES.map(id => {
+    const st = extra.energyStats[id];
+    return `<tr><td>${ENERGY_ACTIONS[id].name}<span class="sub">${yieldText(id, st)}</span></td>` +
+      `<td class="num">${nl(played ? st.uses / played : 0, 1)}</td>` +
+      `<td class="num">${nl(pctOf(st.banked, st.uses), 0)}%</td></tr>`;
+  }).join('') +
+    `<tr><td>Geen energie-actie<span class="sub">ter vergelijking: een beurt zonder actie</span></td><td class="num">—</td>` +
+    `<td class="num">${nl(pctOf(extra.noEnergyBanked, extra.noEnergyTurns), 0)}%</td></tr>`;
+  html += simSectionOpen('Wat levert een energie-actie op?');
+  html += `<p class="hint">Per keer dat een bot de actie inzet. "Opdracht gehaald" is hoe vaak hij in die beurt een opdracht pakte — vergelijk met een beurt zonder actie.</p>`;
+  html += `<table class="sim-table"><thead><tr><th>Actie</th><th>Per potje</th><th>Opdracht gehaald</th></tr></thead><tbody>${yieldRows}</tbody></table>`;
 
   // ---------- beloningskaarten ----------
   const cardRows = ACTION_CARD_IDS.map(id => {
@@ -6868,6 +6993,15 @@ function runSimulationBatch(){
         energyLevels: new Int32Array(ENERGY_MAX + 1),   // hoe vaak stond een speler op N energie
         cardDraws: 0, handFullOnBank: 0, cardUses,
         actionCellDraws: 0, handFullOnActionCell: 0,
+        // "Wat levert een energie-actie op?" — per actie: keer ingezet, beurten met een gehaalde
+        // opdracht, verplaatste vakjes (sprint/sprong) of extra steen (Stuwstoot), direct op de
+        // opdracht geland, en bij Herprioritering: keer gewisseld + vakjes gescheeld
+        energyStats: Object.fromEntries(ENERGY_STRATEGIES.map(id =>
+          [id, { uses: 0, banked: 0, steps: 0, direct: 0, swaps: 0, saved: 0 }])),
+        noEnergyTurns: 0, noEnergyBanked: 0,
+        // "Pech-reeksen" en "Kan de achterste nog terugkomen?"
+        searchHist: new Float64Array(SIM_SEARCH_HIST_MAX + 1), longestSearch: 0, gamesWithLongSearch: 0,
+        comebackHist: [0, 0, 0, 0], comebackGames: 0,
       };
       let stuckCount = 0;
 
