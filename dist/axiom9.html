@@ -5795,9 +5795,18 @@ function backtrackLayers(layersKeys, layersParent, step, idx){
 // hinder-score als tie-break en tot slot willekeur.
 function pickEnd(graph, layersKeys, layersParent, layersBanked, step, targets, occupiedSet, rand, stepsUsed, endBlockedSet){
   const keys = layersKeys[step], bankedArr = layersBanked[step];
-  const firstIndex = new Map();
-  for (let i = 0; i < keys.length; i++) if (!firstIndex.has(keys[i])) firstIndex.set(keys[i], i);
-  let uniqueKeys = Array.from(firstIndex.keys());
+  // Per eindvakje de toestand met de MEESTE gepakte opdrachten onthouden. Hetzelfde vakje komt
+  // vaak meerdere keren voor in een laag (andere binnenkomstrichting, wel/niet langs de opdracht).
+  // Vroeger telde alleen de EERST gevonden toestand — was dat een route die de opdracht miste, dan
+  // viel het vakje af als "geen opdracht", ook al kon je er via de opdracht óók komen. Vakjes ná
+  // de opdracht vielen daardoor vaak weg en het opdrachtvakje zelf bleef over: bots eindigden
+  // ~36% van de keren precies óp de opdracht i.p.v. door te lopen naar de volgende (gemeten).
+  const bestIndex = new Map();
+  for (let i = 0; i < keys.length; i++){
+    const prev = bestIndex.get(keys[i]);
+    if (prev === undefined || bankedArr[i] > bankedArr[prev]) bestIndex.set(keys[i], i);
+  }
+  let uniqueKeys = Array.from(bestIndex.keys());
   // Blinde Vlek: je mag DOOR een bezet vakje lopen, maar er niet op eindigen. De bezette
   // vakjes zijn dan uit occupiedSet gehaald (zodat de route erlangs mag) en zitten hier in
   // endBlockedSet. Blijft er geen vrij eindvakje over, dan levert deze zet niets op —
@@ -5809,8 +5818,8 @@ function pickEnd(graph, layersKeys, layersParent, layersBanked, step, targets, o
   }
 
   let maxBanked = 0;
-  for (const k of uniqueKeys) maxBanked = Math.max(maxBanked, bankedArr[firstIndex.get(k)]);
-  uniqueKeys = uniqueKeys.filter(k => bankedArr[firstIndex.get(k)] === maxBanked);
+  for (const k of uniqueKeys) maxBanked = Math.max(maxBanked, bankedArr[bestIndex.get(k)]);
+  uniqueKeys = uniqueKeys.filter(k => bankedArr[bestIndex.get(k)] === maxBanked);
 
   let chosenKey;
   if (uniqueKeys.length === 1){
@@ -5832,7 +5841,7 @@ function pickEnd(graph, layersKeys, layersParent, layersBanked, step, targets, o
     }
     chosenKey = closest[Math.floor(rand() * closest.length)];
   }
-  const path = backtrackLayers(layersKeys, layersParent, step, firstIndex.get(chosenKey));
+  const path = backtrackLayers(layersKeys, layersParent, step, bestIndex.get(chosenKey));
   return { key: chosenKey, stepsUsed, bankedCount: maxBanked, bankedQuest: maxBanked > 0, path };
 }
 
