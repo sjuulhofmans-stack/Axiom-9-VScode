@@ -1925,6 +1925,10 @@ function soloResolveBotTurn(player){
   player.pos = move.key;
   paintWalkPawns(soloGraph, soloPlayers, pIdx);
   if (pathHasActionCell(soloGraph, move.path)) soloGrantActionCellReward(player, false);
+  // voor soloAnimateBotTurn: welke opdrachten deze zet pakt, zodat het naspelen het doel al
+  // doorschuift zodra de pion erop stapt (walkAdvanceShownTarget, 96-walk.js)
+  const bank = { seq: player.deck.slice(player.nextIdx), completed: player.completed,
+                 limit: move.bankedCount || 0, jumpBanked: !!jumpPath && move.path.length === 1 && move.bankedQuest };
 
   if (move.bankedQuest){
     // meestal 1 opdracht, zelden 2 (de resterende stappen na de 1e voerden toevallig ook door
@@ -1952,7 +1956,7 @@ function soloResolveBotTurn(player){
     walkLog(`Beurt ${soloTurn}: <b>${player.name}</b> onderweg naar ${targetLabel}${move.wasBlocked ? ' · liep tegen een bezette route aan' : ''}`, null, player);
   }
   renderWalkScore(soloPlayers, -1);
-  return { startPos, jumpPath, path: move.path, usedBoots, d1, d2, d3, roll, energyRoll, targetLabel, targetKey };
+  return { startPos, jumpPath, path: move.path, usedBoots, d1, d2, d3, roll, energyRoll, targetLabel, targetKey, bank };
 }
 
 // ---------- bot-beurt zichtbaar naspelen (lobby-optie "Beurten van de bots") ----------
@@ -2015,16 +2019,22 @@ async function soloAnimateBotTurn(player, replay, logNodes, runId){
   await walkSleep(Math.min(500, sp.rollMs));
   if (!alive()) return false;
 
+  // `bankLimit` per stuk: een Noodtransport-sprong pakt alleen een opdracht als de sprong er
+  // precies op eindigt (dan is replay.path 1 vakje lang); anders pakt alleen de gelopen zet ze
+  const bank = replay.bank ? { ...replay.bank, shown: 0 } : null;
+  const othersOcc = new Set(soloPlayers.filter(q => q !== player && simOnBoard(q)).map(q => q.pos));
   const segments = [];
-  if (replay.jumpPath) segments.push({ path: replay.jumpPath, special: true });
-  segments.push({ path: replay.path, special: replay.usedBoots });
+  if (replay.jumpPath) segments.push({ path: replay.jumpPath, special: true, bankLimit: bank && bank.jumpBanked ? 1 : 0 });
+  segments.push({ path: replay.path, special: replay.usedBoots, bankLimit: bank ? bank.limit : 0 });
   for (const seg of segments){
+    if (bank) bank.limit = seg.bankLimit;
     for (let i = 1; i < seg.path.length; i++){
       const leaving = walkCellDiv(soloGraph, player.pos);
       leaving.style.setProperty('--pc', player.color);
       leaving.classList.add('walk-trail');
       if (seg.special) leaving.classList.add('walk-jump');
       player.pos = seg.path[i];
+      walkAdvanceShownTarget(soloGraph, bank, player.pos, player.color, othersOcc, false);
       paint();
       await walkSleep(sp.stepMs);
       if (!alive()) return false;

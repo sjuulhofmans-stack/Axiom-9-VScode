@@ -325,6 +325,28 @@ function markWalkTarget(graph, label, key, playerColor){
   ring.hidden = false;
 }
 
+// Tijdens het naspelen van een zet: stapt de pion op het opdrachtvakje dat deze zet pakt, dan
+// schuift de markering METEEN door naar de volgende opdracht. De rekenkern (resolveMove) laat de
+// pion na een opdracht al met de rest van de worp doorlopen, maar het bord bleef de hele zet de
+// oude opdracht aanwijzen — dat zag eruit alsof bots precies op het vakje wilden eindigen
+// (gebruikersmelding). `bank`: { seq: nog te halen labels vanaf het huidige doel, completed:
+// voltooid vóór deze zet, limit: hoeveel opdrachten deze zet pakt, shown: al getoond }.
+// `occupied`: vakjes van andere pionnen — daar pakt Blinde Vlek de opdracht niet (zie resolveMove).
+function walkAdvanceShownTarget(graph, bank, pos, color, occupied, updateCard){
+  if (!bank || bank.shown >= bank.limit) return;
+  const label = bank.seq[bank.shown];
+  if (graph.questCells[label] !== pos || (occupied && occupied.has(pos))) return;
+  bank.shown++;
+  walkCellDiv(graph, pos).classList.add('walk-done');
+  const next = bank.seq[bank.shown];
+  if (bank.completed + bank.shown >= SIM_QUESTS_TO_WIN || next === undefined){
+    clearWalkTarget();
+    return;
+  }
+  markWalkTarget(graph, next, graph.questCells[next], color);
+  if (updateCard) renderWalkQuestCard(next);
+}
+
 function clearWalkTarget(){
   walkClearClass('walk-target');
   if (walkRoomRingEl) walkRoomRingEl.hidden = true;
@@ -897,7 +919,9 @@ async function runWalkSimulation(){
       if (aborted()) return;
 
       // pion langs een pad laten lopen; `special` markeert een niet-gewone verplaatsing
-      // (Noodtransport, Zwaartekracht-laarzen) met een ander spoor
+      // (Noodtransport, Zwaartekracht-laarzen) met een ander spoor. `bank.limit` zegt hoeveel
+      // opdrachten dit pad pakt (zie walkAdvanceShownTarget).
+      const bank = { seq: player.deck.slice(player.nextIdx), completed: player.completed, limit: 0, shown: 0 };
       async function walkPath(path, special){
         for (let i = 1; i < path.length; i++){
           if (aborted()) return false;
@@ -906,6 +930,7 @@ async function runWalkSimulation(){
           leaving.classList.add('walk-trail');
           if (special) leaving.classList.add('walk-jump');
           player.pos = path[i];
+          walkAdvanceShownTarget(graph, bank, player.pos, player.color, occupiedNow(), true);
           // actiekaartvakje (gang): onderbreekt de zet niet, levert hooguit 1x per beurt een
           // beloningskaart op — ook als je onderweg meerdere van deze vakjes passeert
           if (!actionCellDrawnThisTurn && graph.actionCells.has(player.pos)){
@@ -1029,6 +1054,7 @@ async function runWalkSimulation(){
           player.energy -= ENERGY_ACTIONS.jump.cost;
           player.actionUses++;
           energyActionUsed = true; usedEnergyAction = 'jump';
+          bank.limit = jump.banked ? 1 : 0;
           if (!await walkPath(jump.path, true)) return;
           move = jump.banked
             ? { key: jump.key, path: [jump.key], stepsUsed: 0, bankedCount: 1, bankedQuest: true, wasBlocked: false, teleported: true }
@@ -1039,6 +1065,7 @@ async function runWalkSimulation(){
       const stepDir = lastStepDirection(graph, move.path);
       if (stepDir !== -1) player.lastDir = stepDir;
 
+      bank.limit = move.bankedCount;
       if (!await walkPath(move.path, usedBoots)) return;
 
       const rollText = usedBoots ? `🥾 ${move.stepsUsed} van 10 stappen rechtdoor` : walkRollText(d1, d2, d3, roll);
