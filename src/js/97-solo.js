@@ -1174,8 +1174,8 @@ function soloCheckActionCell(key, player, isHuman){
 // ---------- Zwaartekracht-laarzen: eerst rechtdoor, dan gooien ----------
 // Energie-actie (5) of de gratis actiekaart — allebei vóór de worp, hooguit één sprint per
 // beurt. Kies een richting (knop, of klik op het eindvakje op het bord): je schiet rechtdoor
-// tot een muur, een andere pion of GRAVITY_DASH_STEPS vakjes. Kom je over je opdracht, dan telt
-// die meteen en loop je door. Daarna gooi je gewoon vanaf je nieuwe plek. De keuze staat in het
+// tot een muur, een andere pion of GRAVITY_DASH_STEPS vakjes. Kom je op je opdracht, dan telt
+// die meteen en stop je daar (walkGravityDash). Daarna gooi je gewoon vanaf je nieuwe plek. De keuze staat in het
 // actiepaneel (walkSoloActionsEl) en niet in het kaart-vak, want alleen dat paneel gaat in
 // multiplayer mee naar de gast (ownerUi.actionsHtml in 99-multiplayer.js).
 function soloTargetsRow(){

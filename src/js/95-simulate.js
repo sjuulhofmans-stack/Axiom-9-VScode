@@ -92,8 +92,11 @@ const SIM_HISTOGRAM_BINS = 12;
 //
 //   4  Stuwstoot              gooi met 3 loopstenen in plaats van 2
 //   4  Herprioritering        bekijk je volgende opdrachtkaart en kies of je wisselt
-//   5  Zwaartekracht-laarzen  eerst tot 8 vakjes rechtdoor (tot een muur/pion), dan gooien
-//  10  Noodtransport          eerst vrij springen tot 13 vakjes, dan gooien
+//   5  Zwaartekracht-laarzen  eerst tot 8 vakjes rechtdoor (tot een muur/pion/je opdracht), dan gooien
+//  10  Noodtransport          eerst vrij springen tot 11 vakjes, dan gooien
+//
+// Controlemeting na de laatste twee bijstellingen (Noodtransport 13 → 11, laarzen stoppen op je
+// opdracht), 4 borden × 4000 potjes: 24,8 / 24,6 / 25,5 / 25,1 (±0,7), 0 vastgelopen.
 //
 // Gemeten (2026-10, 6000 potjes met simulateOneGame hieronder, 4 bots met elk één vaste
 // strategie, deze tijdsregels): winst% 23,7 / 26,0 / 24,6 / 25,7 — 25% is eerlijk; 2,7% van de
@@ -127,9 +130,14 @@ const SIM_EMPTY_SET = new Set();
 //   16 → 29,0 / 29,1 / 36,6   het transport begint te overheersen
 // Op 10 stappen is de actie 1,0 stap per energie waard tegen 1,17 voor de Stuwstoot; pas
 // rond 13 haalt hij de andere twee in. Verzet je dit getal, draai de sweep opnieuw.
-// (Die sweep is nog van vóór de tijdsregels hierboven; met de huidige regels is 13 opnieuw
-// gecontroleerd en in balans, zie de winst% bovenaan.)
-let ENERGY_JUMP_RANGE = 13;
+// (Die sweep is nog van vóór de tijdsregels hierboven.) Met de huidige vier acties opnieuw
+// gemeten over 4 borden × 4000 potjes (standaard + zwart-nova-7, koud-sein-42, stil-baan-15),
+// winst% Stuwstoot / Herprioritering / Laarzen / Noodtransport, ±0,7:
+//   13 → 24,0 / 24,1 / 24,6 / 27,3   Noodtransport op elk van de 4 borden te sterk (26,6–28,3)
+//   12 → 23,9 / 24,6 / 24,8 / 26,7
+//   11 → 25,1 / 24,3 / 25,2 / 25,4   ← gekozen
+// (Op alleen het standaardbord leek 13 in balans; over meer borden niet.)
+let ENERGY_JUMP_RANGE = 11;
 // Bot springt alleen als zijn doel verder weg ligt dan dit — dichterbij haalt een gewone worp
 // het meestal toch, en dan is je hele voorraad weg voor niets.
 const JUMP_BOT_MIN_DIST = 6;
@@ -144,8 +152,9 @@ const REORDER_PEEK_THRESHOLD = 12;
 
 // Zwaartekracht-laarzen (energie-actie én actiekaart, de kaart is de gratis versie — zelfde
 // paar als Stuwstoot/Stuwlading): kies een richting en schiet rechtdoor tot een muur, een
-// andere pion of GRAVITY_DASH_STEPS vakjes. Kom je onderweg over je opdracht, dan telt die
-// (en loop je door, net als bij een worp). Daarna gooi je gewoon vanaf je nieuwe plek.
+// andere pion of GRAVITY_DASH_STEPS vakjes. Kom je onderweg op je opdracht, dan telt die en
+// STOP je daar (spelregel van de maker — anders dan bij een worp, waar je wel doorloopt).
+// Daarna gooi je gewoon vanaf je nieuwe plek.
 // Vanaf 53% van de loopbare vakjes kun je in de beste richting echt 8 ver; gemiddeld levert een
 // ingezette sprint 4,5 vakjes richting je doel op.
 const GRAVITY_DASH_STEPS = 8;
@@ -159,7 +168,7 @@ const ENERGY_ACTIONS = {
   reorder: { cost: 4,  name: 'Herprioritering', hint: 'bekijk je volgende opdracht en kies',
              note: 'Je ziet eerst je volgende opdrachtkaart en kiest dan of je die naar voren haalt. Je betaalt ook als je niet wisselt.' },
   gravity: { cost: 5,  name: 'Zwaartekracht-laarzen', hint: `eerst ${GRAVITY_DASH_STEPS} vakjes rechtdoor, dan gooien`,
-             note: `Kies een richting: je schiet rechtdoor tot een muur of pion, hooguit ${GRAVITY_DASH_STEPS} vakjes. Kom je over je opdracht, dan telt die. Daarna gooi je gewoon vanaf je nieuwe plek.` },
+             note: `Kies een richting: je schiet rechtdoor tot een muur of pion, hooguit ${GRAVITY_DASH_STEPS} vakjes. Kom je op je opdracht, dan telt die en stop je daar. Daarna gooi je gewoon vanaf je nieuwe plek.` },
   jump:    { cost: 10, name: 'Noodtransport',   hint: `spring vrij tot ${ENERGY_JUMP_RANGE} vakjes, dan gooien`,
              note: 'Geen geen-U-turn-regel en je springt over pionnen heen. Land je op je opdracht, dan is je beurt klaar; anders gooi je daarna gewoon vanaf je nieuwe plek. Kost je hele voorraad.' },
   none:    { cost: 0,  name: 'Geen energie',    hint: 'spaart, geeft nooit uit',
@@ -440,7 +449,7 @@ function useActionCard(player, id, deck, extra){
 // Loopt vanaf `fromKey` een vaste richting `dir` uit tot `maxSteps`, geen bochten. Stopt bij
 // een muur of een bezet vakje; `bankedAt` is de padindex waarop het doel geraakt werd (-1 als
 // niet), en dan stopt hij daar ook. Gebruikt door Duwstoot (shoveDestination); de laarzen
-// hebben hun eigen walkGravityDash, die na een opdracht juist doorloopt.
+// hebben hun eigen walkGravityDash (vaste lengte GRAVITY_DASH_STEPS, rij opdrachten).
 function walkStraightLine(graph, fromKey, dir, maxSteps, occupied, targetKey){
   const { adjKey, adjDir } = graph;
   let cur = fromKey;
@@ -461,9 +470,10 @@ function walkStraightLine(graph, fromKey, dir, maxSteps, occupied, targetKey){
 }
 // ---------- Zwaartekracht-laarzen (energie-actie én kaart): eerst rechtdoor, dan gooien ----------
 // Eén richting uitlopen: rechtdoor tot een muur, een bezet vakje of GRAVITY_DASH_STEPS vakjes.
-// Kom je onderweg over je opdracht(en) — `targets` is de rij nog te halen opdrachtvakjes vanaf
-// het huidige doel, zoals bij resolveMove — dan tellen die mee in `bankedCount` en loop je
-// gewoon door, net als bij een worp.
+// Kom je onderweg op je opdracht (`targets[0]` — `targets` is de rij nog te halen
+// opdrachtvakjes vanaf het huidige doel, zoals bij resolveMove), dan telt die in `bankedCount`
+// en STOPT de sprint daar (spelregel van de maker; anders dan bij een worp). Je gooit daarna
+// gewoon vanaf het opdrachtvakje, richting de volgende opdracht. Een sprint pakt dus hooguit 1.
 function walkGravityDash(graph, fromKey, dir, occupied, targets){
   const { adjKey, adjDir } = graph;
   let cur = fromKey, banked = 0, wasBlocked = false;
@@ -476,7 +486,7 @@ function walkGravityDash(graph, fromKey, dir, occupied, targets){
     if (occupied.has(next)){ wasBlocked = true; break; }      // andere pion: ook
     cur = next;
     path.push(cur);
-    if (targets && banked < targets.length && cur === targets[banked]) banked++;
+    if (targets && targets.length && cur === targets[0]){ banked = 1; break; }   // op je opdracht: stop
   }
   return { dir, path, key: cur, bankedCount: banked, wasBlocked };
 }

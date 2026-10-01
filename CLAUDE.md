@@ -139,9 +139,12 @@ aangeroepen (functiedeclaraties worden gehoist, `const`/`let` niet).
   Vier acties: Stuwstoot (4, 3 loopstenen), Herprioritering (4, eerst je volgende
   opdrachtkaart bekijken en dan kiezen of je wisselt), Zwaartekracht-laarzen (5,
   eerst tot 8 vakjes rechtdoor tot een muur/pion, dan gooien) en Noodtransport
-  (10, eerst vrij springen tot 13 vakjes, dan gooien). De actiekaart
+  (10, eerst vrij springen tot 11 vakjes, dan gooien). De laarzen **stoppen** op
+  het opdrachtvakje van die beurt als ze er onderweg op komen (spelregel van de
+  maker; bij een gewone worp loop je juist door). De actiekaart
   Zwaartekracht-laarzen is de gratis versie van de energie-actie (één sprint per
-  beurt). Gemeten in balans (6000 potjes: 23,7 / 26,0 / 24,6 / 25,7%); de
+  beurt). Gemeten in balans over 4 borden × 4000 potjes: 24,8 / 24,6 / 25,5 /
+  25,1% (Noodtransport op 13 was op elk bord te sterk, 26,6–28,3%); de
   prijs-sweep en de afgewezen alternatieven (rijkere steen, plafond 15, laarzen
   die de worp vervangen, Bijsturen, Dubbelworp, Sabotage, energie → kaart) staan
   bovenin `95-simulate.js` — niet opnieuw voorstellen zonder nieuwe meting. De
