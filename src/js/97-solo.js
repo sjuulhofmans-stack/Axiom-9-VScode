@@ -623,10 +623,12 @@ function soloRenderActionPanel(){
   const locked = (id) => p.energy < ENERGY_ACTIONS[id].cost || !!blockReason(id);
   const energyBtns = ids.map(id => renderEnergySoloButton(id, locked(id), blockReason(id))).join('');
   // Kun je er geen enkele betalen, zeg dat dan met zoveel woorden — uitgegrijsde rijen
-  // zien er anders uit alsof het paneel stuk is.
+  // zien er anders uit alsof het paneel stuk is. Bewust één korte regel: met 4 acties paste de
+  // oude zin van twee regels niet meer in het vaste vak (.walk-solo-panel) en moest je scrollen
+  // bij 0–3 energie, dus bijna elke beurt aan het begin van een potje (gebruikersmelding).
   const allLocked = ids.every(locked);
   const note = allLocked
-    ? `<p class="hint energy-pick-none">Je hebt <b>${p.energy}</b> energie — te weinig voor een actie. Gooi gewoon; je energiesteen vult je voorraad weer aan.</p>`
+    ? `<p class="hint energy-pick-none">Te weinig energie voor een actie — gooi gewoon.</p>`
     : '';
   walkSoloActionsEl.innerHTML = `<div class="energy-pick-list">${energyBtns}</div>${note}`;
   // net aangemaakte knoppen beginnen anders allemaal weer bij 0 — zie PULSE_EPOCH hierboven.
