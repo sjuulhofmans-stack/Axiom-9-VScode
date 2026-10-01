@@ -790,7 +790,7 @@ async function runWalkSimulation(){
         }
       }
       if (!cardActionUsed && player.cards.includes('barrier')){
-        const occNow = new Set(players.filter(p => !p.rank).map(p => p.pos));
+        const occNow = new Set(players.filter(simOnBoard).map(p => p.pos));
         const target = pickBarrierTarget(graph, players, occNow, pIdx, rand);
         if (target){
           target.player.barrierCell = target.cell;
@@ -851,7 +851,7 @@ async function runWalkSimulation(){
         }
       }
       if (!cardActionUsed && player.cards.includes('recoil')){
-        const occNow = new Set(players.filter(p => !p.rank).map(p => p.pos));
+        const occNow = new Set(players.filter(simOnBoard).map(p => p.pos));
         const push = pickRecoilMove(graph, players, occNow, pIdx);
         if (push){
           push.player.pos = push.toKey;
@@ -944,7 +944,7 @@ async function runWalkSimulation(){
       // fase 3: beweging — Zwaartekracht-laarzen vervangt de worp helemaal; anders de gewone
       // loopstenen met Stuwlading (kaart) of Stuwstoot (energie) als derde steen — die twee
       // doen hetzelfde en blijven daarom via else-if elkaar uitsluiten
-      let move, d1 = 0, d2 = 0, d3 = null, roll = 0, usedBoots = false, allowUturn = false;
+      let move, d1 = 0, d2 = 0, d3 = null, roll = 0, usedBoots = false, allowUturn = false, rollPenalty = 0;
       if (!cardActionUsed && player.cards.includes('boots')){
         const bootsMove = resolveGravityBoots(graph, player.pos, 10, occupiedNow(), targetKey);
         if (bootsMove){
@@ -980,7 +980,8 @@ async function runWalkSimulation(){
         }
         roll = d1 + d2 + (d3 || 0);
         if (player.rollPenalty){
-          roll = Math.max(1, roll - player.rollPenalty);
+          rollPenalty = player.rollPenalty;
+          roll = Math.max(1, roll - rollPenalty);
           player.rollPenalty = 0;
           walkLog(`${player.name} verliest ${'2'} stappen door <b>Stroomonderbreking</b> → ${roll}.`, null, player);
         }
@@ -1003,9 +1004,11 @@ async function runWalkSimulation(){
           d1 = simRollD6(rand); d2 = simRollD6(rand);
           if (d3) d3 = simRollD6(rand);
           roll = d1 + d2 + (d3 || 0);
+          // Stroomonderbreking geldt ook voor de nieuwe worp (zie simulateOneGame)
+          if (rollPenalty) roll = Math.max(1, roll - rollPenalty);
           useActionCard(player, 'reroll', deck);
           cardActionUsed = true; usedCardId = 'reroll';
-          renderWalkDice(d1, d2, energyRoll, false, d3);
+          renderWalkDice(d1, d2, energyRoll, false, d3, roll);
           if (aborted()) return;
           await walkTick(Math.min(500, walkSpeed().rollMs));
           if (aborted()) return;
@@ -1027,7 +1030,7 @@ async function runWalkSimulation(){
         }
       }
       if (!blindResolvedBlock && !move.bankedQuest && !energyActionUsed && player.strategy === 'jump' && player.energy >= ENERGY_ACTIONS.jump.cost){
-        const jump = resolveEnergyJump(graph, player.pos, ENERGY_JUMP_RANGE, targetKey);
+        const jump = resolveEnergyJump(graph, player.pos, ENERGY_JUMP_RANGE, targetKey, occupiedNow());
         if (jump){
           player.energy -= ENERGY_ACTIONS.jump.cost;
           player.actionUses++;

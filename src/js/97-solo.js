@@ -296,8 +296,9 @@ function solo(){ return soloPlayers[soloActiveIdx]; }
 // AFLEGGEN gebruikt hetzelfde kaart-slot als een kaart SPELEN, dus telt ook mee.
 function soloEnergyActionUsed(){ return !!soloUsedEnergyId; }
 function soloCardActionUsed(){ return !!(soloUsedCardId || soloDiscardedCardId); }
-// alle andere spelers die nog meespelen — voor blokkeren en doelwit-keuzes
-function soloOthers(){ return soloPlayers.filter(p => p.idx !== soloActiveIdx && !p.rank); }
+// alle andere spelers die nog meespelen — voor blokkeren en doelwit-keuzes. simOnBoard() i.p.v.
+// alleen !p.rank: wie deze ronde al binnenkwam heeft nog geen rank, maar staat niet meer op het bord.
+function soloOthers(){ return soloPlayers.filter(p => p.idx !== soloActiveIdx && simOnBoard(p)); }
 function soloOccupied(){
   const occ = new Set(soloOthers().map(p => p.pos));
   // Noodbarrière die tegen JOU is ingezet: telt deze beurt als een bezet vakje
@@ -1093,12 +1094,14 @@ function soloPlayCard(id){
   } else if (id === 'reroll'){
     const d1 = simRollD6(soloRand), d2 = simRollD6(soloRand);
     const d3 = soloMove.d3 !== null && soloMove.d3 !== undefined ? simRollD6(soloRand) : null;
-    const roll = d1 + d2 + (d3 || 0);
+    // een Stroomonderbreking op de oorspronkelijke worp geldt ook voor de nieuwe
+    const penalty = soloMove.penalty || 0;
+    const roll = Math.max(1, d1 + d2 + (d3 || 0) - penalty);
     useActionCard(p, 'reroll', soloDeck);
     soloUsedCardId = 'reroll';
     // volledig nieuwe zet: het pad begint opnieuw vanaf waar je nu staat
-    soloMove = { d1, d2, d3, roll, stepsLeft: roll, lastDir: -1, path: [p.pos] };
-    renderWalkDice(d1, d2, soloEnergyRoll, false, d3);
+    soloMove = { d1, d2, d3, roll, penalty, stepsLeft: roll, lastDir: -1, path: [p.pos] };
+    renderWalkDice(d1, d2, soloEnergyRoll, false, d3, roll);
     walkLog(`Je speelt <b>Koerscorrectie</b> en gooit opnieuw: <b>${roll}</b> stappen.`, null, p);
     soloAfterCardAction();
   }
@@ -1371,14 +1374,15 @@ function soloRollDice(){
   soloRollEnergyForTurn();
   let roll = d1 + d2 + (d3 || 0);
   const p = solo();
-  if (p.rollPenalty){
-    const nieuw = Math.max(1, roll - p.rollPenalty);
+  const penalty = p.rollPenalty;   // onthouden in soloMove: geldt ook voor een Koerscorrectie
+  if (penalty){
+    const nieuw = Math.max(1, roll - penalty);
     walkLog(`<b>Stroomonderbreking</b> kost je ${roll - nieuw} stappen: ${roll} → ${nieuw}.`, null, p);
     roll = nieuw;
     p.rollPenalty = 0;
   }
   renderWalkDice(d1, d2, soloEnergyRoll, false, d3, roll);   // na de straf: toont de echte stappen
-  soloMove = { d1, d2, d3, roll, stepsLeft: roll, lastDir: -1, path: [p.pos] };
+  soloMove = { d1, d2, d3, roll, penalty, stepsLeft: roll, lastDir: -1, path: [p.pos] };
   btnWalkSoloRoll.hidden = true;
   renderWalkScore(soloPlayers, soloActiveIdx);
   soloAdvanceMovePhase();
@@ -1791,7 +1795,7 @@ function soloResolveBotTurn(player){
     }
   }
   if (!cardActionUsed && player.cards.includes('barrier')){
-    const occNow = new Set(soloPlayers.filter(q => !q.rank).map(q => q.pos));
+    const occNow = new Set(soloPlayers.filter(simOnBoard).map(q => q.pos));
     const target = pickBarrierTarget(soloGraph, soloPlayers, occNow, pIdx, soloRand);
     if (target){
       target.player.barrierCell = target.cell;
@@ -1837,7 +1841,7 @@ function soloResolveBotTurn(player){
     }
   }
   if (!cardActionUsed && player.cards.includes('recoil')){
-    const occNow = new Set(soloPlayers.filter(q => !q.rank).map(q => q.pos));
+    const occNow = new Set(soloPlayers.filter(simOnBoard).map(q => q.pos));
     const push = pickRecoilMove(soloGraph, soloPlayers, occNow, pIdx);
     if (push){
       push.player.pos = push.toKey;
@@ -1861,12 +1865,12 @@ function soloResolveBotTurn(player){
   for (let i = player.nextIdx; i < player.deck.length; i++) targets.push(soloGraph.questCells[player.deck[i]]);
 
   const occupied = new Set();
-  for (const other of soloPlayers) if (other.idx !== pIdx && !other.rank) occupied.add(other.pos);
+  for (const other of soloPlayers) if (other.idx !== pIdx && simOnBoard(other)) occupied.add(other.pos);
   if (player.barrierCell !== null){ occupied.add(player.barrierCell); player.barrierCell = null; }
 
   // d1/d2/d3 los bewaard (alleen voor de weergave in soloAnimateBotTurn) — zelfde aantal
   // simRollD6-aanroepen in dezelfde volgorde als voorheen, dus de uitkomst verandert niet
-  let move, roll = 0, d1 = 0, d2 = 0, d3 = null, usedBoots = false, allowUturn = false, jumpPath = null;
+  let move, roll = 0, d1 = 0, d2 = 0, d3 = null, usedBoots = false, allowUturn = false, jumpPath = null, rollPenalty = 0;
   if (!cardActionUsed && player.cards.includes('boots')){
     const bootsMove = resolveGravityBoots(soloGraph, player.pos, 10, occupied, targetKey);
     if (bootsMove){ move = bootsMove; usedBoots = true; useActionCard(player, 'boots', soloDeck); cardActionUsed = true; }
@@ -1880,7 +1884,7 @@ function soloResolveBotTurn(player){
     } else if (!energyActionUsed && player.strategy === 'boost' && player.energy >= ENERGY_ACTIONS.boost.cost){
       d3 = simRollD6(soloRand); roll += d3; dice = 3; player.energy -= ENERGY_ACTIONS.boost.cost; player.actionUses++; energyActionUsed = true;
     }
-    if (player.rollPenalty){ roll = Math.max(1, roll - player.rollPenalty); player.rollPenalty = 0; }
+    if (player.rollPenalty){ rollPenalty = player.rollPenalty; roll = Math.max(1, roll - rollPenalty); player.rollPenalty = 0; }
     if (!cardActionUsed && player.cards.includes('fastlane')){
       allowUturn = true;
       useActionCard(player, 'fastlane', soloDeck); cardActionUsed = true;
@@ -1891,6 +1895,7 @@ function soloResolveBotTurn(player){
       d1 = simRollD6(soloRand); d2 = simRollD6(soloRand);
       if (dice === 3) d3 = simRollD6(soloRand);
       roll = d1 + d2 + (dice === 3 ? d3 : 0);
+      if (rollPenalty) roll = Math.max(1, roll - rollPenalty);   // Stroomonderbreking blijft gelden
       useActionCard(player, 'reroll', soloDeck);
       cardActionUsed = true;
       walkLog(`${player.name} gebruikt <b>Koerscorrectie</b> en gooit opnieuw: ${roll}.`, null, player);
@@ -1904,7 +1909,7 @@ function soloResolveBotTurn(player){
     if (retry && retry.key !== move.key){ move = retry; useActionCard(player, 'blind', soloDeck); cardActionUsed = true; blindResolvedBlock = true; }
   }
   if (!blindResolvedBlock && !move.bankedQuest && !energyActionUsed && player.strategy === 'jump' && player.energy >= ENERGY_ACTIONS.jump.cost){
-    const jump = resolveEnergyJump(soloGraph, player.pos, ENERGY_JUMP_RANGE, targetKey);
+    const jump = resolveEnergyJump(soloGraph, player.pos, ENERGY_JUMP_RANGE, targetKey, occupied);
     if (jump){
       player.energy -= ENERGY_ACTIONS.jump.cost; player.actionUses++; energyActionUsed = true;
       jumpPath = jump.path;

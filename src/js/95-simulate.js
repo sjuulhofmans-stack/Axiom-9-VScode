@@ -29,6 +29,11 @@ const SIM_START_LABELS = ['3.1', '3.2', '3.3', '3.4'];
 // Bij 4 spelers dus 3. Ook bruikbaar voor de kleinere bezettingen van "stap voor stap":
 // met 2 spelers is de nummer 2 al bekend zodra de winnaar binnen is.
 function simFinishTarget(playerCount){ return Math.max(1, playerCount - 1); }
+// Staat deze speler nog op het bord? `rank` alleen is niet genoeg: wie deze ronde zijn 6e
+// opdracht haalt krijgt zijn rank pas aan het EIND van de ronde (resolveRoundFinishers), maar
+// heeft het bord dan al verlaten — hij mag niets meer blokkeren en geen doelwit meer zijn van
+// hinderkaarten (gemeten: anders ging ~3% van de hinderkaarten naar zo'n al-binnen speler).
+function simOnBoard(p){ return !p.rank && p.completed < SIM_QUESTS_TO_WIN; }
 
 // ---------- gelijke stand: de ronde wordt afgemaakt vóórdat een plaats vaststaat ----------
 // Vroeger kreeg de eerste speler die zijn 6e opdracht voltooide meteen rank 1, en werd het
@@ -155,9 +160,11 @@ function pickEnergyStrategies(rand){
 }
 
 // Vrije verplaatsing van maximaal `range` vakjes: geen dobbelsteen, geen geen-U-turn-regel,
-// bezette vakjes tellen niet mee. Gaat recht op het doel af als dat binnen bereik ligt en
-// kiest anders het bereikbare vakje dat het dichtst bij het doel ligt.
-function resolveEnergyJump(graph, fromKey, range, targetKey){
+// je springt over bezette vakjes heen. Gaat recht op het doel af als dat binnen bereik ligt en
+// kiest anders het bereikbare vakje dat het dichtst bij het doel ligt. Landen op een vakje uit
+// `occupiedSet` mag NIET (net als bij de mens, zie soloEnterJumpTarget in 97-solo.js) — vroeger
+// wel, en dan stonden er twee pionnen op één vakje (±1 op de 11 sprongen in de simulatie).
+function resolveEnergyJump(graph, fromKey, range, targetKey, occupiedSet){
   // 1. alles binnen bereik verzamelen. Dit moet compleet zijn vóór de tweede BFS, want die
   //    overschrijft de gedeelde afstandsbuffer.
   const stampFrom = simBfsDistances(graph, fromKey);
@@ -168,12 +175,13 @@ function resolveEnergyJump(graph, fromKey, range, targetKey){
   }
   // 2. doel binnen bereik? dan er meteen heen — anders zo dicht mogelijk erbij
   let dest = null;
-  if (near.has(targetKey)){
+  if (near.has(targetKey) && !occupiedSet.has(targetKey)){
     dest = targetKey;
   } else {
     const stampTarget = simBfsDistances(graph, targetKey);
     let best = Infinity;
     for (const k of near.keys()){
+      if (occupiedSet.has(k)) continue;
       const d = simDistLookup(stampTarget, k);
       if (d >= 0 && d < best){ best = d; dest = k; }
     }
@@ -485,7 +493,7 @@ function resolveGravityBoots(graph, fromKey, maxSteps, occupied, targetKey){
 function pickLeaderTarget(players, selfIdx, alreadyAffected, rand){
   let best = null, bestCount = -1, ties = 0;
   for (const p of players){
-    if (p.idx === selfIdx || p.rank || alreadyAffected(p)) continue;
+    if (p.idx === selfIdx || !simOnBoard(p) || alreadyAffected(p)) continue;
     if (p.completed > bestCount){ best = p; bestCount = p.completed; ties = 1; }
     else if (p.completed === bestCount){ ties++; if (rand() < 1 / ties) best = p; }
   }
@@ -506,7 +514,7 @@ function pickRecoilMove(graph, players, occupiedSet, selfIdx){
   const neigh = graph.adjKey[self.pos];
   let best = null, bestSteps = 0;
   for (const nk of neigh){
-    const target = players.find(p => !p.rank && p.idx !== selfIdx && p.pos === nk);
+    const target = players.find(p => simOnBoard(p) && p.idx !== selfIdx && p.pos === nk);
     if (!target || target.lastDir === -1) continue;
     const revDir = (target.lastDir + 2) % 4;
     let cur = target.pos, steps = 0;
@@ -576,7 +584,7 @@ const SHOVE_DISTANCE = 4;
 // en dat is zonde van een kaart die je met een voltooide opdracht hebt verdiend.
 function shoveDestination(graph, players, target, rand){
   const blocked = new Set();
-  for (const p of players) if (!p.rank && p !== target) blocked.add(p.pos);
+  for (const p of players) if (simOnBoard(p) && p !== target) blocked.add(p.pos);
   const options = [];
   for (let d = 0; d < 4; d++){
     const line = walkStraightLine(graph, target.pos, d, SHOVE_DISTANCE, blocked);
@@ -593,7 +601,7 @@ function pickShoveMove(graph, players, selfIdx, rand){
   const self = players[selfIdx];
   let target = null, bestCount = -1, ties = 0;
   for (const nk of graph.adjKey[self.pos]){
-    const p = players.find(q => !q.rank && q.idx !== selfIdx && q.pos === nk);
+    const p = players.find(q => simOnBoard(q) && q.idx !== selfIdx && q.pos === nk);
     if (!p) continue;
     if (p.completed > bestCount){ target = p; bestCount = p.completed; ties = 1; }
     else if (p.completed === bestCount){ ties++; if (rand() < 1 / ties) target = p; }
@@ -983,7 +991,7 @@ function simulateOneGame(graph, rand, heatmap, questStats, extra){
         }
       }
       if (!cardActionUsed && player.cards.includes('barrier')){
-        const occNow = new Set(players.filter(p => !p.rank).map(p => p.pos));
+        const occNow = new Set(players.filter(simOnBoard).map(p => p.pos));
         const target = pickBarrierTarget(graph, players, occNow, pIdx, rand);
         if (target){
           target.player.barrierCell = target.cell;
@@ -1041,7 +1049,7 @@ function simulateOneGame(graph, rand, heatmap, questStats, extra){
         }
       }
       if (!cardActionUsed && player.cards.includes('recoil')){
-        const occNow = new Set(players.filter(p => !p.rank).map(p => p.pos));
+        const occNow = new Set(players.filter(simOnBoard).map(p => p.pos));
         const push = pickRecoilMove(graph, players, occNow, pIdx);
         if (push){
           push.player.pos = push.toKey;
@@ -1067,7 +1075,7 @@ function simulateOneGame(graph, rand, heatmap, questStats, extra){
       for (let i = player.nextIdx; i < player.order.length; i++) targets.push(graph.questCells[player.order[i]]);
 
       const occupied = new Set();
-      for (let j = 0; j < 4; j++) if (j !== pIdx && !players[j].rank) occupied.add(players[j].pos);
+      for (let j = 0; j < 4; j++) if (j !== pIdx && simOnBoard(players[j])) occupied.add(players[j].pos);
       // Noodbarrière: geldt precies voor deze ene beurt en verdwijnt daarna vanzelf, ongeacht
       // of de speler er daadwerkelijk tegenaan liep.
       if (player.barrierCell !== null){
@@ -1082,7 +1090,7 @@ function simulateOneGame(graph, rand, heatmap, questStats, extra){
       //    Snelroute schakelt de geen-U-turn-regel uit voor de REST van deze beurt — dus ook
       //    voor de Blinde-Vlek-herberekening en de vervolgstap na een Noodtransport verderop.
       //    Daarom wordt `allowUturn` los bijgehouden i.p.v. alleen aan één aanroep meegegeven.
-      let move, roll = 0, usedBoots = false, allowUturn = false;
+      let move, roll = 0, usedBoots = false, allowUturn = false, rollPenalty = 0;
       if (!cardActionUsed && player.cards.includes('boots')){
         const bootsMove = resolveGravityBoots(graph, player.pos, 10, occupied, targetKey);
         if (bootsMove){
@@ -1106,7 +1114,8 @@ function simulateOneGame(graph, rand, heatmap, questStats, extra){
           energyActionUsed = true;
         }
         if (player.rollPenalty){
-          roll = Math.max(1, roll - player.rollPenalty);
+          rollPenalty = player.rollPenalty;
+          roll = Math.max(1, roll - rollPenalty);
           player.rollPenalty = 0;
         }
         if (!cardActionUsed && player.cards.includes('fastlane')){
@@ -1118,9 +1127,12 @@ function simulateOneGame(graph, rand, heatmap, questStats, extra){
         // Koerscorrectie: een tegenvallende worp overdoen. Alleen zinvol als deze worp de
         // opdracht niet al pakt, en alleen onder de verwachtingswaarde (3,5 per steen) — dan
         // is opnieuw gooien in verwachting winst. De nieuwe worp telt, ook als die slechter is.
+        // Een Stroomonderbreking geldt ook voor de nieuwe worp — anders wiste Koerscorrectie
+        // die straf stilletjes uit.
         if (!move.bankedQuest && !cardActionUsed && player.cards.includes('reroll') && roll < dice * 3.5){
           roll = 0;
           for (let d = 0; d < dice; d++) roll += simRollD6(rand);
+          if (rollPenalty) roll = Math.max(1, roll - rollPenalty);
           useActionCard(player, 'reroll', deck, extra);
           cardActionUsed = true;
           move = resolveMove(graph, player.pos, roll, occupied, targets, rand, undefined, allowUturn);
@@ -1149,7 +1161,7 @@ function simulateOneGame(graph, rand, heatmap, questStats, extra){
         }
       }
       if (!blindResolvedBlock && !move.bankedQuest && !energyActionUsed && player.strategy === 'jump' && player.energy >= ENERGY_ACTIONS.jump.cost){
-        const jump = resolveEnergyJump(graph, player.pos, ENERGY_JUMP_RANGE, targetKey);
+        const jump = resolveEnergyJump(graph, player.pos, ENERGY_JUMP_RANGE, targetKey, occupied);
         if (jump){
           player.energy -= ENERGY_ACTIONS.jump.cost;
           player.actionUses++;
