@@ -212,9 +212,11 @@
             <label for="walkEnergyMode">Energie-inzet</label>
             <select id="walkEnergyMode">
               <option value="mix" selected>elke speler een andere</option>
-              <option value="boost">alleen Stuwstoot (3)</option>
-              <option value="reorder">alleen Herprioritering (6)</option>
-              <option value="jump">alleen Noodtransport (10)</option>
+              <!-- naam + prijs worden bij het laden ingevuld vanuit ENERGY_ACTIONS (96-walk.js) -->
+              <option value="boost">alleen Stuwstoot</option>
+              <option value="reorder">alleen Herprioritering</option>
+              <option value="gravity">alleen Zwaartekracht-laarzen</option>
+              <option value="jump">alleen Noodtransport</option>
               <option value="none">niemand geeft uit</option>
             </select>
           </div>
@@ -252,7 +254,7 @@
             </select>
           </div>
         </div>
-        <p class="hint" id="walkSoloHint" hidden>Jij bestuurt één speler, de rest speelt zichzelf. <b>Volgorde van een beurt:</b> 1. energie-actie kiezen en meteen inzetten — óók Noodrantsoen of Stuwlading spelen kan al op dit moment — 2. dobbelen (2 loopstenen + de energiesteen) — 3. stappen zetten, waarbij je vóór de eerste stap of tussen stappen door hooguit <b>één</b> actiekaart mag spelen of afleggen (als je er nog geen gebruikt hebt). Een actiekaart krijg je door een opdracht te voltooien, of door tijdens je beurt over het actiekaartvakje van een gang te lopen (je zet stopt daar niet voor, en hooguit 1 kaart per beurt op die manier); je houdt er hoogstens drie op hand.</p>
+        <p class="hint" id="walkSoloHint" hidden>Jij bestuurt één speler, de rest speelt zichzelf. <b>Volgorde van een beurt:</b> 1. energie-actie kiezen en meteen inzetten (Stuwstoot, Herprioritering, Zwaartekracht-laarzen of Noodtransport) — óók Noodrantsoen, Stuwlading of de kaart Zwaartekracht-laarzen spelen kan al op dit moment — 2. dobbelen (2 loopstenen + de energiesteen; wat die oplevert kun je pas volgende beurt uitgeven) — 3. stappen zetten, waarbij je vóór de eerste stap of tussen stappen door hooguit <b>één</b> actiekaart mag spelen of afleggen (als je er nog geen gebruikt hebt). Een actiekaart krijg je door een opdracht te voltooien, of door tijdens je beurt over het actiekaartvakje van een gang te lopen (je zet stopt daar niet voor, en hooguit 1 kaart per beurt op die manier); je houdt er hoogstens drie op hand.</p>
         <div id="walkSoloSetupPlayers" class="walk-solo-setup"></div>
 
         <!-- MULTIPLAYER: was een losse tab, nu de derde modus hier (gebruikerswens) — zelfde

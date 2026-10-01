@@ -81,21 +81,36 @@ const SIM_HISTOGRAM_BINS = 12;
 // twee kanten 1, twee kanten 2 en één kant 3 — gemiddeld 1,5 energie per beurt. Wat je hebt
 // stapelt tot ENERGY_MAX; alles daarboven gaat verloren.
 //
-// Energie wordt uitgegeven aan één van drie acties, maximaal één per beurt. Een speler mag
-// energie die hij deze beurt rolt meteen inzetten (op 7 staan, 3 rollen, direct 10 uitgeven).
+// TIJDSREGELS (gelden voor mens én bot, in alle drie de spelmodi):
+//   - Een energie-actie kies je VÓÓR je gooit, hooguit één per beurt.
+//   - De energiesteen rolt mee met je loopstenen; wat hij oplevert kun je pas VOLGENDE beurt
+//     uitgeven. Bots deden vroeger anders (eerst bijtellen, dan meteen uitgeven, en
+//     Noodtransport pas ná de worp) — dat maakte de simulatie te gunstig en is rechtgezet.
 //
-// De drie acties zitten bewust op drie verschillende assen — hoe ver je komt, waar je heen
-// moet, en waar je staat — zodat de keuze van de situatie afhangt en niet van een rekensom:
+// Vier acties, elk op een eigen as — verder gooien, een ander doel, rechtdoor schieten, vrij
+// springen — zodat de keuze van de situatie afhangt en niet van een rekensom:
 //
-//   3  Stuwstoot        gooi met 3 loopstenen in plaats van 2      (+3,5 stappen)
-//   6  Herprioritering  wissel je opdracht met de volgende in je   (scheelt gemeten 7,6
-//                       stapel, alleen als die dichterbij ligt      stappen lopen)
-//  10  Noodtransport    verplaats na je zet nog tot 10 vakjes vrij  (10 stappen, gegarandeerd)
+//   4  Stuwstoot              gooi met 3 loopstenen in plaats van 2
+//   4  Herprioritering        bekijk je volgende opdrachtkaart en kies of je wisselt
+//   5  Zwaartekracht-laarzen  eerst tot 8 vakjes rechtdoor (tot een muur/pion), dan gooien
+//  10  Noodtransport          eerst vrij springen tot 13 vakjes, dan gooien
 //
-// Een eerder ontwerp gaf de 6-actie "negeer de geen-U-turn-regel". Dat is gemeten en levert
-// niets op: met die regel bereik je op elk aantal stappen exact dezelfde vakjes als zonder
-// (verhouding 1,000 over 180 startposities), want het bord heeft genoeg lussen om stappen te
-// verspillen zonder om te keren. Niet opnieuw voorstellen dus.
+// Gemeten (2026-10, 6000 potjes met simulateOneGame hieronder, 4 bots met elk één vaste
+// strategie, deze tijdsregels): winst% 23,7 / 26,0 / 24,6 / 25,7 — 25% is eerlijk; 2,7% van de
+// gegooide energie gaat verloren tegen het plafond. Het oude stelsel (Stuwstoot 3, Herprioritering
+// blind voor 2, geen laarzen) gaf 28,5 / 18,9 / – / 27,6 en verloor 22%. Prijs-sweep:
+//   Stuwstoot 3, Herpr. 3 → 29,4 / 25,3 / 21,0 / 24,4   (Stuwstoot te sterk, laarzen te zwak)
+//   Stuwstoot 4, Herpr. 3 → 24,1 / 27,5 / 22,6 / 25,7
+//   Stuwstoot 4, Herpr. 4 → 23,7 / 26,0 / 24,6 / 25,7   ← gekozen
+// Afgewezen na meting, niet opnieuw voorstellen:
+//   - rijkere energiesteen (gem. 1,67–2,0): meer verlies, grotere verschillen, potje nauwelijks korter
+//   - plafond 15: maakt vooral Noodtransport sterker; met dit stelsel gaat er toch al bijna niets verloren
+//   - laarzen die je worp VERVANGEN: 7–8% winst, slechter dan nooit energie uitgeven (9%)
+//   - laarzen voor 8 energie: 14%. Voor 4: 27%. 5 is het kantelpunt.
+//   - Bijsturen (+1/+2 stappen), Dubbelworp, Sabotage (koploper −2), energie → actiekaart: alle
+//     vier 10–18% als je ze vóór de worp moet kiezen
+//   - "negeer de geen-U-turn-regel": met die regel bereik je op elk aantal stappen exact dezelfde
+//     vakjes als zonder (verhouding 1,000 over 180 startposities)
 const ENERGY_DIE_FACES = [0, 1, 1, 2, 2, 3];
 const ENERGY_MAX = 10;
 // gedeelde lege verzameling voor "niets blokkeert de route" (Blinde Vlek) — scheelt een
@@ -112,50 +127,57 @@ const SIM_EMPTY_SET = new Set();
 //   16 → 29,0 / 29,1 / 36,6   het transport begint te overheersen
 // Op 10 stappen is de actie 1,0 stap per energie waard tegen 1,17 voor de Stuwstoot; pas
 // rond 13 haalt hij de andere twee in. Verzet je dit getal, draai de sweep opnieuw.
+// (Die sweep is nog van vóór de tijdsregels hierboven; met de huidige regels is 13 opnieuw
+// gecontroleerd en in balans, zie de winst% bovenaan.)
 let ENERGY_JUMP_RANGE = 13;
+// Bot springt alleen als zijn doel verder weg ligt dan dit — dichterbij haalt een gewone worp
+// het meestal toch, en dan is je hele voorraad weg voor niets.
+const JUMP_BOT_MIN_DIST = 6;
 
-// Herprioritering was 6 energie voor een AANTOONBAAR betere wissel (zie energyReorderTarget
-// hieronder) — maar dat vereist dat je de volgende opdrachtkaart al kent vóór je beslist, en
-// die ligt fysiek dichtgeslagen in je eigen stapeltje. Een speler aan tafel kan dus nooit doen
-// wat energyReorderTarget doet; hij kan hooguit gokken op basis van wat wél zichtbaar is, de
-// afstand tot zijn HUIDIGE opdracht (dat vakje ligt open op het bord). blindReorderTarget()
-// hieronder modelleert precies dat: wissel (blind, kan tegenvallen) zodra je al verder dan
-// REORDER_BLIND_THRESHOLD van je huidige opdracht af staat.
-// Doorgerekend met een volledige potjes-simulatie (6000 potjes, zelfde opzet als de
-// Stuwstoot/Noodtransport-sweep hierboven): bij 6 energie en de optimale drempel wint blind
-// gespeelde Herprioritering maar 24,1% (tegen 32,1% voor de alwetende versie) — een blinde gok
-// is dus geen gegarandeerde verbetering meer, dus moet hij ook minder kosten. Kosten-sweep bij
-// die drempel (T=31):
-//   6 energie → 24,1%   5 → 26,3%   4 → 27,2%   3 → 28,1%   2 → 30,0%   1 → 33,1%
-// Bij 2 energie clusteren Stuwstoot/Herprioritering/Noodtransport rond 30-32,5%, in lijn met
-// de alwetende referentie (31,0/32,1/31,0) — dat is de nieuwe prijs.
-const REORDER_BLIND_THRESHOLD = 31;
+// Herprioritering: betaal, BEKIJK je volgende opdrachtkaart en kies of je wisselt — je betaalt
+// ook als je besluit niet te wisselen. Vroeger was het een blinde wissel voor 2 energie: dat
+// scoorde 18,9% (blind wisselen is alleen de moeite waard als je ver weg staat, dus de bot deed
+// het maar 2,4× per potje en zat de rest van de tijd vol). Met eerst kijken voor 4 energie: 26,0%
+// (zie de prijs-sweep bovenaan). De bot kijkt als hij verder dan REORDER_PEEK_THRESHOLD van zijn
+// huidige doel staat; een drempel van 8 of 16 maakte in de metingen weinig uit (±1–2%).
+const REORDER_PEEK_THRESHOLD = 12;
+
+// Zwaartekracht-laarzen (energie-actie én actiekaart, de kaart is de gratis versie — zelfde
+// paar als Stuwstoot/Stuwlading): kies een richting en schiet rechtdoor tot een muur, een
+// andere pion of GRAVITY_DASH_STEPS vakjes. Kom je onderweg over je opdracht, dan telt die
+// (en loop je door, net als bij een worp). Daarna gooi je gewoon vanaf je nieuwe plek.
+// Vanaf 53% van de loopbare vakjes kun je in de beste richting echt 8 ver; gemiddeld levert een
+// ingezette sprint 4,5 vakjes richting je doel op.
+const GRAVITY_DASH_STEPS = 8;
 
 // `hint` staat OP het kaartje en moet daarom kort blijven — het kaartje is 108px breed en
 // een langere zin duwde de titel er eerder letterlijk uit. De strategische toelichting hoort
 // in `note`, die alleen in de tooltip terechtkomt (zie renderEnergySoloButton in 97-solo.js).
 const ENERGY_ACTIONS = {
-  boost:   { cost: 3,  name: 'Stuwstoot',       hint: 'gooi met 3 loopstenen',
+  boost:   { cost: 4,  name: 'Stuwstoot',       hint: 'gooi met 3 loopstenen',
              note: 'Een derde loopsteen erbij, dus gemiddeld 3,5 stappen extra deze beurt.' },
-  reorder: { cost: 2,  name: 'Herprioritering', hint: 'ruil blind met je volgende opdracht',
-             note: 'Je ziet niet wat je ervoor terugkrijgt — alleen de moeite waard als je nog ver van je huidige opdracht af staat.' },
-  jump:    { cost: 10, name: 'Noodtransport',   hint: `spring vrij tot ${ENERGY_JUMP_RANGE} vakjes ver`,
-             note: 'Geen worp en geen geen-U-turn-regel: je verplaatst je vrij over het bord. Kost je hele voorraad.' },
+  reorder: { cost: 4,  name: 'Herprioritering', hint: 'bekijk je volgende opdracht en kies',
+             note: 'Je ziet eerst je volgende opdrachtkaart en kiest dan of je die naar voren haalt. Je betaalt ook als je niet wisselt.' },
+  gravity: { cost: 5,  name: 'Zwaartekracht-laarzen', hint: `eerst ${GRAVITY_DASH_STEPS} vakjes rechtdoor, dan gooien`,
+             note: `Kies een richting: je schiet rechtdoor tot een muur of pion, hooguit ${GRAVITY_DASH_STEPS} vakjes. Kom je over je opdracht, dan telt die. Daarna gooi je gewoon vanaf je nieuwe plek.` },
+  jump:    { cost: 10, name: 'Noodtransport',   hint: `spring vrij tot ${ENERGY_JUMP_RANGE} vakjes, dan gooien`,
+             note: 'Geen geen-U-turn-regel en je springt over pionnen heen. Land je op je opdracht, dan is je beurt klaar; anders gooi je daarna gewoon vanaf je nieuwe plek. Kost je hele voorraad.' },
   none:    { cost: 0,  name: 'Geen energie',    hint: 'spaart, geeft nooit uit',
              note: 'Doet niets — de handmatige "overslaan"-keuze voor de mens. Zit niet in de bot-strategieën: een speler die een heel potje nooit energie uitgeeft komt in de praktijk niet voor, dus die zou de simulatiecijfers (met name het plafondverlies) alleen maar vertekenen.' },
 };
 // Elke speler krijgt er per potje één, geloot over de startposities zodat de strategie nooit
 // samenvalt met een bepaalde startpositie. `none` zit hier bewust niet bij — dat was puur een
 // ijkpunt en geen speler speelt in het echt een heel potje nooit energie uit; meemeten trok het
-// gemiddelde en het plafondverlies (aandeel "10 energie") kunstmatig omhoog. Met 3 strategieën op
-// 4 spelers krijgt één willekeurige strategie per potje een dubbele bezetting — zie
-// pickEnergyStrategies() — zodat dat evenwichtig uitmiddelt over een hele batch.
-const ENERGY_STRATEGIES = ['boost', 'reorder', 'jump'];
-// Kiest 4 strategieën (één per speler) uit de 3 echte strategieën: één ervan wordt willekeurig
-// verdubbeld, en de volgorde wordt geloot zodat de dubbele bezetting niet aan een vaste
-// startpositie kleeft.
+// gemiddelde en het plafondverlies (aandeel "10 energie") kunstmatig omhoog. Vier strategieën op
+// vier spelers: elk potje speelt elke strategie precies één keer.
+const ENERGY_STRATEGIES = ['boost', 'reorder', 'gravity', 'jump'];
+// Kiest 4 strategieën (één per speler). Bij 4+ strategieën elk hooguit één keer, in geloote
+// volgorde; zijn het er minder dan 4 (bv. tijdens het afstemmen met een kleinere set), dan
+// worden er willekeurig aangevuld zodat de dubbele bezetting niet aan een vaste startpositie kleeft.
 function pickEnergyStrategies(rand){
-  const pool = ENERGY_STRATEGIES.concat(ENERGY_STRATEGIES[Math.floor(rand() * ENERGY_STRATEGIES.length)]);
+  if (ENERGY_STRATEGIES.length >= 4) return simShuffle(ENERGY_STRATEGIES, rand).slice(0, 4);
+  const pool = ENERGY_STRATEGIES.slice();
+  while (pool.length < 4) pool.push(ENERGY_STRATEGIES[Math.floor(rand() * ENERGY_STRATEGIES.length)]);
   return simShuffle(pool, rand);
 }
 
@@ -204,9 +226,8 @@ function resolveEnergyJump(graph, fromKey, range, targetKey, occupiedSet){
 }
 
 // Wisselt alleen als de volgende opdracht in je stapel AANTOONBAAR dichterbij ligt dan de
-// huidige — vereist dus kennis van de nog dichtgeslagen volgende kaart. Gebruikt voor
-// Herkalibratie (gratis kaart): die is thematisch een vooruitziende blik, dus mag "weten".
-// Voor de betaalde energie-actie Herprioritering NIET meer gebruiken — zie blindReorderTarget.
+// huidige. Dat mag, want bij allebei de doelwissels bekijk je eerst je volgende kaart:
+// Herkalibratie (gratis kaart) en Herprioritering (energie, zie botWantsReorderPeek).
 function energyReorderTarget(graph, player, fromKey){
   const curLabel = player.order[player.nextIdx];
   const altLabel = player.order[player.nextIdx + 1];
@@ -220,22 +241,15 @@ function energyReorderTarget(graph, player, fromKey){
   return altLabel;
 }
 
-// Blinde variant voor de betaalde energie-actie Herprioritering: kent ALLEEN dCur (je huidige
-// opdrachtvakje ligt open op het bord), niet dAlt (de volgende kaart ligt dichtgeslagen in je
-// stapeltje). Wisselt daarom niet op basis van een vergelijking, maar op een drempel op wat je
-// wél weet — precies de rationele grens voor een speler die moet gokken: alleen de moeite waard
-// als je al verder dan het bord gemiddeld is (REORDER_BLIND_THRESHOLD) van je huidige doel af
-// staat. Kan, anders dan energyReorderTarget, in het echt tegenvallen.
-function blindReorderTarget(graph, player, fromKey, threshold){
-  const curLabel = player.order[player.nextIdx];
-  const altLabel = player.order[player.nextIdx + 1];
-  if (altLabel === undefined) return null;
+// Zet een bot Herprioritering in? Hij weet vóóraf alleen hoe ver zijn huidige opdracht is (dat
+// vakje ligt open op het bord) — pas NA betalen ziet hij de volgende kaart en beslist hij met
+// energyReorderTarget of wisselen loont. Dus: betalen zodra hij ver weg staat, ook als de wissel
+// daarna niets blijkt op te leveren (precies zoals een mens aan tafel).
+function botWantsReorderPeek(graph, player, fromKey){
+  if (player.order[player.nextIdx + 1] === undefined) return false;
   const stamp = simBfsDistances(graph, fromKey);
-  const dCur = simDistLookup(stamp, graph.questCells[curLabel]);
-  if (dCur < 0 || dCur <= threshold) return null;
-  player.order[player.nextIdx] = altLabel;
-  player.order[player.nextIdx + 1] = curLabel;
-  return altLabel;
+  const dCur = simDistLookup(stamp, graph.questCells[player.order[player.nextIdx]]);
+  return dCur > REORDER_PEEK_THRESHOLD;
 }
 
 // ---------- beloningskaarten ----------
@@ -259,7 +273,8 @@ function blindReorderTarget(graph, player, fromKey, threshold){
 // deze bot-simulatie (het is pure informatie voor een menselijke speler) en wordt daarom nooit
 // actief gespeeld door bots — een mens kan 'm wel altijd zelf spelen of afleggen.
 const ACTION_CARDS = {
-  boots:     { name: 'Zwaartekracht-laarzen', hint: '10 stappen rechtdoor, geen bochten' },
+  // gratis versie van de energie-actie Zwaartekracht-laarzen (zelfde paar als Stuwlading/Stuwstoot)
+  boots:     { name: 'Zwaartekracht-laarzen', hint: `gratis: eerst ${GRAVITY_DASH_STEPS} vakjes rechtdoor, dan gooien` },
   ration:    { name: 'Noodrantsoen',          hint: '+3 energie direct' },
   short:     { name: 'Kortsluiting',          hint: 'tegenstander mist zijn energiesteen' },
   blind:     { name: 'Blinde Vlek',           hint: 'loop door tegenstanders heen — eindig er niet op' },
@@ -422,15 +437,10 @@ function useActionCard(player, id, deck, extra){
   if (extra) extra.cardUses[id]++;
 }
 
-// Zwaartekracht-laarzen: loop tot `maxSteps` in een RECHTE lijn (geen bochten, dus strenger
-// dan de geen-U-turn-regel) in elk van de 4 richtingen vanaf `fromKey`, stop bij een bezet
-// vakje. Geeft, net als resolveMove, een move-vormig resultaat terug — of null als geen van de
-// vier richtingen minstens zo veel oplevert als een gemiddelde worp (het doel raken telt
-// altijd, ongeacht hoeveel stappen dat kostte).
 // Loopt vanaf `fromKey` een vaste richting `dir` uit tot `maxSteps`, geen bochten. Stopt bij
 // een muur of een bezet vakje; `bankedAt` is de padindex waarop het doel geraakt werd (-1 als
-// niet). Gedeeld door de bot-AI (resolveGravityBoots) en de solo-modus (die de speler zelf een
-// richting laat kiezen in plaats van 'm automatisch te laten bepalen).
+// niet), en dan stopt hij daar ook. Gebruikt door Duwstoot (shoveDestination); de laarzen
+// hebben hun eigen walkGravityDash, die na een opdracht juist doorloopt.
 function walkStraightLine(graph, fromKey, dir, maxSteps, occupied, targetKey){
   const { adjKey, adjDir } = graph;
   let cur = fromKey;
@@ -449,42 +459,95 @@ function walkStraightLine(graph, fromKey, dir, maxSteps, occupied, targetKey){
   }
   return { path, wasBlocked, bankedAt };
 }
-// alle (tot 4) rechte richtingen vanaf `fromKey`, voor de solo-modus: de speler kiest zelf.
-function gravityBootsOptions(graph, fromKey, maxSteps, occupied, targetKey){
+// ---------- Zwaartekracht-laarzen (energie-actie én kaart): eerst rechtdoor, dan gooien ----------
+// Eén richting uitlopen: rechtdoor tot een muur, een bezet vakje of GRAVITY_DASH_STEPS vakjes.
+// Kom je onderweg over je opdracht(en) — `targets` is de rij nog te halen opdrachtvakjes vanaf
+// het huidige doel, zoals bij resolveMove — dan tellen die mee in `bankedCount` en loop je
+// gewoon door, net als bij een worp.
+function walkGravityDash(graph, fromKey, dir, occupied, targets){
+  const { adjKey, adjDir } = graph;
+  let cur = fromKey, banked = 0, wasBlocked = false;
+  const path = [cur];
+  for (let s = 0; s < GRAVITY_DASH_STEPS; s++){
+    const neigh = adjKey[cur], dirs = adjDir[cur];
+    let next = -1;
+    for (let j = 0; j < dirs.length; j++) if (dirs[j] === dir){ next = neigh[j]; break; }
+    if (next === -1) break;                                  // muur: hier houdt het op
+    if (occupied.has(next)){ wasBlocked = true; break; }      // andere pion: ook
+    cur = next;
+    path.push(cur);
+    if (targets && banked < targets.length && cur === targets[banked]) banked++;
+  }
+  return { dir, path, key: cur, bankedCount: banked, wasBlocked };
+}
+// Alle (tot 4) richtingen waarin je minstens één vakje opschiet — de mens kiest hieruit.
+function gravityDashOptions(graph, fromKey, occupied, targets){
   const options = [];
   for (let d = 0; d < 4; d++){
-    const line = walkStraightLine(graph, fromKey, d, maxSteps, occupied, targetKey);
-    if (line.path.length > 1) options.push({ dir: d, ...line });
+    const line = walkGravityDash(graph, fromKey, d, occupied, targets);
+    if (line.path.length > 1) options.push(line);
   }
   return options;
 }
-
-function resolveGravityBoots(graph, fromKey, maxSteps, occupied, targetKey){
-  const candidates = [];
-  for (let d = 0; d < 4; d++){
-    const line = walkStraightLine(graph, fromKey, d, maxSteps, occupied, targetKey);
-    if (line.path.length > 1) candidates.push(line);
+// Bot-keuze: liefst een richting die een opdracht pakt; anders de richting die het dichtst bij
+// het (eerstvolgende open) doel eindigt — en alleen als dat ook echt dichterbij is dan waar hij
+// nu staat (anders laat hij de laarzen liggen en gooit hij gewoon).
+function botPickGravityDash(graph, fromKey, occupied, targets){
+  const options = gravityDashOptions(graph, fromKey, occupied, targets);
+  if (!options.length || !targets.length) return null;
+  const maxBanked = Math.max(...options.map(o => o.bankedCount));
+  const pool = options.filter(o => o.bankedCount === maxBanked);
+  const nextTarget = targets[maxBanked];
+  if (nextTarget === undefined) return pool[0];              // haalt al zijn laatste opdracht
+  const stamp = simBfsDistances(graph, nextTarget);
+  let best = null, bestD = Infinity;
+  for (const o of pool){
+    const d = simDistLookup(stamp, o.key);
+    if (d >= 0 && d < bestD){ bestD = d; best = o; }
   }
-  if (!candidates.length) return null;
-
-  const banked = candidates.find(c => c.bankedAt !== -1);
-  if (banked) return { key: targetKey, path: banked.path, stepsUsed: banked.bankedAt, bankedCount: 1, bankedQuest: true, wasBlocked: banked.wasBlocked };
-
-  // geen van de vier raakte het doel: kies de richting die het dichtst bij eindigt, en
-  // gebruik de kaart alleen als dat minstens zo goed is als een gemiddelde worp (7 stappen
-  // nettoverbetering) — anders houd je 'm liever achter de hand.
-  const stamp = simBfsDistances(graph, targetKey);
-  const dBefore = simDistLookup(stamp, fromKey);
-  let best = null, bestImprovement = -Infinity;
-  for (const c of candidates){
-    const end = c.path[c.path.length - 1];
-    const dAfter = simDistLookup(stamp, end);
-    if (dAfter < 0) continue;
-    const improvement = dBefore - dAfter;
-    if (improvement > bestImprovement){ bestImprovement = improvement; best = c; }
+  if (!best) return null;
+  if (maxBanked === 0){
+    const dNow = simDistLookup(stamp, fromKey);
+    if (dNow >= 0 && bestD >= dNow) return null;
   }
-  if (!best || bestImprovement < 7) return null;
-  return { key: best.path[best.path.length - 1], path: best.path, stepsUsed: best.path.length - 1, bankedCount: 0, bankedQuest: false, wasBlocked: best.wasBlocked };
+  return best;
+}
+
+// Gedeelde bot-beslissing VÓÓR de worp, voor alle drie de spelmodi (simulatie, Automatisch,
+// bot-beurten in Zelf spelen), zodat die nooit uit elkaar lopen. Volgorde: Noodtransport
+// (alleen de jump-strategie), dan de laarzen — de kaart (gratis) gaat voor de energie-actie en
+// ze sluiten elkaar uit, één sprint per beurt. Betaalt/verbruikt NIETS: de aanroeper doet dat
+// (en logt/animeert op zijn eigen manier). Geeft null of een verplaatsing terug:
+//   { kind: 'jump' | 'bootsCard' | 'gravity', path, key, bankedCount, wasBlocked, endsTurn }
+// `endsTurn`: Noodtransport dat precies op je opdracht landt beëindigt je beurt (zoals bij de
+// mens, soloHandleJumpClick); een sprint niet, die gooit gewoon door.
+function botPreRollMove(graph, player, occupied, targets, canEnergy, canCard){
+  const targetKey = targets[0];
+  if (targetKey === undefined) return null;
+  if (canEnergy && player.strategy === 'jump' && player.energy >= ENERGY_ACTIONS.jump.cost){
+    const stamp = simBfsDistances(graph, targetKey);
+    if (simDistLookup(stamp, player.pos) > JUMP_BOT_MIN_DIST){
+      const jump = resolveEnergyJump(graph, player.pos, ENERGY_JUMP_RANGE, targetKey, occupied);
+      if (jump) return { kind: 'jump', path: jump.path, key: jump.key, bankedCount: jump.banked ? 1 : 0,
+                         wasBlocked: false, endsTurn: jump.banked };
+    }
+  }
+  const card = canCard && player.cards.includes('boots');
+  const energy = canEnergy && player.strategy === 'gravity' && player.energy >= ENERGY_ACTIONS.gravity.cost;
+  if (card || energy){
+    const dash = botPickGravityDash(graph, player.pos, occupied, targets);
+    if (dash) return { kind: card ? 'bootsCard' : 'gravity', path: dash.path, key: dash.key,
+                       bankedCount: dash.bankedCount, wasBlocked: dash.wasBlocked, endsTurn: false };
+  }
+  return null;
+}
+// Plakt een verplaatsing vóór de worp (`pre`) en de daaropvolgende worp-zet (`move`, berekend
+// vanaf pre.key met de opdrachten die pre nog niet pakte) aan elkaar tot één zet.
+function mergePreRollMove(pre, move){
+  if (!pre) return move;
+  const bankedCount = pre.bankedCount + move.bankedCount;
+  return { ...move, path: pre.path.concat(move.path.slice(1)), bankedCount, bankedQuest: bankedCount > 0,
+           wasBlocked: pre.wasBlocked || move.wasBlocked };
 }
 
 // Kiest de koploper onder de tegenstanders die nog niet door DEZE kaart geraakt zijn.
@@ -932,28 +995,25 @@ function simulateOneGame(graph, rand, heatmap, questStats, extra){
         cardActionUsed = true;
       }
 
-      // 1. energiesteen rolt mee (tenzij Kortsluiting die deze beurt blokkeert). Het niveau
-      //    wordt geteld NA het bijschrijven, want dat is wat deze speler deze beurt kan inzetten.
-      let energyRoll = 0, energyGain = { gained: 0, wasted: 0 };
+      // 1. energiesteen rolt mee met de loopstenen (tenzij Kortsluiting die deze beurt blokkeert),
+      //    maar telt pas AAN HET EIND van de beurt bij — wat je nu gooit, geef je pas volgende
+      //    beurt uit (zie de tijdsregels bovenaan). `pendingEnergy` wordt na de zet bijgeschreven.
+      //    Het niveau hieronder is dus precies wat deze speler deze beurt kan inzetten.
+      let energyRoll = 0, pendingEnergy = 0;
       if (player.skipEnergyRoll){
         player.skipEnergyRoll = false;
       } else {
         energyRoll = simRollEnergy(rand);
-        energyGain = simGainEnergy(player, energyRoll);
-        // Condensator die vorige beurt gespeeld is: deze steen telt dubbel, dus nog eens
-        // dezelfde worp erbij (netjes tegen het plafond aan via simGainEnergy). Rolt de speler
-        // deze beurt helemaal niet (Kortsluiting), dan blijft de Condensator staan voor de
+        pendingEnergy = energyRoll;
+        // Condensator die vorige beurt gespeeld is: deze steen telt dubbel. Rolt de speler deze
+        // beurt helemaal niet (Kortsluiting), dan blijft de Condensator staan voor de
         // eerstvolgende beurt waarin hij wél gooit — er valt nu immers niets te verdubbelen.
         if (player.condenserPending){
           player.condenserPending = false;
-          const bonus = simGainEnergy(player, energyRoll);
-          energyGain.gained += bonus.gained;
-          energyGain.wasted += bonus.wasted;
-          extra.energyRolled += energyRoll;
+          pendingEnergy += energyRoll;
         }
       }
-      extra.energyRolled += energyRoll;
-      extra.energyWasted += energyGain.wasted;
+      extra.energyRolled += pendingEnergy;
       extra.energyLevels[player.energy]++;
 
       // 1b. kaarten die bij de energiefase horen: Kortsluiting raakt de leider, Noodrantsoen
@@ -1066,12 +1126,15 @@ function simulateOneGame(graph, rand, heatmap, questStats, extra){
           cardActionUsed = true;
         }
       }
-      if (!targetSwapped && !energyActionUsed && player.strategy === 'reorder' && player.energy >= ENERGY_ACTIONS.reorder.cost){
-        const swapped = blindReorderTarget(graph, player, player.pos, REORDER_BLIND_THRESHOLD);
+      // Herprioritering: betalen, volgende kaart bekijken, wisselen als die dichterbij ligt.
+      // Je betaalt ook als wisselen niets oplevert (zie botWantsReorderPeek).
+      if (!targetSwapped && !energyActionUsed && player.strategy === 'reorder' && player.energy >= ENERGY_ACTIONS.reorder.cost
+          && botWantsReorderPeek(graph, player, player.pos)){
+        player.energy -= ENERGY_ACTIONS.reorder.cost;
+        player.actionUses++;
+        energyActionUsed = true;
+        const swapped = energyReorderTarget(graph, player, player.pos);
         if (swapped !== null){
-          player.energy -= ENERGY_ACTIONS.reorder.cost;
-          player.actionUses++;
-          energyActionUsed = true;
           if (player.reorderBlocked){ player.reorderBlocked = false; applyReorderSwap(player); }
           else targetLabel = swapped;
         }
@@ -1092,24 +1155,34 @@ function simulateOneGame(graph, rand, heatmap, questStats, extra){
         player.barrierCell = null;
       }
 
-      // 3. beweging: Zwaartekracht-laarzen vervangt de worp helemaal; anders de gewone
-      //    loopstenen met Stuwlading (kaart) of Stuwstoot (energie) als derde steen — die twee
-      //    doen hetzelfde (een 3e loopsteen) en blijven daarom via else-if elkaar uitsluiten.
-      //    Stroomonderbreking trekt er ná alle stenen 2 stappen af (minimaal 1 blijft over).
-      //    Snelroute schakelt de geen-U-turn-regel uit voor de REST van deze beurt — dus ook
-      //    voor de Blinde-Vlek-herberekening en de vervolgstap na een Noodtransport verderop.
-      //    Daarom wordt `allowUturn` los bijgehouden i.p.v. alleen aan één aanroep meegegeven.
-      let move, roll = 0, usedBoots = false, allowUturn = false, rollPenalty = 0;
-      if (!cardActionUsed && player.cards.includes('boots')){
-        const bootsMove = resolveGravityBoots(graph, player.pos, 10, occupied, targetKey);
-        if (bootsMove){
-          move = bootsMove;
-          usedBoots = true;
+      // 3. vóór de worp: Noodtransport of Zwaartekracht-laarzen (de energie-actie of de gratis
+      //    kaart) — de keuze zit in botPreRollMove(), gedeeld met 96-walk.js en 97-solo.js. Een
+      //    sprong die precies op je opdracht landt beëindigt je beurt; anders gooi je daarna
+      //    gewoon vanaf je nieuwe plek, met de opdrachten die de verplaatsing nog niet pakte. Haalt
+      //    een sprint je 6e opdracht, dan ben je binnen en valt er niets meer te gooien.
+      let move, roll = 0, allowUturn = false, rollPenalty = 0;
+      const pre = botPreRollMove(graph, player, occupied, targets, !energyActionUsed, !cardActionUsed);
+      if (pre){
+        if (pre.kind === 'bootsCard'){
           useActionCard(player, 'boots', deck, extra);
           cardActionUsed = true;
+        } else {
+          player.energy -= ENERGY_ACTIONS[pre.kind].cost;
+          player.actionUses++;
+          energyActionUsed = true;
         }
       }
-      if (!usedBoots){
+      const rollFrom = pre ? pre.key : player.pos;
+      const rollTargets = pre ? targets.slice(pre.bankedCount) : targets;
+      if (pre && (pre.endsTurn || player.completed + pre.bankedCount >= SIM_QUESTS_TO_WIN)){
+        move = { key: pre.key, path: pre.path, stepsUsed: pre.path.length - 1, bankedCount: pre.bankedCount,
+                 bankedQuest: pre.bankedCount > 0, wasBlocked: pre.wasBlocked, teleported: pre.kind === 'jump' };
+      } else {
+        // 4. de worp: loopstenen, met Stuwlading (kaart) of Stuwstoot (energie) als derde steen —
+        //    die twee doen hetzelfde (een 3e loopsteen) en blijven via else-if elkaar uitsluiten.
+        //    Stroomonderbreking trekt er ná alle stenen 2 stappen af (minimaal 1 blijft over).
+        //    Snelroute schakelt de geen-U-turn-regel uit voor de REST van deze beurt — dus ook
+        //    voor de Blinde-Vlek-herberekening. Daarom wordt `allowUturn` los bijgehouden.
         let dice = 2;
         roll = simRollD6(rand) + simRollD6(rand);
         if (!cardActionUsed && player.cards.includes('boostcell')){
@@ -1132,7 +1205,7 @@ function simulateOneGame(graph, rand, heatmap, questStats, extra){
           useActionCard(player, 'fastlane', deck, extra);
           cardActionUsed = true;
         }
-        move = resolveMove(graph, player.pos, roll, occupied, targets, rand, undefined, allowUturn);
+        move = resolveMove(graph, rollFrom, roll, occupied, rollTargets, rand, undefined, allowUturn);
         // Koerscorrectie: een tegenvallende worp overdoen. Alleen zinvol als deze worp de
         // opdracht niet al pakt, en alleen onder de verwachtingswaarde (3,5 per steen) — dan
         // is opnieuw gooien in verwachting winst. De nieuwe worp telt, ook als die slechter is.
@@ -1144,45 +1217,24 @@ function simulateOneGame(graph, rand, heatmap, questStats, extra){
           if (rollPenalty) roll = Math.max(1, roll - rollPenalty);
           useActionCard(player, 'reroll', deck, extra);
           cardActionUsed = true;
-          move = resolveMove(graph, player.pos, roll, occupied, targets, rand, undefined, allowUturn);
+          move = resolveMove(graph, rollFrom, roll, occupied, rollTargets, rand, undefined, allowUturn);
         }
-      }
-
-      // 4. Blinde Vlek (kaart) lost een blokkade op door de zet te herberekenen vanaf de
-      //    ORIGINELE positie; Noodtransport (energie) doet dat ook (springt eerst, herberekent
-      //    dan de al-gerolde worp vanaf de sprongbestemming) — gebruikt Blinde Vlek de blokkade
-      //    al op, dan zou Noodtransport dat resultaat gewoon overschrijven, dus blijven ook zij
-      //    elkaar uitsluiten binnen dit ene bewegingsmoment (`blindResolvedBlock`).
-      //    Noodtransport mag TUSSENTIJDS, dus ná een geslaagde deblokkering alsnog. Alleen ná de
-      //    zet springen maakt Noodtransport veel zwakker — dat is gemeten (26,7% winst tegen
-      //    32,4% voor de goedkoopste actie) en was een fout, geen ontwerpkeuze.
-      let blindResolvedBlock = false;
-      if (!move.bankedQuest && !cardActionUsed && player.cards.includes('blind') && move.wasBlocked){
-        // door tegenstanders heen mogen lopen (lege blokkeerset), maar er niet op eindigen
-        // (occupied als endBlockedSet) — levert dat geen enkel vrij eindvakje op, dan geeft
-        // resolveMove null terug en blijft de gewone, geblokkeerde zet staan
-        const retry = resolveMove(graph, player.pos, roll, SIM_EMPTY_SET, targets, rand, occupied, allowUturn);
-        if (retry && retry.key !== move.key){
-          move = retry;
-          useActionCard(player, 'blind', deck, extra);
-          cardActionUsed = true;
-          blindResolvedBlock = true;
+        // 5. Blinde Vlek (kaart) lost een blokkade op door de worp opnieuw uit te rekenen vanaf
+        //    dezelfde plek, door tegenstanders heen (maar er niet op eindigen) — levert dat geen
+        //    enkel vrij eindvakje op, dan geeft resolveMove null terug en blijft de gewone,
+        //    geblokkeerde zet staan.
+        if (!move.bankedQuest && !cardActionUsed && player.cards.includes('blind') && move.wasBlocked){
+          const retry = resolveMove(graph, rollFrom, roll, SIM_EMPTY_SET, rollTargets, rand, occupied, allowUturn);
+          if (retry && retry.key !== move.key){
+            move = retry;
+            useActionCard(player, 'blind', deck, extra);
+            cardActionUsed = true;
+          }
         }
+        move = mergePreRollMove(pre, move);
       }
-      if (!blindResolvedBlock && !move.bankedQuest && !energyActionUsed && player.strategy === 'jump' && player.energy >= ENERGY_ACTIONS.jump.cost){
-        const jump = resolveEnergyJump(graph, player.pos, ENERGY_JUMP_RANGE, targetKey, occupied);
-        if (jump){
-          player.energy -= ENERGY_ACTIONS.jump.cost;
-          player.actionUses++;
-          energyActionUsed = true;
-          for (let p = 1; p < jump.path.length; p++) heatmap[jump.path[p]]++;
-          if (pathHasActionCell(graph, jump.path)) actionCellCrossed = true;
-          // de sprong kan de opdracht zelf al pakken; anders loop je vanaf daar verder
-          move = jump.banked
-            ? { key: jump.key, path: [jump.key], stepsUsed: 0, bankedCount: 1, bankedQuest: true, wasBlocked: false, teleported: true }
-            : resolveMove(graph, jump.key, roll, occupied, targets, rand, undefined, allowUturn);
-        }
-      }
+      // de energiesteen van deze beurt telt nu pas bij (zie stap 1): volgende beurt uit te geven
+      if (pendingEnergy) extra.energyWasted += simGainEnergy(player, pendingEnergy).wasted;
       // laatst gelopen richting onthouden — Terugtrekbevel duwt je daar weer langs terug
       const stepDir = lastStepDirection(graph, move.path);
       if (stepDir !== -1) player.lastDir = stepDir;
@@ -1609,7 +1661,7 @@ function renderSimResults({ n, stuckCount, startWins, startTurnsSum, startRanks,
   }).join('');
   html += simSectionOpen('Welke energie-actie wint?');
   html += `<table class="sim-table"><thead><tr><th>Strategie</th><th>Winst% (±95%-marge)</th><th>Top 2</th><th>Gem. plaats</th><th>Keer ingezet</th></tr></thead><tbody>${stratRows}</tbody></table>`;
-  html += `<p class="hint">4 spelers, 3 strategieën — één strategie krijgt per potje willekeurig een dubbele bezetting, geloot over de startposities (zie pickEnergyStrategies). "Geen energie" (nooit uitgeven) telt niet mee: dat komt in het echt niet voor en trok het plafondverlies hierboven kunstmatig omhoog. Een speler zet zijn actie in zodra hij 'm kan betalen — Herprioritering wisselt <b>blind</b> zodra de huidige opdracht verder dan ${REORDER_BLIND_THRESHOLD} vakjes weg ligt (de volgende kaart ligt dichtgeslagen, dus kan tegenvallen), en Noodtransport alleen als de gewone zet de opdracht nog niet pakte. Er zijn nog steeds 4 spelers per potje, dus bij drie gelijkwaardige strategieën staat iedereen nog op 25% winst en gemiddelde plaats 2,50 (de dubbele bezetting middelt zichzelf uit); wie daar significant boven zit, is te sterk.</p>`;
+  html += `<p class="hint">4 spelers, ${ENERGY_STRATEGIES.length} strategieën — elk potje speelt elke strategie één keer, geloot over de startposities (zie pickEnergyStrategies). "Geen energie" (nooit uitgeven) telt niet mee: dat komt in het echt niet voor en trok het plafondverlies hierboven kunstmatig omhoog. Bots spelen met dezelfde tijdsregels als jij: een energie-actie kies je vóór de worp, en de energiesteen van deze beurt geef je pas volgende beurt uit. Herprioritering zet een bot in als zijn opdracht verder dan ${REORDER_PEEK_THRESHOLD} vakjes weg ligt (hij bekijkt dan zijn volgende kaart en wisselt als die dichterbij ligt), de laarzen als een rechte lijn hem dichter bij zijn doel brengt, en Noodtransport als zijn doel verder dan ${JUMP_BOT_MIN_DIST} vakjes weg ligt. Bij gelijkwaardige strategieën staat iedereen op 25% winst en gemiddelde plaats 2,50; wie daar significant boven zit, is te sterk.</p>`;
 
   // ---------- beloningskaarten ----------
   const cardRows = ACTION_CARD_IDS.map(id => {
@@ -1631,7 +1683,7 @@ function renderSimResults({ n, stuckCount, startWins, startTurnsSum, startRanks,
   html += `<p class="hint">Prioriteitspas heeft in deze simulatie geen mechanisch effect (het is pure informatie voor een mens aan tafel) en wordt daarom nooit ingezet — 0,00 hierboven is dus verwacht, niet een bug. Een getrokken Prioriteitspas bezet wel een handslot tot het potje afloopt.</p>`;
 
   html += simSectionOpen('Energie');
-  html += `<p class="hint">De energiesteen (<b>${ENERGY_DIE_FACES.map(f => f || '–').join(' ')}</b>) rolt elke beurt mee, gemiddeld <b>${nl(energyPerTurn, 2)}</b> per beurt, met een plafond van <b>${ENERGY_MAX}</b>. Onderstaande cijfers zijn over de drie echte bot-strategieën samen (Stuwstoot/Herprioritering/Noodtransport) — "Geen energie" telt hier niet mee, want die speler komt in het echt niet voor.</p>`;
+  html += `<p class="hint">De energiesteen (<b>${ENERGY_DIE_FACES.map(f => f || '–').join(' ')}</b>) rolt elke beurt mee, gemiddeld <b>${nl(energyPerTurn, 2)}</b> per beurt, met een plafond van <b>${ENERGY_MAX}</b>. Wat je gooit, kun je pas volgende beurt uitgeven. Onderstaande cijfers zijn over de ${ENERGY_STRATEGIES.length} bot-strategieën samen (${ENERGY_STRATEGIES.map(id => ENERGY_ACTIONS[id].name).join(' / ')}) — "Geen energie" telt hier niet mee, want die speler komt in het echt niet voor.</p>`;
   html += `<p class="hint">Een speler heeft gemiddeld <b>${nl(energyAvg, 1)}</b> energie op zak, staat <b>${nl(energyAtCap, 1)}%</b> van zijn beurten op het plafond, en <b>${nl(energyWastePct, 1)}%</b> van alle gerolde energie gaat daardoor verloren.</p>`;
   html += `<p class="hint" style="margin-top:10px;">Verdeling van de energievoorraad over alle beurten (0 links, ${ENERGY_MAX} rechts):</p>`;
   html += `<div class="sim-hist">${energyBars}</div>`;

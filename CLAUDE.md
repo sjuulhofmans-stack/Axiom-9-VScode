@@ -66,6 +66,7 @@ aangeroepen (functiedeclaraties worden gehoist, `const`/`let` niet).
 | een knop toevoegen                          | `index.html` + `80-controls.js` |
 | iets aan de tegel-editor                    | `90-editor.js`        |
 | de spelsimulatie aanpassen                  | `95-simulate.js`      |
+| een energie-actie of de prijs ervan aanpassen | `95-simulate.js` (`ENERGY_ACTIONS`, `botPreRollMove`) + knoppen in `97-solo.js` (`soloRenderActionPanel`/`soloUseEnergyAction`) |
 | iets aan "Spelen" → Automatisch (pion, tempo) | `96-walk.js`   |
 | de modus-schakelaar zelf (Automatisch/Zelf spelen/Multiplayer) | `97-solo.js` (`setWalkMode`) |
 | het actiekaartvakje van een gang verplaatsen | tegel-editor in de tool (of `src/data/tiles.json`, labels `4.1`–`4.10`) |
@@ -130,6 +131,22 @@ aangeroepen (functiedeclaraties worden gehoist, `const`/`let` niet).
   spelmodus (`95-simulate.js`, `96-walk.js`, `97-solo.js`) houdt zelf een
   per-beurt vlag bij (bv. `actionCellDrawnThisTurn`) omdat animatie/bot-logica
   per modus verschilt. Max. handgrootte: `ACTION_CARD_HAND_MAX` (nu 3).
+- **Energie** (`ENERGY_ACTIONS` in `95-simulate.js`): energiesteen 0-1-1-2-2-3
+  (gem. 1,5), plafond 10. Een energie-actie kies je **vóór je gooit**, hooguit
+  één per beurt; wat de energiesteen oplevert geef je pas **volgende beurt** uit.
+  Dat geldt voor mens én bot in alle drie de modi (vroeger mochten bots meteen
+  uitgeven en Noodtransport ná de worp doen — dat maakte de simulatie te gunstig).
+  Vier acties: Stuwstoot (4, 3 loopstenen), Herprioritering (4, eerst je volgende
+  opdrachtkaart bekijken en dan kiezen of je wisselt), Zwaartekracht-laarzen (5,
+  eerst tot 8 vakjes rechtdoor tot een muur/pion, dan gooien) en Noodtransport
+  (10, eerst vrij springen tot 13 vakjes, dan gooien). De actiekaart
+  Zwaartekracht-laarzen is de gratis versie van de energie-actie (één sprint per
+  beurt). Gemeten in balans (6000 potjes: 23,7 / 26,0 / 24,6 / 25,7%); de
+  prijs-sweep en de afgewezen alternatieven (rijkere steen, plafond 15, laarzen
+  die de worp vervangen, Bijsturen, Dubbelworp, Sabotage, energie → kaart) staan
+  bovenin `95-simulate.js` — niet opnieuw voorstellen zonder nieuwe meting. De
+  bot-keuze vóór de worp zit in **één** gedeelde functie (`botPreRollMove`),
+  zodat simulatie, Automatisch en Zelf spelen niet uit elkaar lopen.
 
 ## Controleren of het nog werkt
 
@@ -172,8 +189,19 @@ Check minimaal:
 11. Speelscherm op ±1400px breed (laptop/half scherm): alles in beeld, niets
     afgeknipt — het bord krimpt daar mee (zie `--wcell` in `styles.css`),
     onder 1360px staat alles onder elkaar.
+12. Zelf spelen → energie-paneel toont 4 acties op prijs (Stuwstoot 4,
+    Herprioritering 4, Zwaartekracht-laarzen 5, Noodtransport 10).
+    Herprioritering laat je huidige én volgende opdracht zien en vraagt welke
+    eerst; de laarzen tonen de richtingen als knoppen én omrand op het bord, en
+    daarna gooi je gewoon. De kaart Zwaartekracht-laarzen kan alleen vóór het
+    dobbelen en blokkeert de laarzen-actie in dezelfde beurt. Simulatie →
+    "Welke energie-actie wint?" toont alle vier rond de 25%.
 
 ## Nog te doen
+
+- Een **5e energie-actie** (later te bedenken). Ideeën die nog niet gemeten
+  konden worden omdat bots ze niet zinnig spelen: een schild tegen de volgende
+  hinderkaart, of een energieversperring op een gang naar keuze.
 
 - Elke opdracht (2.1–2.9) heeft nu een naam (`QUEST_NAMES` in `10-rules.js`,
   zichtbaar in het paneel "Opdrachten" en in de simulatie-uitslag) zodat de

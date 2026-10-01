@@ -1055,6 +1055,7 @@ const MP_INTENT_HANDLERS = {
   discardCard: (a) => soloDiscardCard(a.id),
   resolveTarget: (a) => soloResolveTargetCard(a.cardId, a.targetIdx),
   resolveBoots: (a) => soloResolveBoots(a.dir),
+  reorderChoice: (a) => soloResolveReorder(!!a.swap),
   jumpClick: (a) => soloHandleJumpClick(a.key),
   blindOffer: (a) => soloResolveBlindOffer(a.yes),
 };

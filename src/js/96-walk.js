@@ -749,20 +749,19 @@ async function runWalkSimulation(){
       let usedEnergyAction = null; // id uit ENERGY_ACTIONS, voor de logregel
       let usedCardId = null;       // id uit ACTION_CARDS, voor de logregel
 
-      // energiesteen eerst (tenzij Kortsluiting die deze beurt blokkeert), zodat wat je deze
-      // beurt rolt meteen inzetbaar is — zelfde volgorde als simulateOneGame()
-      let energyRoll = 0, energyGain = { gained: 0, wasted: 0 };
+      // energiesteen rolt mee (tenzij Kortsluiting die deze beurt blokkeert), maar telt pas aan
+      // het eind van de beurt bij — wat je nu gooit geef je pas volgende beurt uit, zelfde
+      // tijdsregels als simulateOneGame() en de mens (zie bovenaan 95-simulate.js)
+      let energyRoll = 0, pendingEnergy = 0;
       if (player.skipEnergyRoll){
         player.skipEnergyRoll = false;
       } else {
         energyRoll = simRollEnergy(rand);
-        energyGain = simGainEnergy(player, energyRoll);
+        pendingEnergy = energyRoll;
         // vorige beurt een Condensator gespeeld: deze steen telt dubbel (zie simulateOneGame)
         if (player.condenserPending){
           player.condenserPending = false;
-          const bonus = simGainEnergy(player, energyRoll);
-          energyGain.gained += bonus.gained;
-          energyGain.wasted += bonus.wasted;
+          pendingEnergy += energyRoll;
           walkLog(`${player.name} verzilvert de <b>Condensator</b>: energiesteen ${energyRoll} telt dubbel.`, null, player);
         }
       }
@@ -876,17 +875,24 @@ async function runWalkSimulation(){
           walkLog(`${player.name} gebruikt <b>Terugtrekbevel</b> op ${push.player.name}.`, null, player);
         }
       }
-      if (!targetSwapped && !energyActionUsed && player.strategy === 'reorder' && player.energy >= ENERGY_ACTIONS.reorder.cost){
-        const swapped = blindReorderTarget(graph, shim, player.pos, REORDER_BLIND_THRESHOLD);
-        if (swapped !== null){
-          player.energy -= ENERGY_ACTIONS.reorder.cost;
-          player.actionUses++;
-          energyActionUsed = true; usedEnergyAction = 'reorder';
-          if (player.reorderBlocked){
-            player.reorderBlocked = false;
-            applyReorderSwap(shim);
-            walkLog(`${player.name}'s Herprioritering wordt gesaboteerd door <b>Signaalstoring</b>.`, null, player);
-          } else targetLabel = swapped;
+      // Herprioritering: betalen, volgende kaart bekijken, wisselen als die dichterbij ligt
+      // (zie botWantsReorderPeek in 95-simulate.js) — ook betaald als wisselen niets oplevert
+      if (!targetSwapped && !energyActionUsed && player.strategy === 'reorder' && player.energy >= ENERGY_ACTIONS.reorder.cost
+          && botWantsReorderPeek(graph, shim, player.pos)){
+        player.energy -= ENERGY_ACTIONS.reorder.cost;
+        player.actionUses++;
+        energyActionUsed = true; usedEnergyAction = 'reorder';
+        const before = player.deck[player.nextIdx];
+        const swapped = energyReorderTarget(graph, shim, player.pos);
+        if (swapped === null){
+          walkLog(`${player.name} bekijkt met <b>Herprioritering</b> zijn volgende opdracht en houdt ${before}.`, null, player);
+        } else if (player.reorderBlocked){
+          player.reorderBlocked = false;
+          applyReorderSwap(shim);
+          walkLog(`${player.name}'s Herprioritering wordt gesaboteerd door <b>Signaalstoring</b>.`, null, player);
+        } else {
+          targetLabel = swapped;
+          walkLog(`${player.name} haalt met <b>Herprioritering</b> ${swapped} naar voren (was ${before}).`, null, player);
         }
       }
       const targetKey = graph.questCells[targetLabel];
@@ -906,17 +912,6 @@ async function runWalkSimulation(){
       paintWalkPawns(graph, players, pIdx);
       renderWalkScore(players, pIdx);
       renderWalkMeta({ player, turn });
-
-      // dobbelen — even laten rollen zodat je het ziet gebeuren. Geteld in stappen en niet
-      // op de klok, anders is de worp na een pauze meteen "uitgerold".
-      const shakeSteps = Math.round(walkSpeed().rollMs / 90);
-      for (let i = 0; i < shakeSteps; i++){
-        if (aborted()) return;
-        renderWalkDice(1 + Math.floor(Math.random()*6), 1 + Math.floor(Math.random()*6),
-                       ENERGY_DIE_FACES[Math.floor(Math.random()*ENERGY_DIE_FACES.length)], true);
-        await walkTick(90);
-      }
-      if (aborted()) return;
 
       // pion langs een pad laten lopen; `special` markeert een niet-gewone verplaatsing
       // (Noodtransport, Zwaartekracht-laarzen) met een ander spoor. `bank.limit` zegt hoeveel
@@ -960,32 +955,52 @@ async function runWalkSimulation(){
         return occ;
       };
 
-      // fase 3: beweging — Zwaartekracht-laarzen vervangt de worp helemaal; anders de gewone
-      // loopstenen met Stuwlading (kaart) of Stuwstoot (energie) als derde steen — die twee
-      // doen hetzelfde en blijven daarom via else-if elkaar uitsluiten
-      let move, d1 = 0, d2 = 0, d3 = null, roll = 0, usedBoots = false, allowUturn = false, rollPenalty = 0;
-      if (!cardActionUsed && player.cards.includes('boots')){
-        const bootsMove = resolveGravityBoots(graph, player.pos, 10, occupiedNow(), targetKey);
-        if (bootsMove){
-          move = bootsMove;
-          usedBoots = true;
+      // fase 3: vóór de worp — Noodtransport of Zwaartekracht-laarzen (energie-actie of de gratis
+      // kaart), dezelfde keuze als in simulateOneGame (botPreRollMove in 95-simulate.js). Die
+      // verplaatsing wordt eerst afgespeeld; een sprong die precies op de opdracht landt
+      // beëindigt de beurt, anders gooit de speler daarna vanaf zijn nieuwe plek.
+      let move, d1 = 0, d2 = 0, d3 = null, roll = 0, allowUturn = false, rollPenalty = 0;
+      const pre = botPreRollMove(graph, player, occupiedNow(), targets, !energyActionUsed, !cardActionUsed);
+      if (pre){
+        const namen = ['noorden', 'oosten', 'zuiden', 'westen'];
+        if (pre.kind === 'bootsCard'){
           useActionCard(player, 'boots', deck);
           cardActionUsed = true; usedCardId = 'boots';
+        } else {
+          player.energy -= ENERGY_ACTIONS[pre.kind].cost;
+          player.actionUses++;
+          energyActionUsed = true; usedEnergyAction = pre.kind;
         }
+        if (pre.kind === 'jump'){
+          walkLog(`${player.name} springt met <b>Noodtransport</b> ${pre.path.length - 1} vakjes${pre.endsTurn ? ', precies op zijn opdracht' : ''}.`, null, player);
+        } else {
+          const dir = lastStepDirection(graph, pre.path);
+          walkLog(`${player.name} schiet met <b>Zwaartekracht-laarzen</b>${pre.kind === 'bootsCard' ? ' (kaart)' : ''} ${pre.path.length - 1} vakjes rechtdoor naar het ${namen[dir] || ''}.`, null, player);
+        }
+        bank.limit = pre.bankedCount;
+        if (!await walkPath(pre.path, true)) return;
       }
-      if (usedBoots){
-        // Zelfde twee-regelopbouw als renderWalkDice: los opgebouwd wrapte dit blok op een
-        // telefoon naar 124px terwijl het normaal 82px is, en dan schoof het bord weer.
+      const rollTargets = pre ? targets.slice(pre.bankedCount) : targets;
+      if (pre && (pre.endsTurn || player.completed + pre.bankedCount >= SIM_QUESTS_TO_WIN)){
+        move = { key: pre.key, path: pre.path, stepsUsed: pre.path.length - 1, bankedCount: pre.bankedCount,
+                 bankedQuest: pre.bankedCount > 0, wasBlocked: pre.wasBlocked, teleported: pre.kind === 'jump' };
+        // geen worp meer: alleen de energiesteen tonen
         walkDiceEl.innerHTML =
-          `<span class="walk-dice-row">` +
-            `<span class="walk-die boost" title="Zwaartekracht-laarzen">B</span>` +
-            `<span class="walk-die-sum">${move.path.length - 1} stappen rechtdoor</span>` +
-          `</span>` +
-          `<span class="walk-dice-row">` +
-            energyDieHtml(energyRoll, false) +
-            `<span class="walk-die-sum energy">+${energyRoll} energie</span>` +
-          `</span>`;
+          `<span class="walk-dice-row"><span class="walk-die-sum">geen worp nodig</span></span>` +
+          `<span class="walk-dice-row">${energyDieHtml(energyRoll, false)}<span class="walk-die-sum energy">+${energyRoll} energie</span></span>`;
       } else {
+        // fase 4: dobbelen — even laten rollen zodat je het ziet gebeuren. Geteld in stappen en
+        // niet op de klok, anders is de worp na een pauze meteen "uitgerold".
+        const shakeSteps = Math.round(walkSpeed().rollMs / 90);
+        for (let i = 0; i < shakeSteps; i++){
+          if (aborted()) return;
+          renderWalkDice(1 + Math.floor(Math.random()*6), 1 + Math.floor(Math.random()*6),
+                         ENERGY_DIE_FACES[Math.floor(Math.random()*ENERGY_DIE_FACES.length)], true);
+          await walkTick(90);
+        }
+        if (aborted()) return;
+        // loopstenen met Stuwlading (kaart) of Stuwstoot (energie) als derde steen — die twee
+        // doen hetzelfde en blijven daarom via else-if elkaar uitsluiten
         d1 = simRollD6(rand); d2 = simRollD6(rand);
         if (!cardActionUsed && player.cards.includes('boostcell')){
           d3 = simRollD6(rand);
@@ -1002,7 +1017,7 @@ async function runWalkSimulation(){
           rollPenalty = player.rollPenalty;
           roll = Math.max(1, roll - rollPenalty);
           player.rollPenalty = 0;
-          walkLog(`${player.name} verliest ${'2'} stappen door <b>Stroomonderbreking</b> → ${roll}.`, null, player);
+          walkLog(`${player.name} verliest ${rollPenalty} stappen door <b>Stroomonderbreking</b> → ${roll}.`, null, player);
         }
         if (!cardActionUsed && player.cards.includes('fastlane')){
           allowUturn = true;
@@ -1010,16 +1025,14 @@ async function runWalkSimulation(){
           cardActionUsed = true; usedCardId = 'fastlane';
         }
         renderWalkDice(d1, d2, energyRoll, false, d3, roll);
-      }
-      if (aborted()) return;
-      await walkTick(Math.min(500, walkSpeed().rollMs));
-      if (aborted()) return;
+        if (aborted()) return;
+        await walkTick(Math.min(500, walkSpeed().rollMs));
+        if (aborted()) return;
 
-      if (!usedBoots){
-        move = resolveMove(graph, player.pos, roll, occupiedNow(), targets, rand, undefined, allowUturn);
+        let rollMove = resolveMove(graph, player.pos, roll, occupiedNow(), rollTargets, rand, undefined, allowUturn);
         // Koerscorrectie: tegenvallende worp overdoen (zie simulateOneGame voor de drempel)
         const dice = d3 ? 3 : 2;
-        if (!move.bankedQuest && !cardActionUsed && player.cards.includes('reroll') && roll < dice * 3.5){
+        if (!rollMove.bankedQuest && !cardActionUsed && player.cards.includes('reroll') && roll < dice * 3.5){
           d1 = simRollD6(rand); d2 = simRollD6(rand);
           if (d3) d3 = simRollD6(rand);
           roll = d1 + d2 + (d3 || 0);
@@ -1031,44 +1044,32 @@ async function runWalkSimulation(){
           if (aborted()) return;
           await walkTick(Math.min(500, walkSpeed().rollMs));
           if (aborted()) return;
-          move = resolveMove(graph, player.pos, roll, occupiedNow(), targets, rand, undefined, allowUturn);
+          rollMove = resolveMove(graph, player.pos, roll, occupiedNow(), rollTargets, rand, undefined, allowUturn);
         }
-      }
-
-      // fase 4: Blinde Vlek (kaart) en Noodtransport (energie) lossen allebei een blokkade op
-      // — blijven elkaar uitsluiten binnen dit ene bewegingsmoment (`blindResolvedBlock`), zie
-      // de toelichting in simulateOneGame(). Noodtransport mag TUSSENTIJDS.
-      let blindResolvedBlock = false;
-      if (!move.bankedQuest && !cardActionUsed && !usedBoots && player.cards.includes('blind') && move.wasBlocked){
-        const retry = resolveMove(graph, player.pos, roll, SIM_EMPTY_SET, targets, rand, occupiedNow(), allowUturn);
-        if (retry && retry.key !== move.key){
-          move = retry;
-          useActionCard(player, 'blind', deck);
-          cardActionUsed = true; usedCardId = 'blind';
-          blindResolvedBlock = true;
+        // fase 5: Blinde Vlek (kaart) rekent een geblokkeerde worp opnieuw uit, door
+        // tegenstanders heen maar niet erop eindigend (zie simulateOneGame)
+        if (!rollMove.bankedQuest && !cardActionUsed && player.cards.includes('blind') && rollMove.wasBlocked){
+          const retry = resolveMove(graph, player.pos, roll, SIM_EMPTY_SET, rollTargets, rand, occupiedNow(), allowUturn);
+          if (retry && retry.key !== rollMove.key){
+            rollMove = retry;
+            useActionCard(player, 'blind', deck);
+            cardActionUsed = true; usedCardId = 'blind';
+          }
         }
-      }
-      if (!blindResolvedBlock && !move.bankedQuest && !energyActionUsed && player.strategy === 'jump' && player.energy >= ENERGY_ACTIONS.jump.cost){
-        const jump = resolveEnergyJump(graph, player.pos, ENERGY_JUMP_RANGE, targetKey, occupiedNow());
-        if (jump){
-          player.energy -= ENERGY_ACTIONS.jump.cost;
-          player.actionUses++;
-          energyActionUsed = true; usedEnergyAction = 'jump';
-          bank.limit = jump.banked ? 1 : 0;
-          if (!await walkPath(jump.path, true)) return;
-          move = jump.banked
-            ? { key: jump.key, path: [jump.key], stepsUsed: 0, bankedCount: 1, bankedQuest: true, wasBlocked: false, teleported: true }
-            : resolveMove(graph, jump.key, roll, occupiedNow(), targets, rand, undefined, allowUturn);
-        }
+        // opgeteld: wat de sprint vóór de worp al pakte is al getoond (bank.shown)
+        bank.limit = (pre ? pre.bankedCount : 0) + rollMove.bankedCount;
+        if (!await walkPath(rollMove.path, false)) return;
+        move = mergePreRollMove(pre, rollMove);
       }
       // laatst gelopen richting onthouden — Terugtrekbevel duwt je daar weer langs terug
       const stepDir = lastStepDirection(graph, move.path);
       if (stepDir !== -1) player.lastDir = stepDir;
+      // de energiesteen van deze beurt telt nu pas bij: volgende beurt uit te geven
+      const energyGain = pendingEnergy ? simGainEnergy(player, pendingEnergy) : { gained: 0, wasted: 0 };
 
-      bank.limit = move.bankedCount;
-      if (!await walkPath(move.path, usedBoots)) return;
-
-      const rollText = usedBoots ? `🥾 ${move.stepsUsed} van 10 stappen rechtdoor` : walkRollText(d1, d2, d3, roll);
+      const preNote = !pre ? '' : pre.kind === 'jump' ? '⚡ sprong + ' : '🥾 sprint + ';
+      const rollText = roll ? preNote + walkRollText(d1, d2, d3, roll)
+        : pre.kind === 'jump' ? '⚡ Noodtransport' : `🥾 ${pre.path.length - 1} vakjes rechtdoor`;
       // beide kunnen nu tegelijk waar zijn (energie-actie EN kaart zijn losse sloten per beurt),
       // dus samenvoegen i.p.v. kiezen — anders verdween een gespeelde kaart stilletjes uit de log
       // zodra er in dezelfde beurt ook een energie-actie was ingezet
@@ -1094,7 +1095,7 @@ async function runWalkSimulation(){
         player.completed += bankedLabels.length;
         player.nextIdx += bankedLabels.length;
 
-        const deadEnd = (!usedBoots && !move.teleported && move.stepsUsed < roll) ? ` (kwam daarna vast te zitten na ${move.stepsUsed} van ${roll} stappen)` : '';
+        const deadEnd = (roll && move.stepsUsed < roll) ? ` (kwam daarna vast te zitten na ${move.stepsUsed} van ${roll} stappen)` : '';
         const chainNote = bankedLabels.length > 1
           ? ` — en loopt meteen door naar <span class="hit">${bankedLabels.slice(1).map(l => `${l} ${QUEST_NAMES[l] || ''}`).join(', ')}</span>: twee opdrachten in één beurt!`
           : '';
@@ -1125,7 +1126,7 @@ async function runWalkSimulation(){
         }
       } else {
         const blocked = move.wasBlocked ? ' · liep onderweg tegen een bezette route aan' : '';
-        const extra = (!usedBoots && !move.teleported && move.stepsUsed < roll) ? ` — kon maar ${move.stepsUsed} stappen zetten (doodlopend)` : '';
+        const extra = (roll && move.stepsUsed < roll) ? ` — kon maar ${move.stepsUsed} stappen zetten (doodlopend)` : '';
         walkLog(`Beurt ${turn}: <b>${rollText}</b>${walkEnergyNote(energyRoll, energyGain, player)}${turnNote} → onderweg naar ${targetLabel}${extra}${blocked}`, null, player);
       }
       renderWalkScore(players, pIdx);
@@ -1208,3 +1209,10 @@ if (walkSpeedEl){
 }
 refreshWalkStartOptions();
 syncWalkStartEnabled();
+// "Energie-inzet": naam en prijs uit ENERGY_ACTIONS, zodat de lijst nooit een oude prijs toont
+if (walkEnergyModeEl){
+  for (const opt of walkEnergyModeEl.options){
+    const act = ENERGY_ACTIONS[opt.value];
+    if (act && opt.value !== 'none') opt.textContent = `alleen ${act.name} (${act.cost})`;
+  }
+}
