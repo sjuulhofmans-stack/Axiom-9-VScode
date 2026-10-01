@@ -566,6 +566,7 @@ function setWalkRunning(on){
   if (!btnWalkStart) return;
   btnWalkStart.disabled = on;
   btnWalkStop.disabled = !on;
+  if (on) btnWalkStop.textContent = 'Stoppen';
   if (btnWalkPause) btnWalkPause.disabled = !on;
   if (walkPlayersSel) walkPlayersSel.disabled = on;
   if (walkEnergyModeEl) walkEnergyModeEl.disabled = on;
@@ -590,6 +591,7 @@ function syncWalkStartEnabled(){
 function stopWalkSimulation(){
   walkRunId++;
   setWalkRunning(false);
+  soloHideEndgame();      // winscherm van een uitgespeeld potje (97-solo.js) hoort hier ook weg
   clearWalkTarget();      // anders blijft "Nu op zoek naar …" staan bij een stilgezet potje
 }
 
@@ -624,6 +626,7 @@ async function runWalkSimulation(){
   const aborted = () => runId !== walkRunId;
   setWalkRunning(true);
   setWalkPaused(false);        // een nieuwe run begint nooit gepauzeerd
+  soloHideEndgame();           // winscherm van het vorige potje weg
   walkLogEl.innerHTML = '';
   walkStatusEl.innerHTML = '';
 
@@ -1136,17 +1139,31 @@ async function runWalkSimulation(){
   if (aborted()) return;
   clearWalkTarget();
   walkClearClass('walk-trail');
+  renderWalkScore(players, -1);
+  // linkerkolom helemaal leeg -> .walk-info-panel verbergt zichzelf (styles.css, :has(...:empty));
+  // de spelersbalk boven het bord (#walkScore) blijft gewoon staan
+  if (walkScoreActiveEl) walkScoreActiveEl.innerHTML = '';
+  if (walkMetaEl) walkMetaEl.innerHTML = '';
+  // Uitslag in hetzelfde winscherm als Zelf spelen (soloShowEndgame, 97-solo.js) — vroeger stond
+  // hier een statusregel met de eindklassering in de smalle linkerkolom (gebruikersmelding: lelijk).
+  // Het winscherm zegt alles al, dus #walkStatus blijft leeg.
+  walkStatusEl.innerHTML = '';
   const winners = players.filter(p => p.rank === 1);
+  const notMe = () => false;   // alleen bots: niemand is "jij"
   if (gameOver && winners.length){
-    const standings = playerCount > 1 ? `<span class="walk-standings-row">Eindklassering: ${walkStandings(players)}</span>` : '';
-    const winText = winners.length === 1
-      ? `${winners[0].name} wint vanaf ${winners[0].startLabel} in ${winners[0].finishTurn} beurten`
-      : `${winners.map(w => w.name).join(' en ')} delen de winst (gelijke energie en actiekaarten)`;
-    walkStatusEl.innerHTML = `<span class="ok">✓ ${winText} — potje uitgespeeld in ${turn} beurten (alle spelers samen).</span>${standings}`;
+    const w = winners[0];
+    const title = winners.length === 1 ? `${w.name} wint!` : 'Gedeelde winst!';
+    const sub = winners.length === 1
+      ? `vanaf ${w.startLabel} in ${w.finishTurn} eigen beurten`
+      : `${winners.map(p => p.name).join(' en ')} — gelijke energie en actiekaarten`;
+    soloShowEndgame('🏆', title, sub, players, notMe);
   } else {
-    walkStatusEl.innerHTML = `<span class="bad">✕ Afgekapt na ${SIM_MAX_TURNS} beurten — niet iedereen was binnen.</span><span class="walk-standings-row">${walkStandings(players)}</span>`;
+    soloShowEndgame('⏳', 'Afgekapt', `niet iedereen was binnen na ${SIM_MAX_TURNS} beurten`, players, notMe);
   }
   setWalkRunning(false);
+  // "Stoppen" was na afloop grijs, waardoor je niet meer terug kon naar de lobby. Zelfde knop,
+  // zelfde handler (stopWalkSimulation + walkFadeToLobby); setWalkRunning(true) zet de tekst terug.
+  if (btnWalkStop){ btnWalkStop.disabled = false; btnWalkStop.textContent = 'Terug naar lobby'; }
 }
 
 if (btnWalkStart) btnWalkStart.addEventListener('click', () => walkTryStart(runWalkSimulation));

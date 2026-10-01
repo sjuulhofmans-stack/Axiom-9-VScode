@@ -2111,24 +2111,26 @@ function soloFinishRound(){
 // dan gewoon nog onder, en "Toon uitslag" op dezelfde plek (#btnWalkEndgameShowResult) haalt 'm
 // terug (gebruikersmelding: je kon niet meer terug naar het winscherm).
 // Onder de titel staat het klassement 1 t/m 4 (soloEndgameRankingHtml), bij meer dan 1 speler.
-function soloShowEndgame(trophy, title, sub){
+// Ook gebruikt door modus Automatisch (96-walk.js), die zijn eigen `players` meegeeft en geen
+// "jij" kent (`isMe` geeft daar altijd false).
+function soloShowEndgame(trophy, title, sub, players = soloPlayers, isMe = soloIsMe){
   if (!walkEndgameEl || !walkEndgameCardEl) return;
   walkEndgameCardEl.innerHTML =
     `<span class="walk-endgame-trophy">${trophy}</span>` +
     `<span class="walk-endgame-title">${title}</span>` +
     (sub ? `<span class="walk-endgame-sub">${sub}</span>` : '') +
-    (soloPlayers.length > 1 ? soloEndgameRankingHtml() : '');
+    (players.length > 1 ? soloEndgameRankingHtml(players, isMe) : '');
   soloReopenEndgame();
 }
 // eindklassering als lijstje: plaats, kleurstip, naam, voortgang. Zelfde volgorde als
 // walkStandings() (96-walk.js); gedeelde plaatsen krijgen hetzelfde nummer.
-function soloEndgameRankingHtml(){
-  const rows = walkOrderPlayers(soloPlayers).map(p => {
+function soloEndgameRankingHtml(players = soloPlayers, isMe = soloIsMe){
+  const rows = walkOrderPlayers(players).map(p => {
     const place = p.rank || '—';
     const status = walkIsIn(p)
       ? 'binnen'
       : p.rank ? 'niet binnen' : 'afgekapt';
-    const you = soloIsMe(p) ? '<span class="you">jij</span>' : '';
+    const you = isMe(p) ? '<span class="you">jij</span>' : '';
     return `<li class="walk-rank-row${p.rank >= 1 && p.rank <= 3 ? ' r' + p.rank : ''}" style="--pc:${p.color}">` +
       `<span class="walk-rank-pos">${place}</span>` +
       `<span class="walk-rank-dot"></span>` +

@@ -147,8 +147,10 @@ Check minimaal:
    0,0% verkeer staan. Gebeurt dat toch, dan is er een dode lus ontstaan en
    klopt `deadTileCount` in `70-generator.js` niet meer.
 8. Tabblad "Spelen" → modus "Automatisch" → "Start spel" → de pion loopt
-   zichtbaar, de dobbelstenen rollen, en het potje eindigt met "Gewonnen
-   vanaf 3.x". Tempo moet je tijdens het lopen kunnen wijzigen (schuif
+   zichtbaar, de dobbelstenen rollen, en het potje eindigt met hetzelfde
+   winscherm als Zelf spelen (trofee + klassement, "Toon kaart"/"Toon
+   uitslag"); de knop rechtsboven heet dan "Terug naar lobby" en werkt.
+   Tempo moet je tijdens het lopen kunnen wijzigen (schuif
    rechtsboven naast Pauze/Stoppen); "Stoppen"
    moet de pion echt stilzetten (geen achtergrondlus die doorloopt).
 9. Elke gangtegel heeft één paars actiekaartvakje op het bord (legenda
