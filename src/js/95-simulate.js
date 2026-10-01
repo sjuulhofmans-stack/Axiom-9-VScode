@@ -1569,6 +1569,8 @@ function renderSimResults({ n, stuckCount, startWins, startTurnsSum, startRanks,
     `</div>`;
 
   html += `<div class="sim-expand-row"><button type="button" class="small ghost" id="btnSimExpand" aria-expanded="true">Alle details inklappen</button></div>`;
+  // alle secties hieronder als kaarten in kolommen (zie .sim-sections in styles.css)
+  html += `<div class="sim-sections">`;
 
   html += simSectionOpen('Eerlijkheid per startpositie');
   html += `<table class="sim-table"><thead><tr><th>Startpositie</th><th>Winst% (±95%-marge)</th><th>Gem. beurten tot winst</th></tr></thead><tbody>${rows}</tbody></table>`;
@@ -1695,7 +1697,7 @@ function renderSimResults({ n, stuckCount, startWins, startTurnsSum, startRanks,
   html += `<p class="hint" style="margin-top:12px;">Koudste tegels — de kandidaten voor een "lus zonder opdracht waar niemand komt":</p>`;
   html += renderColdZones(graph, heatmap);
 
-  html += simSectionCloseAll();
+  html += simSectionCloseAll() + `</div>`;
   simResultsEl.innerHTML = html;
 
   const expandBtn = document.getElementById('btnSimExpand');

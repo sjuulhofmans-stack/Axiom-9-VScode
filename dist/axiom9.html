@@ -348,12 +348,29 @@
   /* elke sectie van de uitslag is een <details>; standaard dicht, zodat je na het draaien de
      conclusie ziet en niet 3900px aan tabellen */
   .sim-expand-row{display:flex; justify-content:flex-end; margin:2px 0 4px;}
-  .sim-section{border-top:1px solid var(--line-dim);}
+  /* De secties staan als kaarten in kolommen (3 op een breed scherm, 2 op een laptop, 1 op een
+     telefoon) i.p.v. elk over de volle breedte — daar stond een label helemaal links en zijn
+     getal ±1400px verderop helemaal rechts (gebruikersmelding: "cijfers erg ver uit elkaar").
+     CSS-kolommen i.p.v. een grid: korte en lange kaarten lopen dan als een tegelmuur door,
+     zonder gaten onder de korte. `break-inside:avoid` houdt een kaart heel. */
+  .sim-sections{columns:3 420px; column-gap:14px; margin-top:4px;}
+  .sim-section{
+    break-inside:avoid; margin:0 0 14px;
+    background:var(--hull); border:1px solid var(--line-dim); border-radius:6px; padding:0 14px;
+  }
   .sim-section > summary.sim-subhead{
     cursor:pointer; list-style:none; display:flex; align-items:center; gap:9px;
-    margin:0; padding:13px 2px; border-top:none;
+    margin:0; padding:12px 0; border-top:none;
     transition:color .12s;
   }
+  .sim-section-body{padding:0 0 14px;}
+  .sim-section-body .hint{font-size:12px; line-height:1.5;}
+  /* in een smalle kaart: getallenkoppen mogen over twee regels, en de toelichting achter een
+     naam (bv. de kaarttekst of "(4 energie)") komt eronder i.p.v. de kolom op te rekken */
+  .sim-section .sim-table{margin:6px 0 10px;}
+  .sim-section .sim-table th{vertical-align:bottom; line-height:1.3;}
+  .sim-section .sim-table td .sub{display:block; color:var(--text-dim); font-size:10.5px; margin-top:1px;}
+  .sim-section .sim-heat-legend{flex-wrap:wrap;}
   .sim-section > summary::-webkit-details-marker{display:none;}
   .sim-section > summary::before{
     content:''; flex:none; width:0; height:0;
@@ -362,7 +379,6 @@
   }
   .sim-section[open] > summary::before{transform:rotate(90deg);}
   .sim-section > summary:hover{color:var(--text);}
-  .sim-section-body{padding:0 0 16px;}
   .sim-section-body > .sim-table:first-child,
   .sim-section-body > p:first-child{margin-top:0;}
 
@@ -6620,6 +6636,8 @@ function renderSimResults({ n, stuckCount, startWins, startTurnsSum, startRanks,
     `</div>`;
 
   html += `<div class="sim-expand-row"><button type="button" class="small ghost" id="btnSimExpand" aria-expanded="true">Alle details inklappen</button></div>`;
+  // alle secties hieronder als kaarten in kolommen (zie .sim-sections in styles.css)
+  html += `<div class="sim-sections">`;
 
   html += simSectionOpen('Eerlijkheid per startpositie');
   html += `<table class="sim-table"><thead><tr><th>Startpositie</th><th>Winst% (±95%-marge)</th><th>Gem. beurten tot winst</th></tr></thead><tbody>${rows}</tbody></table>`;
@@ -6746,7 +6764,7 @@ function renderSimResults({ n, stuckCount, startWins, startTurnsSum, startRanks,
   html += `<p class="hint" style="margin-top:12px;">Koudste tegels — de kandidaten voor een "lus zonder opdracht waar niemand komt":</p>`;
   html += renderColdZones(graph, heatmap);
 
-  html += simSectionCloseAll();
+  html += simSectionCloseAll() + `</div>`;
   simResultsEl.innerHTML = html;
 
   const expandBtn = document.getElementById('btnSimExpand');
