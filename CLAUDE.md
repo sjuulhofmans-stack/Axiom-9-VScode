@@ -185,7 +185,10 @@ Check minimaal:
     gast krijgen het winscherm met klassement, en "Terug naar lobby" (dezelfde
     knop) brengt beiden terug naar de kamer. Een gast met een naam die al in
     de kamer zit (ook met andere hoofdletters) wordt geweigerd: terug naar het
-    formulier met rood naamveld (`mpHostOnHello` / `mpJoinRejected`).
+    formulier met rood naamveld (`mpHostOnHello` / `mpJoinRejected`). Speel als
+    gast een hinderkaart (bv. Stroomonderbreking): je krijgt de doelwit-keuze te
+    zien, net als het Blinde-Vlek-aanbod (`ownerUi.cardActionsHtml` in
+    `mpBroadcastState`).
 11. Speelscherm op ±1400px breed (laptop/half scherm): alles in beeld, niets
     afgeknipt — het bord krimpt daar mee (zie `--wcell` in `styles.css`),
     onder 1360px staat alles onder elkaar.

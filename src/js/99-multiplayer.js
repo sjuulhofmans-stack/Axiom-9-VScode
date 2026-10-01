@@ -878,6 +878,11 @@ function mpBroadcastState(){
       rollHidden: btnWalkSoloRoll ? btnWalkSoloRoll.hidden : true,
       skipHidden: btnWalkSoloSkip ? btnWalkSoloSkip.hidden : true,
       actionsHtml: walkSoloActionsEl ? walkSoloActionsEl.innerHTML : '',
+      // vervolgkeuze van een gespeelde kaart (doelwit van een hinderkaart, het Blinde-Vlek-
+      // aanbod) staat in een apart vak bij de kaartkluis — ging vroeger niet mee, waardoor een
+      // gast die keuzes nooit te zien kreeg en zijn beurt vastliep
+      cardActionsHtml: walkCardActionsEl ? walkCardActionsEl.innerHTML : '',
+      pendingCard: walkCardActionsEl ? (walkCardActionsEl.dataset.pendingCard || '') : '',
       stepHidden: walkStepCounterEl ? walkStepCounterEl.hidden : true,
       stepDone: walkStepDoneEl ? walkStepDoneEl.textContent : '–',
       stepLeft: walkStepLeftEl ? walkStepLeftEl.textContent : '–',
@@ -963,6 +968,13 @@ function mpApplyState(payload){
   if (btnWalkSoloRoll) btnWalkSoloRoll.hidden = isMine ? ui.rollHidden : true;
   if (btnWalkSoloSkip) btnWalkSoloSkip.hidden = isMine ? ui.skipHidden : true;
   if (walkSoloActionsEl) walkSoloActionsEl.innerHTML = isMine ? ui.actionsHtml : '';
+  if (walkCardActionsEl){
+    const html = isMine ? (ui.cardActionsHtml || '') : '';
+    walkCardActionsEl.innerHTML = html;
+    walkCardActionsEl.classList.toggle('walk-pulse-affordable', !!html);
+    // soloResolveTargetCard leest welke kaart er gespeeld wordt uit dit data-attribuut
+    walkCardActionsEl.dataset.pendingCard = isMine ? (ui.pendingCard || '') : '';
+  }
   if (walkStepCounterEl) walkStepCounterEl.hidden = isMine ? ui.stepHidden : true;
   if (walkStepDoneEl) walkStepDoneEl.textContent = isMine ? ui.stepDone : '–';
   if (walkStepLeftEl) walkStepLeftEl.textContent = isMine ? ui.stepLeft : '–';

@@ -254,7 +254,7 @@ function botWantsReorderPeek(graph, player, fromKey){
 
 // ---------- beloningskaarten ----------
 // Wie een opdracht bereikt trekt een kaart van een gedeelde, gesloten stapel (2 exemplaren
-// van elk van de 10 typen = 20 kaarten) — net als het actiekaartvakje in elke gangtegel, dat
+// van elk type in ACTION_CARDS — nu 18 typen, dus 36 kaarten; zie buildActionDeck) — net als het actiekaartvakje in elke gangtegel, dat
 // dezelfde beloning geeft zonder de zet te onderbreken (zie ACTION_CELL_LABELS/actionCells).
 // Je mag maximaal ACTION_CARD_HAND_MAX kaarten tegelijk vasthouden; sta je daar al op, dan
 // trek je niet (de kaart blijft liggen). Gebruikte kaarten gaan op de aflegstapel;
@@ -1677,7 +1677,7 @@ function renderSimResults({ n, stuckCount, startWins, startTurnsSum, startRanks,
   const actionCellHandFullPct = extra.actionCellDraws + extra.handFullOnActionCell
     ? (extra.handFullOnActionCell / (extra.actionCellDraws + extra.handFullOnActionCell) * 100) : 0;
   html += simSectionOpen('Beloningskaarten');
-  html += `<p class="hint">Wie een opdracht bereikt trekt een kaart van een gedeelde stapel van 20 (2 van elk type), tenzij zijn hand al vol is (max ${ACTION_CARD_HAND_MAX}). Gemiddeld <b>${nl(drawsPerGame, 1)}</b> kaarten getrokken per potje via opdrachten (alle 4 spelers samen); <b>${nl(handFullPct, 1)}%</b> van die trekkans ging verloren aan een volle hand.</p>`;
+  html += `<p class="hint">Wie een opdracht bereikt trekt een kaart van een gedeelde stapel van ${ACTION_CARD_IDS.length * 2} (2 van elk van de ${ACTION_CARD_IDS.length} soorten), tenzij zijn hand al vol is (max ${ACTION_CARD_HAND_MAX}). Gemiddeld <b>${nl(drawsPerGame, 1)}</b> kaarten getrokken per potje via opdrachten (alle 4 spelers samen); <b>${nl(handFullPct, 1)}%</b> van die trekkans ging verloren aan een volle hand.</p>`;
   html += `<p class="hint">Elke gangtegel heeft ook een <b>actiekaartvakje</b>: loop je daar overheen (je beurt stopt er niet voor), dan trek je er net zo een kaart bij — hooguit 1x per beurt, ook als je meerdere van deze vakjes passeert. Gemiddeld <b>${nl(actionCellDrawsPerGame, 1)}</b> kaarten getrokken per potje via actiekaartvakjes; <b>${nl(actionCellHandFullPct, 1)}%</b> van die trekkans ging verloren aan een volle hand.</p>`;
   html += `<table class="sim-table"><thead><tr><th>Kaart</th><th>Keer gebruikt per potje</th></tr></thead><tbody>${cardRows}</tbody></table>`;
   html += `<p class="hint">Prioriteitspas heeft in deze simulatie geen mechanisch effect (het is pure informatie voor een mens aan tafel) en wordt daarom nooit ingezet — 0,00 hierboven is dus verwacht, niet een bug. Een getrokken Prioriteitspas bezet wel een handslot tot het potje afloopt.</p>`;
