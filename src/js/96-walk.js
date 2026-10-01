@@ -605,20 +605,11 @@ function refreshWalkStartOptions(){
 
 // sorteervolgorde voor een standenlijst: eerst wie al binnen is (op volgorde van binnenkomst,
 // p.rank), daarna de rest op aantal voltooide opdrachten — gedeeld tussen de eindklassering
-// hieronder en een eventuele LIVE rang tijdens het spelen (zie soloLiveRank in 97-solo.js;
-// die slaat het resultaat expliciet NIET op in p.rank, dat veld is voor de eindstand).
+// in het winscherm (soloEndgameRankingHtml) en een eventuele LIVE rang tijdens het spelen (zie
+// soloLiveRank in 97-solo.js; die slaat het resultaat expliciet NIET op in p.rank, dat veld is
+// voor de eindstand).
 function walkOrderPlayers(players){
   return players.slice().sort((a, b) => (a.rank || 99) - (b.rank || 99) || b.completed - a.completed);
-}
-// eindklassering: eerst wie binnen is op volgorde van binnenkomst, daarna de rest op
-// aantal voltooide opdrachten
-function walkStandings(players){
-  return walkOrderPlayers(players)
-    .map(p => {
-      const place = p.rank ? `${walkRankLabel(p.rank)} ` : '';
-      return `<span class="walk-standing" style="--pc:${p.color}"><i class="walk-log-dot" style="--pc:${p.color}"></i>${place}${p.name} ${p.completed}/${SIM_QUESTS_TO_WIN}</span>`;
-    })
-    .join('');
 }
 
 async function runWalkSimulation(){

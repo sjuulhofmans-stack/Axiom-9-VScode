@@ -1248,12 +1248,6 @@
   .walk-player.done{border-left-color:var(--start); opacity:.62;}
   .walk-meta .hit{color:var(--start);}
   .walk-meta .lost{color:var(--danger);}
-  .walk-standings-row{display:flex; flex-wrap:wrap; gap:4px 0; margin-top:2px;}
-  .walk-standing{
-    display:inline-flex; align-items:center; gap:5px; margin-left:10px;
-    font-family:var(--font-mono); font-size:11px; color:var(--text-dim);
-  }
-  .walk-standing:first-child{margin-left:0;}
 
   #walkBoard{
     /* 20px (i.p.v. 19px): iets groter bord geeft de zijkolom ernaast (die nooit hoger dan het

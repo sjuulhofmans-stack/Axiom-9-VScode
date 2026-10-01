@@ -2122,8 +2122,8 @@ function soloShowEndgame(trophy, title, sub, players = soloPlayers, isMe = soloI
     (players.length > 1 ? soloEndgameRankingHtml(players, isMe) : '');
   soloReopenEndgame();
 }
-// eindklassering als lijstje: plaats, kleurstip, naam, voortgang. Zelfde volgorde als
-// walkStandings() (96-walk.js); gedeelde plaatsen krijgen hetzelfde nummer.
+// eindklassering als lijstje: plaats, kleurstip, naam, voortgang. Volgorde uit
+// walkOrderPlayers() (96-walk.js); gedeelde plaatsen krijgen hetzelfde nummer.
 function soloEndgameRankingHtml(players = soloPlayers, isMe = soloIsMe){
   const rows = walkOrderPlayers(players).map(p => {
     const place = p.rank || '—';
@@ -2226,24 +2226,18 @@ function soloIsMe(p){
   if (soloPlayers.some(q => q.peerId !== undefined)) return typeof mp !== 'undefined' && p.idx === mp.myIdx;
   return p.isHuman && soloPlayers.filter(q => q.isHuman).length === 1;
 }
-// titel/ondertitel/statusregel voor het einde van een potje — gedeeld door de host/lokaal
+// titel/ondertitel voor het winscherm aan het einde van een potje — gedeeld door de host/lokaal
 // (soloEndGame) en een multiplayer-gast (mpApplyState in 99-multiplayer.js), die alleen de
-// gedeelde stand binnenkrijgt maar hetzelfde winscherm moet zien.
+// gedeelde stand binnenkrijgt maar hetzelfde winscherm moet zien. Geen statusregel met
+// eindklassering in de linkerkolom meer (gebruikerswens: lelijk) — die staat in het winscherm.
 function soloEndgameTexts(stuck){
   const nameOf = p => soloIsMe(p) ? 'jij' : p.name;
   if (stuck){
-    return {
-      trophy: '⏳', title: 'Afgekapt', sub: `niet iedereen was binnen na ${SIM_MAX_TURNS} beurten`,
-      statusHtml: `<span class="bad">✕ Afgekapt na ${SIM_MAX_TURNS} beurten — niet iedereen was binnen.</span>` +
-        (soloPlayers.length > 1 ? `<span class="walk-standings-row">${walkStandings(soloPlayers)}</span>` : ''),
-    };
+    return { trophy: '⏳', title: 'Afgekapt', sub: `niet iedereen was binnen na ${SIM_MAX_TURNS} beurten` };
   }
   if (soloPlayers.length === 1){
     const n = soloPlayers[0].finishTurn;
-    return {
-      trophy: '🏆', title: 'Je wint!', sub: `alle ${SIM_QUESTS_TO_WIN} opdrachten voltooid in ${n} beurten`,
-      statusHtml: `<span class="ok">✓ Alle ${SIM_QUESTS_TO_WIN} opdrachten voltooid in ${n} beurten!</span>`,
-    };
+    return { trophy: '🏆', title: 'Je wint!', sub: `alle ${SIM_QUESTS_TO_WIN} opdrachten voltooid in ${n} beurten` };
   }
   const winners = soloPlayers.filter(p => p.rank === 1);
   const w = winners[0];
@@ -2251,14 +2245,7 @@ function soloEndgameTexts(stuck){
   const sub = winners.length === 1
     ? `vanaf ${w.startLabel} in ${w.finishTurn} eigen beurten`
     : `${winners.map(nameOf).join(' en ')} — gelijke energie en actiekaarten`;
-  const winText = winners.length === 1
-    ? `${soloIsMe(w) ? 'Jij wint' : w.name + ' wint'} vanaf ${w.startLabel} in ${w.finishTurn} beurten`
-    : `${winners.map(nameOf).join(' en ')} delen de winst (gelijke energie en actiekaarten)`;
-  return {
-    trophy: '🏆', title, sub,
-    statusHtml: `<span class="ok">✓ ${winText} — potje uitgespeeld in ${soloTurn} beurten (alle spelers samen).</span>` +
-      `<span class="walk-standings-row">Eindklassering: ${walkStandings(soloPlayers)}</span>`,
-  };
+  return { trophy: '🏆', title, sub };
 }
 function soloEndGame(stuck){
   soloPhase = 'game-over';
@@ -2271,7 +2258,8 @@ function soloEndGame(stuck){
   renderWalkScore(soloPlayers, -1);
   if (walkMetaEl) walkMetaEl.innerHTML = '';
   const t = soloEndgameTexts(stuck);
-  walkStatusEl.innerHTML = t.statusHtml;
+  // leeg — ook voor multiplayer-gasten, die #walkStatus van de host overnemen (mpApplyState)
+  walkStatusEl.innerHTML = '';
   soloShowEndgame(t.trophy, t.title, t.sub);
   btnWalkSoloStart.disabled = false;
   if (walkSoloPlayersSel) walkSoloPlayersSel.disabled = false;
