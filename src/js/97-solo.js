@@ -2290,18 +2290,13 @@ function soloOpenStats(){
   const players = walkOrderPlayers(v.players).filter(p => p.stats);
   const n = players.length;
   // bovenaan: elke speler een eigen kolom, in volgorde van het klassement
+  // alleen eindstand, naam en of het een bot is (gebruikerswens: start/opdrachten/binnen hoeven niet)
   const cards = players.map(p => {
-    const status = walkIsIn(p) ? 'binnen' : p.rank ? 'niet binnen' : 'afgekapt';
-    const who = p.isHuman !== undefined && p.isHuman ? (v.isMe(p) ? 'jij' : 'mens')
-      : p.strategy && ENERGY_ACTIONS[p.strategy] ? `bot · ${ENERGY_ACTIONS[p.strategy].name}` : 'bot';
+    const who = p.isHuman ? (v.isMe(p) ? 'jij' : 'mens') : 'bot';
     return `<div class="walk-stats-player${p.rank >= 1 && p.rank <= 3 ? ' r' + p.rank : ''}" style="--pc:${p.color}">` +
-      `<span class="walk-stats-player-place">${p.rank || '—'}</span>` +
-      `<span class="walk-stats-player-text">` +
-        `<b>${p.name}</b>` +
-        `<span class="walk-stats-player-sub">${who}</span>` +
-        (p.startLabel ? `<span class="walk-stats-player-sub">start ${p.startLabel}</span>` : '') +
-      `</span>` +
-      `<span class="walk-stats-player-score">${p.completed}/${SIM_QUESTS_TO_WIN}<span>${status}</span></span>` +
+      `<span class="walk-stats-player-place">${p.rank ? walkRankLabel(p.rank) : '—'}</span>` +
+      `<b class="walk-stats-player-name">${p.name}</b>` +
+      `<span class="walk-stats-player-who">${who}</span>` +
     `</div>`;
   }).join('');
   // per categorie een tabel met vakjes; kolomkop = kleurstip + plaats (zelfde als de spelerkaart

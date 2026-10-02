@@ -598,20 +598,17 @@
     background:var(--hull); border:1px solid var(--line); border-top:3px solid var(--pc); border-radius:6px;
   }
   .walk-stats-player-place{
-    flex:none; width:30px; height:30px; border-radius:50%; display:flex; align-items:center; justify-content:center;
+    flex:none; min-width:38px; height:30px; padding:0 8px; border-radius:15px; display:flex; align-items:center; justify-content:center;
     font-family:var(--font-mono); font-size:14px; font-weight:700; color:var(--text-dim); border:1px solid var(--line);
+  }
+  .walk-stats-player-name{flex:1; min-width:0; color:var(--pc); font-size:15px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+  .walk-stats-player-who{
+    flex:none; padding:2px 7px; border-radius:4px; border:1px solid var(--line);
+    font-family:var(--font-mono); font-size:10px; letter-spacing:.08em; text-transform:uppercase; color:var(--text-dim);
   }
   .walk-stats-player.r1 .walk-stats-player-place{color:#1a1400; background:#ffd23d; border-color:#ffd23d;}
   .walk-stats-player.r2 .walk-stats-player-place{color:#15181c; background:#c9d2dc; border-color:#c9d2dc;}
   .walk-stats-player.r3 .walk-stats-player-place{color:#1c0f05; background:#d08a4e; border-color:#d08a4e;}
-  .walk-stats-player-text{flex:1; min-width:0; display:flex; flex-direction:column; gap:2px;}
-  .walk-stats-player-text b{color:var(--pc); font-size:14px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
-  .walk-stats-player-sub{font-family:var(--font-mono); font-size:10.5px; color:var(--text-dim); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
-  .walk-stats-player-score{
-    flex:none; display:flex; flex-direction:column; align-items:flex-end; line-height:1.2;
-    font-family:var(--font-mono); font-size:15px; font-weight:700; color:var(--text);
-  }
-  .walk-stats-player-score span{font-size:9.5px; font-weight:400; letter-spacing:.06em; text-transform:uppercase; color:var(--text-dim);}
   /* elke categorie een eigen tabel, hoogstens 3 naast elkaar */
   .walk-stats-cats{display:grid; grid-template-columns:repeat(3, minmax(0, 1fr)); gap:18px 16px;}
   @media (max-width: 1100px){ .walk-stats-cats{grid-template-columns:repeat(2, minmax(0, 1fr));} }
