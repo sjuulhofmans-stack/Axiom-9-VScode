@@ -1113,9 +1113,14 @@
      de schermhoogte (--wcell) en de legenda/log-knoppen staan onderaan deze kolom, dus 9 rijen
      van 2 regels pasten er niet meer in (kreeg een eigen scrollbalk). Moet ná de gewone
      .quest-check-*-regels hierboven staan, anders winnen die. */
+  /* De rijen rekken mee tot het vak gevuld is (flex-grow), tot hoogstens 50px: op een groot
+     scherm dus ruime rijen, op een laptop vallen ze terug op hun eigen (compacte) hoogte — zo
+     krijgt het vak nooit een eigen scrollbalk. */
   @media (min-width: 1361px){
-    .walk-quest-checklist{gap:4px; padding:10px;}
-    .quest-check-row{padding:4px 8px;}
+    .walk-quest-checklist{gap:5px; padding:10px;}
+    .quest-check-row{padding:2px 10px; flex:1 1 auto; max-height:50px;}
+    .quest-check-name{font-size:13px;}
+    .quest-check-label{font-size:11px;}
     .quest-check-text{flex-direction:row; align-items:baseline; gap:6px;}
     .quest-check-name{white-space:nowrap;}
     .quest-check-room{white-space:nowrap; overflow:hidden; text-overflow:ellipsis; min-width:0;}
@@ -1292,7 +1297,7 @@
   .walk-player-tag.hit{color:var(--hull); background:var(--start);}
   .walk-player-tag.lost{color:var(--danger); border:1px solid var(--danger); background:var(--hull);}
   .walk-player-stats{flex:none; display:flex; gap:14px; margin-left:auto;}
-  .walk-player-stat{display:flex; flex-direction:column; align-items:flex-end; line-height:1.15;}
+  .walk-player-stat{display:flex; flex-direction:column; align-items:center; line-height:1.15;}
   .walk-player-stat .lbl{font-size:9.5px; letter-spacing:.08em; text-transform:uppercase; color:var(--text-dim); white-space:nowrap;}
   .walk-player-stat .lbl-short{display:none;}
   /* smaller dan 1700px: 4 kaarten naast elkaar zijn dan te smal voor het lange label, en de kaart
