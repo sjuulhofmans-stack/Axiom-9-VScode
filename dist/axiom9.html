@@ -9412,6 +9412,18 @@ function soloRenderEnergyOverview(){
     }
   });
 }
+// Animatieklassen weg zodra de animatie klaar is. Anders bleef bv. .is-charging op de laatst
+// opgeladen cel staan, en startte het opladen opnieuw zodra de kostenpreview (.will-spend, die
+// tijdelijk een andere animatie op dezelfde cel zet) weer verdween (gebruikersmelding: "het
+// laatste blokje gaat ineens opnieuw aan"). ecellFlash is de langste van de oplaadanimaties.
+if (walkEnergyCellsEl){
+  walkEnergyCellsEl.addEventListener('animationend', (e) => {
+    const cell = e.target.closest('.ecell');
+    if (!cell) return;
+    if (e.animationName === 'ecellFlash') cell.classList.remove('is-charging');
+    if (e.animationName === 'ecellDrain') cell.classList.remove('is-draining');
+  });
+}
 // laatste `cost` gevulde cellen oplichten = wat deze actie zou kosten (null = preview weg)
 function soloPreviewEnergyCost(cost){
   if (!walkEnergyCellsEl) return;
