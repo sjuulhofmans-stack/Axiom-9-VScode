@@ -919,15 +919,20 @@
      naar de volle axPulse-sterkte, zodat duidelijker is dat je hier iets MOET doen
      (gebruikerswens). Zelfde duur en kromme, en net als axPulse op 0% op z'n sterkst, dus ze
      zijn tegelijk met de rest op hun helderst. */
+  /* --pulse-ring / --pulse-glow / --pulse-glow-a: hoe fel het felste punt is; per element te
+     temperen (zie .energy-pick hieronder) zonder dat het ritme verandert */
   @keyframes axPulseBtn{
-    0%,100%{box-shadow:0 0 0 2px var(--glow, var(--pc, var(--amber))),
-                       0 0 14px color-mix(in srgb, var(--glow, var(--pc, var(--amber))) 60%, transparent);}
+    0%,100%{box-shadow:0 0 0 2px color-mix(in srgb, var(--glow, var(--pc, var(--amber))) var(--pulse-ring, 100%), transparent),
+                       0 0 var(--pulse-glow, 14px) color-mix(in srgb, var(--glow, var(--pc, var(--amber))) var(--pulse-glow-a, 60%), transparent);}
     50%{box-shadow:0 0 0 2px color-mix(in srgb, var(--glow, var(--pc, var(--amber))) 10%, transparent),
                    0 0 0 transparent;}
   }
   .walk-pulse-affordable, #btnWalkSoloRoll:not([hidden]), #btnWalkSoloSkip:not([hidden]){
     animation:axPulseBtn 1.9s ease-in-out infinite;
   }
+  /* de energie-acties staan met z'n vieren onder elkaar, dus hun gloed telt op — op het felste
+     punt zachter dan bij de andere knoppen (gebruikerswens: "eindglow behoorlijk fel") */
+  .energy-pick.walk-pulse-affordable{--pulse-ring:65%; --pulse-glow:9px; --pulse-glow-a:32%;}
   #tabWalk.walk-is-paused .walk-pulse-affordable,
   #tabWalk.walk-is-paused #btnWalkSoloRoll,
   #tabWalk.walk-is-paused #btnWalkSoloSkip{animation-play-state:paused;}
