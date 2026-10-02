@@ -1454,6 +1454,23 @@ const simProgressTextEl = document.getElementById('simProgressText');
 let simRunning = false;   // voorkomt twee overlappende potjes-reeksen bij dubbelklikken
 let simRunId = 0;         // verhoogd bij elke nieuwe run/bordwijziging; een verouderde
                            // in-brokken-lopende run herkent hieraan dat hij moet stoppen
+let simDone = 0, simTotal = 0;   // voortgang van de lopende run, voor de melding na "Stoppen"
+
+// knop "Stoppen" onder de voortgangsbalk (gebruikerswens): zelfde mechanisme als een
+// bordwijziging — simRunId verhogen, dan stopt de lopende run bij zijn volgende brok vanzelf
+function stopSimulation(){
+  if (!simRunning) return;
+  simRunId++;
+  simRunning = false;
+  if (simProgressEl) simProgressEl.hidden = true;
+  if (btnSimulate) btnSimulate.disabled = false;
+  simResultsEl.innerHTML = '';
+  simStatusEl.innerHTML = `<span class="sub">Simulatie gestopt na ${simDone.toLocaleString('nl-NL')} van ${simTotal.toLocaleString('nl-NL')} potjes.</span>`;
+}
+{
+  const btnSimStop = document.getElementById('btnSimStop');
+  if (btnSimStop) btnSimStop.addEventListener('click', stopSimulation);
+}
 
 // wordt aangeroepen door alles wat de indeling wijzigt (genereren, herstellen,
 // slepen, draaien, tegel-editor) — de cijfers horen bij een specifieke indeling en
@@ -1952,6 +1969,7 @@ function runSimulationBatch(){
   simCountEl.value = n;
 
   simRunning = true;
+  simDone = 0; simTotal = n;
   const runId = ++simRunId;   // deze run herkennen als "nog geldig" bij elke terugkeer naar de browser
   btnSimulate.disabled = true;
   simStatusEl.innerHTML = '';
@@ -2044,6 +2062,7 @@ function runSimulationBatch(){
         // — de pagina was dan bevroren — maar nu de simulatie in brokken loopt wel). Een
         // verouderde run mag de nieuwere "indeling gewijzigd"-melding niet overschrijven.
         if (runId !== simRunId) return;
+        simDone = i;
         updateSimProgress(i, n, performance.now() - t0);
         if (i < n) await new Promise(res => setTimeout(res, 0));
       }
