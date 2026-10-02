@@ -1112,8 +1112,10 @@
   }
   .ecell.is-on i{opacity:1;}
   /* opladen: cel vult zich van onder naar boven, met een witte flits erbij */
-  .ecell.is-charging{animation:ecellFlash .7s ease-out both; animation-delay:inherit;}
-  .ecell.is-charging i{animation:ecellCharge .55s cubic-bezier(.2,.8,.2,1) both; animation-delay:inherit;}
+  /* duren gelijk houden aan ENERGY_CELL_CHARGE_MS / ENERGY_CELL_DRAIN_MS in 97-solo.js: de
+     cellen gaan strikt één voor één (de volgende start pas als de vorige klaar is) */
+  .ecell.is-charging{animation:ecellFlash .8s ease-out both; animation-delay:inherit;}
+  .ecell.is-charging i{animation:ecellCharge .52s ease-in-out both; animation-delay:inherit;}
   @keyframes ecellCharge{
     0%{transform:scaleY(0); filter:brightness(2.6);}
     70%{transform:scaleY(1); filter:brightness(1.9);}
@@ -1125,7 +1127,7 @@
     100%{box-shadow:0 0 7px color-mix(in srgb, var(--ec) 45%, transparent);}
   }
   /* uitgeven: de cel flitst nog even op en loopt dan leeg */
-  .ecell.is-draining i{animation:ecellDrain .6s ease-in both;}
+  .ecell.is-draining i{animation:ecellDrain .38s ease-in both; animation-delay:inherit;}
   @keyframes ecellDrain{
     0%{opacity:1; transform:scaleY(1); filter:brightness(1.8);}
     100%{opacity:0; transform:scaleY(0);}

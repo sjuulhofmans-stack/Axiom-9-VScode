@@ -505,6 +505,8 @@ function soloRenderQuestChecklist(){
 // Hoveren over een betaalbare energie-actie licht de cellen op die hij gaat kosten (zie
 // soloPreviewEnergyCost hieronder).
 let soloEnergyShown = { idx: -1, energy: 0 };
+const ENERGY_CELL_CHARGE_MS = 520;   // = duur van ecellCharge in styles.css
+const ENERGY_CELL_DRAIN_MS = 380;    // = duur van ecellDrain in styles.css
 function soloRenderEnergyOverview(){
   if (!walkEnergyOverviewEl || !walkEnergyCellsEl) return;
   const p = solo();
@@ -524,7 +526,12 @@ function soloRenderEnergyOverview(){
     cell.classList.remove('is-charging', 'is-draining', 'will-spend');
     if (charging || draining){
       void cell.offsetWidth;   // animatie opnieuw laten starten, ook als de klasse er net al op zat
-      cell.style.animationDelay = charging ? `${(i - prev) * 110}ms` : '0ms';
+      // strikt na elkaar (gebruikerswens): opladen van links naar rechts, de volgende cel pas als
+      // de vorige vol is; uitgeven in omgekeerde volgorde, de laatste cel eerst. Duur gelijk aan
+      // ecellCharge/ecellDrain in styles.css.
+      cell.style.animationDelay = charging
+        ? `${(i - prev) * ENERGY_CELL_CHARGE_MS}ms`
+        : `${(prev - 1 - i) * ENERGY_CELL_DRAIN_MS}ms`;
       cell.classList.add(charging ? 'is-charging' : 'is-draining');
     }
   });
