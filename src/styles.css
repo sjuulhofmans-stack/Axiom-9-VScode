@@ -61,11 +61,18 @@
     background-clip:padding-box;
   }
   *::-webkit-scrollbar-corner{ background:var(--hull); }
-  body{
-    background:
+  /* Pagina-achtergrond als variabele: de sticky kop (header) gebruikt exact dezelfde, beide
+     vastgezet aan het scherm (fixed), zodat de kop naadloos overloopt in de rand ernaast
+     i.p.v. als effen blok af te steken tegen de gloed linksboven (gebruikersmelding). */
+  :root{
+    --page-bg:
       radial-gradient(ellipse at 20% -10%, #16202b 0%, transparent 55%),
       radial-gradient(ellipse at 100% 110%, #131a22 0%, transparent 50%),
       var(--hull);
+  }
+  body{
+    background:var(--page-bg);
+    background-attachment:fixed;
     color:var(--text);
     font-family:var(--font-display);
     min-height:100vh;
@@ -91,7 +98,8 @@
        het bord (max. 11) maar onder de pop-ups (100+). */
     position:sticky; top:0; z-index:50;
     margin-top:-14px; padding-top:14px;
-    background:var(--hull);
+    background:var(--page-bg);
+    background-attachment:fixed;
   }
   .title-block{display:flex; align-items:center; gap:18px;}
   /* was 84px — samen met de rest van de kop hierboven de grootste losse bijdrage aan de hoogte
