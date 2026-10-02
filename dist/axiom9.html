@@ -7548,6 +7548,31 @@ const WALK_SPEEDS = [
 const WALK_PLAYER_COLORS = ['#ff4fd8', '#ffd23d', '#7c5cff', '#ff7a45'];
 const WALK_MAX_PLAYERS = SIM_START_LABELS.length;
 
+// Bots krijgen altijd een toffe naam i.p.v. "Speler N" (gebruikerswens), in het thema van het
+// bevoorradingsschip. Puur cosmetisch: gekozen met Math.random, los van de seed van het potje.
+// Max. 18 tekens (zelfde grens als soloCleanName in 97-solo.js). Gebruikt door Automatisch,
+// Zelf spelen en Multiplayer.
+const BOT_NAMES = [
+  'Kapitein Nova', 'Sergeant Flux', 'Commander Orion', 'Majoor Quasar', 'Luitenant Ion',
+  'Admiraal Zenith', 'Pilot Nebula', 'Korporaal Rax', 'Sergeant Plasma', 'Kapitein Kobalt',
+  'Unit K-9', 'Echo-7', 'Droid ZX-4', 'Mecha-Mira', 'Cyber-Sjef', 'Raket-Rita', 'Orbit-Otto',
+  'Kernel Kees', 'Astro-Ad', 'Turbo-Tess', 'Specter', 'Titan', 'Vortex', 'Glitch', 'Nyx',
+  'Bolt', 'Rogue', 'Havik', 'Comet', 'Ironclad',
+];
+// `count` unieke botnamen, nooit gelijk aan een naam in `taken` (hoofdletters/spaties tellen niet)
+function pickBotNames(count, taken = []){
+  const key = (s) => String(s).toLowerCase().replace(/\s+/g, ' ').trim();
+  const used = new Set(taken.map(key));
+  const pool = BOT_NAMES.filter(n => !used.has(key(n)));
+  for (let i = pool.length - 1; i > 0; i--){
+    const j = Math.floor(Math.random() * (i + 1));
+    [pool[i], pool[j]] = [pool[j], pool[i]];
+  }
+  const out = pool.slice(0, count);
+  for (let n = 1; out.length < count; n++) if (!used.has(key(`Bot ${n}`))) out.push(`Bot ${n}`);   // vangnet
+  return out;
+}
+
 const walkBoardEl = document.getElementById('walkBoard');
 const walkPlayersSel = document.getElementById('walkPlayers');
 const walkEnergyModeEl = document.getElementById('walkEnergyMode');
@@ -8315,9 +8340,10 @@ async function runWalkSimulation(){
 
   // geen startpositie vooraf: die kiezen de bots straks zelf, in de volgorde van de worp
   // (walkRunOpening hierboven)
+  const botNames = pickBotNames(playerCount);   // in Automatisch zijn het allemaal bots
   const players = Array.from({ length: playerCount }, (_, i) => ({
     idx: i,
-    name: playerCount === 1 ? 'Speler' : `Speler ${i + 1}`,
+    name: botNames[i],
     color: WALK_PLAYER_COLORS[i],
     startLabel: null,
     pos: null,
@@ -9051,12 +9077,14 @@ function soloRebuildSetup(){
 
   soloSetupRand = mulberry32(Math.floor(Math.random() * 4294967296));
   soloSetupPlayers = [];
+  // bots een toffe naam (pickBotNames, 96-walk.js) — nooit gelijk aan een mens aan tafel
+  const botNames = pickBotNames(bots, Array.from({ length: humanCount }, (_, i) => soloSeatName(i)));
   for (let i = 0; i < total; i++){
     const isHuman = i < humanCount;   // eerste plekken zijn mens, de rest bot
     soloSetupPlayers.push({
       idx: i,
       isHuman,
-      name: isHuman ? soloSeatName(i) : `Speler ${i + 1}`,
+      name: isHuman ? soloSeatName(i) : botNames[i - humanCount],
       color: WALK_PLAYER_COLORS[i],
       deck: simShuffle(SIM_QUEST_LABELS, soloSetupRand),
       nextIdx: 0, completed: 0, myTurn: 0, energy: 0, cards: [], rank: 0, doneCells: [], condenserPending: false,
@@ -12737,15 +12765,10 @@ function mpHostStartGame(){
   const humans = mp.seats.slice(0, total);
   const soloSeedRand = mulberry32(Math.floor(Math.random() * 4294967296));
   const players = [];
-  // bots heten "Speler N" — maar nooit hetzelfde als een mens in de kamer (die mag zichzelf
-  // bv. "Speler 3" noemen), anders stonden er twee spelers met dezelfde naam in het potje
-  const usedNames = new Set(humans.map(s => mpNameKey(s.name)));
-  const botName = (i) => {
-    for (let n = i + 1; ; n++){
-      const cand = `Speler ${n}`;
-      if (!usedNames.has(mpNameKey(cand))){ usedNames.add(mpNameKey(cand)); return cand; }
-    }
-  };
+  // bots krijgen een toffe naam (pickBotNames, 96-walk.js) — nooit hetzelfde als een mens in de
+  // kamer, anders stonden er twee spelers met dezelfde naam in het potje
+  const botNames = pickBotNames(Math.max(0, total - humans.length), humans.map(s => s.name));
+  const botName = (i) => botNames[i - humans.length];
   for (let i = 0; i < total; i++){
     const seat = humans[i];
     const isHuman = !!seat;

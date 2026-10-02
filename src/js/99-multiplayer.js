@@ -684,15 +684,10 @@ function mpHostStartGame(){
   const humans = mp.seats.slice(0, total);
   const soloSeedRand = mulberry32(Math.floor(Math.random() * 4294967296));
   const players = [];
-  // bots heten "Speler N" — maar nooit hetzelfde als een mens in de kamer (die mag zichzelf
-  // bv. "Speler 3" noemen), anders stonden er twee spelers met dezelfde naam in het potje
-  const usedNames = new Set(humans.map(s => mpNameKey(s.name)));
-  const botName = (i) => {
-    for (let n = i + 1; ; n++){
-      const cand = `Speler ${n}`;
-      if (!usedNames.has(mpNameKey(cand))){ usedNames.add(mpNameKey(cand)); return cand; }
-    }
-  };
+  // bots krijgen een toffe naam (pickBotNames, 96-walk.js) — nooit hetzelfde als een mens in de
+  // kamer, anders stonden er twee spelers met dezelfde naam in het potje
+  const botNames = pickBotNames(Math.max(0, total - humans.length), humans.map(s => s.name));
+  const botName = (i) => botNames[i - humans.length];
   for (let i = 0; i < total; i++){
     const seat = humans[i];
     const isHuman = !!seat;

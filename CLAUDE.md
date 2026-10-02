@@ -69,6 +69,7 @@ aangeroepen (functiedeclaraties worden gehoist, `const`/`let` niet).
 | een energie-actie of de prijs ervan aanpassen | `95-simulate.js` (`ENERGY_ACTIONS`, `botPreRollMove`) + knoppen in `97-solo.js` (`soloRenderActionPanel`/`soloUseEnergyAction`) |
 | iets aan "Spelen" → Automatisch (pion, tempo) | `96-walk.js`   |
 | de modus-schakelaar zelf (Automatisch/Zelf spelen/Multiplayer) | `97-solo.js` (`setWalkMode`) |
+| de namen van de bots (alle modi)             | `96-walk.js` (`BOT_NAMES`, `pickBotNames`) |
 | het actiekaartvakje van een gang verplaatsen | tegel-editor in de tool (of `src/data/tiles.json`, labels `4.1`–`4.10`) |
 
 ## Spelregels die in de code zitten

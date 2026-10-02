@@ -178,12 +178,14 @@ function soloRebuildSetup(){
 
   soloSetupRand = mulberry32(Math.floor(Math.random() * 4294967296));
   soloSetupPlayers = [];
+  // bots een toffe naam (pickBotNames, 96-walk.js) — nooit gelijk aan een mens aan tafel
+  const botNames = pickBotNames(bots, Array.from({ length: humanCount }, (_, i) => soloSeatName(i)));
   for (let i = 0; i < total; i++){
     const isHuman = i < humanCount;   // eerste plekken zijn mens, de rest bot
     soloSetupPlayers.push({
       idx: i,
       isHuman,
-      name: isHuman ? soloSeatName(i) : `Speler ${i + 1}`,
+      name: isHuman ? soloSeatName(i) : botNames[i - humanCount],
       color: WALK_PLAYER_COLORS[i],
       deck: simShuffle(SIM_QUEST_LABELS, soloSetupRand),
       nextIdx: 0, completed: 0, myTurn: 0, energy: 0, cards: [], rank: 0, doneCells: [], condenserPending: false,

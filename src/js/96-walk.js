@@ -26,6 +26,31 @@ const WALK_SPEEDS = [
 const WALK_PLAYER_COLORS = ['#ff4fd8', '#ffd23d', '#7c5cff', '#ff7a45'];
 const WALK_MAX_PLAYERS = SIM_START_LABELS.length;
 
+// Bots krijgen altijd een toffe naam i.p.v. "Speler N" (gebruikerswens), in het thema van het
+// bevoorradingsschip. Puur cosmetisch: gekozen met Math.random, los van de seed van het potje.
+// Max. 18 tekens (zelfde grens als soloCleanName in 97-solo.js). Gebruikt door Automatisch,
+// Zelf spelen en Multiplayer.
+const BOT_NAMES = [
+  'Kapitein Nova', 'Sergeant Flux', 'Commander Orion', 'Majoor Quasar', 'Luitenant Ion',
+  'Admiraal Zenith', 'Pilot Nebula', 'Korporaal Rax', 'Sergeant Plasma', 'Kapitein Kobalt',
+  'Unit K-9', 'Echo-7', 'Droid ZX-4', 'Mecha-Mira', 'Cyber-Sjef', 'Raket-Rita', 'Orbit-Otto',
+  'Kernel Kees', 'Astro-Ad', 'Turbo-Tess', 'Specter', 'Titan', 'Vortex', 'Glitch', 'Nyx',
+  'Bolt', 'Rogue', 'Havik', 'Comet', 'Ironclad',
+];
+// `count` unieke botnamen, nooit gelijk aan een naam in `taken` (hoofdletters/spaties tellen niet)
+function pickBotNames(count, taken = []){
+  const key = (s) => String(s).toLowerCase().replace(/\s+/g, ' ').trim();
+  const used = new Set(taken.map(key));
+  const pool = BOT_NAMES.filter(n => !used.has(key(n)));
+  for (let i = pool.length - 1; i > 0; i--){
+    const j = Math.floor(Math.random() * (i + 1));
+    [pool[i], pool[j]] = [pool[j], pool[i]];
+  }
+  const out = pool.slice(0, count);
+  for (let n = 1; out.length < count; n++) if (!used.has(key(`Bot ${n}`))) out.push(`Bot ${n}`);   // vangnet
+  return out;
+}
+
 const walkBoardEl = document.getElementById('walkBoard');
 const walkPlayersSel = document.getElementById('walkPlayers');
 const walkEnergyModeEl = document.getElementById('walkEnergyMode');
@@ -793,9 +818,10 @@ async function runWalkSimulation(){
 
   // geen startpositie vooraf: die kiezen de bots straks zelf, in de volgorde van de worp
   // (walkRunOpening hierboven)
+  const botNames = pickBotNames(playerCount);   // in Automatisch zijn het allemaal bots
   const players = Array.from({ length: playerCount }, (_, i) => ({
     idx: i,
-    name: playerCount === 1 ? 'Speler' : `Speler ${i + 1}`,
+    name: botNames[i],
     color: WALK_PLAYER_COLORS[i],
     startLabel: null,
     pos: null,
