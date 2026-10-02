@@ -272,6 +272,16 @@
   .sim-run{display:flex; flex-direction:column; align-items:center; text-align:center;}
   .sim-run .seed-row{flex-direction:column; align-items:center; gap:10px;}
   .sim-run input[type=number]{width:130px; text-align:center;}
+  /* getalveld met eigen −/+ knoppen; de ingebouwde browserpijltjes zijn verborgen */
+  .num-stepper{display:flex; align-items:stretch; gap:6px;}
+  .num-stepper input[type=number]{-moz-appearance:textfield; appearance:textfield;}
+  .num-stepper input[type=number]::-webkit-inner-spin-button,
+  .num-stepper input[type=number]::-webkit-outer-spin-button{-webkit-appearance:none; margin:0;}
+  .num-step{
+    width:42px; min-width:0 !important; padding:0; font-size:20px; line-height:1; font-weight:700;
+    color:var(--amber); background:var(--hull); border:1px solid var(--line); border-radius:4px;
+  }
+  .num-step:hover{border-color:var(--amber-dim); background:rgba(255,181,69,.08);}
   .sim-run button{min-width:200px;}
   /* verplicht-veld-fout (nu alleen #mpHostName, zie mpHostCreate in 99-multiplayer.js) — rode
      rand + gloed i.p.v. de normale amber-focusring, generiek genoeg voor hergebruik elders. */
@@ -2673,7 +2683,13 @@
         <div class="field sim-run">
           <label for="simCount">Aantal potjes</label>
           <div class="seed-row">
-            <input type="number" id="simCount" min="100" max="20000" step="100" value="2000">
+            <!-- eigen −/+ knoppen i.p.v. de piepkleine pijltjes van de browser (gebruikersmelding),
+                 zie 80-controls.js -->
+            <div class="num-stepper">
+              <button type="button" class="num-step" data-step-for="simCount" data-step="-1" aria-label="Minder potjes">−</button>
+              <input type="number" id="simCount" min="100" max="20000" step="100" value="2000">
+              <button type="button" class="num-step" data-step-for="simCount" data-step="1" aria-label="Meer potjes">+</button>
+            </div>
             <button id="btnSimulate" class="primary">Draai simulatie</button>
           </div>
         </div>
@@ -6773,6 +6789,16 @@ const simCountEl = document.getElementById('simCount');
 const simStatusEl = document.getElementById('simStatus');
 const simResultsEl = document.getElementById('simResults');
 const btnSimulate = document.getElementById('btnSimulate');
+// −/+ knoppen naast een getalveld (.num-step, data-step-for = id van het veld, data-step = ±1):
+// één klik = één `step` van het veld, binnen min/max — i.p.v. de piepkleine browserpijltjes
+for (const btn of document.querySelectorAll('.num-step')){
+  btn.addEventListener('click', () => {
+    const input = document.getElementById(btn.dataset.stepFor);
+    if (!input) return;
+    if (btn.dataset.step === '1') input.stepUp(); else input.stepDown();
+    input.dispatchEvent(new Event('change', { bubbles: true }));
+  });
+}
 const simProgressEl = document.getElementById('simProgress');
 const simProgressFillEl = document.getElementById('simProgressFill');
 const simProgressTextEl = document.getElementById('simProgressText');

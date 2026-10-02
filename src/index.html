@@ -164,7 +164,13 @@
         <div class="field sim-run">
           <label for="simCount">Aantal potjes</label>
           <div class="seed-row">
-            <input type="number" id="simCount" min="100" max="20000" step="100" value="2000">
+            <!-- eigen −/+ knoppen i.p.v. de piepkleine pijltjes van de browser (gebruikersmelding),
+                 zie 80-controls.js -->
+            <div class="num-stepper">
+              <button type="button" class="num-step" data-step-for="simCount" data-step="-1" aria-label="Minder potjes">−</button>
+              <input type="number" id="simCount" min="100" max="20000" step="100" value="2000">
+              <button type="button" class="num-step" data-step-for="simCount" data-step="1" aria-label="Meer potjes">+</button>
+            </div>
             <button id="btnSimulate" class="primary">Draai simulatie</button>
           </div>
         </div>

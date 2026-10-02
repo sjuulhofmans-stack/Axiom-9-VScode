@@ -1438,6 +1438,16 @@ const simCountEl = document.getElementById('simCount');
 const simStatusEl = document.getElementById('simStatus');
 const simResultsEl = document.getElementById('simResults');
 const btnSimulate = document.getElementById('btnSimulate');
+// −/+ knoppen naast een getalveld (.num-step, data-step-for = id van het veld, data-step = ±1):
+// één klik = één `step` van het veld, binnen min/max — i.p.v. de piepkleine browserpijltjes
+for (const btn of document.querySelectorAll('.num-step')){
+  btn.addEventListener('click', () => {
+    const input = document.getElementById(btn.dataset.stepFor);
+    if (!input) return;
+    if (btn.dataset.step === '1') input.stepUp(); else input.stepDown();
+    input.dispatchEvent(new Event('change', { bubbles: true }));
+  });
+}
 const simProgressEl = document.getElementById('simProgress');
 const simProgressFillEl = document.getElementById('simProgressFill');
 const simProgressTextEl = document.getElementById('simProgressText');
