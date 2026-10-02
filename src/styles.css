@@ -584,6 +584,44 @@
     padding:28px 36px; box-shadow:0 8px 30px rgba(0,0,0,.5);
   }
   .walk-endgame-trophy{font-size:40px; line-height:1;}
+  /* knop "Statistieken" onderaan de uitslag (en "Terug naar de uitslag" onder de tabel) —
+     soloRenderEndgameStats in 97-solo.js */
+  .walk-endgame-stats-btn{margin-top:14px; min-width:200px;}
+  /* in de statistiekenstand mag de kaart breder (1 kolom per speler) en zo nodig scrollen,
+     zodat hij nooit buiten het bord valt */
+  /* compact genoeg (rijhoogte ±19px) om ook op het kleinere laptopbord (±580px hoog) zonder
+     scrollen in één keer te passen; overflow:auto blijft alleen als noodklep */
+  .walk-endgame-card.is-stats{max-width:96%; width:min(860px, 96%); max-height:97%; padding:14px 18px; gap:8px;}
+  .walk-endgame-card.is-stats .walk-endgame-title{font-size:18px;}
+  .walk-endgame-card.is-stats .walk-endgame-stats-btn{margin-top:4px; padding-top:7px; padding-bottom:7px;}
+  /* twee tabellen naast elkaar (soloRenderEndgameStats); pas op een smal scherm onder elkaar */
+  .walk-stats-wrap{
+    width:100%; overflow:auto; min-height:0; flex:1 1 auto;
+    display:grid; grid-template-columns:1fr 1fr; gap:0 20px; align-items:start;
+  }
+  @media (max-width: 700px){ .walk-stats-wrap{grid-template-columns:1fr;} }
+  .walk-stats-legend{display:flex; flex-wrap:wrap; justify-content:center; gap:6px 16px; font-size:12.5px;}
+  .walk-stats-legend-item{display:inline-flex; align-items:baseline; gap:5px; color:var(--text);}
+  .walk-stats-legend-item .walk-stats-place{display:inline;}
+  .walk-stats-table{width:100%; border-collapse:collapse; font-size:12px; line-height:1.3; text-align:right;}
+  .walk-stats-table th, .walk-stats-table td{padding:3px 6px; border-bottom:1px solid var(--line-dim); white-space:nowrap;}
+  .walk-stats-table thead th{padding-top:0; padding-bottom:4px; text-align:center !important;}
+  .walk-stats-table thead .walk-stats-dot{margin:0;}
+  .walk-stats-table tbody th{text-align:left; font-weight:400; color:var(--text-dim);}
+  .walk-stats-table td{font-family:var(--font-mono); color:var(--text); font-variant-numeric:tabular-nums;}
+  .walk-stats-table td.is-best{color:var(--amber); font-weight:700;}
+  .walk-stats-table thead th{
+    vertical-align:bottom; font-weight:700; color:var(--text);
+    border-bottom:2px solid var(--pc, var(--line)); text-align:right;
+  }
+  .walk-stats-table thead th:first-child{border-bottom-color:var(--line);}
+  .walk-stats-dot{display:inline-block; width:9px; height:9px; border-radius:50%; background:var(--pc); margin-right:6px; vertical-align:0;}
+  .walk-stats-place{display:block; font-family:var(--font-mono); font-size:10.5px; font-weight:400; color:var(--text-dim);}
+  .walk-stats-you{font-family:var(--font-mono); font-size:9.5px; text-transform:uppercase; color:var(--pc); border:1px solid var(--pc); border-radius:3px; padding:0 4px;}
+  .walk-stats-group th{
+    text-align:left !important; padding-top:7px; color:var(--quest) !important; font-weight:700 !important;
+    font-family:var(--font-mono); font-size:10.5px; letter-spacing:.08em; text-transform:uppercase;
+  }
   .walk-endgame-title{
     font-family:var(--font-display); font-size:22px; font-weight:700; color:var(--text);
   }

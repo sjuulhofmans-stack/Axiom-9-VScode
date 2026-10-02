@@ -477,6 +477,7 @@ function useActionCard(player, id, deck, extra){
   player.cards.splice(i, 1);
   deck.discard.push(id);
   if (extra) extra.cardUses[id]++;
+  if (player.stats) player.stats.cardsPlayed++;   // afleggen corrigeert dit (soloDiscardCard)
 }
 
 // Loopt vanaf `fromKey` een vaste richting `dir` uit tot `maxSteps`, geen bochten. Stopt bij
@@ -726,6 +727,7 @@ function simGainEnergy(player, roll){
   const before = player.energy;
   player.energy = Math.min(ENERGY_MAX, before + roll);
   const gained = player.energy - before;
+  if (player.stats){ player.stats.energyGained += gained; player.stats.energyWasted += roll - gained; }
   return { gained, wasted: roll - gained };
 }
 
@@ -970,7 +972,31 @@ function simShuffle(arr, rand){
   }
   return a;
 }
-function simRollD6(rand){ return 1 + Math.floor(rand() * 6); }
+// `player` (optioneel): telt de worp mee in zijn statistieken (zie newPlayerStats). Alleen
+// meegegeven voor de loopstenen tijdens het spel, niet bij het dobbelen wie begint.
+function simRollD6(rand, player){
+  const v = 1 + Math.floor(rand() * 6);
+  if (player && player.stats){ player.stats.dice++; player.stats.pips += v; }
+  return v;
+}
+
+// ---------- statistieken per speler (knop "Statistieken" op het winscherm) ----------
+// Alleen Zelf spelen, Multiplayer en Automatisch geven spelers een `stats`-object; de batch-
+// simulatie niet, dus de tellers in simRollD6/simGainEnergy/useActionCard kosten daar niets.
+// Bewust zo weinig mogelijk losse tellers: wat af te leiden is (energie verbruikt, kaarten
+// getrokken) wordt pas op het winscherm uitgerekend (playerStatsRows in 96-walk.js), zodat er
+// geen code-pad is dat vergeet mee te tellen.
+function newPlayerStats(){
+  return {
+    dice: 0, pips: 0,              // loopstenen gegooid en hun ogen (incl. Stuwstoot/-lading, Koerscorrectie)
+    energyRolled: 0,               // ogen van de energiesteen
+    energyGained: 0,               // energie erbij, alle bronnen (steen, Condensator, Noodrantsoen)
+    energyWasted: 0,               // verloren omdat je al op het plafond zat
+    cardsPlayed: 0, cardsDiscarded: 0,
+    walkSteps: 0,                  // vakjes gelopen met de worp
+    dashSteps: 0,                  // vakjes gesprint met de Zwaartekracht-laarzen
+  };
+}
 
 // "Pech-reeksen": zoektochten van 12 beurten of langer komen in één bak
 const SIM_SEARCH_HIST_MAX = 12;

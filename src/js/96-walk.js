@@ -837,6 +837,7 @@ async function runWalkSimulation(){
     startLabel: null,
     pos: null,
     questHidden: true,
+    stats: newPlayerStats(),   // voor de knop "Statistieken" op het winscherm
     deck: simShuffle(SIM_QUEST_LABELS, rand),
     nextIdx: 0,
     completed: 0,
@@ -924,6 +925,7 @@ async function runWalkSimulation(){
       } else {
         energyRoll = simRollEnergy(rand);
         pendingEnergy = energyRoll;
+        player.stats.energyRolled += energyRoll;
         // vorige beurt een Condensator gespeeld: deze steen telt dubbel (zie simulateOneGame)
         if (player.condenserPending){
           player.condenserPending = false;
@@ -1145,6 +1147,7 @@ async function runWalkSimulation(){
         }
         bank.limit = pre.bankedCount;
         if (!await walkPath(pre.path, true)) return;
+        if (pre.kind !== 'jump') player.stats.dashSteps += pre.path.length - 1;
       }
       const rollTargets = pre ? targets.slice(pre.bankedCount) : targets;
       if (pre && (pre.endsTurn || player.completed + pre.bankedCount >= SIM_QUESTS_TO_WIN)){
@@ -1167,13 +1170,13 @@ async function runWalkSimulation(){
         if (aborted()) return;
         // loopstenen met Stuwlading (kaart) of Stuwstoot (energie) als derde steen — die twee
         // doen hetzelfde en blijven daarom via else-if elkaar uitsluiten
-        d1 = simRollD6(rand); d2 = simRollD6(rand);
+        d1 = simRollD6(rand, player); d2 = simRollD6(rand, player);
         if (!cardActionUsed && player.cards.includes('boostcell')){
-          d3 = simRollD6(rand);
+          d3 = simRollD6(rand, player);
           useActionCard(player, 'boostcell', deck);
           cardActionUsed = true; usedCardId = 'boostcell';
         } else if (!energyActionUsed && player.strategy === 'boost' && player.energy >= ENERGY_ACTIONS.boost.cost){
-          d3 = simRollD6(rand);
+          d3 = simRollD6(rand, player);
           player.energy -= ENERGY_ACTIONS.boost.cost;
           player.actionUses++;
           energyActionUsed = true; usedEnergyAction = 'boost';
@@ -1199,8 +1202,8 @@ async function runWalkSimulation(){
         // Koerscorrectie: tegenvallende worp overdoen (zie simulateOneGame voor de drempel)
         const dice = d3 ? 3 : 2;
         if (!rollMove.bankedQuest && !cardActionUsed && player.cards.includes('reroll') && roll < dice * 3.5){
-          d1 = simRollD6(rand); d2 = simRollD6(rand);
-          if (d3) d3 = simRollD6(rand);
+          d1 = simRollD6(rand, player); d2 = simRollD6(rand, player);
+          if (d3) d3 = simRollD6(rand, player);
           roll = d1 + d2 + (d3 || 0);
           // Stroomonderbreking geldt ook voor de nieuwe worp (zie simulateOneGame)
           if (rollPenalty) roll = Math.max(1, roll - rollPenalty);
@@ -1225,6 +1228,7 @@ async function runWalkSimulation(){
         // opgeteld: wat de sprint vóór de worp al pakte is al getoond (bank.shown)
         bank.limit = (pre ? pre.bankedCount : 0) + rollMove.bankedCount;
         if (!await walkPath(rollMove.path, false)) return;
+        player.stats.walkSteps += rollMove.path.length - 1;
         move = mergePreRollMove(pre, rollMove);
       }
       // laatst gelopen richting onthouden — Terugtrekbevel duwt je daar weer langs terug

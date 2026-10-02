@@ -591,6 +591,44 @@
     padding:28px 36px; box-shadow:0 8px 30px rgba(0,0,0,.5);
   }
   .walk-endgame-trophy{font-size:40px; line-height:1;}
+  /* knop "Statistieken" onderaan de uitslag (en "Terug naar de uitslag" onder de tabel) —
+     soloRenderEndgameStats in 97-solo.js */
+  .walk-endgame-stats-btn{margin-top:14px; min-width:200px;}
+  /* in de statistiekenstand mag de kaart breder (1 kolom per speler) en zo nodig scrollen,
+     zodat hij nooit buiten het bord valt */
+  /* compact genoeg (rijhoogte ±19px) om ook op het kleinere laptopbord (±580px hoog) zonder
+     scrollen in één keer te passen; overflow:auto blijft alleen als noodklep */
+  .walk-endgame-card.is-stats{max-width:96%; width:min(860px, 96%); max-height:97%; padding:14px 18px; gap:8px;}
+  .walk-endgame-card.is-stats .walk-endgame-title{font-size:18px;}
+  .walk-endgame-card.is-stats .walk-endgame-stats-btn{margin-top:4px; padding-top:7px; padding-bottom:7px;}
+  /* twee tabellen naast elkaar (soloRenderEndgameStats); pas op een smal scherm onder elkaar */
+  .walk-stats-wrap{
+    width:100%; overflow:auto; min-height:0; flex:1 1 auto;
+    display:grid; grid-template-columns:1fr 1fr; gap:0 20px; align-items:start;
+  }
+  @media (max-width: 700px){ .walk-stats-wrap{grid-template-columns:1fr;} }
+  .walk-stats-legend{display:flex; flex-wrap:wrap; justify-content:center; gap:6px 16px; font-size:12.5px;}
+  .walk-stats-legend-item{display:inline-flex; align-items:baseline; gap:5px; color:var(--text);}
+  .walk-stats-legend-item .walk-stats-place{display:inline;}
+  .walk-stats-table{width:100%; border-collapse:collapse; font-size:12px; line-height:1.3; text-align:right;}
+  .walk-stats-table th, .walk-stats-table td{padding:3px 6px; border-bottom:1px solid var(--line-dim); white-space:nowrap;}
+  .walk-stats-table thead th{padding-top:0; padding-bottom:4px; text-align:center !important;}
+  .walk-stats-table thead .walk-stats-dot{margin:0;}
+  .walk-stats-table tbody th{text-align:left; font-weight:400; color:var(--text-dim);}
+  .walk-stats-table td{font-family:var(--font-mono); color:var(--text); font-variant-numeric:tabular-nums;}
+  .walk-stats-table td.is-best{color:var(--amber); font-weight:700;}
+  .walk-stats-table thead th{
+    vertical-align:bottom; font-weight:700; color:var(--text);
+    border-bottom:2px solid var(--pc, var(--line)); text-align:right;
+  }
+  .walk-stats-table thead th:first-child{border-bottom-color:var(--line);}
+  .walk-stats-dot{display:inline-block; width:9px; height:9px; border-radius:50%; background:var(--pc); margin-right:6px; vertical-align:0;}
+  .walk-stats-place{display:block; font-family:var(--font-mono); font-size:10.5px; font-weight:400; color:var(--text-dim);}
+  .walk-stats-you{font-family:var(--font-mono); font-size:9.5px; text-transform:uppercase; color:var(--pc); border:1px solid var(--pc); border-radius:3px; padding:0 4px;}
+  .walk-stats-group th{
+    text-align:left !important; padding-top:7px; color:var(--quest) !important; font-weight:700 !important;
+    font-family:var(--font-mono); font-size:10.5px; letter-spacing:.08em; text-transform:uppercase;
+  }
   .walk-endgame-title{
     font-family:var(--font-display); font-size:22px; font-weight:700; color:var(--text);
   }
@@ -5611,6 +5649,7 @@ function useActionCard(player, id, deck, extra){
   player.cards.splice(i, 1);
   deck.discard.push(id);
   if (extra) extra.cardUses[id]++;
+  if (player.stats) player.stats.cardsPlayed++;   // afleggen corrigeert dit (soloDiscardCard)
 }
 
 // Loopt vanaf `fromKey` een vaste richting `dir` uit tot `maxSteps`, geen bochten. Stopt bij
@@ -5860,6 +5899,7 @@ function simGainEnergy(player, roll){
   const before = player.energy;
   player.energy = Math.min(ENERGY_MAX, before + roll);
   const gained = player.energy - before;
+  if (player.stats){ player.stats.energyGained += gained; player.stats.energyWasted += roll - gained; }
   return { gained, wasted: roll - gained };
 }
 
@@ -6104,7 +6144,31 @@ function simShuffle(arr, rand){
   }
   return a;
 }
-function simRollD6(rand){ return 1 + Math.floor(rand() * 6); }
+// `player` (optioneel): telt de worp mee in zijn statistieken (zie newPlayerStats). Alleen
+// meegegeven voor de loopstenen tijdens het spel, niet bij het dobbelen wie begint.
+function simRollD6(rand, player){
+  const v = 1 + Math.floor(rand() * 6);
+  if (player && player.stats){ player.stats.dice++; player.stats.pips += v; }
+  return v;
+}
+
+// ---------- statistieken per speler (knop "Statistieken" op het winscherm) ----------
+// Alleen Zelf spelen, Multiplayer en Automatisch geven spelers een `stats`-object; de batch-
+// simulatie niet, dus de tellers in simRollD6/simGainEnergy/useActionCard kosten daar niets.
+// Bewust zo weinig mogelijk losse tellers: wat af te leiden is (energie verbruikt, kaarten
+// getrokken) wordt pas op het winscherm uitgerekend (playerStatsRows in 96-walk.js), zodat er
+// geen code-pad is dat vergeet mee te tellen.
+function newPlayerStats(){
+  return {
+    dice: 0, pips: 0,              // loopstenen gegooid en hun ogen (incl. Stuwstoot/-lading, Koerscorrectie)
+    energyRolled: 0,               // ogen van de energiesteen
+    energyGained: 0,               // energie erbij, alle bronnen (steen, Condensator, Noodrantsoen)
+    energyWasted: 0,               // verloren omdat je al op het plafond zat
+    cardsPlayed: 0, cardsDiscarded: 0,
+    walkSteps: 0,                  // vakjes gelopen met de worp
+    dashSteps: 0,                  // vakjes gesprint met de Zwaartekracht-laarzen
+  };
+}
 
 // "Pech-reeksen": zoektochten van 12 beurten of langer komen in één bak
 const SIM_SEARCH_HIST_MAX = 12;
@@ -8005,6 +8069,7 @@ async function runWalkSimulation(){
     startLabel: null,
     pos: null,
     questHidden: true,
+    stats: newPlayerStats(),   // voor de knop "Statistieken" op het winscherm
     deck: simShuffle(SIM_QUEST_LABELS, rand),
     nextIdx: 0,
     completed: 0,
@@ -8092,6 +8157,7 @@ async function runWalkSimulation(){
       } else {
         energyRoll = simRollEnergy(rand);
         pendingEnergy = energyRoll;
+        player.stats.energyRolled += energyRoll;
         // vorige beurt een Condensator gespeeld: deze steen telt dubbel (zie simulateOneGame)
         if (player.condenserPending){
           player.condenserPending = false;
@@ -8313,6 +8379,7 @@ async function runWalkSimulation(){
         }
         bank.limit = pre.bankedCount;
         if (!await walkPath(pre.path, true)) return;
+        if (pre.kind !== 'jump') player.stats.dashSteps += pre.path.length - 1;
       }
       const rollTargets = pre ? targets.slice(pre.bankedCount) : targets;
       if (pre && (pre.endsTurn || player.completed + pre.bankedCount >= SIM_QUESTS_TO_WIN)){
@@ -8335,13 +8402,13 @@ async function runWalkSimulation(){
         if (aborted()) return;
         // loopstenen met Stuwlading (kaart) of Stuwstoot (energie) als derde steen — die twee
         // doen hetzelfde en blijven daarom via else-if elkaar uitsluiten
-        d1 = simRollD6(rand); d2 = simRollD6(rand);
+        d1 = simRollD6(rand, player); d2 = simRollD6(rand, player);
         if (!cardActionUsed && player.cards.includes('boostcell')){
-          d3 = simRollD6(rand);
+          d3 = simRollD6(rand, player);
           useActionCard(player, 'boostcell', deck);
           cardActionUsed = true; usedCardId = 'boostcell';
         } else if (!energyActionUsed && player.strategy === 'boost' && player.energy >= ENERGY_ACTIONS.boost.cost){
-          d3 = simRollD6(rand);
+          d3 = simRollD6(rand, player);
           player.energy -= ENERGY_ACTIONS.boost.cost;
           player.actionUses++;
           energyActionUsed = true; usedEnergyAction = 'boost';
@@ -8367,8 +8434,8 @@ async function runWalkSimulation(){
         // Koerscorrectie: tegenvallende worp overdoen (zie simulateOneGame voor de drempel)
         const dice = d3 ? 3 : 2;
         if (!rollMove.bankedQuest && !cardActionUsed && player.cards.includes('reroll') && roll < dice * 3.5){
-          d1 = simRollD6(rand); d2 = simRollD6(rand);
-          if (d3) d3 = simRollD6(rand);
+          d1 = simRollD6(rand, player); d2 = simRollD6(rand, player);
+          if (d3) d3 = simRollD6(rand, player);
           roll = d1 + d2 + (d3 || 0);
           // Stroomonderbreking geldt ook voor de nieuwe worp (zie simulateOneGame)
           if (rollPenalty) roll = Math.max(1, roll - rollPenalty);
@@ -8393,6 +8460,7 @@ async function runWalkSimulation(){
         // opgeteld: wat de sprint vóór de worp al pakte is al getoond (bank.shown)
         bank.limit = (pre ? pre.bankedCount : 0) + rollMove.bankedCount;
         if (!await walkPath(rollMove.path, false)) return;
+        player.stats.walkSteps += rollMove.path.length - 1;
         move = mergePreRollMove(pre, rollMove);
       }
       // laatst gelopen richting onthouden — Terugtrekbevel duwt je daar weer langs terug
@@ -8727,6 +8795,7 @@ function soloRebuildSetup(){
       startLabel: null,
       pos: null,
       questHidden: true,
+      stats: newPlayerStats(),   // voor de knop "Statistieken" op het winscherm
       skipEnergyRoll: false, actionUses: 0,
     });
   }
@@ -9215,6 +9284,8 @@ function soloDiscardCard(id){
   if (mpIntercept('discardCard', { id })) return;
   const p = solo();
   useActionCard(p, id, soloDeck);
+  // useActionCard telt elke kaart als "gespeeld" — deze is afgelegd
+  if (p.stats){ p.stats.cardsPlayed--; p.stats.cardsDiscarded++; }
   soloDiscardedCardId = id;
   walkLog(`Je legt <b>${ACTION_CARDS[id].name}</b> af.`, null, p);
   soloAfterCardAction();
@@ -9602,7 +9673,7 @@ function soloPlayCard(id){
   } else if (id === 'boostcell'){
     // Je hebt al gedobbeld (deze kaart kan pas ná de worp gespeeld worden) — dus geen 3e
     // loopsteen vóóraf zoals bij de energie-actie Stuwstoot, maar een extra worp erbovenop.
-    const d3 = simRollD6(soloRand);
+    const d3 = simRollD6(soloRand, p);
     soloMove.d3 = (soloMove.d3 || 0) + d3;
     soloMove.roll += d3;
     soloMove.stepsLeft += d3;
@@ -9646,8 +9717,8 @@ function soloPlayCard(id){
     renderWalkScore(soloPlayers, soloActiveIdx);
     soloAfterCardAction();
   } else if (id === 'reroll'){
-    const d1 = simRollD6(soloRand), d2 = simRollD6(soloRand);
-    const d3 = soloMove.d3 !== null && soloMove.d3 !== undefined ? simRollD6(soloRand) : null;
+    const d1 = simRollD6(soloRand, p), d2 = simRollD6(soloRand, p);
+    const d3 = soloMove.d3 !== null && soloMove.d3 !== undefined ? simRollD6(soloRand, p) : null;
     // een Stroomonderbreking op de oorspronkelijke worp geldt ook voor de nieuwe
     const penalty = soloMove.penalty || 0;
     const roll = Math.max(1, d1 + d2 + (d3 || 0) - penalty);
@@ -9668,6 +9739,7 @@ function soloUseEnergyAction(id){
   // de laarzen alleen als er ook echt een richting vrij is (anders betaal je voor niets)
   if (id === 'gravity' && (soloUsedBoots || !soloDashOptions().length)) return;
   p.energy -= act.cost;
+  p.actionUses = (p.actionUses || 0) + 1;   // telde vroeger alleen bij bots; nu ook voor het winscherm
   soloRenderEnergyOverview();
   soloUsedEnergyId = id;
   // kosten steeds uit ENERGY_ACTIONS i.p.v. hier een getal te herhalen — dat liep bij eerdere
@@ -9775,6 +9847,7 @@ function soloResolveBoots(dir){
   const p = solo();
   const namen = ['noorden', 'oosten', 'zuiden', 'westen'];
   soloDashSteps = opt.path.length - 1;
+  if (p.stats) p.stats.dashSteps += soloDashSteps;
   // soloBankCurrentQuest() leest soloMove voor zijn logregel — dus een "zet" van 0 worp
   soloMove = { d1: 0, d2: 0, d3: null, roll: 0, stepsLeft: 0, lastDir: -1, path: [p.pos], dash: true };
   walkLog(`<b>Zwaartekracht-laarzen</b>: ${soloDashSteps} vakjes rechtdoor naar het ${namen[dir]}.`, null, p);
@@ -9988,6 +10061,7 @@ function soloRollEnergyForTurn(){
   if (soloEnergyRoll !== null) return;
   const p = solo();
   soloEnergyRoll = simRollEnergy(soloRand);
+  if (p.stats) p.stats.energyRolled += soloEnergyRoll;
   soloEnergyGain = simGainEnergy(p, soloEnergyRoll);
   // Condensator die je vorige beurt speelde: deze steen telt dubbel. Gooi je 0, dan valt er
   // niets te verdubbelen en blijft hij staan tot een beurt waarin je wél iets gooit.
@@ -10002,11 +10076,11 @@ function soloRollEnergyForTurn(){
 function soloRollDice(){
   if (soloPhase !== 'rolling') return;
   if (mpIntercept('rollDice', {})) return;
-  const d1 = simRollD6(soloRand), d2 = simRollD6(soloRand);
-  const d3 = soloPendingBoost ? simRollD6(soloRand) : null;
+  const p = solo();
+  const d1 = simRollD6(soloRand, p), d2 = simRollD6(soloRand, p);
+  const d3 = soloPendingBoost ? simRollD6(soloRand, p) : null;
   soloRollEnergyForTurn();
   let roll = d1 + d2 + (d3 || 0);
-  const p = solo();
   const penalty = p.rollPenalty;   // onthouden in soloMove: geldt ook voor een Koerscorrectie
   if (penalty){
     const nieuw = Math.max(1, roll - penalty);
@@ -10190,6 +10264,7 @@ function soloHandleMoveClick(key){
   solo().lastDir = match.dir;   // Terugtrekbevel duwt je langs deze richting terug
   soloMove.stepsLeft--;
   soloMove.path.push(key);
+  if (p.stats) p.stats.walkSteps++;
   soloCheckActionCell(p.pos, p, true);
   paintWalkPawns(soloGraph, soloPlayers, p.idx);
 
@@ -10378,6 +10453,7 @@ function soloResolveBotTurn(player){
   else {
     energyRoll = simRollEnergy(soloRand);
     pendingEnergy = energyRoll;
+    player.stats.energyRolled += energyRoll;
     // vorige beurt een Condensator gespeeld: deze steen telt dubbel (zie simulateOneGame)
     if (player.condenserPending){
       player.condenserPending = false;
@@ -10527,12 +10603,12 @@ function soloResolveBotTurn(player){
              bankedQuest: pre.bankedCount > 0, wasBlocked: pre.wasBlocked };
   } else {
     let dice = 2;
-    d1 = simRollD6(soloRand); d2 = simRollD6(soloRand);
+    d1 = simRollD6(soloRand, player); d2 = simRollD6(soloRand, player);
     roll = d1 + d2;
     if (!cardActionUsed && player.cards.includes('boostcell')){
-      d3 = simRollD6(soloRand); roll += d3; dice = 3; useActionCard(player, 'boostcell', soloDeck); cardActionUsed = true;
+      d3 = simRollD6(soloRand, player); roll += d3; dice = 3; useActionCard(player, 'boostcell', soloDeck); cardActionUsed = true;
     } else if (!energyActionUsed && player.strategy === 'boost' && player.energy >= ENERGY_ACTIONS.boost.cost){
-      d3 = simRollD6(soloRand); roll += d3; dice = 3; player.energy -= ENERGY_ACTIONS.boost.cost; player.actionUses++; energyActionUsed = true;
+      d3 = simRollD6(soloRand, player); roll += d3; dice = 3; player.energy -= ENERGY_ACTIONS.boost.cost; player.actionUses++; energyActionUsed = true;
     }
     if (player.rollPenalty){ rollPenalty = player.rollPenalty; roll = Math.max(1, roll - rollPenalty); player.rollPenalty = 0; }
     if (!cardActionUsed && player.cards.includes('fastlane')){
@@ -10542,8 +10618,8 @@ function soloResolveBotTurn(player){
     rollMove = resolveMove(soloGraph, rollFrom, roll, occupied, rollTargets, soloRand, undefined, allowUturn);
     // Koerscorrectie: tegenvallende worp overdoen (zie simulateOneGame voor de drempel)
     if (!rollMove.bankedQuest && !cardActionUsed && player.cards.includes('reroll') && roll < dice * 3.5){
-      d1 = simRollD6(soloRand); d2 = simRollD6(soloRand);
-      if (dice === 3) d3 = simRollD6(soloRand);
+      d1 = simRollD6(soloRand, player); d2 = simRollD6(soloRand, player);
+      if (dice === 3) d3 = simRollD6(soloRand, player);
       roll = d1 + d2 + (dice === 3 ? d3 : 0);
       if (rollPenalty) roll = Math.max(1, roll - rollPenalty);   // Stroomonderbreking blijft gelden
       useActionCard(player, 'reroll', soloDeck);
@@ -10558,6 +10634,8 @@ function soloResolveBotTurn(player){
     }
     move = mergePreRollMove(pre, rollMove);
   }
+  if (pre && pre.kind !== 'jump') player.stats.dashSteps += pre.path.length - 1;
+  if (rollMove) player.stats.walkSteps += rollMove.path.length - 1;
   const stepDir = lastStepDirection(soloGraph, move.path);
   if (stepDir !== -1) player.lastDir = stepDir;
 
@@ -10764,12 +10842,86 @@ function soloFinishRound(){
 // "jij" kent (`isMe` geeft daar altijd false).
 function soloShowEndgame(trophy, title, sub, players = soloPlayers, isMe = soloIsMe){
   if (!walkEndgameEl || !walkEndgameCardEl) return;
-  walkEndgameCardEl.innerHTML =
-    `<span class="walk-endgame-trophy">${trophy}</span>` +
-    `<span class="walk-endgame-title">${title}</span>` +
-    (sub ? `<span class="walk-endgame-sub">${sub}</span>` : '') +
-    (players.length > 1 ? soloEndgameRankingHtml(players, isMe) : '');
+  // bewaard voor de knop "Statistieken" (en "Terug naar de uitslag") hieronder
+  soloEndgameView = { trophy, title, sub, players, isMe };
+  soloRenderEndgameResult();
   soloReopenEndgame();
+}
+let soloEndgameView = null;
+function soloRenderEndgameResult(){
+  const v = soloEndgameView;
+  if (!v) return;
+  walkEndgameCardEl.classList.remove('is-stats');
+  walkEndgameCardEl.innerHTML =
+    `<span class="walk-endgame-trophy">${v.trophy}</span>` +
+    `<span class="walk-endgame-title">${v.title}</span>` +
+    (v.sub ? `<span class="walk-endgame-sub">${v.sub}</span>` : '') +
+    (v.players.length > 1 ? soloEndgameRankingHtml(v.players, v.isMe) : '') +
+    (v.players.some(p => p.stats)
+      ? `<button type="button" class="ghost walk-endgame-stats-btn" data-endgame-stats>Statistieken</button>` : '');
+}
+// ---------- statistieken per speler (knop op het winscherm) ----------
+// De tellers zelf lopen tijdens het spel mee (newPlayerStats in 95-simulate.js); wat af te leiden
+// is wordt hier pas uitgerekend. `best`: de hoogste waarde in die rij wordt uitgelicht.
+const SOLO_STATS_ROWS = [
+  { group: 'Algemeen' },
+  { label: 'Opdrachten voltooid', best: true, get: p => p.completed, fmt: v => `${v}/${SIM_QUESTS_TO_WIN}` },
+  { label: 'Beurten gespeeld', get: p => p.myTurn || p.ownTurns || 0 },
+  { group: 'Dobbelen en lopen' },
+  { label: 'Loopstenen gegooid', get: p => p.stats.dice },
+  { label: 'Ogen gegooid (totaal)', best: true, get: p => p.stats.pips },
+  { label: 'Gemiddeld per steen', get: p => p.stats.dice ? p.stats.pips / p.stats.dice : 0, fmt: v => nl(v, 2) },
+  { label: 'Vakjes gelopen', best: true, get: p => p.stats.walkSteps },
+  { label: 'Vakjes gesprint (laarzen)', get: p => p.stats.dashSteps },
+  { group: 'Energie' },
+  { label: 'Energie gedobbeld', best: true, get: p => p.stats.energyRolled },
+  { label: 'Energie erbij (ook kaarten)', get: p => p.stats.energyGained },
+  { label: 'Energie verbruikt', best: true, get: p => p.stats.energyGained - p.energy },
+  { label: 'Verloren (voorraad vol)', get: p => p.stats.energyWasted },
+  { label: 'Energie-acties ingezet', get: p => p.actionUses || 0 },
+  { label: 'Energie over', get: p => p.energy },
+  { group: 'Actiekaarten' },
+  { label: 'Getrokken', get: p => p.stats.cardsPlayed + p.stats.cardsDiscarded + p.cards.length },
+  { label: 'Gespeeld', best: true, get: p => p.stats.cardsPlayed },
+  { label: 'Afgelegd', get: p => p.stats.cardsDiscarded },
+  { label: 'Nog in de hand', get: p => p.cards.length },
+];
+// Twee tabellen naast elkaar (de eerste twee groepen links, de rest rechts) met bovenaan één
+// spelerslegenda: zo past alles ook op een laptopbord (±580px hoog) zonder scrollen — als één
+// lange tabel was het daar 37-95px te hoog. Kolomkoppen zijn alleen de kleurstippen.
+function soloRenderEndgameStats(){
+  const v = soloEndgameView;
+  if (!v) return;
+  const players = walkOrderPlayers(v.players).filter(p => p.stats);
+  const legend = players.map(p =>
+    `<span class="walk-stats-legend-item" style="--pc:${p.color}"><span class="walk-stats-dot"></span>` +
+    `<b>${p.name}</b>${v.isMe(p) ? ' <span class="walk-stats-you">jij</span>' : ''}` +
+    `<span class="walk-stats-place">${p.rank ? walkRankLabel(p.rank) : '—'}</span></span>`).join('');
+  const head = `<thead><tr><th></th>${players.map(p => `<th style="--pc:${p.color}" title="${p.name}"><span class="walk-stats-dot"></span></th>`).join('')}</tr></thead>`;
+  const rowHtml = r => {
+    if (r.group) return `<tr class="walk-stats-group"><th colspan="${players.length + 1}">${r.group}</th></tr>`;
+    const vals = players.map(r.get);
+    const max = Math.max(...vals);
+    const fmt = r.fmt || (x => String(x));
+    const cells = vals.map(x => `<td${r.best && players.length > 1 && x === max && max > 0 ? ' class="is-best"' : ''}>${fmt(x)}</td>`).join('');
+    return `<tr><th>${r.label}</th>${cells}</tr>`;
+  };
+  // splitsen bij de 3e groepskop
+  const groupStarts = SOLO_STATS_ROWS.map((r, i) => r.group ? i : -1).filter(i => i >= 0);
+  const split = groupStarts[2] !== undefined ? groupStarts[2] : SOLO_STATS_ROWS.length;
+  const table = rows => `<table class="walk-stats-table">${head}<tbody>${rows.map(rowHtml).join('')}</tbody></table>`;
+  walkEndgameCardEl.classList.add('is-stats');
+  walkEndgameCardEl.innerHTML =
+    `<span class="walk-endgame-title">Statistieken</span>` +
+    `<div class="walk-stats-legend">${legend}</div>` +
+    `<div class="walk-stats-wrap">${table(SOLO_STATS_ROWS.slice(0, split))}${table(SOLO_STATS_ROWS.slice(split))}</div>` +
+    `<button type="button" class="ghost walk-endgame-stats-btn" data-endgame-back>← Terug naar de uitslag</button>`;
+}
+if (walkEndgameCardEl){
+  walkEndgameCardEl.addEventListener('click', (e) => {
+    if (e.target.closest('[data-endgame-stats]')) soloRenderEndgameStats();
+    else if (e.target.closest('[data-endgame-back]')) soloRenderEndgameResult();
+  });
 }
 // eindklassering als lijstje: plaats, kleurstip, naam, voortgang. Volgorde uit
 // walkOrderPlayers() (96-walk.js); gedeelde plaatsen krijgen hetzelfde nummer.
@@ -12117,6 +12269,7 @@ function mpHostStartGame(){
       // tot je mag kiezen is je opdracht geheim, ook in wat er naar de anderen gaat (mpPublicPlayer)
       startLabel: null, questHidden: true,
       pos: null, skipEnergyRoll: false, actionUses: 0,
+      stats: newPlayerStats(),   // voor de knop "Statistieken" op het winscherm (gaat mee naar de gasten)
       peerId: isHuman ? seat.peerId : null,
     });
   }

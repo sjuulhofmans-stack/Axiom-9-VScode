@@ -224,6 +224,12 @@ Check minimaal:
     de gewone kolom (dobbelen/energie/kaarten) terug en is de beurtvolgorde
     gelijk aan de kiesvolgorde. In Multiplayer moet een gast op zijn eigen
     scherm kunnen gooien en kiezen.
+14. Winscherm → knop "Statistieken": per speler opdrachten, beurten,
+    loopstenen/ogen, vakjes gelopen/gesprint, energie gedobbeld/erbij/
+    verbruikt/verloren, energie-acties en actiekaarten. Past zonder scrollen in
+    het bord (ook op ±1400px). Tellers: `newPlayerStats` (95-simulate.js), lopen
+    mee via `simRollD6(rand, player)`, `simGainEnergy` en `useActionCard`;
+    afgeleide waarden in `SOLO_STATS_ROWS` (97-solo.js).
 
 ## Nog te doen
 

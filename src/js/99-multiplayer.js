@@ -711,6 +711,7 @@ function mpHostStartGame(){
       // tot je mag kiezen is je opdracht geheim, ook in wat er naar de anderen gaat (mpPublicPlayer)
       startLabel: null, questHidden: true,
       pos: null, skipEnergyRoll: false, actionUses: 0,
+      stats: newPlayerStats(),   // voor de knop "Statistieken" op het winscherm (gaat mee naar de gasten)
       peerId: isHuman ? seat.peerId : null,
     });
   }
