@@ -742,13 +742,18 @@
      Sinds kort óók op de schermhoogte (en dus op elk scherm vanaf 1361px breed, niet alleen
      tot 1620px): het speelscherm moet zonder scrollen in beeld passen (gebruikersmelding: op
      een Full-HD-scherm met browserbalken was de pagina 70px te hoog). Alles boven en onder het
-     bord samen (paginarand, titel, tabbladen, spelersbalk, legenda/log-knoppen) is gemeten
-     ±318px, de bordrand 71px: vakje = (schermhoogte − 389px) / 32, met 4px speling. */
+     bord samen (paginarand, titel, tabbladen, spelersbalk) is gemeten ±281px — de legenda/log-
+     knoppen staan sinds kort links in .walk-status-col i.p.v. onder het bord — plus de bordrand
+     71px: vakje = (schermhoogte − 352px) / 32, met 4px speling. */
   @media (min-width: 1361px){
     .walk-board-row{
-      --wcell: clamp(14px, min(calc((100vw - 800px) / 40), calc((100vh - 393px) / 32)), 20px);
+      --wcell: clamp(13px, min(calc((100vw - 800px) / 40), calc((100vh - 356px) / 32)), 20px);
       grid-template-columns: minmax(280px,1fr) auto minmax(300px,1.4fr);
     }
+    /* linkerkolom even hoog als het bord, zodat de legenda/log-knoppen onderaan gelijk liggen
+       met de onderrand van het bord */
+    .walk-status-col{height:calc(var(--wcell) * 32 + 71px);}
+    .walk-status-col .walk-extras-toggle{margin-top:auto;}
     /* .walk-board-row ervoor: moet winnen van de algemene #walkBoard{--cell:20px} verderop */
     .walk-board-row #walkBoard{ --cell: var(--wcell); }
     .walk-board-col{max-width:none;}
@@ -1091,10 +1096,11 @@
     font-family:var(--font-mono); font-size:10px; font-weight:700;
     color:var(--qtint, var(--quest)); flex:none;
   }
-  /* lager scherm: het bord (en dus deze kolom) schaalt mee met de schermhoogte (--wcell), en
-     dan passen 9 rijen van 2 regels er niet meer in. Compact: naam + kamer op één regel. Moet
-     ná de gewone .quest-check-*-regels hierboven staan, anders winnen die. */
-  @media (min-width: 1361px) and (max-height: 1000px){
+  /* naast het bord (vanaf 1361px breed): naam + kamer op één regel. Het bord schaalt mee met
+     de schermhoogte (--wcell) en de legenda/log-knoppen staan onderaan deze kolom, dus 9 rijen
+     van 2 regels pasten er niet meer in (kreeg een eigen scrollbalk). Moet ná de gewone
+     .quest-check-*-regels hierboven staan, anders winnen die. */
+  @media (min-width: 1361px){
     .walk-quest-checklist{gap:4px; padding:10px;}
     .quest-check-row{padding:4px 8px;}
     .quest-check-text{flex-direction:row; align-items:baseline; gap:6px;}
@@ -1526,7 +1532,8 @@
 
   /* aan/uit-rij voor de legenda en het logboek hieronder — allebei standaard dicht (zie
      #walkLegend/#walkLog hierbeneden en het commentaar in index.html). */
-  .walk-extras-toggle{margin-top:8px;}
+  /* onderaan de linkerkolom (.walk-status-col), twee even brede knoppen */
+  .walk-extras-toggle{flex:none; margin:0; display:grid; grid-template-columns:1fr 1fr; gap:8px;}
   .walk-extras-toggle .active{color:#eafcff; border-color:var(--amber-dim);}
 
   .walk-legend{
@@ -2808,6 +2815,15 @@
               <div id="walkStatus" class="reach-status"></div>
             </div>
             <div class="walk-panel-box walk-quest-checklist" id="walkQuestChecklist"></div>
+            <!-- legenda en logboek staan standaard DICHT: allebei onbegrensd in hoogte (het
+                 logboek groeit de hele sessie door). Los aan/uit via deze twee knoppen — zie
+                 walkToggleExtra() in 96-walk.js; ze openen onder het bord. De knoppen stonden
+                 eerst zelf onder het bord, maar onderaan deze kolom kost het geen bordhoogte
+                 (gebruikerswens: bord groter). -->
+            <div class="btn-row walk-extras-toggle">
+              <button type="button" class="small ghost" id="btnWalkToggleLegend" aria-pressed="false">Toon legenda</button>
+              <button type="button" class="small ghost" id="btnWalkToggleLog" aria-pressed="false">Toon log</button>
+            </div>
           </div>
           <div class="walk-board-col">
             <div class="board-zoom-wrap">
@@ -2832,15 +2848,6 @@
               <!-- terug naar het winscherm na "Toon kaart" — zelfde plek als die knop, zodat je
                    heen en weer kunt klikken (soloEndgameShowMap/soloReopenEndgame, 97-solo.js) -->
               <button type="button" class="small walk-endgame-showmap walk-endgame-showresult" id="btnWalkEndgameShowResult" hidden>Toon uitslag</button>
-            </div>
-
-            <!-- legenda en logboek staan standaard DICHT: allebei onbegrensd in hoogte (het
-                 logboek groeit de hele sessie door) en dat was precies waarom "Stap voor stap"
-                 niet meer op één pagina paste zonder scrollen (gebruikersmelding). Los aan/uit
-                 via deze twee knoppen — zie walkToggleExtra() in 96-walk.js. -->
-            <div class="btn-row walk-extras-toggle">
-              <button type="button" class="small ghost" id="btnWalkToggleLegend" aria-pressed="false">Toon legenda</button>
-              <button type="button" class="small ghost" id="btnWalkToggleLog" aria-pressed="false">Toon log</button>
             </div>
 
             <div class="walk-legend" id="walkLegend" hidden>
