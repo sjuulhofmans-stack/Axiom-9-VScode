@@ -8960,7 +8960,9 @@ const btnWalkEndgameShowResult = document.getElementById('btnWalkEndgameShowResu
 // zelf niets van deze synchronisatie hoeven te weten. Gepauzeerde animaties (Pauze in
 // Automatisch) blijven met rust: starttijd zetten zou ze weer laten lopen.
 const PULSE_DURATION_MS = 1900;   // moet gelijk blijven aan axPulse/walkRoomPulse in styles.css
-const PULSE_ANIMATIONS = new Set(['axPulse', 'axPulseBtn', 'walkRoomPulse']);
+// ecellSpend: het knipperen van de energiecellen die een actie gaat kosten — ook op één ritme,
+// anders knipperen net bijgekomen cellen uit de pas met de rest
+const PULSE_ANIMATIONS = new Set(['axPulse', 'axPulseBtn', 'walkRoomPulse', 'ecellSpend']);
 let pulseSyncQueued = false;
 function syncAllPulses(){
   pulseSyncQueued = false;
@@ -9420,15 +9422,19 @@ function soloPreviewEnergyCost(cost){
     cell.classList.toggle('will-spend', cost !== null && i < energy && i >= energy - cost);
   });
 }
+// De preview blijft staan zolang de muis ergens in de lijst met acties is — ook boven het
+// gaatje tussen twee knoppen. Voorheen ging hij bij elk gaatje heel even uit en weer aan, en
+// begon het knipperen telkens opnieuw: dat flikkerde (gebruikersmelding, vooral met een volle
+// balk waar alles betaalbaar is). Uit pas bij het verlaten van de lijst, of boven een actie die
+// je niet kunt betalen. Cellen die al oplichten blijven gewoon doorknipperen.
 if (walkSoloActionsEl){
   walkSoloActionsEl.addEventListener('mouseover', (e) => {
-    const btn = e.target.closest('button.energy-pick[data-energy]:not(:disabled)');
-    if (btn && ENERGY_ACTIONS[btn.dataset.energy]) soloPreviewEnergyCost(ENERGY_ACTIONS[btn.dataset.energy].cost);
-  });
-  walkSoloActionsEl.addEventListener('mouseout', (e) => {
     const btn = e.target.closest('button.energy-pick[data-energy]');
-    if (btn && !btn.contains(e.relatedTarget)) soloPreviewEnergyCost(null);
+    if (!btn) return;   // gaatje tussen de knoppen: preview laten staan
+    const act = ENERGY_ACTIONS[btn.dataset.energy];
+    soloPreviewEnergyCost(act && !btn.disabled ? act.cost : null);
   });
+  walkSoloActionsEl.addEventListener('mouseleave', () => soloPreviewEnergyCost(null));
 }
 function soloRefreshTarget(){
   const p = solo();
