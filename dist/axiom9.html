@@ -747,7 +747,7 @@
   .walk-opening-turn b, .walk-opening-note b{color:var(--text);}
   /* knoppen onderaan het paneel, zodat ze altijd op dezelfde plek staan */
   .walk-opening-action{margin-top:auto; display:flex; flex-direction:column; gap:10px;}
-  .walk-opening-btn{width:100%; padding:13px; font-size:15px; animation:walkPcPulse 1.2s ease-in-out infinite;}
+  .walk-opening-btn{width:100%; padding:13px; font-size:15px; animation:axPulse 1.9s ease-in-out infinite;}
   .walk-opening-picks{display:grid; grid-template-columns:repeat(2, 1fr); gap:8px;}
   .walk-opening-pick{padding:10px; font-family:var(--font-mono); font-size:15px; font-weight:700; color:var(--start); border-color:var(--start);}
   #tabWalk.walk-is-paused .walk-opening-btn,
@@ -820,23 +820,27 @@
      lege kolom. Tempo gelijk aan .walk-paused-flag (1.6s) — bewust trager dan de 1.3s-puls
      van het opdrachtvakje op het bord, anders concurreren de twee knipperingen zichtbaar
      met elkaar. */
-  /* Zelfde puls als de gloeiende startvakjes bij het kiezen aan het begin (walkStartGlow
-     hieronder; gebruikerswens: "die pulst super mooi"): een vaste ring van 2px in de
-     spelerskleur met een volle gloed die rustig aanzwelt en weer afneemt, in 1,2s. Eerder was
-     dit een zwakke, half-doorzichtige gloed zonder ring in 1,6s. Duur gelijk houden aan
-     PULSE_DURATION_MS in 97-solo.js (syncPulse). */
-  @keyframes walkPcPulse{
-    0%,100%{box-shadow:0 0 0 2px var(--pc, var(--amber)), 0 0 4px 1px var(--pc, var(--amber));}
-    50%{box-shadow:0 0 0 2px var(--pc, var(--amber)), 0 0 18px 6px var(--pc, var(--amber));}
+  /* ÉÉN puls voor alles wat nu aandacht vraagt (gebruikerswens: "allemaal dezelfde stijl,
+     dezelfde kracht en dezelfde gloed, en alles tegelijk"): dobbelknop, energieacties,
+     actiekaarten, de knoppen en vrije startvakjes bij het kiezen van een startpositie, het
+     actieve opdrachtvakje en het kader om de opdrachtkamer (.walk-room-ring). Voorbeeld was
+     dat kader: een vaste rand van 2px met een rustige gloed van 14px op 60%, die in 1,9s
+     zachtjes half wegzakt en weer terugkomt. Een eerdere versie (gloed 18px + 6px spreiding,
+     1,2s) was "too much" en liep over de knoppen ernaast heen.
+     --glow is de kleur; standaard de kleur van wie aan zet is (--pc). Duur gelijk houden aan
+     PULSE_DURATION_MS in 97-solo.js — syncAllPulses() daar zet alle lopende pulsen op
+     hetzelfde ritme, ook elementen die later worden aangemaakt. */
+  @keyframes axPulse{
+    0%,100%{box-shadow:0 0 0 2px var(--glow, var(--pc, var(--amber))),
+                       0 0 14px color-mix(in srgb, var(--glow, var(--pc, var(--amber))) 60%, transparent);}
+    50%{box-shadow:0 0 0 2px color-mix(in srgb, var(--glow, var(--pc, var(--amber))) 50%, transparent),
+                   0 0 14px color-mix(in srgb, var(--glow, var(--pc, var(--amber))) 30%, transparent);}
   }
   /* #btnWalkSoloSkip ("Dobbelen") pulst hier ook mee: het is zelf ook gewoon een keuze naast
      de energieacties (net zo geldig als "geen actie"), dus verdient dezelfde nadruk i.p.v.
-     er statisch naast te staan (gebruikerswens). animation-delay wordt vanuit JS gezet
-     (syncPulse() in 97-solo.js) zodat alle pulserende elementen — ook nieuw aangemaakte
-     energieknoppen — hetzelfde gedeelde ritme volgen i.p.v. elk op hun eigen moment te
-     beginnen (gebruikerswens: tegelijk pulsen). */
+     er statisch naast te staan (gebruikerswens). */
   .walk-pulse-affordable, #btnWalkSoloRoll:not([hidden]), #btnWalkSoloSkip:not([hidden]){
-    animation:walkPcPulse 1.2s ease-in-out infinite;
+    animation:axPulse 1.9s ease-in-out infinite;
   }
   #tabWalk.walk-is-paused .walk-pulse-affordable,
   #tabWalk.walk-is-paused #btnWalkSoloRoll,
@@ -1011,18 +1015,13 @@
   }
   .cell.walk-clickable:hover{box-shadow:0 0 0 2px #fff, 0 0 10px rgba(85,214,138,.9) !important;}
   /* vrije startvakjes tijdens het kiezen aan het begin van het potje (walkGlowStarts, 96-walk.js),
-     kloppend in de kleur van wie er nu kiest. Op een los laagje (::after) i.p.v. de box-shadow
-     van het vakje zelf: die heeft bij een aanklikbaar vakje al een !important-rand
-     (.walk-clickable), en een animatie kan daar niet overheen. */
+     kloppend in de kleur van wie er nu kiest — met dezelfde axPulse als de knoppen. Op een los
+     laagje (::after) i.p.v. de box-shadow van het vakje zelf: die heeft bij een aanklikbaar
+     vakje al een !important-rand (.walk-clickable), en een animatie kan daar niet overheen. */
   .cell.walk-start-glow{z-index:6; position:relative;}
   .cell.walk-start-glow::after{
     content:''; position:absolute; inset:-2px; border-radius:3px; pointer-events:none;
-    box-shadow:0 0 0 2px var(--pc), 0 0 4px 1px var(--pc);
-    animation:walkStartGlow 1.2s ease-in-out infinite;
-  }
-  @keyframes walkStartGlow{
-    0%,100%{box-shadow:0 0 0 2px var(--pc), 0 0 4px 1px var(--pc);}
-    50%{box-shadow:0 0 0 2px var(--pc), 0 0 18px 6px var(--pc);}
+    animation:axPulse 1.9s ease-in-out infinite;
   }
 
   /* "Spelerstatus" — de statushub bovenin .walk-status-col (zie .walk-board-row hierboven),
@@ -1235,7 +1234,7 @@
   /* tijdens een pauze horen de lopende CSS-animaties ook stil te staan, anders lijkt het
      bord door te draaien terwijl er niets meer gebeurt */
   #tabWalk.walk-is-paused .walk-die.rolling,
-  #tabWalk.walk-is-paused .cell.walk-target{animation-play-state:paused;}
+  #tabWalk.walk-is-paused .cell.walk-target::after{animation-play-state:paused;}
   #tabWalk.walk-is-paused .walk-paused-flag{animation-play-state:running;}
 
   /* stand van alle spelers; --pc is per rij de spelerskleur */
@@ -1482,11 +1481,17 @@
   /* Het doelvakje draagt de kleur van de OPDRACHTKAART (--qtint, gezet vanuit markWalkTarget
      in 96-walk.js) en niet meer het vaste opdrachtblauw; de rand eromheen blijft de kleur van
      de speler die er heen moet. Zo hoort het vakje zichtbaar bij de kaart in het zijpaneel. */
+  /* De rand + gloed pulsen met dezelfde axPulse als de knoppen en het kamerkader (vroeger
+     knipperde het hele vakje via opacity in een eigen tempo). Op ::after om dezelfde reden als
+     .walk-start-glow: de box-shadow van het vakje kan !important zijn. */
   .cell.walk-target{
     background:var(--qtint, var(--quest)) !important;
-    box-shadow:0 0 0 2px var(--pc, #fff), 0 0 12px var(--qtint, var(--quest-glow)) !important;
     z-index:4; position:relative;
-    animation:walkPulse 1.3s ease-in-out infinite;
+  }
+  .cell.walk-target::after{
+    content:''; position:absolute; inset:-2px; border-radius:3px; pointer-events:none;
+    --glow: var(--pc, #fff);
+    animation:axPulse 1.9s ease-in-out infinite;
   }
   @keyframes walkPulse{0%,100%{opacity:1;} 50%{opacity:.55;}}
 
@@ -1504,6 +1509,8 @@
     border-radius:4px;
     box-shadow:0 0 14px color-mix(in srgb, var(--qtint, var(--quest)) 60%, transparent),
                inset 0 0 18px color-mix(in srgb, var(--qtint, var(--quest)) 20%, transparent);
+    /* zelfde tempo/kromme als axPulse en via syncAllPulses (97-solo.js) gelijk ermee; hier via
+       opacity omdat het kader ook een binnengloed heeft, wat op hetzelfde neerkomt */
     animation:walkRoomPulse 1.9s ease-in-out infinite;
   }
   .walk-room-ring[hidden]{display:none;}
@@ -8741,20 +8748,37 @@ const walkEndgameConfettiEl = document.getElementById('walkEndgameConfetti');
 const btnWalkEndgameShowMap = document.getElementById('btnWalkEndgameShowMap');
 const btnWalkEndgameShowResult = document.getElementById('btnWalkEndgameShowResult');
 
-// Dobbelknop, energieacties en kaartkluis pulsen alledrie met dezelfde walkPcPulse-animatie
-// (styles.css), maar zijn losse DOM-elementen die op verschillende momenten pulsend worden
-// (de energieknoppen worden zelfs bij elke render van #walkSoloActions helemaal opnieuw
-// aangemaakt) — zonder correctie begint elk element zijn eigen animatie dus op een willekeurig
-// moment, en pulseren ze door elkaar heen i.p.v. gelijk op (gebruikerswens). PULSE_EPOCH is één
-// vast ankerpunt (het moment dat de pagina laadt); syncPulse() zet op ieder element een negatieve
-// animation-delay gelijk aan hoe ver we nu in die cyclus zitten, zodat alle pulserende elementen
-// hetzelfde gedeelde ritme volgen ongeacht wanneer hun eigen DOM-node ontstond.
-const PULSE_EPOCH = performance.now();
-const PULSE_DURATION_MS = 1200;   // moet gelijk blijven aan walkPcPulse's duur in styles.css
-function syncPulse(el){
-  if (!el) return;
-  const elapsed = (performance.now() - PULSE_EPOCH) % PULSE_DURATION_MS;
-  el.style.animationDelay = `-${elapsed.toFixed(0)}ms`;
+// Dobbelknop, energieacties, kaartkluis, startvakjes, opdrachtvakje en kamerkader pulsen allemaal
+// met dezelfde animatie (axPulse / walkRoomPulse in styles.css, beide 1,9s), maar zijn losse
+// DOM-elementen die op verschillende momenten pulsend worden (de energieknoppen worden zelfs bij
+// elke render opnieuw aangemaakt). Een CSS-animatie begint op het moment dat hij ontstaat, dus
+// zonder correctie pulst alles door elkaar heen i.p.v. tegelijk (gebruikerswens). syncAllPulses()
+// zet de starttijd van ELKE lopende puls op hetzelfde vaste punt van de tijdlijn (0), zodat ze
+// allemaal in dezelfde fase zitten. Een MutationObserver op #tabWalk roept dat aan zodra er iets
+// verandert (klasse erbij, knoppen opnieuw getekend) — ook voor elementen uit 96-walk.js, die
+// zelf niets van deze synchronisatie hoeven te weten. Gepauzeerde animaties (Pauze in
+// Automatisch) blijven met rust: starttijd zetten zou ze weer laten lopen.
+const PULSE_DURATION_MS = 1900;   // moet gelijk blijven aan axPulse/walkRoomPulse in styles.css
+const PULSE_ANIMATIONS = new Set(['axPulse', 'walkRoomPulse']);
+let pulseSyncQueued = false;
+function syncAllPulses(){
+  pulseSyncQueued = false;
+  if (typeof document.getAnimations !== 'function') return;
+  for (const anim of document.getAnimations()){
+    if (!PULSE_ANIMATIONS.has(anim.animationName)) continue;
+    if (anim.playState !== 'running' || anim.startTime === 0) continue;
+    anim.startTime = 0;
+  }
+}
+function syncPulse(){
+  if (pulseSyncQueued) return;
+  pulseSyncQueued = true;
+  requestAnimationFrame(syncAllPulses);
+}
+{
+  const tabWalkEl = document.getElementById('tabWalk');
+  if (tabWalkEl) new MutationObserver(() => syncPulse())
+    .observe(tabWalkEl, {subtree:true, childList:true, attributes:true, attributeFilter:['class', 'hidden']});
 }
 
 // ---------- vervolgkeuze van een gespeelde actiekaart (doelwit/richting/Blinde-Vlek-aanbod) ----------

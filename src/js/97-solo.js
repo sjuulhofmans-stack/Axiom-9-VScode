@@ -79,20 +79,37 @@ const walkEndgameConfettiEl = document.getElementById('walkEndgameConfetti');
 const btnWalkEndgameShowMap = document.getElementById('btnWalkEndgameShowMap');
 const btnWalkEndgameShowResult = document.getElementById('btnWalkEndgameShowResult');
 
-// Dobbelknop, energieacties en kaartkluis pulsen alledrie met dezelfde walkPcPulse-animatie
-// (styles.css), maar zijn losse DOM-elementen die op verschillende momenten pulsend worden
-// (de energieknoppen worden zelfs bij elke render van #walkSoloActions helemaal opnieuw
-// aangemaakt) — zonder correctie begint elk element zijn eigen animatie dus op een willekeurig
-// moment, en pulseren ze door elkaar heen i.p.v. gelijk op (gebruikerswens). PULSE_EPOCH is één
-// vast ankerpunt (het moment dat de pagina laadt); syncPulse() zet op ieder element een negatieve
-// animation-delay gelijk aan hoe ver we nu in die cyclus zitten, zodat alle pulserende elementen
-// hetzelfde gedeelde ritme volgen ongeacht wanneer hun eigen DOM-node ontstond.
-const PULSE_EPOCH = performance.now();
-const PULSE_DURATION_MS = 1200;   // moet gelijk blijven aan walkPcPulse's duur in styles.css
-function syncPulse(el){
-  if (!el) return;
-  const elapsed = (performance.now() - PULSE_EPOCH) % PULSE_DURATION_MS;
-  el.style.animationDelay = `-${elapsed.toFixed(0)}ms`;
+// Dobbelknop, energieacties, kaartkluis, startvakjes, opdrachtvakje en kamerkader pulsen allemaal
+// met dezelfde animatie (axPulse / walkRoomPulse in styles.css, beide 1,9s), maar zijn losse
+// DOM-elementen die op verschillende momenten pulsend worden (de energieknoppen worden zelfs bij
+// elke render opnieuw aangemaakt). Een CSS-animatie begint op het moment dat hij ontstaat, dus
+// zonder correctie pulst alles door elkaar heen i.p.v. tegelijk (gebruikerswens). syncAllPulses()
+// zet de starttijd van ELKE lopende puls op hetzelfde vaste punt van de tijdlijn (0), zodat ze
+// allemaal in dezelfde fase zitten. Een MutationObserver op #tabWalk roept dat aan zodra er iets
+// verandert (klasse erbij, knoppen opnieuw getekend) — ook voor elementen uit 96-walk.js, die
+// zelf niets van deze synchronisatie hoeven te weten. Gepauzeerde animaties (Pauze in
+// Automatisch) blijven met rust: starttijd zetten zou ze weer laten lopen.
+const PULSE_DURATION_MS = 1900;   // moet gelijk blijven aan axPulse/walkRoomPulse in styles.css
+const PULSE_ANIMATIONS = new Set(['axPulse', 'walkRoomPulse']);
+let pulseSyncQueued = false;
+function syncAllPulses(){
+  pulseSyncQueued = false;
+  if (typeof document.getAnimations !== 'function') return;
+  for (const anim of document.getAnimations()){
+    if (!PULSE_ANIMATIONS.has(anim.animationName)) continue;
+    if (anim.playState !== 'running' || anim.startTime === 0) continue;
+    anim.startTime = 0;
+  }
+}
+function syncPulse(){
+  if (pulseSyncQueued) return;
+  pulseSyncQueued = true;
+  requestAnimationFrame(syncAllPulses);
+}
+{
+  const tabWalkEl = document.getElementById('tabWalk');
+  if (tabWalkEl) new MutationObserver(() => syncPulse())
+    .observe(tabWalkEl, {subtree:true, childList:true, attributes:true, attributeFilter:['class', 'hidden']});
 }
 
 // ---------- vervolgkeuze van een gespeelde actiekaart (doelwit/richting/Blinde-Vlek-aanbod) ----------
