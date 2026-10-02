@@ -170,8 +170,11 @@ function soloRebuildSetup(){
       nextIdx: 0, completed: 0, myTurn: 0, energy: 0, cards: [], rank: 0, doneCells: [], condenserPending: false,
       lockedNextTurn: false, rollPenalty: 0, barrierCell: null, reorderBlocked: false, lastDir: -1,
       strategy: isHuman ? null : ENERGY_STRATEGIES[i % ENERGY_STRATEGIES.length],
-      startLabel: isHuman ? SIM_START_LABELS[i] : null,   // mens: alvast een unieke standaardplek
+      // startpositie kiest iedereen pas aan het begin van het potje, in de volgorde van de worp
+      // (soloBeginOpening) — in de lobby is nog niet te zien waar je opdracht ligt
+      startLabel: null,
       pos: null,
+      questHidden: true,
       skipEnergyRoll: false, actionUses: 0,
     });
   }
@@ -191,30 +194,19 @@ function soloRenderSetupUI(){
   }
   // Twee kolommen (zie .walk-solo-setup in styles.css) i.p.v. alles onder elkaar — nieuwe
   // spelers komen zo naast elkaar te staan, niet eronder, en de lobby-kolom verspringt daardoor
-  // hooguit één keer (bij de 3e speler) i.p.v. bij elke speler opnieuw (gebruikerswens). Elke
-  // kaart is daarom 2 regels: naam op regel 1, startpositie + voorproefje op regel 2 — dat past
-  // niet meer naast elkaar op de helft van de kolombreedte.
-  walkSoloSetupEl.innerHTML = humans.map(p => {
-    const opts = SIM_START_LABELS.map(l => `<option value="${l}"${l === p.startLabel ? ' selected' : ''}>${l}</option>`).join('');
-    const firstQuest = p.deck[0];
-    const previewTitle = `eerste opdracht: ${firstQuest} — ${QUEST_NAMES[firstQuest] || ''}`;
-    return `<div class="walk-solo-setup-player" style="--pc:${p.color}">` +
+  // hooguit één keer (bij de 3e speler) i.p.v. bij elke speler opnieuw (gebruikerswens).
+  // Alleen de speler en zijn naam: startpositie en eerste opdracht komen pas aan het begin van
+  // het potje (soloBeginOpening) — in de lobby kon je toch niet zien waar die kamer ligt.
+  walkSoloSetupEl.innerHTML = humans.map(p =>
+    `<div class="walk-solo-setup-player" style="--pc:${p.color}">` +
       `<span class="walk-solo-setup-row1">` +
         `<span class="walk-solo-setup-dot"></span>` +
         `<input type="text" class="walk-solo-setup-input" data-name-seat="${p.idx}"` +
           ` value="${soloCustomNames[p.idx] || ''}" maxlength="18" spellcheck="false"` +
           ` placeholder="Speler ${p.idx + 1}" aria-label="Naam van speler ${p.idx + 1}">` +
       `</span>` +
-      `<span class="walk-solo-setup-row2">` +
-        `<select data-seat="${p.idx}" aria-label="Startpositie van speler ${p.idx + 1}">${opts}</select>` +
-        // Geen "eerste opdracht: "-label meer ervoor (gebruikt was op de halve kolombreedte
-        // vrijwel de hele beschikbare ruimte op, zodat er van de opdracht zelf niks meer te
-        // lezen viel vóór de ellipsis) — de titel-tooltip zegt nog steeds precies wat er
-        // afgekapt is.
-        `<span class="walk-solo-setup-preview" title="${previewTitle}"><b>${firstQuest} — ${QUEST_NAMES[firstQuest] || ''}</b></span>` +
-      `</span>` +
-    `</div>`;
-  }).join('');
+    `</div>`
+  ).join('');
   if (walkSoloStartRowEl) walkSoloStartRowEl.hidden = false;
 }
 if (walkSoloSetupEl){
@@ -229,20 +221,6 @@ if (walkSoloSetupEl){
     const schoon = soloCleanName(veld.value);
     if (schoon) soloCustomNames[seat] = schoon; else delete soloCustomNames[seat];
     p.name = soloSeatName(seat);
-  });
-  walkSoloSetupEl.addEventListener('change', (e) => {
-    const sel = e.target.closest('select[data-seat]');
-    if (!sel) return;
-    const seat = parseInt(sel.dataset.seat, 10);
-    const p = soloSetupPlayers[seat];
-    if (!p) return;
-    const value = sel.value;
-    // twee mensen mogen niet dezelfde startpositie kiezen — wissel de conflicterende speler
-    // gewoon om naar de plek die deze speler net had, in plaats van iets ingewikkelders
-    const clash = soloSetupHumans().find(h => h.idx !== seat && h.startLabel === value);
-    if (clash) clash.startLabel = p.startLabel;
-    p.startLabel = value;
-    soloRenderSetupUI();
   });
 }
 if (walkSoloPlayersSel) walkSoloPlayersSel.addEventListener('change', () => { soloSyncBotOptions(); soloRebuildSetup(); });
@@ -405,6 +383,7 @@ if (walkBoardEl){
     if (soloPhase === 'moving') soloHandleMoveClick(key);
     else if (soloPhase === 'jump-target') soloHandleJumpClick(key);
     else if (soloPhase === 'boots-direction') soloHandleDashCellClick(key);
+    else if (soloPhase === 'opening-pick') soloOpeningPick(key);
   });
 }
 
@@ -441,7 +420,13 @@ function soloLiveRank(){
 // meeloopt waar de rest van je beurtinfo ook al opnieuw getekend wordt.
 function soloRenderStatusExtras(){
   const p = solo();
-  if (!p || !walkStatTilesEl){ if (walkStatTilesEl) walkStatTilesEl.innerHTML = ''; return; }
+  // tijdens het dobbelen aan het begin (soloBeginOpening) is je opdracht nog geheim — dan ook
+  // geen opdrachtenoverzicht dat "Actief" bij je eerste opdracht zet
+  if (!p || !walkStatTilesEl || p.questHidden){
+    if (walkStatTilesEl) walkStatTilesEl.innerHTML = '';
+    if (walkQuestChecklistEl) walkQuestChecklistEl.innerHTML = '';
+    return;
+  }
   const rank = soloLiveRank();
   walkStatTilesEl.innerHTML =
     `<div class="walk-stat-tile"><span class="walk-stat-tile-num">${p.completed}/${SIM_QUESTS_TO_WIN}</span><span class="walk-stat-tile-lbl">voltooid</span></div>` +
@@ -2379,6 +2364,200 @@ function soloEndGame(stuck){
   for (const sel of walkSoloSetupEl ? walkSoloSetupEl.querySelectorAll('select') : []) sel.disabled = false;
 }
 
+// ---------- begin van het potje: dobbelen wie begint, dan startposities kiezen ----------
+// Zelf spelen én Multiplayer (dat dezelfde motor gebruikt; alleen de host voert dit uit, gasten
+// tekenen het na uit de gedeelde stand, zie mpApplyState). Iedereen gooit met 2 dobbelstenen;
+// bij gelijke worp gooien alleen die spelers opnieuw, voor elke plek (openingSplitBucket,
+// 95-simulate.js). Daarna kiest iedereen in die volgorde een startpositie, en die volgorde is
+// meteen de beurtvolgorde. Pas als je aan de beurt bent om te kiezen zie je je eerste opdracht
+// (p.questHidden). De weergave (het grote paneel rechts, de gloeiende startvakjes) is gedeeld
+// met Automatisch: renderOpeningPanel/walkGlowStarts in 96-walk.js.
+// soloPhase: 'opening-roll' (soloActiveIdx = wie moet gooien) → 'opening-pick' (= wie kiest).
+let soloOpening = null;   // zie walkNewOpening (96-walk.js) voor de vorm
+const SOLO_OPENING_BOT_ROLL_MS = 1100;   // even de stenen laten rollen voordat een bot gooit
+const SOLO_OPENING_BOT_PICK_MS = 1500;   // even laten zien welke opdracht een bot heeft
+// mag de kijker op DIT scherm nu zelf gooien/kiezen?
+function soloOpeningIsMine(){
+  const p = soloPlayers[soloActiveIdx];
+  if (!p || !p.isHuman) return false;
+  if (typeof mp !== 'undefined' && mp.active && mp.phase === 'in-game') return p.peerId === mp.myPeerId;
+  return true;
+}
+// alleen uitvoeren als het potje intussen niet gestopt/herstart is
+function soloOpeningLater(ms, fn){
+  const runId = soloRunId;
+  setTimeout(() => { if (runId === soloRunId && soloOpening) fn(); }, ms);
+}
+function soloRenderOpening(){
+  const op = soloOpening;
+  if (!op) return;
+  const mine = soloOpeningIsMine();
+  if (op.stage === 'roll'){
+    walkClearClass('walk-start-glow');
+    renderOpeningPanel(soloPlayers, op, { canRoll: mine && op.rolling === soloActiveIdx, shaking: !!op.shaking });
+  } else {
+    const free = walkOpeningFreeLabels(soloPlayers);
+    const chooser = soloPlayers[op.order[op.pickPos]];
+    renderOpeningPanel(soloPlayers, op, { canPick: mine && !!chooser && chooser.idx === soloActiveIdx, freeLabels: free });
+    if (chooser) walkGlowStarts(soloGraph, free, chooser.color);
+  }
+}
+function soloBeginOpening(){
+  soloOpening = walkNewOpening(soloPlayers);
+  for (const p of soloPlayers) p.questHidden = true;
+  walkSetOpeningMode(true);
+  clearWalkTarget();
+  if (soloPlayers.length > 1){
+    walkLog(`<b>Wie begint?</b> Iedereen gooit met 2 dobbelstenen; de hoogste kiest als eerste een startpositie en begint het spel.`);
+  }
+  soloOpeningStep();   // met 1 speler valt er niets te dobbelen: meteen kiezen
+}
+function soloOpeningStep(){
+  const op = soloOpening;
+  if (!op) return;
+  soloClearClickable();
+  if (op.stage === 'roll'){
+    if (!op.group){
+      const group = openingNextGroup(op.buckets);
+      if (!group){
+        op.stage = 'pick';
+        op.order = openingOrder(op.buckets);
+        op.pickPos = 0;
+        if (soloPlayers.length > 1) walkLog(`Volgorde: ${op.order.map(i => soloPlayers[i].name).join(' → ')}. In deze volgorde kies je een startpositie, en zo gaan ook de beurten.`);
+        soloOpeningStep();
+        return;
+      }
+      op.group = group;
+      op.rolls = {};
+      op.round++;
+    }
+    const roller = op.group.find(i => !(i in op.rolls));
+    const p = soloPlayers[roller];
+    soloActiveIdx = roller;
+    soloPhase = 'opening-roll';
+    op.rolling = roller;
+    op.shaking = !p.isHuman;
+    if (walkSideStackEl) walkSideStackEl.style.setProperty('--pc', p.color);
+    renderWalkScore(soloPlayers, roller);
+    renderSoloMeta();
+    soloRenderOpening();
+    if (!p.isHuman) soloOpeningLater(SOLO_OPENING_BOT_ROLL_MS, () => soloOpeningDoRoll(roller));
+    return;
+  }
+  if (op.pickPos >= op.order.length){ soloFinishOpening(); return; }
+  const idx = op.order[op.pickPos];
+  const p = soloPlayers[idx];
+  soloActiveIdx = idx;
+  soloPhase = 'opening-pick';
+  p.questHidden = false;   // nu pas zie je je eerste opdracht
+  if (walkSideStackEl) walkSideStackEl.style.setProperty('--pc', p.color);
+  soloRefreshTarget();
+  renderWalkScore(soloPlayers, idx);
+  renderSoloMeta();
+  const free = walkOpeningFreeLabels(soloPlayers);
+  if (p.isHuman) soloMarkClickable(soloGraph, free.map(l => soloGraph.startCells[l]));
+  soloRenderOpening();
+  if (!p.isHuman) soloOpeningLater(SOLO_OPENING_BOT_PICK_MS, () => soloOpeningDoPick(idx, botPickStartLabel(soloGraph, p, free)));
+}
+// knop "Gooi de dobbelstenen" in het paneel (mens; in Multiplayer via de host)
+function soloOpeningRoll(){
+  if (soloPhase !== 'opening-roll' || !soloOpening) return;
+  if (mpIntercept('openingRoll', {})) return;
+  const p = soloPlayers[soloActiveIdx];
+  if (!p || !p.isHuman) return;
+  soloOpeningDoRoll(soloActiveIdx);
+}
+function soloOpeningDoRoll(idx){
+  const op = soloOpening;
+  if (!op || op.stage !== 'roll' || op.rolling !== idx) return;
+  const r = [simRollD6(soloRand), simRollD6(soloRand)];
+  op.rolls[idx] = r;
+  op.last[idx] = r;
+  op.rolling = null;
+  op.shaking = false;
+  walkLog(`${soloPlayers[idx].name} gooit ${r[0]}+${r[1]} = <b>${r[0] + r[1]}</b>${op.round > 1 ? ' (opnieuw)' : ''}.`, null, soloPlayers[idx]);
+  if (op.group.every(i => i in op.rolls)){
+    // iedereen in deze groep heeft gegooid: splitsen op de worpen, gelijke worpen blijven samen
+    op.buckets.splice(op.buckets.indexOf(op.group), 1, ...openingSplitBucket(op.group, op.rolls));
+    op.group = null;
+    op.note = walkOpeningNote(soloPlayers, op.buckets);
+    walkLog(op.note);
+    soloRenderOpening();
+    soloOpeningLater(1100, soloOpeningStep);   // even laten zien wie er bovenaan staat
+  } else {
+    soloRenderOpening();
+    soloOpeningLater(500, soloOpeningStep);
+  }
+}
+// klik op een gloeiend startvakje, of een knop in het paneel (mens; in Multiplayer via de host)
+function soloOpeningPick(key){
+  if (soloPhase !== 'opening-pick' || !soloOpening) return;
+  if (mpIntercept('openingPick', { key })) return;
+  const p = soloPlayers[soloActiveIdx];
+  if (!p || !p.isHuman) return;
+  const label = walkOpeningFreeLabels(soloPlayers).find(l => soloGraph.startCells[l] === key);
+  if (!label) return;
+  soloOpeningDoPick(soloActiveIdx, label);
+}
+function soloOpeningDoPick(idx, label){
+  const op = soloOpening;
+  if (!op || op.stage !== 'pick' || op.order[op.pickPos] !== idx) return;
+  const p = soloPlayers[idx];
+  p.startLabel = label;
+  p.pos = soloGraph.startCells[label];
+  op.picks[idx] = label;
+  op.pickPos++;
+  const first = p.deck[p.nextIdx];
+  walkLog(`${p.name} kiest startpositie <b>${label}</b> — eerste opdracht ${first} ${QUEST_NAMES[first] || ''}.`, null, p);
+  soloClearClickable();
+  paintWalkPawns(soloGraph, soloPlayers, idx);
+  soloOpeningStep();
+}
+function soloFinishOpening(){
+  soloTurnOrder = soloOpening.order.slice();
+  walkScoreOrder = soloTurnOrder;
+  soloOpening = null;
+  soloPhase = 'idle';
+  soloActiveIdx = -1;
+  soloClearClickable();
+  clearWalkTarget();
+  walkSetOpeningMode(false);
+  for (const p of soloPlayers) p.questHidden = false;
+  soloLogGameStart();
+  renderWalkScore(soloPlayers, soloTurnOrder[0]);
+  paintWalkPawns(soloGraph, soloPlayers, soloTurnOrder[0]);
+  soloAdvanceLoop();
+}
+// de openingsregels van het logboek, zodra iedereen een startpositie heeft — gedeeld met
+// Multiplayer (mpHostStartGame laat de opening ook via soloBeginOpening lopen)
+function soloLogGameStart(){
+  const multi = typeof mp !== 'undefined' && mp.active && mp.phase === 'in-game';
+  // Alleen de EERSTE opdracht loggen, niet de hele stapel — net als in het zijpaneel ligt
+  // de rest van je opdrachtenstapel dichtgeslagen (zie renderSoloMeta).
+  for (const p of soloPlayers){
+    const who = p.isHuman ? (multi ? '(mens)' : '(jij)') : '(bot)';
+    const stratNote = p.isHuman ? '' : ` · energie: <b>${ENERGY_ACTIONS[p.strategy].name}</b>`;
+    const first = p.deck[0];
+    walkLog(`${p.name} ${who} start op <b>${p.startLabel}</b>${stratNote} · eerste opdracht: ${first} — ${QUEST_NAMES[first] || ''}`, null, p);
+  }
+  walkLog(`Elke voltooide opdracht levert een beloningskaart op van een gedeelde stapel — net als het actiekaartvakje in elke gang (zet stopt er niet voor, hooguit 1x per beurt) — max ${ACTION_CARD_HAND_MAX} kaarten in de hand.`);
+  if (soloPlayers.length > 1){
+    walkLog(`Beurtvolgorde: ${soloTurnOrder.map(i => soloPlayers[i].name).join(' → ')}.`);
+    walkLog(soloPlayers.length === 2
+      ? `Er wordt gespeeld tot de winnaar binnen is — de ander is dan tweede.`
+      : `Er wordt doorgespeeld tot de <b>${soloFinishTarget}e</b> binnen is; de laatste speler is dan automatisch ${soloPlayers.length}e.`);
+  } else {
+    walkLog(`Solo potje: niemand blokkeert je. Kortsluiting, Duwstoot, Blinde Vlek en Prioriteitspas hebben een tegenstander nodig en doen hier dus niets als je ze trekt.`);
+  }
+}
+if (walkOpeningPanelEl){
+  walkOpeningPanelEl.addEventListener('click', (e) => {
+    if (e.target.closest('[data-opening-roll]')){ soloOpeningRoll(); return; }
+    const pick = e.target.closest('[data-opening-pick]');
+    if (pick && soloGraph) soloOpeningPick(soloGraph.startCells[pick.dataset.openingPick]);
+  });
+}
+
 // ---------- potje starten/stoppen ----------
 function stopSoloGame(){
   soloRunId++;   // breekt ook een lopende soloAnimateBotTurn() af
@@ -2390,6 +2569,8 @@ function stopSoloGame(){
   soloRefreshCardVault();
   soloGraph = null; soloPlayers = []; soloMove = null; soloActiveIdx = -1;
   soloRoundFinishers = []; soloFinished = 0; soloRoundPos = 0;
+  soloOpening = null;
+  walkSetOpeningMode(false);   // gestopt tijdens het dobbelen/kiezen aan het begin
   soloClearClickable();
   soloHideStepCounter();
   soloHideEndgame();
@@ -2452,16 +2633,10 @@ function startSoloGame(){
   soloPlayers = soloSetupPlayers;
   const botView = walkSoloBotViewSel ? walkSoloBotViewSel.value : 'instant';
   soloBotViewSpeed = botView === 'instant' ? null : (parseInt(botView, 10) || 2);
-  // startposities: mensen hebben net gekozen; bots krijgen de overgebleven posities willekeurig
-  const taken = new Set(soloPlayers.filter(p => p.isHuman).map(p => p.startLabel));
-  const free = simShuffle(SIM_START_LABELS.filter(l => !taken.has(l)), soloRand);
-  let fi = 0;
-  for (const p of soloPlayers){
-    if (!p.isHuman) p.startLabel = free[fi++];
-    p.pos = graph.startCells[p.startLabel];
-  }
-
-  soloTurnOrder = simShuffle(soloPlayers.map(p => p.idx), soloRand);
+  // nog niemand op het bord: startposities en beurtvolgorde volgen uit het dobbelen aan het
+  // begin (soloBeginOpening hieronder); tot die tijd staat de balk gewoon op spelersvolgorde
+  for (const p of soloPlayers){ p.startLabel = null; p.pos = null; p.questHidden = true; }
+  soloTurnOrder = soloPlayers.map(p => p.idx);
   walkScoreOrder = soloTurnOrder;   // balk in beurtvolgorde, zie renderWalkScore in 96-walk.js
   soloFinishTarget = simFinishTarget(soloPlayers.length);
   soloFinished = 0;
@@ -2469,25 +2644,6 @@ function startSoloGame(){
   soloRoundPos = 0;
   soloTurn = 0;
   soloDeck = buildActionDeck(soloRand);
-
-  // Alleen de EERSTE opdracht loggen, niet de hele stapel — net als in het zijpaneel ligt
-  // de rest van je opdrachtenstapel dichtgeslagen (zie renderSoloMeta),
-  // dus dit logregel mocht die niet stiekem al verklappen bij het opzetten van het potje.
-  for (const p of soloPlayers){
-    const who = p.isHuman ? '(jij)' : '(bot)';
-    const stratNote = p.isHuman ? '' : ` · energie: <b>${ENERGY_ACTIONS[p.strategy].name}</b>`;
-    const first = p.deck[0];
-    walkLog(`${p.name} ${who} start op <b>${p.startLabel}</b>${stratNote} · eerste opdracht: ${first} — ${QUEST_NAMES[first] || ''}`, null, p);
-  }
-  walkLog(`Elke voltooide opdracht levert een beloningskaart op van een gedeelde stapel — net als het actiekaartvakje in elke gang (zet stopt er niet voor, hooguit 1x per beurt) — max ${ACTION_CARD_HAND_MAX} kaarten in de hand.`);
-  if (soloPlayers.length > 1){
-    walkLog(`Beurtvolgorde: ${soloTurnOrder.map(i => soloPlayers[i].name).join(' → ')}.`);
-    walkLog(soloPlayers.length === 2
-      ? `Er wordt gespeeld tot de winnaar binnen is — de ander is dan tweede.`
-      : `Er wordt doorgespeeld tot de <b>${soloFinishTarget}e</b> binnen is; de laatste speler is dan automatisch ${soloPlayers.length}e.`);
-  } else {
-    walkLog(`Solo potje: niemand blokkeert je. Kortsluiting, Duwstoot, Blinde Vlek en Prioriteitspas hebben een tegenstander nodig en doen hier dus niets als je ze trekt.`);
-  }
 
   if (walkSoloPlayersSel) walkSoloPlayersSel.disabled = true;
   if (walkSoloBotsSel) walkSoloBotsSel.disabled = true;
@@ -2500,20 +2656,15 @@ function startSoloGame(){
   btnWalkSoloStart.disabled = true;
   btnWalkSoloReset.disabled = false;
 
-  renderWalkScore(soloPlayers, soloTurnOrder[0]);
-  paintWalkPawns(soloGraph, soloPlayers, soloTurnOrder[0]);
-  // Laat de browser de ECHTE startopstelling (iedereen op zijn gekozen vakje, iedereen 0 energie)
-  // daadwerkelijk tekenen vóórdat we bot-beurten die aan jou voorafgaan meteen doorspelen. Zonder
-  // deze ene frame-yield gebeurt dat hele eerste stuk synchroon in dezelfde taak — dus het EERSTE
-  // wat je ooit te zien krijgt is al een bord waar die bots al verplaatst zijn en al energie
-  // hebben, nooit de echte startpositie. Dat las als "startposities staan op een vreemde plek"/
-  // "iedereen start met energie" (gebruikersmelding), terwijl het gewoon al-gespeelde beurten
-  // waren die je nooit als vertrekpunt had gezien. `soloRunId` bewaakt dat deze uitgestelde stap
-  // zichzelf afbreekt als het potje ondertussen alweer gestopt/herstart is (`stopSoloGame()`).
+  renderWalkScore(soloPlayers, -1);
+  paintWalkPawns(soloGraph, soloPlayers, -1);
+  // eerst het dobbelen wie begint + startposities kiezen; soloFinishOpening() start daarna het
+  // potje zelf (soloAdvanceLoop). `soloRunId` bewaakt dat deze uitgestelde stap zichzelf
+  // afbreekt als het potje ondertussen alweer gestopt/herstart is (`stopSoloGame()`).
   const runId = soloRunId;
   requestAnimationFrame(() => {
     if (runId !== soloRunId) return;
-    soloAdvanceLoop();
+    soloBeginOpening();
   });
 }
 

@@ -35,6 +35,39 @@ function simFinishTarget(playerCount){ return Math.max(1, playerCount - 1); }
 // hinderkaarten (gemeten: anders ging ~3% van de hinderkaarten naar zo'n al-binnen speler).
 function simOnBoard(p){ return !p.rank && p.completed < SIM_QUESTS_TO_WIN; }
 
+// ---------- begin van een potje: dobbelen wie begint, daarna startposities kiezen ----------
+// (Zelf spelen, Multiplayer en Automatisch; de batch-simulatie hieronder houdt vaste
+// startposities, want die meet juist de eerlijkheid PER startpositie.)
+// De volgorde wordt bijgehouden als "emmers" van spelers die (nog) gelijk staan, van hoog naar
+// laag: [[a], [b, c], [d]] = a is 1e, b en c delen nog plek 2-3, d is 4e. In het begin zit
+// iedereen in één emmer. De bovenste emmer met meer dan één speler moet (opnieuw) dobbelen;
+// daarna splitst openingSplitBucket() hem op de worpen. Klaar zodra elke emmer 1 speler heeft.
+function openingNextGroup(buckets){ return buckets.find(b => b.length > 1) || null; }
+function openingOrder(buckets){ return buckets.flat(); }
+// `rolls`: { [playerIdx]: [d1, d2] } voor iedereen in `bucket`. Hoogste som eerst; gelijke sommen
+// blijven samen in één emmer (en dobbelen dus opnieuw), in hun oorspronkelijke volgorde.
+function openingSplitBucket(bucket, rolls){
+  const sum = i => rolls[i][0] + rolls[i][1];
+  const sorted = bucket.slice().sort((a, b) => sum(b) - sum(a));
+  const out = [];
+  for (const i of sorted){
+    const last = out[out.length - 1];
+    if (last && sum(last[0]) === sum(i)) last.push(i); else out.push([i]);
+  }
+  return out;
+}
+// Bot kiest de vrije startpositie met de kortste looproute naar zijn eerste opdracht.
+function botPickStartLabel(graph, player, freeLabels){
+  const target = graph.questCells[player.deck[player.nextIdx]];
+  const stamp = simBfsDistances(graph, target);
+  let best = freeLabels[0], bestD = Infinity;
+  for (const l of freeLabels){
+    const d = simDistLookup(stamp, graph.startCells[l]);
+    if (d >= 0 && d < bestD){ bestD = d; best = l; }
+  }
+  return best;
+}
+
 // ---------- gelijke stand: de ronde wordt afgemaakt vóórdat een plaats vaststaat ----------
 // Vroeger kreeg de eerste speler die zijn 6e opdracht voltooide meteen rank 1, en werd het
 // potje meteen beëindigd zodra genoeg spelers binnen waren — puur op basis van wie toevallig

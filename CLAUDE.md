@@ -150,6 +150,19 @@ aangeroepen (functiedeclaraties worden gehoist, `const`/`let` niet).
   bovenin `95-simulate.js` — niet opnieuw voorstellen zonder nieuwe meting. De
   bot-keuze vóór de worp zit in **één** gedeelde functie (`botPreRollMove`),
   zodat simulatie, Automatisch en Zelf spelen niet uit elkaar lopen.
+- **Begin van een potje** (Zelf spelen, Multiplayer én Automatisch): in de lobby
+  kies je géén startpositie meer, je ziet alleen spelers en namen. Het potje
+  begint met dobbelen (2 stenen, geen energiesteen) wie begint; de hoogste kiest
+  als eerste een startpositie, daarna aflopend, en die volgorde is meteen de
+  beurtvolgorde. Gelijk op welke plek dan ook → alleen die spelers gooien
+  opnieuw (`openingSplitBucket` in `95-simulate.js`). Je eerste opdracht is
+  geheim (`p.questHidden`, ook niet meegestuurd in Multiplayer) tot je mag
+  kiezen; dan staat hij op het bord en gloeien de vrije startvakjes. Bots kiezen
+  de vrije startpositie het dichtst bij hun eerste opdracht (`botPickStartLabel`).
+  Weergave: `renderOpeningPanel` in `96-walk.js` (de hele rechterkolom),
+  logica: `soloBeginOpening` e.v. in `97-solo.js`, Automatisch: `walkRunOpening`.
+  De batch-simulatie houdt bewust vaste startposities: die meet juist de
+  eerlijkheid **per** startpositie.
 
 ## Controleren of het nog werkt
 
@@ -202,6 +215,15 @@ Check minimaal:
     daarna gooi je gewoon. De kaart Zwaartekracht-laarzen kan alleen vóór het
     dobbelen en blokkeert de laarzen-actie in dezelfde beurt. Simulatie →
     "Welke energie-actie wint?" toont alle vier rond de 25%.
+13. Begin van een potje (Zelf spelen met bots): lobby toont alleen namen. Na
+    "Start spel" is de rechterkolom één groot paneel tot onderaan het bord;
+    jij gooit via de knop, bots vanzelf; bovenaan staat ieders opdracht als
+    "opdracht nog geheim". Bij gelijke worp gooien alleen die spelers opnieuw.
+    Bij het kiezen staat de opdracht van wie kiest op het bord en gloeien de
+    vrije startvakjes (klikbaar, of via de knoppen in het paneel). Daarna komt
+    de gewone kolom (dobbelen/energie/kaarten) terug en is de beurtvolgorde
+    gelijk aan de kiesvolgorde. In Multiplayer moet een gast op zijn eigen
+    scherm kunnen gooien en kiezen.
 
 ## Nog te doen
 

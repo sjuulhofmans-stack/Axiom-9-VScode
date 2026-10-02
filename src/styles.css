@@ -629,6 +629,51 @@
     display:flex; flex-direction:column; gap:10px; min-width:0;
     max-height:711px;
   }
+  /* begin van het potje (dobbelen wie begint, startposities kiezen — renderOpeningPanel in
+     96-walk.js): de hele rechterkolom is dan één groot paneel tot onderaan. Alleen de
+     multiplayer-chat blijft eronder staan. */
+  .walk-side-stack.is-opening > :not(#walkOpeningPanel):not(#mpChatPanelGame){display:none !important;}
+  /* even hoog als het omkaderde bord (de rij staat op align-items:start, dus zonder dit is de
+     kolom maar zo hoog als zijn inhoud); de laptopmaat en het onder-elkaar-scherm staan bij
+     hun eigen media queries hieronder */
+  .walk-side-stack.is-opening{height:711px;}
+  /* .walk-panel-box erbij: de algemene `.walk-panel-box{flex:none}` verderop moet hier verliezen */
+  .walk-panel-box.walk-opening-panel{
+    display:flex; flex-direction:column; gap:12px; flex:1 1 auto; min-height:0;
+    border:1px solid var(--line-dim); border-radius:6px; padding:14px; overflow:hidden;
+  }
+  .walk-opening-panel[hidden]{display:none;}
+  .walk-opening-title{margin:0; font-size:15px; letter-spacing:.08em; text-transform:uppercase; color:var(--text);}
+  .walk-opening-sub{margin:0; font-size:12px; line-height:1.45; color:var(--text-dim);}
+  .walk-opening-list{list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:6px;}
+  .walk-opening-row{
+    display:flex; align-items:center; gap:8px; min-height:42px; padding:6px 10px;
+    border:1px solid var(--line); border-left:3px solid var(--pc); border-radius:6px; background:var(--panel);
+  }
+  .walk-opening-row.is-up{border-color:var(--pc); box-shadow:0 0 0 1px var(--pc);}
+  .walk-opening-place{flex:none; width:22px; font-family:var(--font-mono); font-size:12px; font-weight:700; color:var(--text-dim);}
+  .walk-opening-dot{flex:none; width:10px; height:10px; border-radius:50%; background:var(--pc);}
+  .walk-opening-name{flex:1; min-width:0; font-weight:600; color:var(--text); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+  .walk-opening-dice{flex:none; display:flex; align-items:center; gap:4px;}
+  .walk-die.walk-die--sm{width:26px; height:26px; font-size:14px; border-radius:5px;}
+  .walk-opening-sum{min-width:22px; text-align:right; font-family:var(--font-mono); font-size:15px; font-weight:700; color:var(--text);}
+  .walk-opening-chip{
+    flex:none; padding:2px 6px; border-radius:4px; border:1px solid var(--line);
+    font-family:var(--font-mono); font-size:9.5px; letter-spacing:.06em; text-transform:uppercase; color:var(--text-dim);
+  }
+  .walk-opening-chip.up{color:var(--pc); border-color:var(--pc);}
+  .walk-opening-chip.tie{color:var(--amber); border-color:var(--amber);}
+  .walk-opening-start{flex:none; font-family:var(--font-mono); font-size:14px; font-weight:700; color:var(--start);}
+  .walk-opening-note{margin:0; font-size:12.5px; line-height:1.45; color:var(--text);}
+  .walk-opening-turn{margin:0; font-size:13px; line-height:1.45; color:var(--text);}
+  .walk-opening-turn b, .walk-opening-note b{color:var(--text);}
+  /* knoppen onderaan het paneel, zodat ze altijd op dezelfde plek staan */
+  .walk-opening-action{margin-top:auto; display:flex; flex-direction:column; gap:10px;}
+  .walk-opening-btn{width:100%; padding:13px; font-size:15px; animation:walkPcPulse 1.6s ease-in-out infinite;}
+  .walk-opening-picks{display:grid; grid-template-columns:repeat(2, 1fr); gap:8px;}
+  .walk-opening-pick{padding:10px; font-family:var(--font-mono); font-size:15px; font-weight:700; color:var(--start); border-color:var(--start);}
+  #tabWalk.walk-is-paused .walk-opening-btn,
+  #tabWalk.walk-is-paused .cell.walk-start-glow::after{animation-play-state:paused;}
   /* Tussengebied (laptop / half scherm): de drie kolommen op volle maat (280 + 879 + 300px +
      tussenruimte) zijn samen ±1525px breed, en tot de omschakeling naar één kolom hieronder
      viel de rechterkolom (dobbelstenen, laatste spelerskaart) daardoor buiten beeld, zonder
@@ -644,6 +689,7 @@
     .walk-board-row #walkBoard{ --cell: var(--wcell); }
     .walk-board-col{max-width:none;}
     .walk-status-col, .walk-side-stack{max-height:calc(var(--wcell) * 32 + 71px);}
+    .walk-side-stack.is-opening{height:calc(var(--wcell) * 32 + 71px);}
   }
   /* was 1150px — onder de 1360px zou het bord hierboven kleiner dan 14px per vakje worden,
      dan liever alles onder elkaar met een bord op volle maat */
@@ -654,6 +700,7 @@
        kaarten, en de statushub (huidige opdracht + opdrachtenoverzicht) als laatste onderaan. */
     .walk-board-col{order:1; max-width:none;}
     .walk-side-stack{order:2; max-height:none;}
+    .walk-side-stack.is-opening{height:auto;}
     .walk-status-col{order:3; max-height:none;}
   }
   /* de 3 vakken in de zijkolom mogen niet krimpen (Dobbelstenen/Energieactie/Actiekaarten) —
@@ -771,11 +818,11 @@
      hooguit 2×2. `grid-template-rows` met een MINMAX (i.p.v. `auto`) reserveert de 2e rij
      altijd, ook als er nog maar 1-2 spelers zijn: dat is precies wat de lobby-kolom een vaste
      grootte geeft, ongeacht het aantal spelers (eerdere versie liet 'm nog meegroeien —
-     gebruikersmelding "kolom verschuift nog steeds"). De rijhoogte (86px) is 2 tekstregels per
-     kaart (naam op regel 1, positie+voorproefje op regel 2, zie .walk-solo-setup-row1/2) plus
-     padding — ruim genoeg zodat de kaart nooit hoeft te groeien. */
+     gebruikersmelding "kolom verschuift nog steeds"). De rijhoogte (52px) is 1 regel per kaart:
+     alleen de naam. Startpositie en eerste opdracht stonden hier vroeger op een 2e regel, maar
+     die kies je nu pas aan het begin van het potje (renderOpeningPanel, 96-walk.js). */
   .walk-solo-setup{
-    display:grid; grid-template-columns:1fr 1fr; grid-template-rows:repeat(2, minmax(86px, auto));
+    display:grid; grid-template-columns:1fr 1fr; grid-template-rows:repeat(2, minmax(52px, auto));
     gap:8px 10px; margin:14px 0 0;
   }
   .walk-solo-setup[hidden], .walk-solo-setup:empty{display:none;}
@@ -784,7 +831,7 @@
     background:var(--hull); border:1px solid var(--line-dim); border-left:3px solid var(--pc);
     border-radius:5px; padding:8px 10px;
   }
-  .walk-solo-setup-row1, .walk-solo-setup-row2{display:flex; align-items:center; gap:7px; min-width:0;}
+  .walk-solo-setup-row1{display:flex; align-items:center; gap:7px; min-width:0;}
   .walk-solo-setup-dot{
     width:10px; height:10px; border-radius:50%; background:var(--pc); flex:none;
     box-shadow:0 0 6px var(--pc);
@@ -802,16 +849,6 @@
     border-color:var(--pc); box-shadow:0 0 0 2px color-mix(in srgb, var(--pc) 22%, transparent);
   }
   .walk-solo-setup-input::placeholder{color:var(--text-dim);}
-  .walk-solo-setup-player select{width:auto; flex:none; font-size:12px; padding:6px 7px;}
-  /* op de halve kolombreedte past de volledige tekst niet meer naast de startpositie-keuzelijst
-     — 1 regel met ellipsis i.p.v. laten afbreken houdt de kaarthoogte voorspelbaar (belangrijk
-     voor de vaste rijhoogte hierboven); de volledige tekst staat als title= (hover), zelfde
-     idioom als de opdracht-tooltips op het bord zelf (zie renderWalkBoard in 96-walk.js). */
-  .walk-solo-setup-preview{
-    font-family:var(--font-mono); font-size:10.5px; color:var(--text-dim);
-    flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
-  }
-  .walk-solo-setup-preview b{color:var(--quest);}
 
   /* doelwit kiezen voor Kortsluiting/Duwstoot/Prioriteitspas: dezelfde kaart-knoppenrij als
      de richtingskeuze bij Zwaartekracht-laarzen, maar dan met tegenstanders als opties */
@@ -883,6 +920,20 @@
     z-index:5; position:relative;
   }
   .cell.walk-clickable:hover{box-shadow:0 0 0 2px #fff, 0 0 10px rgba(85,214,138,.9) !important;}
+  /* vrije startvakjes tijdens het kiezen aan het begin van het potje (walkGlowStarts, 96-walk.js),
+     kloppend in de kleur van wie er nu kiest. Op een los laagje (::after) i.p.v. de box-shadow
+     van het vakje zelf: die heeft bij een aanklikbaar vakje al een !important-rand
+     (.walk-clickable), en een animatie kan daar niet overheen. */
+  .cell.walk-start-glow{z-index:6; position:relative;}
+  .cell.walk-start-glow::after{
+    content:''; position:absolute; inset:-2px; border-radius:3px; pointer-events:none;
+    box-shadow:0 0 0 2px var(--pc), 0 0 4px 1px var(--pc);
+    animation:walkStartGlow 1.2s ease-in-out infinite;
+  }
+  @keyframes walkStartGlow{
+    0%,100%{box-shadow:0 0 0 2px var(--pc), 0 0 4px 1px var(--pc);}
+    50%{box-shadow:0 0 0 2px var(--pc), 0 0 18px 6px var(--pc);}
+  }
 
   /* "Spelerstatus" — de statushub bovenin .walk-status-col (zie .walk-board-row hierboven),
      met het opdrachtenoverzicht (.walk-quest-checklist hieronder) eronder in dezelfde kolom.
@@ -2111,11 +2162,6 @@
   #mpHostSeats:empty, #mpWaitSeats:empty{display:none;}
   .mp-seat-you{color:var(--start) !important;}
   .mp-seat-host{color:var(--amber) !important;}
-  .mp-seat-start-badge{
-    font-family:var(--font-mono); font-size:11.5px; color:var(--text-dim);
-    border:1px solid var(--line-dim); border-radius:4px; padding:3px 7px; margin-left:auto;
-  }
-  select.mp-seat-start{margin-left:auto;}
 
   /* .mp-room-layout: 1 kolom zolang er geen kamer is (chat staat dan uit); met :has() (zelfde
      techniek als .walk-mp-leave-row verderop in dit bestand) vanzelf 2 kolommen zodra de chat

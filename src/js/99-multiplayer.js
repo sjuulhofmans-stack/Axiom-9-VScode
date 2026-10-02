@@ -409,13 +409,12 @@ async function mpConnect(code){
 }
 
 function mpRegisterActions(room){
-  const names = ['hello', 'lobby', 'start', 'state', 'leave', 'intent', 'stop', 'seat', 'chat'];
+  const names = ['hello', 'lobby', 'start', 'state', 'leave', 'intent', 'stop', 'chat'];
   mp.actions = {};
   for (const n of names) mp.actions[n] = room.makeAction(n);
 
   mp.actions.hello.onMessage = (data, { peerId }) => { if (mp.isHost) mpHostOnHello(peerId, data); };
   mp.actions.lobby.onMessage = (data) => { if (!mp.isHost) mpClientOnLobby(data); };
-  mp.actions.seat.onMessage = (data, { peerId }) => { if (mp.isHost) mpHostSetSeatStart(peerId, data.startLabel); };
   // chat gaat NIET via de host — Trystero verbindt alle peers rechtstreeks met elkaar (mesh),
   // dus dit bericht komt toch al bij iedereen aan; geen reden om het via de scheidsrechter te
   // laten lopen zoals de spellogica (mp.actions.intent) dat wel moet vanwege de seeded RNG.
@@ -473,7 +472,7 @@ async function mpHostCreate(){
   mp.isHost = true;
   mp.phase = 'hosting';
   mp.hostPeerId = mp.myPeerId;
-  mp.seats = [{ peerId: mp.myPeerId, name, isHost: true, startLabel: SIM_START_LABELS[0] }];
+  mp.seats = [{ peerId: mp.myPeerId, name, isHost: true }];
   mpRoomCodeTextEl.textContent = code;
   // rechtstreekse DOM-aanpassing i.p.v. de volledige mpRenderLobby() — vandaar dat #mpHostForm
   // (naam/spelersaantal/bots + Aanmaken/Terug, geen functie meer zodra de kamer bestaat) hier
@@ -509,30 +508,15 @@ function mpHostOnHello(peerId, data){
       if (!taken.has(mpNameKey(`Speler ${n}`))){ name = `Speler ${n}`; break; }
     }
   }
-  // eerste nog vrije startvakje toewijzen — met 4 labels en hoogstens 4 zitplaatsen is er
-  // altijd één vrij; de speler kan 'm hierna zelf nog wisselen (zie mpHostSetSeatStart)
-  const takenStarts = new Set(mp.seats.map(s => s.startLabel));
-  const startLabel = SIM_START_LABELS.find(l => !takenStarts.has(l)) || SIM_START_LABELS[0];
-  mp.seats.push({ peerId, name, isHost: false, startLabel });
+  // geen startpositie in de lobby: die kiest iedereen pas aan het begin van het potje, in de
+  // volgorde van de worp (soloBeginOpening in 97-solo.js)
+  mp.seats.push({ peerId, name, isHost: false });
   mpBroadcastLobby();
   mpRenderHostSeats();
 }
 function mpHostOnPeerJoin(){
   // niets te doen — we wachten op hun 'hello' met gekozen naam vóórdat we ze aan de lobby
   // toevoegen. Zie mpHostOnHello.
-}
-// speler (host zelf of een gast, via het 'seat'-bericht) kiest een eigen startvakje. Twee
-// mensen mogen niet dezelfde plek hebben — net als in de solo-opzet (soloRenderSetupUI)
-// wisselen we gewoon om met wie 'm nu heeft, in plaats van iets ingewikkelders.
-function mpHostSetSeatStart(peerId, startLabel){
-  if (!SIM_START_LABELS.includes(startLabel)) return;
-  const seat = mp.seats.find(s => s.peerId === peerId);
-  if (!seat || seat.startLabel === startLabel) return;
-  const clash = mp.seats.find(s => s.peerId !== peerId && s.startLabel === startLabel);
-  if (clash) clash.startLabel = seat.startLabel;
-  seat.startLabel = startLabel;
-  mpBroadcastLobby();
-  mpRenderHostSeats();
 }
 function mpBroadcastLobby(){
   if (!mp.isHost || !mp.actions) return;
@@ -551,30 +535,14 @@ function mpSeatRowHtml(seat, i){
   const you = seat.peerId === mp.myPeerId;
   const cls = you ? 'mp-seat-you' : (seat.isHost ? 'mp-seat-host' : '');
   const tag = seat.isHost ? ' · host' : '';
-  // alleen je EIGEN rij krijgt een keuzemenu — andermans plek is hier puur informatief
-  const startPicker = you
-    ? `<select class="mp-seat-start" data-mp-start aria-label="Jouw startpositie">` +
-        SIM_START_LABELS.map(l => `<option value="${l}"${l === seat.startLabel ? ' selected' : ''}>${l}</option>`).join('') +
-      `</select>`
-    : `<span class="mp-seat-start-badge" title="startpositie">${seat.startLabel || '?'}</span>`;
+  // alleen speler + naam: de startpositie kiest iedereen pas aan het begin van het potje
   return `<div class="walk-solo-setup-player" style="--pc:${WALK_PLAYER_COLORS[i % WALK_PLAYER_COLORS.length]}">` +
-    `<span class="walk-solo-setup-dot"></span>` +
-    `<span class="${cls}">${seat.name}${you ? ' (jij)' : ''}${tag}</span>` +
-    startPicker +
+    `<span class="walk-solo-setup-row1">` +
+      `<span class="walk-solo-setup-dot"></span>` +
+      `<span class="${cls}">${seat.name}${you ? ' (jij)' : ''}${tag}</span>` +
+    `</span>` +
   `</div>`;
 }
-// klik-afhandeling voor het keuzemenu hierboven — staat op zowel de host- als de gast-lijst
-// (mpHostSeatsEl resp. mpWaitSeatsEl), maar er is altijd maar precies 1 <select> in beeld:
-// je eigen rij. Host past zijn eigen zitplaats direct lokaal aan; een gast stuurt een 'seat'-
-// bericht en wacht op de bijgewerkte lobby-broadcast (zie mpHostSetSeatStart hierboven).
-function mpHandleSeatPickerChange(e){
-  const sel = e.target.closest('[data-mp-start]');
-  if (!sel) return;
-  if (mp.isHost) mpHostSetSeatStart(mp.myPeerId, sel.value);
-  else if (mp.actions && mp.actions.seat) mp.actions.seat.send({ startLabel: sel.value });
-}
-if (mpHostSeatsEl) mpHostSeatsEl.addEventListener('change', mpHandleSeatPickerChange);
-if (mpWaitSeatsEl) mpWaitSeatsEl.addEventListener('change', mpHandleSeatPickerChange);
 
 function mpHostStop(){
   mpTeardown();
@@ -685,8 +653,13 @@ function mpOnPeerLeave(peerId, explicit){
     // als hij net zelf aan zet was (soloActiveIdx) en op interactie stond te wachten, is er
     // geen halve-beurt-hervatting: gewoon opnieuw door de lus, die ziet 'm nu als bot.
     if (soloPlayers[soloActiveIdx] === p && soloPhase !== 'game-over'){
-      soloActiveIdx = -1;
-      soloAdvanceLoop();
+      if (soloOpening){
+        // weg tijdens het dobbelen/kiezen aan het begin: dezelfde stap opnieuw, nu als bot
+        soloOpeningStep();
+      } else {
+        soloActiveIdx = -1;
+        soloAdvanceLoop();
+      }
     }
     mpBroadcastState();
   } else {
@@ -710,11 +683,6 @@ function mpHostStartGame(){
   const total = mp.totalSeats;
   const humans = mp.seats.slice(0, total);
   const soloSeedRand = mulberry32(Math.floor(Math.random() * 4294967296));
-  // mensen kozen hun plek al in de lobby (mpHostSetSeatStart, altijd onderling uniek dankzij
-  // de wissel-bij-botsing daar) — bots krijgen willekeurig wat er nog overblijft
-  const takenLabels = new Set(humans.filter(Boolean).map(s => s.startLabel));
-  const freeLabels = simShuffle(SIM_START_LABELS.filter(l => !takenLabels.has(l)), soloSeedRand);
-  let freeIdx = 0;
   const players = [];
   // bots heten "Speler N" — maar nooit hetzelfde als een mens in de kamer (die mag zichzelf
   // bv. "Speler 3" noemen), anders stonden er twee spelers met dezelfde naam in het potje
@@ -739,7 +707,9 @@ function mpHostStartGame(){
       condenserPending: false, lockedNextTurn: false, rollPenalty: 0, barrierCell: null,
       reorderBlocked: false, lastDir: -1,
       strategy: isHuman ? null : ENERGY_STRATEGIES[i % ENERGY_STRATEGIES.length],
-      startLabel: isHuman ? seat.startLabel : freeLabels[freeIdx++],
+      // startpositie en beurtvolgorde volgen uit het dobbelen aan het begin (soloBeginOpening);
+      // tot je mag kiezen is je opdracht geheim, ook in wat er naar de anderen gaat (mpPublicPlayer)
+      startLabel: null, questHidden: true,
       pos: null, skipEnergyRoll: false, actionUses: 0,
       peerId: isHuman ? seat.peerId : null,
     });
@@ -757,14 +727,12 @@ function mpHostStartGame(){
     mpSetStatus(`Deze vakjes ontbreken op het bord: ${missing.join(', ')}.`, 'bad');
     return;
   }
-  for (const p of players) p.pos = graph.startCells[p.startLabel];
-
   soloGraph = graph;
   soloBotViewSpeed = null;   // bot-beurten zichtbaar afspelen is alleen voor Zelf spelen (97-solo.js)
   soloPlayers = players;
   soloSetupRand = soloSeedRand;
   soloRand = soloSeedRand;
-  soloTurnOrder = simShuffle(players.map(p => p.idx), soloRand);
+  soloTurnOrder = players.map(p => p.idx);   // voorlopig; soloFinishOpening zet de echte volgorde
   walkScoreOrder = soloTurnOrder;
   soloFinishTarget = simFinishTarget(players.length);
   soloFinished = 0;
@@ -781,15 +749,7 @@ function mpHostStartGame(){
 
   mpEnterPlayView();
   walkLogEl.innerHTML = '';
-  for (const p of players){
-    const who = p.isHuman ? '(mens)' : '(bot)';
-    const stratNote = p.isHuman ? '' : ` · energie: <b>${ENERGY_ACTIONS[p.strategy].name}</b>`;
-    const first = p.deck[0];
-    walkLog(`${p.name} ${who} start op <b>${p.startLabel}</b>${stratNote} · eerste opdracht: ${first} — ${QUEST_NAMES[first] || ''}`, null, p);
-  }
-  walkLog(soloPlayers.length === 2
-    ? `Er wordt gespeeld tot de winnaar binnen is — de ander is dan tweede.`
-    : `Er wordt doorgespeeld tot de <b>${soloFinishTarget}e</b> binnen is.`);
+  // de "X start op …"-regels volgen pas na het kiezen (soloLogGameStart, via soloFinishOpening)
 
   mp.actions.start.send({
     layout: layout.slice(),
@@ -800,7 +760,7 @@ function mpHostStartGame(){
 
   mp.lastFingerprint = null;
   mp.broadcastTimer = setInterval(mpBroadcastTick, 200);
-  soloAdvanceLoop();
+  soloBeginOpening();   // eerst dobbelen wie begint + startposities kiezen, daarna het potje zelf
   mpBroadcastState();
 }
 
@@ -851,7 +811,9 @@ function mpBroadcastTick(){
 // (renderWalkScore, de doel-marker op het bord) hoeft niet aangepast te worden.
 function mpPublicPlayer(p){
   const deck = new Array(p.deck.length).fill(null);
-  if (p.nextIdx < p.deck.length) deck[p.nextIdx] = p.deck[p.nextIdx];
+  // questHidden: tijdens het dobbelen aan het begin is zelfs je huidige doel nog geheim
+  // (soloBeginOpening in 97-solo.js) — dan gaat er helemaal niets van je stapel mee
+  if (p.nextIdx < p.deck.length && !p.questHidden) deck[p.nextIdx] = p.deck[p.nextIdx];
   return { ...p, deck };
 }
 function mpPublicPlayers(players){ return players.map(mpPublicPlayer); }
@@ -874,6 +836,7 @@ function mpBroadcastState(){
     soloEnergyRoll, soloEnergyGain, soloBlindOfferAvailable, soloLockedThisTurn,
     soloActionCellDrawnThisTurn, walkScoreOrder, soloDeck: mpPublicDeck(soloDeck),
     soloFinished, soloFinishTarget, soloRoundFinishers,
+    soloOpening,   // dobbelen wie begint/startposities kiezen — puur publieke info (worpen, keuzes)
     ownerUi: {
       rollHidden: btnWalkSoloRoll ? btnWalkSoloRoll.hidden : true,
       skipHidden: btnWalkSoloSkip ? btnWalkSoloSkip.hidden : true,
@@ -942,9 +905,13 @@ function mpApplyState(payload){
   soloFinished = payload.soloFinished;
   soloFinishTarget = payload.soloFinishTarget;
   soloRoundFinishers = payload.soloRoundFinishers;
+  soloOpening = payload.soloOpening || null;
+  const opening = !!soloOpening;
+  walkSetOpeningMode(opening);
 
   const active = soloPlayers[soloActiveIdx];
-  if (active){
+  // tijdens het dobbelen wie begint is ieders opdracht nog geheim — pas bij het kiezen zichtbaar
+  if (active && !active.questHidden){
     const label = active.deck[active.nextIdx];
     if (label){ markWalkTarget(soloGraph, label, soloTargetKey, active.color); renderWalkQuestCard(label); }
     else clearWalkTarget();
@@ -979,6 +946,12 @@ function mpApplyState(payload){
   if (walkStepDoneEl) walkStepDoneEl.textContent = isMine ? ui.stepDone : '–';
   if (walkStepLeftEl) walkStepLeftEl.textContent = isMine ? ui.stepLeft : '–';
   if (isMine) soloMarkClickable(soloGraph, ui.clickableKeys); else soloClearClickable();
+  // het grote dobbel-/kiespaneel tekent elke gast zelf uit de gedeelde stand (met zijn eigen
+  // "mag ik nu?"-check), zodat de knoppen erin bij de juiste speler staan
+  if (opening){
+    if (active && walkSideStackEl) walkSideStackEl.style.setProperty('--pc', active.color);
+    soloRenderOpening();
+  }
 
   if (walkStatusEl) walkStatusEl.innerHTML = payload.statusHtml || '';
   for (const line of payload.newLogLines || []){
@@ -1070,6 +1043,8 @@ const MP_INTENT_HANDLERS = {
   reorderChoice: (a) => soloResolveReorder(!!a.swap),
   jumpClick: (a) => soloHandleJumpClick(a.key),
   blindOffer: (a) => soloResolveBlindOffer(a.yes),
+  openingRoll: () => soloOpeningRoll(),
+  openingPick: (a) => soloOpeningPick(a.key),
 };
 function mpHandleIntent(peerId, msg){
   if (!mp.isHost || mp.phase !== 'in-game') return;

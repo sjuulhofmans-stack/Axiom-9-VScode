@@ -205,10 +205,6 @@
             </select>
           </div>
           <div class="field">
-            <label for="walkStart">Startpositie</label>
-            <select id="walkStart"></select>
-          </div>
-          <div class="field">
             <label for="walkEnergyMode">Energie-inzet</label>
             <select id="walkEnergyMode">
               <option value="mix" selected>elke speler een andere</option>
@@ -225,7 +221,7 @@
             <input type="range" id="walkSpeed" min="0" max="4" step="1" value="2">
           </div>
         </div>
-        <p class="hint" id="walkAutoHint">Speelt één potje op de indeling van het tabblad "Speelbord genereren", met dezelfde regels als de batch-simulatie: elke speler blokkeert de vakjes waar hij staat, en er wordt doorgespeeld tot de één na laatste speler binnen is — bij 4 spelers dus tot en met de nummer 3, want dan ligt de vierde plaats vast. Het tempo kun je tijdens het lopen aanpassen met de schuif rechtsboven. <span id="walkStartHint" class="sub"></span></p>
+        <p class="hint" id="walkAutoHint">Speelt één potje op de indeling van het tabblad "Speelbord genereren", met dezelfde regels als de batch-simulatie: elke speler blokkeert de vakjes waar hij staat, en er wordt doorgespeeld tot de één na laatste speler binnen is — bij 4 spelers dus tot en met de nummer 3, want dan ligt de vierde plaats vast. Het tempo kun je tijdens het lopen aanpassen met de schuif rechtsboven. Het potje begint met dobbelen wie begint; daarna kiest iedere bot in die volgorde de startpositie die het dichtst bij zijn eerste opdracht ligt.</p>
 
         <div class="walk-controls walk-lobby-fields" id="walkSoloControls" hidden>
           <div class="field">
@@ -471,6 +467,10 @@
                gezet (zie soloBeginHumanTurn in 97-solo.js) zodat alle puls-animaties eronder
                de kleur van wie aan zet is overnemen. -->
           <div class="walk-side-stack" id="walkSideStack">
+            <!-- begin van het potje: dobbelen wie begint, dan startposities kiezen. Zolang dat
+                 loopt is dit de hele kolom (.walk-side-stack.is-opening in styles.css) en is de
+                 rest hieronder verborgen — zie renderOpeningPanel in 96-walk.js. -->
+            <div class="walk-panel-box walk-opening-panel" id="walkOpeningPanel" hidden></div>
             <div class="walk-panel-box walk-hud">
               <div class="walk-dice" id="walkDice"></div>
               <div class="walk-step-counter" id="walkStepCounter" hidden>
