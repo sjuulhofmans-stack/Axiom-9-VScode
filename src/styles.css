@@ -373,6 +373,8 @@
   .sim-progress{margin:4px auto 10px; display:flex; flex-direction:column; gap:7px; width:min(520px, 100%);}
   .sim-progress[hidden]{display:none;}
   .sim-stop{align-self:center; margin-top:4px; min-width:140px;}
+  /* melding na "Stoppen": gecentreerd onder de knop, net als de rest erboven */
+  .sim-stopped{display:block; text-align:center;}
   .sim-progress-bar{
     height:14px; border-radius:7px; background:var(--hull); border:1px solid var(--line-dim);
     overflow:hidden;

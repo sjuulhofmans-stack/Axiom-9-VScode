@@ -1465,7 +1465,7 @@ function stopSimulation(){
   if (simProgressEl) simProgressEl.hidden = true;
   if (btnSimulate) btnSimulate.disabled = false;
   simResultsEl.innerHTML = '';
-  simStatusEl.innerHTML = `<span class="sub">Simulatie gestopt na ${simDone.toLocaleString('nl-NL')} van ${simTotal.toLocaleString('nl-NL')} potjes.</span>`;
+  simStatusEl.innerHTML = `<span class="sub sim-stopped">Simulatie gestopt na ${simDone.toLocaleString('nl-NL')} van ${simTotal.toLocaleString('nl-NL')} potjes.</span>`;
 }
 {
   const btnSimStop = document.getElementById('btnSimStop');
