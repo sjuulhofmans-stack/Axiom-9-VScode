@@ -1083,19 +1083,20 @@
   .walk-energy-overview.is-full .walk-energy-label{color:var(--amber);}
 
   /* Reactorcellen (gebruikerswens: "blokjes die gaaf zijn, echt het gevoel dat je energie
-     opwekt"): ENERGY_MAX schuine staafjes als een krachtcel. Gevuld = groen gloeiend met een
+     opwekt"): ENERGY_MAX vierkante blokjes als een krachtcel. Gevuld = groen gloeiend met een
      traag oplopend glanslicht; vol (10) = amber. Animaties vanuit soloRenderEnergyOverview
      (97-solo.js): .is-charging (nieuwe cel laadt van onder naar boven op met een witte flits,
      per cel iets later), .is-draining (uitgegeven cel flitst en loopt leeg) en .will-spend
      (hover over een energie-actie: deze cellen gaat hij kosten). */
   .walk-energy-cells{
-    flex:1 1 auto; min-width:0; height:24px; padding:0 3px;
-    display:grid; grid-template-columns:repeat(10, minmax(0, 1fr)); gap:3px;
+    flex:1 1 auto; min-width:0; align-self:center;
+    display:grid; grid-template-columns:repeat(10, minmax(0, 1fr)); gap:4px;
     --ec: var(--start); --ec-hi:#b8ffd6; --ec-lo:#1d7a4a;
   }
   .walk-energy-overview.is-full .walk-energy-cells{--ec: var(--amber); --ec-hi:#ffe7b0; --ec-lo:#9a5d14;}
   .ecell{
-    position:relative; overflow:hidden; border-radius:2px; transform:skewX(-14deg);
+    /* vierkant (gebruikerswens; was schuin en hoger dan breed) */
+    position:relative; overflow:hidden; border-radius:3px; aspect-ratio:1 / 1;
     background:linear-gradient(180deg, #0b1118, #121b25);
     border:1px solid var(--line);
     box-shadow:inset 0 0 4px rgba(0,0,0,.7);
@@ -9372,13 +9373,19 @@ function soloRenderEnergyOverview(){
   if (!walkEnergyOverviewEl || !walkEnergyCellsEl) return;
   const p = solo();
   const energy = p ? Math.max(0, Math.min(ENERGY_MAX, p.energy)) : 0;
-  const prev = p && soloEnergyShown.idx === p.idx ? soloEnergyShown.energy : energy;
-  soloEnergyShown = { idx: p ? p.idx : -1, energy };
+  const samePlayer = !!p && soloEnergyShown.idx === p.idx;
+  const prev = samePlayer ? soloEnergyShown.energy : energy;
   walkEnergyOverviewEl.classList.toggle('is-full', energy >= ENERGY_MAX);
   walkEnergyValueEl.textContent = energy;
-  if (walkEnergyCellsEl.children.length !== ENERGY_MAX){
+  const fresh = walkEnergyCellsEl.children.length !== ENERGY_MAX;
+  if (fresh){
     walkEnergyCellsEl.innerHTML = Array.from({ length: ENERGY_MAX }, () => '<span class="ecell"><i></i></span>').join('');
   }
+  // Deze functie loopt bij elke stap/klik mee (via renderSoloMeta). Is er niets veranderd, dan
+  // de cellen met rust laten — anders werd een lopende oplaad-/ontlaadanimatie bij de eerste
+  // stap meteen afgebroken (gebruikersmelding: "animatie moet gewoon helemaal afspelen").
+  if (!fresh && samePlayer && energy === prev) return;
+  soloEnergyShown = { idx: p ? p.idx : -1, energy };
   [...walkEnergyCellsEl.children].forEach((cell, i) => {
     const on = i < energy;
     const charging = on && i >= prev;

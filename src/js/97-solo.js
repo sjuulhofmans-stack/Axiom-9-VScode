@@ -511,13 +511,19 @@ function soloRenderEnergyOverview(){
   if (!walkEnergyOverviewEl || !walkEnergyCellsEl) return;
   const p = solo();
   const energy = p ? Math.max(0, Math.min(ENERGY_MAX, p.energy)) : 0;
-  const prev = p && soloEnergyShown.idx === p.idx ? soloEnergyShown.energy : energy;
-  soloEnergyShown = { idx: p ? p.idx : -1, energy };
+  const samePlayer = !!p && soloEnergyShown.idx === p.idx;
+  const prev = samePlayer ? soloEnergyShown.energy : energy;
   walkEnergyOverviewEl.classList.toggle('is-full', energy >= ENERGY_MAX);
   walkEnergyValueEl.textContent = energy;
-  if (walkEnergyCellsEl.children.length !== ENERGY_MAX){
+  const fresh = walkEnergyCellsEl.children.length !== ENERGY_MAX;
+  if (fresh){
     walkEnergyCellsEl.innerHTML = Array.from({ length: ENERGY_MAX }, () => '<span class="ecell"><i></i></span>').join('');
   }
+  // Deze functie loopt bij elke stap/klik mee (via renderSoloMeta). Is er niets veranderd, dan
+  // de cellen met rust laten — anders werd een lopende oplaad-/ontlaadanimatie bij de eerste
+  // stap meteen afgebroken (gebruikersmelding: "animatie moet gewoon helemaal afspelen").
+  if (!fresh && samePlayer && energy === prev) return;
+  soloEnergyShown = { idx: p ? p.idx : -1, energy };
   [...walkEnergyCellsEl.children].forEach((cell, i) => {
     const on = i < energy;
     const charging = on && i >= prev;
