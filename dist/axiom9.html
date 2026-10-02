@@ -375,14 +375,16 @@
   .reach-status .sub{color:var(--text-dim); font-size:11.5px;}
 
   /* ---------- simulatie ---------- */
-  .sim-progress{margin:4px 0 10px; display:flex; flex-direction:column; gap:6px;}
+  /* korter (gecentreerd, max. 520px) zodat de tekst links en rechts eronder dichter bij elkaar
+     staat, en een dikkere balk (gebruikerswens) */
+  .sim-progress{margin:4px auto 10px; display:flex; flex-direction:column; gap:7px; width:min(520px, 100%);}
   .sim-progress[hidden]{display:none;}
   .sim-progress-bar{
-    height:9px; border-radius:5px; background:var(--hull); border:1px solid var(--line-dim);
+    height:14px; border-radius:7px; background:var(--hull); border:1px solid var(--line-dim);
     overflow:hidden;
   }
   .sim-progress-fill{
-    height:100%; width:0%; border-radius:5px 0 0 5px;
+    height:100%; width:0%; border-radius:7px 0 0 7px;
     background:linear-gradient(90deg, var(--amber-dim), var(--amber));
     transition:width .12s linear;
   }
