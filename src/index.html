@@ -512,9 +512,11 @@
               <!-- duidelijk, op zichzelf staand overzicht van je energie t.o.v. het plafond;
                    bovenin de Energieactie-kolom, want die energie bepaalt wat je hier kan doen. -->
               <div class="walk-energy-overview" id="walkEnergyOverview" hidden>
-                <span class="walk-energy-label">Energie</span>
+                <span class="walk-energy-label" title="Energie">⚡</span>
                 <span class="walk-energy-value"><b id="walkEnergyValue">0</b> / 10</span>
-                <div class="walk-energy-bar"><div class="walk-energy-bar-fill" id="walkEnergyBarFill"></div></div>
+                <!-- 10 reactorcellen i.p.v. een balkje (gebruikerswens), gevuld door
+                     soloRenderEnergyOverview in 97-solo.js -->
+                <div class="walk-energy-cells" id="walkEnergyCells"></div>
               </div>
               <div class="walk-solo-actions" id="walkSoloActions"></div>
             </div>

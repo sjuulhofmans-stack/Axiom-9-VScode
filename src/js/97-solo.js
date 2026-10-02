@@ -52,7 +52,7 @@ const btnWalkSoloRoll = document.getElementById('btnWalkSoloRoll');
 const btnWalkSoloSkip = document.getElementById('btnWalkSoloSkip');
 const walkEnergyOverviewEl = document.getElementById('walkEnergyOverview');
 const walkEnergyValueEl = document.getElementById('walkEnergyValue');
-const walkEnergyBarFillEl = document.getElementById('walkEnergyBarFill');
+const walkEnergyCellsEl = document.getElementById('walkEnergyCells');
 const walkCardVaultEl = document.getElementById('walkCardVault');
 const walkCardVaultThumbsEl = document.getElementById('walkCardVaultThumbs');
 const walkCardVaultCountEl = document.getElementById('walkCardVaultCount');
@@ -497,14 +497,55 @@ function soloRenderQuestChecklist(){
 // Hangt aan renderSoloMeta() (hierboven) zodat hij overal meeloopt waar de rest van je
 // beurtinfo ook al opnieuw getekend wordt: bij het opzetten van de beurt, na het dobbelen
 // (energiesteen) en na elke energie-actie of kaart.
+// Weergave: ENERGY_MAX losse reactorcellen (gebruikerswens: "blokjes die gaaf zijn, zodat je
+// echt het gevoel krijgt dat je energie opwekt"). Komt er energie bij (zelfde speler als bij de
+// vorige keer tekenen), dan laden de nieuwe cellen één voor één op met een flits (.is-charging,
+// oplopende vertraging); gaat er energie af, dan lopen de uitgegeven cellen leeg (.is-draining).
+// Bij een andere speler (beurtwissel) gewoon zonder animatie — dat is geen opwekken.
+// Hoveren over een betaalbare energie-actie licht de cellen op die hij gaat kosten (zie
+// soloPreviewEnergyCost hieronder).
+let soloEnergyShown = { idx: -1, energy: 0 };
 function soloRenderEnergyOverview(){
-  if (!walkEnergyOverviewEl) return;
+  if (!walkEnergyOverviewEl || !walkEnergyCellsEl) return;
   const p = solo();
-  if (!p){ walkEnergyValueEl.textContent = '0'; walkEnergyBarFillEl.style.width = '0%'; return; }
-  const full = p.energy >= ENERGY_MAX;
-  walkEnergyOverviewEl.classList.toggle('is-full', full);
-  walkEnergyValueEl.textContent = p.energy;
-  walkEnergyBarFillEl.style.width = `${Math.min(100, p.energy / ENERGY_MAX * 100)}%`;
+  const energy = p ? Math.max(0, Math.min(ENERGY_MAX, p.energy)) : 0;
+  const prev = p && soloEnergyShown.idx === p.idx ? soloEnergyShown.energy : energy;
+  soloEnergyShown = { idx: p ? p.idx : -1, energy };
+  walkEnergyOverviewEl.classList.toggle('is-full', energy >= ENERGY_MAX);
+  walkEnergyValueEl.textContent = energy;
+  if (walkEnergyCellsEl.children.length !== ENERGY_MAX){
+    walkEnergyCellsEl.innerHTML = Array.from({ length: ENERGY_MAX }, () => '<span class="ecell"><i></i></span>').join('');
+  }
+  [...walkEnergyCellsEl.children].forEach((cell, i) => {
+    const on = i < energy;
+    const charging = on && i >= prev;
+    const draining = !on && i < prev;
+    cell.classList.toggle('is-on', on);
+    cell.classList.remove('is-charging', 'is-draining', 'will-spend');
+    if (charging || draining){
+      void cell.offsetWidth;   // animatie opnieuw laten starten, ook als de klasse er net al op zat
+      cell.style.animationDelay = charging ? `${(i - prev) * 110}ms` : '0ms';
+      cell.classList.add(charging ? 'is-charging' : 'is-draining');
+    }
+  });
+}
+// laatste `cost` gevulde cellen oplichten = wat deze actie zou kosten (null = preview weg)
+function soloPreviewEnergyCost(cost){
+  if (!walkEnergyCellsEl) return;
+  const energy = soloEnergyShown.energy;
+  [...walkEnergyCellsEl.children].forEach((cell, i) => {
+    cell.classList.toggle('will-spend', cost !== null && i < energy && i >= energy - cost);
+  });
+}
+if (walkSoloActionsEl){
+  walkSoloActionsEl.addEventListener('mouseover', (e) => {
+    const btn = e.target.closest('button.energy-pick[data-energy]:not(:disabled)');
+    if (btn && ENERGY_ACTIONS[btn.dataset.energy]) soloPreviewEnergyCost(ENERGY_ACTIONS[btn.dataset.energy].cost);
+  });
+  walkSoloActionsEl.addEventListener('mouseout', (e) => {
+    const btn = e.target.closest('button.energy-pick[data-energy]');
+    if (btn && !btn.contains(e.relatedTarget)) soloPreviewEnergyCost(null);
+  });
 }
 function soloRefreshTarget(){
   const p = solo();

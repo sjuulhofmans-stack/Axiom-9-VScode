@@ -1079,12 +1079,72 @@
   }
   .walk-energy-value b{font-size:19px; color:var(--start); font-variant-numeric:tabular-nums;}
   .walk-energy-overview.is-full .walk-energy-value b{color:var(--amber);}
-  .walk-energy-bar{
-    flex:1 1 auto; height:7px; min-width:40px; background:var(--panel-2);
-    border:1px solid var(--line); border-radius:4px; overflow:hidden;
+  .walk-energy-overview .walk-energy-label{font-size:17px; color:var(--start); letter-spacing:0; line-height:1;}
+  .walk-energy-overview.is-full .walk-energy-label{color:var(--amber);}
+
+  /* Reactorcellen (gebruikerswens: "blokjes die gaaf zijn, echt het gevoel dat je energie
+     opwekt"): ENERGY_MAX schuine staafjes als een krachtcel. Gevuld = groen gloeiend met een
+     traag oplopend glanslicht; vol (10) = amber. Animaties vanuit soloRenderEnergyOverview
+     (97-solo.js): .is-charging (nieuwe cel laadt van onder naar boven op met een witte flits,
+     per cel iets later), .is-draining (uitgegeven cel flitst en loopt leeg) en .will-spend
+     (hover over een energie-actie: deze cellen gaat hij kosten). */
+  .walk-energy-cells{
+    flex:1 1 auto; min-width:0; height:24px; padding:0 3px;
+    display:grid; grid-template-columns:repeat(10, minmax(0, 1fr)); gap:3px;
+    --ec: var(--start); --ec-hi:#b8ffd6; --ec-lo:#1d7a4a;
   }
-  .walk-energy-bar-fill{height:100%; background:var(--start); border-radius:3px;}
-  .walk-energy-overview.is-full .walk-energy-bar-fill{background:var(--amber);}
+  .walk-energy-overview.is-full .walk-energy-cells{--ec: var(--amber); --ec-hi:#ffe7b0; --ec-lo:#9a5d14;}
+  .ecell{
+    position:relative; overflow:hidden; border-radius:2px; transform:skewX(-14deg);
+    background:linear-gradient(180deg, #0b1118, #121b25);
+    border:1px solid var(--line);
+    box-shadow:inset 0 0 4px rgba(0,0,0,.7);
+    transition:border-color .2s, box-shadow .2s;
+  }
+  .ecell i{
+    position:absolute; inset:0; opacity:0; transform-origin:50% 100%;
+    background:linear-gradient(180deg, var(--ec-hi), var(--ec) 42%, var(--ec-lo));
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.55);
+  }
+  /* glanslicht dat traag door de gevulde cellen omhoog loopt — de cel "leeft" */
+  .ecell i::after{
+    content:''; position:absolute; left:0; right:0; height:45%; top:100%;
+    background:linear-gradient(180deg, transparent, rgba(255,255,255,.45), transparent);
+    animation:ecellShine 2.6s ease-in-out infinite;
+  }
+  @keyframes ecellShine{0%{top:110%;} 60%,100%{top:-50%;}}
+  .ecell.is-on{
+    border-color:color-mix(in srgb, var(--ec) 75%, transparent);
+    box-shadow:0 0 7px color-mix(in srgb, var(--ec) 45%, transparent);
+  }
+  .ecell.is-on i{opacity:1;}
+  /* opladen: cel vult zich van onder naar boven, met een witte flits erbij */
+  .ecell.is-charging{animation:ecellFlash .7s ease-out both; animation-delay:inherit;}
+  .ecell.is-charging i{animation:ecellCharge .55s cubic-bezier(.2,.8,.2,1) both; animation-delay:inherit;}
+  @keyframes ecellCharge{
+    0%{transform:scaleY(0); filter:brightness(2.6);}
+    70%{transform:scaleY(1); filter:brightness(1.9);}
+    100%{transform:scaleY(1); filter:brightness(1);}
+  }
+  @keyframes ecellFlash{
+    0%{box-shadow:0 0 0 transparent;}
+    45%{box-shadow:0 0 14px 3px color-mix(in srgb, var(--ec-hi) 85%, transparent);}
+    100%{box-shadow:0 0 7px color-mix(in srgb, var(--ec) 45%, transparent);}
+  }
+  /* uitgeven: de cel flitst nog even op en loopt dan leeg */
+  .ecell.is-draining i{animation:ecellDrain .6s ease-in both;}
+  @keyframes ecellDrain{
+    0%{opacity:1; transform:scaleY(1); filter:brightness(1.8);}
+    100%{opacity:0; transform:scaleY(0);}
+  }
+  /* hover over een energie-actie: de cellen die het kost knipperen rood-oranje */
+  .ecell.will-spend i{
+    background:linear-gradient(180deg, #ffd0b8, #ff7a45 45%, #8a2e12);
+    animation:ecellSpend .55s ease-in-out infinite alternate;
+  }
+  .ecell.will-spend{border-color:#ff7a45; box-shadow:0 0 8px rgba(255,122,69,.5);}
+  @keyframes ecellSpend{from{opacity:1;} to{opacity:.35;}}
+  #tabWalk.walk-is-paused .ecell i::after{animation-play-state:paused;}
   .walk-solo-actions{display:flex; gap:8px; flex-wrap:wrap;}
   .walk-solo-actions:empty{display:none;}
   /* de "gewoon dobbelen"-optie is zelf ook een keuzekaart, maar zonder illustratie */
@@ -3036,9 +3096,11 @@
               <!-- duidelijk, op zichzelf staand overzicht van je energie t.o.v. het plafond;
                    bovenin de Energieactie-kolom, want die energie bepaalt wat je hier kan doen. -->
               <div class="walk-energy-overview" id="walkEnergyOverview" hidden>
-                <span class="walk-energy-label">Energie</span>
+                <span class="walk-energy-label" title="Energie">⚡</span>
                 <span class="walk-energy-value"><b id="walkEnergyValue">0</b> / 10</span>
-                <div class="walk-energy-bar"><div class="walk-energy-bar-fill" id="walkEnergyBarFill"></div></div>
+                <!-- 10 reactorcellen i.p.v. een balkje (gebruikerswens), gevuld door
+                     soloRenderEnergyOverview in 97-solo.js -->
+                <div class="walk-energy-cells" id="walkEnergyCells"></div>
               </div>
               <div class="walk-solo-actions" id="walkSoloActions"></div>
             </div>
@@ -8849,7 +8911,7 @@ const btnWalkSoloRoll = document.getElementById('btnWalkSoloRoll');
 const btnWalkSoloSkip = document.getElementById('btnWalkSoloSkip');
 const walkEnergyOverviewEl = document.getElementById('walkEnergyOverview');
 const walkEnergyValueEl = document.getElementById('walkEnergyValue');
-const walkEnergyBarFillEl = document.getElementById('walkEnergyBarFill');
+const walkEnergyCellsEl = document.getElementById('walkEnergyCells');
 const walkCardVaultEl = document.getElementById('walkCardVault');
 const walkCardVaultThumbsEl = document.getElementById('walkCardVaultThumbs');
 const walkCardVaultCountEl = document.getElementById('walkCardVaultCount');
@@ -9294,14 +9356,55 @@ function soloRenderQuestChecklist(){
 // Hangt aan renderSoloMeta() (hierboven) zodat hij overal meeloopt waar de rest van je
 // beurtinfo ook al opnieuw getekend wordt: bij het opzetten van de beurt, na het dobbelen
 // (energiesteen) en na elke energie-actie of kaart.
+// Weergave: ENERGY_MAX losse reactorcellen (gebruikerswens: "blokjes die gaaf zijn, zodat je
+// echt het gevoel krijgt dat je energie opwekt"). Komt er energie bij (zelfde speler als bij de
+// vorige keer tekenen), dan laden de nieuwe cellen één voor één op met een flits (.is-charging,
+// oplopende vertraging); gaat er energie af, dan lopen de uitgegeven cellen leeg (.is-draining).
+// Bij een andere speler (beurtwissel) gewoon zonder animatie — dat is geen opwekken.
+// Hoveren over een betaalbare energie-actie licht de cellen op die hij gaat kosten (zie
+// soloPreviewEnergyCost hieronder).
+let soloEnergyShown = { idx: -1, energy: 0 };
 function soloRenderEnergyOverview(){
-  if (!walkEnergyOverviewEl) return;
+  if (!walkEnergyOverviewEl || !walkEnergyCellsEl) return;
   const p = solo();
-  if (!p){ walkEnergyValueEl.textContent = '0'; walkEnergyBarFillEl.style.width = '0%'; return; }
-  const full = p.energy >= ENERGY_MAX;
-  walkEnergyOverviewEl.classList.toggle('is-full', full);
-  walkEnergyValueEl.textContent = p.energy;
-  walkEnergyBarFillEl.style.width = `${Math.min(100, p.energy / ENERGY_MAX * 100)}%`;
+  const energy = p ? Math.max(0, Math.min(ENERGY_MAX, p.energy)) : 0;
+  const prev = p && soloEnergyShown.idx === p.idx ? soloEnergyShown.energy : energy;
+  soloEnergyShown = { idx: p ? p.idx : -1, energy };
+  walkEnergyOverviewEl.classList.toggle('is-full', energy >= ENERGY_MAX);
+  walkEnergyValueEl.textContent = energy;
+  if (walkEnergyCellsEl.children.length !== ENERGY_MAX){
+    walkEnergyCellsEl.innerHTML = Array.from({ length: ENERGY_MAX }, () => '<span class="ecell"><i></i></span>').join('');
+  }
+  [...walkEnergyCellsEl.children].forEach((cell, i) => {
+    const on = i < energy;
+    const charging = on && i >= prev;
+    const draining = !on && i < prev;
+    cell.classList.toggle('is-on', on);
+    cell.classList.remove('is-charging', 'is-draining', 'will-spend');
+    if (charging || draining){
+      void cell.offsetWidth;   // animatie opnieuw laten starten, ook als de klasse er net al op zat
+      cell.style.animationDelay = charging ? `${(i - prev) * 110}ms` : '0ms';
+      cell.classList.add(charging ? 'is-charging' : 'is-draining');
+    }
+  });
+}
+// laatste `cost` gevulde cellen oplichten = wat deze actie zou kosten (null = preview weg)
+function soloPreviewEnergyCost(cost){
+  if (!walkEnergyCellsEl) return;
+  const energy = soloEnergyShown.energy;
+  [...walkEnergyCellsEl.children].forEach((cell, i) => {
+    cell.classList.toggle('will-spend', cost !== null && i < energy && i >= energy - cost);
+  });
+}
+if (walkSoloActionsEl){
+  walkSoloActionsEl.addEventListener('mouseover', (e) => {
+    const btn = e.target.closest('button.energy-pick[data-energy]:not(:disabled)');
+    if (btn && ENERGY_ACTIONS[btn.dataset.energy]) soloPreviewEnergyCost(ENERGY_ACTIONS[btn.dataset.energy].cost);
+  });
+  walkSoloActionsEl.addEventListener('mouseout', (e) => {
+    const btn = e.target.closest('button.energy-pick[data-energy]');
+    if (btn && !btn.contains(e.relatedTarget)) soloPreviewEnergyCost(null);
+  });
 }
 function soloRefreshTarget(){
   const p = solo();

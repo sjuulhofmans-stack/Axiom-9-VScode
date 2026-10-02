@@ -1072,12 +1072,72 @@
   }
   .walk-energy-value b{font-size:19px; color:var(--start); font-variant-numeric:tabular-nums;}
   .walk-energy-overview.is-full .walk-energy-value b{color:var(--amber);}
-  .walk-energy-bar{
-    flex:1 1 auto; height:7px; min-width:40px; background:var(--panel-2);
-    border:1px solid var(--line); border-radius:4px; overflow:hidden;
+  .walk-energy-overview .walk-energy-label{font-size:17px; color:var(--start); letter-spacing:0; line-height:1;}
+  .walk-energy-overview.is-full .walk-energy-label{color:var(--amber);}
+
+  /* Reactorcellen (gebruikerswens: "blokjes die gaaf zijn, echt het gevoel dat je energie
+     opwekt"): ENERGY_MAX schuine staafjes als een krachtcel. Gevuld = groen gloeiend met een
+     traag oplopend glanslicht; vol (10) = amber. Animaties vanuit soloRenderEnergyOverview
+     (97-solo.js): .is-charging (nieuwe cel laadt van onder naar boven op met een witte flits,
+     per cel iets later), .is-draining (uitgegeven cel flitst en loopt leeg) en .will-spend
+     (hover over een energie-actie: deze cellen gaat hij kosten). */
+  .walk-energy-cells{
+    flex:1 1 auto; min-width:0; height:24px; padding:0 3px;
+    display:grid; grid-template-columns:repeat(10, minmax(0, 1fr)); gap:3px;
+    --ec: var(--start); --ec-hi:#b8ffd6; --ec-lo:#1d7a4a;
   }
-  .walk-energy-bar-fill{height:100%; background:var(--start); border-radius:3px;}
-  .walk-energy-overview.is-full .walk-energy-bar-fill{background:var(--amber);}
+  .walk-energy-overview.is-full .walk-energy-cells{--ec: var(--amber); --ec-hi:#ffe7b0; --ec-lo:#9a5d14;}
+  .ecell{
+    position:relative; overflow:hidden; border-radius:2px; transform:skewX(-14deg);
+    background:linear-gradient(180deg, #0b1118, #121b25);
+    border:1px solid var(--line);
+    box-shadow:inset 0 0 4px rgba(0,0,0,.7);
+    transition:border-color .2s, box-shadow .2s;
+  }
+  .ecell i{
+    position:absolute; inset:0; opacity:0; transform-origin:50% 100%;
+    background:linear-gradient(180deg, var(--ec-hi), var(--ec) 42%, var(--ec-lo));
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.55);
+  }
+  /* glanslicht dat traag door de gevulde cellen omhoog loopt — de cel "leeft" */
+  .ecell i::after{
+    content:''; position:absolute; left:0; right:0; height:45%; top:100%;
+    background:linear-gradient(180deg, transparent, rgba(255,255,255,.45), transparent);
+    animation:ecellShine 2.6s ease-in-out infinite;
+  }
+  @keyframes ecellShine{0%{top:110%;} 60%,100%{top:-50%;}}
+  .ecell.is-on{
+    border-color:color-mix(in srgb, var(--ec) 75%, transparent);
+    box-shadow:0 0 7px color-mix(in srgb, var(--ec) 45%, transparent);
+  }
+  .ecell.is-on i{opacity:1;}
+  /* opladen: cel vult zich van onder naar boven, met een witte flits erbij */
+  .ecell.is-charging{animation:ecellFlash .7s ease-out both; animation-delay:inherit;}
+  .ecell.is-charging i{animation:ecellCharge .55s cubic-bezier(.2,.8,.2,1) both; animation-delay:inherit;}
+  @keyframes ecellCharge{
+    0%{transform:scaleY(0); filter:brightness(2.6);}
+    70%{transform:scaleY(1); filter:brightness(1.9);}
+    100%{transform:scaleY(1); filter:brightness(1);}
+  }
+  @keyframes ecellFlash{
+    0%{box-shadow:0 0 0 transparent;}
+    45%{box-shadow:0 0 14px 3px color-mix(in srgb, var(--ec-hi) 85%, transparent);}
+    100%{box-shadow:0 0 7px color-mix(in srgb, var(--ec) 45%, transparent);}
+  }
+  /* uitgeven: de cel flitst nog even op en loopt dan leeg */
+  .ecell.is-draining i{animation:ecellDrain .6s ease-in both;}
+  @keyframes ecellDrain{
+    0%{opacity:1; transform:scaleY(1); filter:brightness(1.8);}
+    100%{opacity:0; transform:scaleY(0);}
+  }
+  /* hover over een energie-actie: de cellen die het kost knipperen rood-oranje */
+  .ecell.will-spend i{
+    background:linear-gradient(180deg, #ffd0b8, #ff7a45 45%, #8a2e12);
+    animation:ecellSpend .55s ease-in-out infinite alternate;
+  }
+  .ecell.will-spend{border-color:#ff7a45; box-shadow:0 0 8px rgba(255,122,69,.5);}
+  @keyframes ecellSpend{from{opacity:1;} to{opacity:.35;}}
+  #tabWalk.walk-is-paused .ecell i::after{animation-play-state:paused;}
   .walk-solo-actions{display:flex; gap:8px; flex-wrap:wrap;}
   .walk-solo-actions:empty{display:none;}
   /* de "gewoon dobbelen"-optie is zelf ook een keuzekaart, maar zonder illustratie */
