@@ -181,7 +181,7 @@ Check minimaal:
    klopt `deadTileCount` in `70-generator.js` niet meer.
 8. Tabblad "Spelen" → modus "Automatisch" → "Start spel" → de pion loopt
    zichtbaar, de dobbelstenen rollen, en het potje eindigt met hetzelfde
-   winscherm als Zelf spelen (trofee + klassement, "Toon kaart"/"Toon
+   winscherm als Zelf spelen (embleem in winnaarskleur + klassement plaats/naam/opdrachten, "Toon kaart"/"Toon
    uitslag"); de knop rechtsboven heet dan "Terug naar lobby" en werkt.
    Tempo moet je tijdens het lopen kunnen wijzigen (schuif
    rechtsboven naast Pauze/Stoppen); "Stoppen"

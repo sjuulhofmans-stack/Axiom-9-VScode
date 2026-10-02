@@ -1313,7 +1313,7 @@ async function runWalkSimulation(){
     const w = winners[0];
     const title = winners.length === 1 ? `${w.name} wint!` : 'Gedeelde winst!';
     const sub = winners.length === 1
-      ? `vanaf ${w.startLabel} in ${w.finishTurn} eigen beurten`
+      ? ''   // geen startplek/beurten meer, zie soloEndgameTexts (97-solo.js)
       : `${winners.map(p => p.name).join(' en ')} — gelijke energie en actiekaarten`;
     soloShowEndgame('🏆', title, sub, players, notMe);
   } else {

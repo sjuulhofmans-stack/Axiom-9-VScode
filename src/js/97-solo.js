@@ -2243,11 +2243,30 @@ function soloShowEndgame(trophy, title, sub, players = soloPlayers, isMe = soloI
   soloReopenEndgame();
 }
 let soloEndgameView = null;
+// Embleem boven de titel i.p.v. de cartoonachtige 🏆-emoji (gebruikerswens): een zeshoekig
+// insigne met een vierpuntige ster, in lijnen in de kleur van de winnaar (--pc). Bij een
+// afgekapt potje dezelfde zeshoek, maar met een zandloper en grijs.
+function soloEndgameEmblem(stuck){
+  const hex = (r) => [0, 1, 2, 3, 4, 5].map(i => {
+    const a = Math.PI / 3 * i - Math.PI / 2;
+    return `${(40 + r * Math.cos(a)).toFixed(1)},${(40 + r * Math.sin(a)).toFixed(1)}`;
+  }).join(' ');
+  const core = stuck
+    ? `<path d="M28 24h24M28 56h24M30 24c0 10 20 10 20 16s-20 6-20 16M50 24c0 10-20 10-20 16s20 6 20 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>`
+    : `<path d="M40 18 L44.5 35.5 L62 40 L44.5 44.5 L40 62 L35.5 44.5 L18 40 L35.5 35.5 Z" fill="currentColor" fill-opacity=".9"/>` +
+      `<path d="M40 30 L42 38 L50 40 L42 42 L40 50 L38 42 L30 40 L38 38 Z" fill="#fff" fill-opacity=".85"/>`;
+  return `<svg viewBox="0 0 80 80" width="76" height="76" aria-hidden="true">` +
+    `<polygon points="${hex(37)}" fill="currentColor" fill-opacity=".08" stroke="currentColor" stroke-width="2"/>` +
+    `<polygon points="${hex(30)}" fill="none" stroke="currentColor" stroke-opacity=".45" stroke-width="1" stroke-dasharray="3 4"/>` +
+    core + `</svg>`;
+}
 function soloRenderEndgameResult(){
   const v = soloEndgameView;
   if (!v) return;
+  const winner = v.players.find(p => p.rank === 1);
+  const color = v.trophy === '⏳' || !winner ? 'var(--text-dim)' : winner.color;
   walkEndgameCardEl.innerHTML =
-    `<span class="walk-endgame-trophy">${v.trophy}</span>` +
+    `<span class="walk-endgame-trophy" style="--pc:${color}">${soloEndgameEmblem(v.trophy === '⏳')}</span>` +
     `<span class="walk-endgame-title">${v.title}</span>` +
     (v.sub ? `<span class="walk-endgame-sub">${v.sub}</span>` : '') +
     (v.players.length > 1 ? soloEndgameRankingHtml(v.players, v.isMe) : '') +
@@ -2350,20 +2369,21 @@ if (walkStatsOverlayEl){
 // eindklassering als lijstje: plaats, kleurstip, naam, voortgang. Volgorde uit
 // walkOrderPlayers() (96-walk.js); gedeelde plaatsen krijgen hetzelfde nummer.
 function soloEndgameRankingHtml(players = soloPlayers, isMe = soloIsMe){
+  // Drie kolommen: plaats en naam in de spelerskleur, rechts de voltooide opdrachten. Geen
+  // medailles/kleurstippen/"binnen"-status meer (gebruikerswens: te druk); de rest staat in
+  // de statistieken.
+  const head = `<li class="walk-rank-head"><span>Plaats</span><span>Speler</span>` +
+    `<span class="walk-rank-score">Opdrachten voltooid</span></li>`;
   const rows = walkOrderPlayers(players).map(p => {
-    const place = p.rank || '—';
-    const status = walkIsIn(p)
-      ? 'binnen'
-      : p.rank ? 'niet binnen' : 'afgekapt';
+    const place = p.rank ? `${p.rank}e` : '—';
     const you = isMe(p) ? '<span class="you">jij</span>' : '';
-    return `<li class="walk-rank-row${p.rank >= 1 && p.rank <= 3 ? ' r' + p.rank : ''}" style="--pc:${p.color}">` +
+    return `<li class="walk-rank-row" style="--pc:${p.color}">` +
       `<span class="walk-rank-pos">${place}</span>` +
-      `<span class="walk-rank-dot"></span>` +
       `<span class="walk-rank-name">${p.name}${you}</span>` +
-      `<span class="walk-rank-score">${p.completed}/${SIM_QUESTS_TO_WIN}<span class="walk-rank-status">${status}</span></span>` +
+      `<span class="walk-rank-score">${p.completed}/${SIM_QUESTS_TO_WIN}</span>` +
     `</li>`;
   });
-  return `<ol class="walk-rank-list">${rows.join('')}</ol>`;
+  return `<ol class="walk-rank-list">${head}${rows.join('')}</ol>`;
 }
 function soloReopenEndgame(){
   if (!walkEndgameEl) return;
@@ -2563,14 +2583,15 @@ function soloEndgameTexts(stuck){
     return { trophy: '⏳', title: 'Afgekapt', sub: `niet iedereen was binnen na ${SIM_MAX_TURNS} beurten` };
   }
   if (soloPlayers.length === 1){
-    const n = soloPlayers[0].finishTurn;
-    return { trophy: '🏆', title: 'Je wint!', sub: `alle ${SIM_QUESTS_TO_WIN} opdrachten voltooid in ${n} beurten` };
+    return { trophy: '🏆', title: 'Je wint!', sub: '' };
   }
+  // geen "vanaf 3.1 in 23 beurten" meer onder de titel (gebruikerswens: startplek boeit niemand,
+  // het aantal beurten staat in de statistieken)
   const winners = soloPlayers.filter(p => p.rank === 1);
   const w = winners[0];
   const title = winners.length === 1 ? (soloIsMe(w) ? 'Jij wint!' : `${w.name} wint!`) : 'Gedeelde winst!';
   const sub = winners.length === 1
-    ? `vanaf ${w.startLabel} in ${w.finishTurn} eigen beurten`
+    ? ''
     : `${winners.map(nameOf).join(' en ')} — gelijke energie en actiekaarten`;
   return { trophy: '🏆', title, sub };
 }

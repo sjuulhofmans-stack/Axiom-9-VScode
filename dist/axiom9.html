@@ -609,7 +609,10 @@
     background:var(--panel-2); border:1px solid var(--line); border-radius:10px;
     padding:28px 36px; box-shadow:0 8px 30px rgba(0,0,0,.5);
   }
-  .walk-endgame-trophy{font-size:40px; line-height:1;}
+  .walk-endgame-trophy{
+    display:block; line-height:0; margin-bottom:4px; color:var(--pc);
+    filter:drop-shadow(0 0 10px color-mix(in srgb, var(--pc) 55%, transparent));
+  }
   /* knop "Statistieken" onderaan de uitslag — opent de pop-up (soloOpenStats in 97-solo.js) */
   .walk-endgame-stats-btn{margin-top:14px; min-width:200px;}
 
@@ -669,39 +672,36 @@
   /* "Toon uitslag": zelfde hoek als "Toon kaart", maar ligt op het bord zelf — daarom een
      dichte achtergrond, anders schemeren de bordvakjes erdoor. */
   .walk-endgame-showresult{z-index:11; background:var(--panel-2); box-shadow:0 4px 14px rgba(0,0,0,.45);}
-  /* eindklassering in het winscherm: plaats 1 t/m 4 onder elkaar. Goud/zilver/brons alleen op
-     het plaatsnummer; de kleurstip + linkerrand is de spelerskleur (zelfde --pc als overal). */
+  /* eindklassering in het winscherm: een rustige tabel met drie kolommen — plaats (1e, 2e…) en
+     naam in de kleur van die speler, rechts het aantal voltooide opdrachten. Geen goud/zilver/
+     brons, kleurstippen of gekleurde randen meer (gebruikerswens: "veel verschillende kleuren,
+     onduidelijk"); de spelerskleur is de enige kleur. */
   .walk-rank-list{
-    list-style:none; margin:14px 0 0; padding:0; width:min(340px, 100%);
-    display:flex; flex-direction:column; gap:6px; text-align:left;
+    list-style:none; margin:16px 0 0; padding:0; width:min(360px, 100%); text-align:left;
+    display:grid; grid-template-columns:auto 1fr auto;
   }
-  .walk-rank-row{
-    display:flex; align-items:center; gap:10px;
-    padding:8px 12px; border:1px solid var(--line); border-left:3px solid var(--pc);
-    border-radius:6px; background:var(--panel);
+  /* ruimte tussen de kolommen als padding i.p.v. column-gap, zodat de lijntjes doorlopen */
+  .walk-rank-list li > span:not(:last-child){padding-right:18px;}
+  .walk-rank-row, .walk-rank-head{display:contents;}
+  .walk-rank-head > span{
+    padding:0 0 6px; border-bottom:1px solid var(--line);
+    font-family:var(--font-mono); font-size:10px; letter-spacing:.12em; text-transform:uppercase;
+    color:var(--text-dim);
   }
-  .walk-rank-row.r1{background:linear-gradient(90deg, rgba(255,210,61,.14), var(--panel) 70%);}
-  .walk-rank-pos{
-    flex:none; width:26px; height:26px; border-radius:50%;
-    display:flex; align-items:center; justify-content:center;
-    font-family:var(--font-mono); font-size:13px; font-weight:700;
-    color:var(--text-dim); border:1px solid var(--line);
-  }
-  .walk-rank-row.r1 .walk-rank-pos{color:#1a1400; background:#ffd23d; border-color:#ffd23d;}
-  .walk-rank-row.r2 .walk-rank-pos{color:#15181c; background:#c9d2dc; border-color:#c9d2dc;}
-  .walk-rank-row.r3 .walk-rank-pos{color:#1c0f05; background:#d08a4e; border-color:#d08a4e;}
-  .walk-rank-dot{flex:none; width:10px; height:10px; border-radius:50%; background:var(--pc);}
-  .walk-rank-name{flex:1; min-width:0; font-weight:600; color:var(--text); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+  .walk-rank-row > span{padding:9px 0; border-bottom:1px solid var(--line-dim); display:flex; align-items:center;}
+  .walk-rank-row:last-child > span{border-bottom:none;}
+  .walk-rank-pos{font-family:var(--font-mono); font-size:15px; font-weight:700; color:var(--pc);}
+  .walk-rank-name{min-width:0; font-size:15px; font-weight:700; color:var(--pc); white-space:nowrap;}
   .walk-rank-name .you{
-    margin-left:8px; padding:1px 6px; border-radius:4px; vertical-align:1px;
+    margin-left:8px; padding:1px 6px; border-radius:4px;
     font-family:var(--font-mono); font-size:10px; letter-spacing:.08em; text-transform:uppercase;
     color:var(--pc); border:1px solid var(--pc);
   }
   .walk-rank-score{
-    flex:none; display:flex; flex-direction:column; align-items:flex-end; line-height:1.2;
-    font-family:var(--font-mono); font-size:13px; font-weight:700; color:var(--text);
+    justify-content:flex-end;
+    font-family:var(--font-mono); font-size:15px; font-weight:700; color:var(--text);
   }
-  .walk-rank-status{font-size:10px; font-weight:400; color:var(--text-dim); text-transform:uppercase; letter-spacing:.06em;}
+  .walk-rank-head .walk-rank-score{justify-content:flex-end; text-align:right;}
   .walk-side-stack{
     grid-column:3;
     display:flex; flex-direction:column; gap:10px; min-width:0;
@@ -8641,7 +8641,7 @@ async function runWalkSimulation(){
     const w = winners[0];
     const title = winners.length === 1 ? `${w.name} wint!` : 'Gedeelde winst!';
     const sub = winners.length === 1
-      ? `vanaf ${w.startLabel} in ${w.finishTurn} eigen beurten`
+      ? ''   // geen startplek/beurten meer, zie soloEndgameTexts (97-solo.js)
       : `${winners.map(p => p.name).join(' en ')} — gelijke energie en actiekaarten`;
     soloShowEndgame('🏆', title, sub, players, notMe);
   } else {
@@ -10929,11 +10929,30 @@ function soloShowEndgame(trophy, title, sub, players = soloPlayers, isMe = soloI
   soloReopenEndgame();
 }
 let soloEndgameView = null;
+// Embleem boven de titel i.p.v. de cartoonachtige 🏆-emoji (gebruikerswens): een zeshoekig
+// insigne met een vierpuntige ster, in lijnen in de kleur van de winnaar (--pc). Bij een
+// afgekapt potje dezelfde zeshoek, maar met een zandloper en grijs.
+function soloEndgameEmblem(stuck){
+  const hex = (r) => [0, 1, 2, 3, 4, 5].map(i => {
+    const a = Math.PI / 3 * i - Math.PI / 2;
+    return `${(40 + r * Math.cos(a)).toFixed(1)},${(40 + r * Math.sin(a)).toFixed(1)}`;
+  }).join(' ');
+  const core = stuck
+    ? `<path d="M28 24h24M28 56h24M30 24c0 10 20 10 20 16s-20 6-20 16M50 24c0 10-20 10-20 16s20 6 20 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>`
+    : `<path d="M40 18 L44.5 35.5 L62 40 L44.5 44.5 L40 62 L35.5 44.5 L18 40 L35.5 35.5 Z" fill="currentColor" fill-opacity=".9"/>` +
+      `<path d="M40 30 L42 38 L50 40 L42 42 L40 50 L38 42 L30 40 L38 38 Z" fill="#fff" fill-opacity=".85"/>`;
+  return `<svg viewBox="0 0 80 80" width="76" height="76" aria-hidden="true">` +
+    `<polygon points="${hex(37)}" fill="currentColor" fill-opacity=".08" stroke="currentColor" stroke-width="2"/>` +
+    `<polygon points="${hex(30)}" fill="none" stroke="currentColor" stroke-opacity=".45" stroke-width="1" stroke-dasharray="3 4"/>` +
+    core + `</svg>`;
+}
 function soloRenderEndgameResult(){
   const v = soloEndgameView;
   if (!v) return;
+  const winner = v.players.find(p => p.rank === 1);
+  const color = v.trophy === '⏳' || !winner ? 'var(--text-dim)' : winner.color;
   walkEndgameCardEl.innerHTML =
-    `<span class="walk-endgame-trophy">${v.trophy}</span>` +
+    `<span class="walk-endgame-trophy" style="--pc:${color}">${soloEndgameEmblem(v.trophy === '⏳')}</span>` +
     `<span class="walk-endgame-title">${v.title}</span>` +
     (v.sub ? `<span class="walk-endgame-sub">${v.sub}</span>` : '') +
     (v.players.length > 1 ? soloEndgameRankingHtml(v.players, v.isMe) : '') +
@@ -11036,20 +11055,21 @@ if (walkStatsOverlayEl){
 // eindklassering als lijstje: plaats, kleurstip, naam, voortgang. Volgorde uit
 // walkOrderPlayers() (96-walk.js); gedeelde plaatsen krijgen hetzelfde nummer.
 function soloEndgameRankingHtml(players = soloPlayers, isMe = soloIsMe){
+  // Drie kolommen: plaats en naam in de spelerskleur, rechts de voltooide opdrachten. Geen
+  // medailles/kleurstippen/"binnen"-status meer (gebruikerswens: te druk); de rest staat in
+  // de statistieken.
+  const head = `<li class="walk-rank-head"><span>Plaats</span><span>Speler</span>` +
+    `<span class="walk-rank-score">Opdrachten voltooid</span></li>`;
   const rows = walkOrderPlayers(players).map(p => {
-    const place = p.rank || '—';
-    const status = walkIsIn(p)
-      ? 'binnen'
-      : p.rank ? 'niet binnen' : 'afgekapt';
+    const place = p.rank ? `${p.rank}e` : '—';
     const you = isMe(p) ? '<span class="you">jij</span>' : '';
-    return `<li class="walk-rank-row${p.rank >= 1 && p.rank <= 3 ? ' r' + p.rank : ''}" style="--pc:${p.color}">` +
+    return `<li class="walk-rank-row" style="--pc:${p.color}">` +
       `<span class="walk-rank-pos">${place}</span>` +
-      `<span class="walk-rank-dot"></span>` +
       `<span class="walk-rank-name">${p.name}${you}</span>` +
-      `<span class="walk-rank-score">${p.completed}/${SIM_QUESTS_TO_WIN}<span class="walk-rank-status">${status}</span></span>` +
+      `<span class="walk-rank-score">${p.completed}/${SIM_QUESTS_TO_WIN}</span>` +
     `</li>`;
   });
-  return `<ol class="walk-rank-list">${rows.join('')}</ol>`;
+  return `<ol class="walk-rank-list">${head}${rows.join('')}</ol>`;
 }
 function soloReopenEndgame(){
   if (!walkEndgameEl) return;
@@ -11249,14 +11269,15 @@ function soloEndgameTexts(stuck){
     return { trophy: '⏳', title: 'Afgekapt', sub: `niet iedereen was binnen na ${SIM_MAX_TURNS} beurten` };
   }
   if (soloPlayers.length === 1){
-    const n = soloPlayers[0].finishTurn;
-    return { trophy: '🏆', title: 'Je wint!', sub: `alle ${SIM_QUESTS_TO_WIN} opdrachten voltooid in ${n} beurten` };
+    return { trophy: '🏆', title: 'Je wint!', sub: '' };
   }
+  // geen "vanaf 3.1 in 23 beurten" meer onder de titel (gebruikerswens: startplek boeit niemand,
+  // het aantal beurten staat in de statistieken)
   const winners = soloPlayers.filter(p => p.rank === 1);
   const w = winners[0];
   const title = winners.length === 1 ? (soloIsMe(w) ? 'Jij wint!' : `${w.name} wint!`) : 'Gedeelde winst!';
   const sub = winners.length === 1
-    ? `vanaf ${w.startLabel} in ${w.finishTurn} eigen beurten`
+    ? ''
     : `${winners.map(nameOf).join(' en ')} — gelijke energie en actiekaarten`;
   return { trophy: '🏆', title, sub };
 }
