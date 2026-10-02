@@ -747,7 +747,7 @@
   .walk-opening-turn b, .walk-opening-note b{color:var(--text);}
   /* knoppen onderaan het paneel, zodat ze altijd op dezelfde plek staan */
   .walk-opening-action{margin-top:auto; display:flex; flex-direction:column; gap:10px;}
-  .walk-opening-btn{width:100%; padding:13px; font-size:15px; animation:walkPcPulse 1.6s ease-in-out infinite;}
+  .walk-opening-btn{width:100%; padding:13px; font-size:15px; animation:walkPcPulse 1.2s ease-in-out infinite;}
   .walk-opening-picks{display:grid; grid-template-columns:repeat(2, 1fr); gap:8px;}
   .walk-opening-pick{padding:10px; font-family:var(--font-mono); font-size:15px; font-weight:700; color:var(--start); border-color:var(--start);}
   #tabWalk.walk-is-paused .walk-opening-btn,
@@ -820,13 +820,14 @@
      lege kolom. Tempo gelijk aan .walk-paused-flag (1.6s) — bewust trager dan de 1.3s-puls
      van het opdrachtvakje op het bord, anders concurreren de twee knipperingen zichtbaar
      met elkaar. */
-  /* tussenstops op 25%/75% i.p.v. alleen 0/50/100: dat laat de gloed geleidelijker op- en
-     afbouwen (meer een "ademhaling") in plaats van in twee grote sprongen aan/uit te
-     knipperen (gebruikerswens: vloeiender). */
+  /* Zelfde puls als de gloeiende startvakjes bij het kiezen aan het begin (walkStartGlow
+     hieronder; gebruikerswens: "die pulst super mooi"): een vaste ring van 2px in de
+     spelerskleur met een volle gloed die rustig aanzwelt en weer afneemt, in 1,2s. Eerder was
+     dit een zwakke, half-doorzichtige gloed zonder ring in 1,6s. Duur gelijk houden aan
+     PULSE_DURATION_MS in 97-solo.js (syncPulse). */
   @keyframes walkPcPulse{
-    0%,100%{box-shadow:0 0 0 0 color-mix(in srgb, var(--pc, var(--amber)) 45%, transparent);}
-    25%,75%{box-shadow:0 0 5px 1px color-mix(in srgb, var(--pc, var(--amber)) 50%, transparent);}
-    50%{box-shadow:0 0 14px 3px color-mix(in srgb, var(--pc, var(--amber)) 60%, transparent);}
+    0%,100%{box-shadow:0 0 0 2px var(--pc, var(--amber)), 0 0 4px 1px var(--pc, var(--amber));}
+    50%{box-shadow:0 0 0 2px var(--pc, var(--amber)), 0 0 18px 6px var(--pc, var(--amber));}
   }
   /* #btnWalkSoloSkip ("Dobbelen") pulst hier ook mee: het is zelf ook gewoon een keuze naast
      de energieacties (net zo geldig als "geen actie"), dus verdient dezelfde nadruk i.p.v.
@@ -835,7 +836,7 @@
      energieknoppen — hetzelfde gedeelde ritme volgen i.p.v. elk op hun eigen moment te
      beginnen (gebruikerswens: tegelijk pulsen). */
   .walk-pulse-affordable, #btnWalkSoloRoll:not([hidden]), #btnWalkSoloSkip:not([hidden]){
-    animation:walkPcPulse 1.6s ease-in-out infinite;
+    animation:walkPcPulse 1.2s ease-in-out infinite;
   }
   #tabWalk.walk-is-paused .walk-pulse-affordable,
   #tabWalk.walk-is-paused #btnWalkSoloRoll,
@@ -8749,7 +8750,7 @@ const btnWalkEndgameShowResult = document.getElementById('btnWalkEndgameShowResu
 // animation-delay gelijk aan hoe ver we nu in die cyclus zitten, zodat alle pulserende elementen
 // hetzelfde gedeelde ritme volgen ongeacht wanneer hun eigen DOM-node ontstond.
 const PULSE_EPOCH = performance.now();
-const PULSE_DURATION_MS = 1600;   // moet gelijk blijven aan walkPcPulse's duur in styles.css
+const PULSE_DURATION_MS = 1200;   // moet gelijk blijven aan walkPcPulse's duur in styles.css
 function syncPulse(el){
   if (!el) return;
   const elapsed = (performance.now() - PULSE_EPOCH) % PULSE_DURATION_MS;

@@ -88,7 +88,7 @@ const btnWalkEndgameShowResult = document.getElementById('btnWalkEndgameShowResu
 // animation-delay gelijk aan hoe ver we nu in die cyclus zitten, zodat alle pulserende elementen
 // hetzelfde gedeelde ritme volgen ongeacht wanneer hun eigen DOM-node ontstond.
 const PULSE_EPOCH = performance.now();
-const PULSE_DURATION_MS = 1600;   // moet gelijk blijven aan walkPcPulse's duur in styles.css
+const PULSE_DURATION_MS = 1200;   // moet gelijk blijven aan walkPcPulse's duur in styles.css
 function syncPulse(el){
   if (!el) return;
   const elapsed = (performance.now() - PULSE_EPOCH) % PULSE_DURATION_MS;
