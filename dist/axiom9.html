@@ -838,9 +838,19 @@
   }
   /* #btnWalkSoloSkip ("Dobbelen") pulst hier ook mee: het is zelf ook gewoon een keuze naast
      de energieacties (net zo geldig als "geen actie"), dus verdient dezelfde nadruk i.p.v.
-     er statisch naast te staan (gebruikerswens). */
+     er statisch naast te staan (gebruikerswens).
+     De knoppen (dobbelen, energie, actiekaarten) krijgen een sterkere variant: van bijna niets
+     naar de volle axPulse-sterkte, zodat duidelijker is dat je hier iets MOET doen
+     (gebruikerswens). Zelfde duur en kromme, en net als axPulse op 0% op z'n sterkst, dus ze
+     zijn tegelijk met de rest op hun helderst. */
+  @keyframes axPulseBtn{
+    0%,100%{box-shadow:0 0 0 2px var(--glow, var(--pc, var(--amber))),
+                       0 0 14px color-mix(in srgb, var(--glow, var(--pc, var(--amber))) 60%, transparent);}
+    50%{box-shadow:0 0 0 2px color-mix(in srgb, var(--glow, var(--pc, var(--amber))) 10%, transparent),
+                   0 0 0 transparent;}
+  }
   .walk-pulse-affordable, #btnWalkSoloRoll:not([hidden]), #btnWalkSoloSkip:not([hidden]){
-    animation:axPulse 1.9s ease-in-out infinite;
+    animation:axPulseBtn 1.9s ease-in-out infinite;
   }
   #tabWalk.walk-is-paused .walk-pulse-affordable,
   #tabWalk.walk-is-paused #btnWalkSoloRoll,
@@ -1402,7 +1412,9 @@
      inhoudsbreedte hangen i.p.v. de hele .walk-solo-panel te vullen (gebruikerswens). */
   /* gap/padding iets krapper sinds er 4 acties zijn (was 6px / 8px): zo passen 4 rijen + de
      energiebalk + de "te weinig energie"-regel samen in de vaste 286px van .walk-solo-panel (krapste geval 272px, gemeten) */
-  .energy-pick-list{display:flex; flex-direction:column; gap:5px; width:100%;}
+  /* gap weer 8px (gebruikerswens: de gloed van de puls heeft wat lucht nodig tussen de knoppen);
+     krapste geval wordt daarmee ±281px, past nog net in de 286px */
+  .energy-pick-list{display:flex; flex-direction:column; gap:8px; width:100%;}
   .energy-pick{
     display:flex; align-items:center; gap:10px; width:100%; text-align:left;
     padding:5px 10px; border-radius:5px; cursor:pointer;
@@ -8759,7 +8771,7 @@ const btnWalkEndgameShowResult = document.getElementById('btnWalkEndgameShowResu
 // zelf niets van deze synchronisatie hoeven te weten. Gepauzeerde animaties (Pauze in
 // Automatisch) blijven met rust: starttijd zetten zou ze weer laten lopen.
 const PULSE_DURATION_MS = 1900;   // moet gelijk blijven aan axPulse/walkRoomPulse in styles.css
-const PULSE_ANIMATIONS = new Set(['axPulse', 'walkRoomPulse']);
+const PULSE_ANIMATIONS = new Set(['axPulse', 'axPulseBtn', 'walkRoomPulse']);
 let pulseSyncQueued = false;
 function syncAllPulses(){
   pulseSyncQueued = false;

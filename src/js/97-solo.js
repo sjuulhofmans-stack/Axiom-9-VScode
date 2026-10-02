@@ -90,7 +90,7 @@ const btnWalkEndgameShowResult = document.getElementById('btnWalkEndgameShowResu
 // zelf niets van deze synchronisatie hoeven te weten. Gepauzeerde animaties (Pauze in
 // Automatisch) blijven met rust: starttijd zetten zou ze weer laten lopen.
 const PULSE_DURATION_MS = 1900;   // moet gelijk blijven aan axPulse/walkRoomPulse in styles.css
-const PULSE_ANIMATIONS = new Set(['axPulse', 'walkRoomPulse']);
+const PULSE_ANIMATIONS = new Set(['axPulse', 'axPulseBtn', 'walkRoomPulse']);
 let pulseSyncQueued = false;
 function syncAllPulses(){
   pulseSyncQueued = false;
