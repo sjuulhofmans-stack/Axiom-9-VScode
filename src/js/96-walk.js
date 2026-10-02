@@ -652,27 +652,6 @@ function walkCardNote(id){
   if (!id || !ACTION_CARDS[id]) return '';
   return ` <span class="action">🃏 ${ACTION_CARDS[id].name}</span>`;
 }
-// de handkaarten van een speler als kleine kaart-badges (renderActionCardFace uit
-// 95-simulate.js, gedeeld met de solo-modus)
-// Het vakje staat er ALTIJD, ook zonder kaarten. Een badge is 26px hoog en de rest van de
-// regel maar ~15px, dus verscheen hij pas zodra iemand een kaart kreeg, dan werd de hele
-// spelersbalk hoger en schoof het bord eronder omlaag — elke beurt opnieuw.
-function walkCardBadges(player){
-  // in een lopend multiplayer-potje is de hand van andere spelers verborgen info — alleen
-  // je eigen kaarten tonen we als plaatjes, van anderen laten we enkel het aantal zien
-  if (window.mpGameActive){
-    const me = mpMe();
-    if (me && player !== me){
-      return player.cards.length
-        ? `<span class="walk-player-cards"><span class="action-card-back" title="kaarten op hand (verborgen)">${player.cards.length}</span></span>`
-        : '';
-    }
-  }
-  return `<span class="walk-player-cards">` +
-    player.cards.map(id => renderActionCardFace(id, { size: 'sm' })).join('') +
-  `</span>`;
-}
-
 function walkEnergyNote(roll, gain, player){
   if (roll === 0) return ` <span class="energy">⚡0</span>`;
   if (gain.gained === 0) return ` <span class="energy">⚡vol — ${roll} verloren</span>`;
@@ -696,44 +675,30 @@ function renderWalkScore(players, activeIdx){
   const ordered = walkScoreOrder
     ? walkScoreOrder.map(i => players[i]).filter(Boolean)
     : players;
+  // Eén strakke regel per speler (gebruikerswens: "te veel rotzooi"): links de naam, groot, met
+  // een klein label (aan zet / eindplaats); rechts drie vaste blokjes met een omschrijving erbij —
+  // opdrachten voltooid, energie en het aantal actiekaarten. Géén huidige opdracht en géén
+  // energie-strategie meer (stond er eerst wel). Alle spelers blijven op dezelfde plek staan;
+  // alleen het vak van wie aan zet is licht op.
   const html = ordered.map(p => {
-    const targetLabel = p.deck[p.nextIdx];
-    // questHidden: tijdens het dobbelen/kiezen aan het begin (renderOpeningPanel) ziet niemand je
-    // opdracht, ook jij nog niet — pas als je een startpositie mag kiezen
-    const goal = p.rank
-      ? walkIsIn(p)
-        ? `<span class="hit">binnen — ${walkRankLabel(p.rank)}</span>`
-        : `<span class="lost">verloren — ${walkRankLabel(p.rank)}</span>`
-      : p.questHidden
-        ? `<span class="sub">opdracht nog geheim</span>`
-        : `${targetLabel} — ${QUEST_NAMES[targetLabel] || ''}`;
     const cls = 'walk-player' + (p.idx === activeIdx ? ' active' : '') + (p.rank ? ' done' : '');
-    // p.strategy is leeg voor een mens in de solo-modus (die kiest zelf elke beurt, geen
-    // vaste bot-strategie) — de ENERGY_ACTIONS-opzoeking overslaan voorkomt een crash daar
-    const stratBadge = p.strategy
-      ? `<span class="walk-player-strat" title="${ENERGY_ACTIONS[p.strategy].hint}">${ENERGY_ACTIONS[p.strategy].name}</span>`
-      : (p.isHuman ? `<span class="walk-player-strat" title="jij kiest zelf een energie-actie of kaart">jij kiest</span>` : '');
-    // Twee regels in plaats van één: op één regel was de doeltekst het enige krimpbare deel
-    // en werd hij in een vak van 255px tot 0px samengeknepen — je zag dan nergens meer waar
-    // een speler heen ging. Boven staat wie het is en hoe hij ervoor staat, onder waar hij
-    // heen gaat en waarmee hij speelt.
-    // Drie vaste regels. Alle spelers staan altijd in dezelfde volgorde in de balk — wie aan
-    // zet is werd eerder verborgen, waardoor er elke beurt een ander vak wegviel en de rest
-    // opschoof. Nu verandert er niets aan de indeling en licht alleen het actieve vak op.
-    // Het "aan zet"-vlaggetje staat er altijd, alleen onzichtbaar bij wie niet aan zet is,
-    // zodat ook dát geen breedte verschuift.
+    const tag = p.rank
+      ? `<span class="walk-player-tag ${walkIsIn(p) ? 'hit' : 'lost'}">${walkRankLabel(p.rank)}</span>`
+      : `<span class="walk-player-tag turn" aria-hidden="true">aan zet</span>`;
+    const me = p.isHuman && typeof soloIsMe === 'function' && soloIsMe(p)
+      ? `<span class="walk-player-me">jij</span>` : '';
+    const stat = (label, value, extra) =>
+      `<span class="walk-player-stat${extra || ''}"><span class="lbl">${label}</span><b>${value}</b></span>`;
     return `<div class="${cls}" style="--pc:${p.color}"${p.idx === activeIdx ? ' aria-current="true"' : ''}>` +
-      `<span class="walk-player-top">` +
+      `<span class="walk-player-who">` +
         `<span class="walk-player-dot"></span>` +
-        `<span class="walk-player-name">${p.name}${p.startLabel ? `<span class="sub"> · ${p.startLabel}</span>` : ''}</span>` +
-        `<span class="walk-player-turn" aria-hidden="true">aan zet</span>` +
-        `<span class="walk-player-score">${p.completed}/${SIM_QUESTS_TO_WIN}</span>` +
+        `<span class="walk-player-name" title="${p.name}">${p.name}</span>` + me + tag +
       `</span>` +
-      `<span class="walk-player-goal">${goal}</span>` +
-      `<span class="walk-player-bottom">` +
-        stratBadge +
-        `<span class="walk-player-energy${p.energy >= ENERGY_MAX ? ' full' : ''}" title="energie (max ${ENERGY_MAX})">⚡${p.energy}</span>` +
-        walkCardBadges(p) +
+      `<span class="walk-player-stats">` +
+        // lang label op een breed scherm, kort ("Voltooid") waar het anders niet op één regel past
+        stat('<span class="lbl-long">Opdrachten voltooid</span><span class="lbl-short">Voltooid</span>', `${p.completed}/${SIM_QUESTS_TO_WIN}`, ' quests') +
+        stat('Energie', `⚡${p.energy}`, p.energy >= ENERGY_MAX ? ' energy full' : ' energy') +
+        stat('Kaarten', p.cards.length) +
       `</span>` +
     `</div>`;
   }).join('');

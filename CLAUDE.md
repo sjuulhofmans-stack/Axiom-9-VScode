@@ -213,7 +213,12 @@ Check minimaal:
     "Toon legenda"/"Toon log" staan onderaan de linkerkolom (gelijk met de
     onderrand van het bord), niet meer onder het bord; het opdrachtenoverzicht
     staat naast het bord altijd compact (naam + kamer op één regel). Minimum is
-    13px per vakje; daaronder scrolt het nog.
+    13px per vakje; daaronder scrolt het nog. De tabbladen staan in de kop naast
+    logo + titel (op een smal scherm op een eigen regel eronder). De
+    spelerskaarten boven het bord zijn één regel: naam groot (nooit afgekapt),
+    rechts Voltooid / Energie / Kaarten; "aan zet" en de eindplaats als tabje op
+    de rand. Verandert de hoogte boven/onder het bord, pas dan de 300px in
+    `--wcell` (styles.css) aan.
 12. Zelf spelen → energie-paneel toont 4 acties op prijs (Stuwstoot 4,
     Herprioritering 4, Zwaartekracht-laarzen 5, Noodtransport 10).
     Herprioritering laat je huidige én volgende opdracht zien en vraagt welke

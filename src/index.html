@@ -11,16 +11,14 @@
 <body>
 <div class="wrap">
 
+  <!-- Logo + titel in één kolom, de tabbladen ernaast op dezelfde regel (gebruikerswens: naast
+       "MAP GENERATOR" stond veel lege ruimte, en een aparte tabbladenrij kostte bordhoogte op
+       het speelscherm). De tabbladen staan onderaan de kop, op de lijn eronder. -->
   <header>
     <div class="title-block">
       <img class="logo" src="{{LOGO}}" alt="Axiom-9 logo">
       <h1 class="spaced-title">MAP GENERATOR</h1>
     </div>
-    <div class="status">
-      <div><span class="dot"></span>SYSTEEM ACTIEF</div>
-      <div>SEED: <b id="statSeed" title="De seed waarmee de huidige indeling is gegenereerd">origineel</b></div>
-    </div>
-  </header>
 
   <div class="tab-bar" role="tablist">
     <button class="tab-btn active" id="tabBtnMap" data-tab="map" role="tab" aria-selected="true">Speelbord genereren</button>
@@ -50,6 +48,12 @@
       <button type="button" id="btnWalkStop" class="ghost tab-bar-action" disabled hidden>Stoppen</button>
     </div>
   </div>
+
+    <div class="status">
+      <div><span class="dot"></span>SYSTEEM ACTIEF</div>
+      <div>SEED: <b id="statSeed" title="De seed waarmee de huidige indeling is gegenereerd">origineel</b></div>
+    </div>
+  </header>
 
   <div id="tabMap" class="tab-panel" role="tabpanel">
 
