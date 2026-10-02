@@ -1078,7 +1078,6 @@
     font-family:var(--font-mono); font-size:15px; color:var(--text-dim); white-space:nowrap;
   }
   .walk-energy-value b{font-size:19px; color:var(--start); font-variant-numeric:tabular-nums;}
-  .walk-energy-overview.is-full .walk-energy-value b{color:var(--amber);}
   .walk-energy-overview .walk-energy-label{font-size:17px; color:var(--start); letter-spacing:0; line-height:1;}
   /* vaste breedte voor "7 / 10" én "10 / 10" (getal rechts uitgelijnd in 2 tekens), zodat de
      blokjes ernaast niet opschuiven zodra je 10 haalt; line-height 1 zodat tekst en blokjes op
@@ -1088,11 +1087,11 @@
     line-height:1; width:68px;
   }
   .walk-energy-overview .walk-energy-value b{display:inline-block; min-width:2ch; text-align:right; line-height:1;}
-  .walk-energy-overview.is-full .walk-energy-label{color:var(--amber);}
 
   /* Reactorcellen (gebruikerswens: "blokjes die gaaf zijn, echt het gevoel dat je energie
      opwekt"): ENERGY_MAX vierkante blokjes als een krachtcel. Gevuld = groen gloeiend met een
-     traag oplopend glanslicht; vol (10) = amber. Animaties vanuit soloRenderEnergyOverview
+     traag oplopend glanslicht; ook bij een volle balk gewoon groen (amber was verwarrend,
+     gebruikerswens). Animaties vanuit soloRenderEnergyOverview
      (97-solo.js): .is-charging (nieuwe cel laadt van onder naar boven op met een witte flits,
      per cel iets later), .is-draining (uitgegeven cel flitst en loopt leeg) en .will-spend
      (hover over een energie-actie: deze cellen gaat hij kosten). */
@@ -1101,7 +1100,6 @@
     display:grid; grid-template-columns:repeat(10, minmax(0, 1fr)); gap:4px;
     --ec: var(--start); --ec-hi:#b8ffd6; --ec-lo:#1d7a4a;
   }
-  .walk-energy-overview.is-full .walk-energy-cells{--ec: var(--amber); --ec-hi:#ffe7b0; --ec-lo:#9a5d14;}
   .ecell{
     /* vierkant (gebruikerswens; was schuin en hoger dan breed) */
     position:relative; overflow:hidden; border-radius:3px; aspect-ratio:1 / 1;
