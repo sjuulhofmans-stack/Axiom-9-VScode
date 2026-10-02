@@ -144,31 +144,53 @@
   }
   .tab-bar-tempo[hidden]{display:none;}
 
-  /* De tabbladen staan in de kop, naast logo + titel (die samen één kolom vormen) — scheelt een
-     hele tabbladenrij aan hoogte, en die gaat naar het bord (gebruikerswens). De tabbladen zitten
-     onderaan de kop, op de lijn eronder: margin-bottom −11px = de 10px padding + 1px rand van de
-     kop, zodat het actieve tabblad die lijn "opent" zoals voorheen bij een eigen tabbladenrij.
-     Past het niet naast elkaar (smal scherm, of Automatisch met tempo/Pauze/Stoppen erbij), dan
-     schuift de tabbladenbalk vanzelf naar een eigen regel eronder (flex-wrap). */
-  /* Raster met aparte kolommen (gebruikerswens): logo + titel naast elkaar linksboven, een
-     kolom die de rest van de breedte vult met de 4 tabbladen daarin gecentreerd, dan de
-     spelknoppen (.tab-bar-actions, alleen zichtbaar tijdens een potje) en de status. */
-  header{display:grid; grid-template-columns:auto minmax(0, 1fr) auto auto; align-items:center; gap:10px 28px;}
-  .title-block{flex-direction:row; align-items:center; gap:16px;}
+  /* Kop = drie duidelijke kolommen, gescheiden door een verticale lijn (gebruikerswens):
+     links logo + "MAP GENERATOR", midden de tabbladen, rechts spelknoppen + status. Links en
+     rechts zijn ALTIJD even breed (beide minmax(0,1fr)), dus de middelste kolom staat precies in
+     het midden van de pagina en verschuift niet meer als er tijdens een potje knoppen rechts bij
+     komen (gebruikersmelding). Alles staat verticaal gecentreerd, dus de tabbladen op dezelfde
+     hoogte als de titel en de Pauze/Tempo-knoppen. Tijdens een potje maakt de status ("systeem
+     actief / seed") plaats voor de spelknoppen, zodat die rechterkolom niet te breed wordt. */
+  header{
+    display:grid; grid-template-columns:minmax(0, 1fr) auto minmax(0, 1fr); align-items:stretch;
+    gap:0; padding-bottom:12px;
+  }
+  header > *{display:flex; align-items:center; min-width:0;}
+  .title-block{flex-direction:row; gap:18px; padding-right:28px; justify-content:flex-start;}
   .logo{height:64px;}
-  h1.spaced-title{font-size:18px; letter-spacing:.3em;}
-  header .tab-bar{justify-content:center; margin:0 0 -11px; border-bottom:none; align-self:end; min-width:0;}
-  header .tab-bar-actions{margin-left:0; align-items:center;}
-  header .tab-bar-actions:not(:has(> :not([hidden]))){display:none;}
-  header .status{align-self:center;}
-  .tab-btn{padding:8px 16px;}
-  /* smal scherm: tabbladen op een eigen regel, als laatste, zodat ze onderaan op de lijn van de
-     kop blijven staan (anders kwam de status ertussen) */
-  @media (max-width: 1000px){
-    header{grid-template-columns:minmax(0, 1fr) auto;}
-    header .status{order:1;}
-    header .tab-bar-actions{order:2; grid-column:1 / -1; justify-self:end;}
-    header .tab-bar{order:3; grid-column:1 / -1;}
+  h1.spaced-title{font-size:18px; letter-spacing:.3em; white-space:nowrap;}
+  header .tab-bar{
+    justify-content:center; margin:0; padding:0 28px; border-bottom:none; gap:6px;
+    border-left:1px solid var(--line); border-right:1px solid var(--line);
+  }
+  .header-right{justify-content:flex-end; gap:18px; padding-left:28px;}
+  .header-right .tab-bar-actions{margin-left:0; align-items:center;}
+  .header-right .tab-bar-actions:not(:has(> :not([hidden]))){display:none;}
+  .header-right:has(.tab-bar-actions > :not([hidden])) .status{display:none;}
+  /* tabbladen: losse, wat grotere knoppen i.p.v. "tabjes" die aan de lijn eronder hingen */
+  header .tab-btn{
+    font-size:13px; letter-spacing:.14em; padding:11px 20px; margin:0;
+    border:1px solid var(--line-dim); border-radius:6px; background:var(--panel-2);
+  }
+  header .tab-btn:hover{color:var(--text); border-color:var(--line);}
+  header .tab-btn.active{
+    color:#eafcff; border-color:var(--quest);
+    background:linear-gradient(180deg, color-mix(in srgb, var(--quest) 18%, var(--panel)), var(--panel-2));
+    box-shadow:0 0 12px color-mix(in srgb, var(--quest) 30%, transparent);
+  }
+  /* smal scherm: logo/titel en status op de eerste regel, tabbladen eronder over de hele breedte */
+  @media (max-width: 1100px){
+    header{grid-template-columns:minmax(0, 1fr) auto; row-gap:12px;}
+    header .tab-bar{grid-column:1 / -1; order:3; border:none; padding:0; justify-content:safe center;}
+    .header-right{order:2;}
+  }
+  /* telefoon: geen ruimte voor de (puur decoratieve) status naast logo + titel */
+  @media (max-width: 600px){
+    .header-right .status{display:none;}
+    .header-right{padding-left:10px;}
+    .title-block{padding-right:0; gap:10px;}
+    .logo{height:44px;}
+    h1.spaced-title{font-size:13px; letter-spacing:.16em; white-space:normal;}
   }
   .tab-bar-tempo input[type=range]{width:110px;}
 

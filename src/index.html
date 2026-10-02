@@ -11,9 +11,10 @@
 <body>
 <div class="wrap">
 
-  <!-- Kop als raster met eigen kolommen (gebruikerswens): linksboven het logo met "MAP
-       GENERATOR" rechts ernaast, dan een kolom met de 4 tabbladen gecentreerd, dan de
-       spelknoppen en de status. De tabbladen staan onderaan de kop, op de lijn eronder. -->
+  <!-- Kop als drie duidelijke kolommen (gebruikerswens): links het logo met "MAP GENERATOR"
+       ernaast, in het midden de 4 tabbladen, rechts de spelknoppen + status. Links en rechts
+       even breed, zodat de tabbladen altijd in het midden staan en niet verschuiven als er
+       tijdens een potje knoppen rechts bij komen. -->
   <header>
     <div class="title-block">
       <img class="logo" src="{{LOGO}}" alt="Axiom-9 logo">
@@ -39,9 +40,9 @@
          eigen rij boven de spelers (gebruikerswens). Zichtbaar alleen tijdens het speelscherm
          van Automatisch — walkPauseStopSyncVisibility() in 96-walk.js. -->
   </div>
-    <!-- Sinds de kop een raster met vaste kolommen is (logo+titel | tabbladen gecentreerd |
-         knoppen | status) staan deze knoppen in een eigen kolom, niet meer ín .tab-bar —
-         anders zouden ze het centreren van de tabbladen scheef trekken. -->
+    <!-- Rechterkolom van de kop: spelknoppen + status. Niet meer ín .tab-bar, anders zouden ze
+         het centreren van de tabbladen scheef trekken. -->
+    <div class="header-right">
     <div class="tab-bar-actions">
       <button type="button" id="btnWalkSoloReset" class="ghost tab-bar-action" disabled hidden>Nieuw potje</button>
       <!-- tempo tijdens het lopen (Automatisch) — gekoppeld aan #walkSpeed in de lobby, zie 96-walk.js -->
@@ -55,6 +56,7 @@
     <div class="status">
       <div><span class="dot"></span>SYSTEEM ACTIEF</div>
       <div>SEED: <b id="statSeed" title="De seed waarmee de huidige indeling is gegenereerd">origineel</b></div>
+    </div>
     </div>
   </header>
 
