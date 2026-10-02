@@ -11,9 +11,9 @@
 <body>
 <div class="wrap">
 
-  <!-- Logo + titel in één kolom, de tabbladen ernaast op dezelfde regel (gebruikerswens: naast
-       "MAP GENERATOR" stond veel lege ruimte, en een aparte tabbladenrij kostte bordhoogte op
-       het speelscherm). De tabbladen staan onderaan de kop, op de lijn eronder. -->
+  <!-- Kop als raster met eigen kolommen (gebruikerswens): linksboven het logo met "MAP
+       GENERATOR" rechts ernaast, dan een kolom met de 4 tabbladen gecentreerd, dan de
+       spelknoppen en de status. De tabbladen staan onderaan de kop, op de lijn eronder. -->
   <header>
     <div class="title-block">
       <img class="logo" src="{{LOGO}}" alt="Axiom-9 logo">
@@ -38,6 +38,10 @@
     <!-- Pauze/Stoppen (Automatisch) staan hier om dezelfde reden rechtsboven, niet meer in een
          eigen rij boven de spelers (gebruikerswens). Zichtbaar alleen tijdens het speelscherm
          van Automatisch — walkPauseStopSyncVisibility() in 96-walk.js. -->
+  </div>
+    <!-- Sinds de kop een raster met vaste kolommen is (logo+titel | tabbladen gecentreerd |
+         knoppen | status) staan deze knoppen in een eigen kolom, niet meer ín .tab-bar —
+         anders zouden ze het centreren van de tabbladen scheef trekken. -->
     <div class="tab-bar-actions">
       <button type="button" id="btnWalkSoloReset" class="ghost tab-bar-action" disabled hidden>Nieuw potje</button>
       <!-- tempo tijdens het lopen (Automatisch) — gekoppeld aan #walkSpeed in de lobby, zie 96-walk.js -->
@@ -47,7 +51,6 @@
       <button type="button" id="btnWalkPause" class="ghost tab-bar-action" disabled hidden>Pauze</button>
       <button type="button" id="btnWalkStop" class="ghost tab-bar-action" disabled hidden>Stoppen</button>
     </div>
-  </div>
 
     <div class="status">
       <div><span class="dot"></span>SYSTEEM ACTIEF</div>
