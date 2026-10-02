@@ -584,44 +584,61 @@
     padding:28px 36px; box-shadow:0 8px 30px rgba(0,0,0,.5);
   }
   .walk-endgame-trophy{font-size:40px; line-height:1;}
-  /* knop "Statistieken" onderaan de uitslag (en "Terug naar de uitslag" onder de tabel) —
-     soloRenderEndgameStats in 97-solo.js */
+  /* knop "Statistieken" onderaan de uitslag — opent de pop-up (soloOpenStats in 97-solo.js) */
   .walk-endgame-stats-btn{margin-top:14px; min-width:200px;}
-  /* in de statistiekenstand mag de kaart breder (1 kolom per speler) en zo nodig scrollen,
-     zodat hij nooit buiten het bord valt */
-  /* compact genoeg (rijhoogte ±19px) om ook op het kleinere laptopbord (±580px hoog) zonder
-     scrollen in één keer te passen; overflow:auto blijft alleen als noodklep */
-  .walk-endgame-card.is-stats{max-width:96%; width:min(860px, 96%); max-height:97%; padding:14px 18px; gap:8px;}
-  .walk-endgame-card.is-stats .walk-endgame-title{font-size:18px;}
-  .walk-endgame-card.is-stats .walk-endgame-stats-btn{margin-top:4px; padding-top:7px; padding-bottom:7px;}
-  /* twee tabellen naast elkaar (soloRenderEndgameStats); pas op een smal scherm onder elkaar */
-  .walk-stats-wrap{
-    width:100%; overflow:auto; min-height:0; flex:1 1 auto;
-    display:grid; grid-template-columns:1fr 1fr; gap:0 20px; align-items:start;
+
+  /* ---------- statistieken-pop-up (#walkStatsOverlay, zelfde overlay als het kaartvenster) ---------- */
+  .card-panel.walk-stats-modal{max-width:none; width:min(1240px, 96vw); gap:16px; padding:20px 22px;}
+  .walk-stats-modal .card-panel-head h2{font-size:13px; color:var(--text);}
+  #walkStatsBody{display:flex; flex-direction:column; gap:18px;}
+  /* bovenaan: elke speler een eigen kolom, van links naar rechts in volgorde van het klassement */
+  .walk-stats-players{display:grid; grid-template-columns:repeat(var(--n, 4), minmax(0, 1fr)); gap:10px;}
+  .walk-stats-player{
+    display:flex; align-items:center; gap:10px; min-width:0; padding:10px 12px;
+    background:var(--hull); border:1px solid var(--line); border-top:3px solid var(--pc); border-radius:6px;
   }
-  @media (max-width: 700px){ .walk-stats-wrap{grid-template-columns:1fr;} }
-  .walk-stats-legend{display:flex; flex-wrap:wrap; justify-content:center; gap:6px 16px; font-size:12.5px;}
-  .walk-stats-legend-item{display:inline-flex; align-items:baseline; gap:5px; color:var(--text);}
-  .walk-stats-legend-item .walk-stats-place{display:inline;}
-  .walk-stats-table{width:100%; border-collapse:collapse; font-size:12px; line-height:1.3; text-align:right;}
-  .walk-stats-table th, .walk-stats-table td{padding:3px 6px; border-bottom:1px solid var(--line-dim); white-space:nowrap;}
-  .walk-stats-table thead th{padding-top:0; padding-bottom:4px; text-align:center !important;}
-  .walk-stats-table thead .walk-stats-dot{margin:0;}
-  .walk-stats-table tbody th{text-align:left; font-weight:400; color:var(--text-dim);}
-  .walk-stats-table td{font-family:var(--font-mono); color:var(--text); font-variant-numeric:tabular-nums;}
-  .walk-stats-table td.is-best{color:var(--amber); font-weight:700;}
+  .walk-stats-player-place{
+    flex:none; width:30px; height:30px; border-radius:50%; display:flex; align-items:center; justify-content:center;
+    font-family:var(--font-mono); font-size:14px; font-weight:700; color:var(--text-dim); border:1px solid var(--line);
+  }
+  .walk-stats-player.r1 .walk-stats-player-place{color:#1a1400; background:#ffd23d; border-color:#ffd23d;}
+  .walk-stats-player.r2 .walk-stats-player-place{color:#15181c; background:#c9d2dc; border-color:#c9d2dc;}
+  .walk-stats-player.r3 .walk-stats-player-place{color:#1c0f05; background:#d08a4e; border-color:#d08a4e;}
+  .walk-stats-player-text{flex:1; min-width:0; display:flex; flex-direction:column; gap:2px;}
+  .walk-stats-player-text b{color:var(--pc); font-size:14px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+  .walk-stats-player-sub{font-family:var(--font-mono); font-size:10.5px; color:var(--text-dim); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+  .walk-stats-player-score{
+    flex:none; display:flex; flex-direction:column; align-items:flex-end; line-height:1.2;
+    font-family:var(--font-mono); font-size:15px; font-weight:700; color:var(--text);
+  }
+  .walk-stats-player-score span{font-size:9.5px; font-weight:400; letter-spacing:.06em; text-transform:uppercase; color:var(--text-dim);}
+  /* elke categorie een eigen tabel, hoogstens 3 naast elkaar */
+  .walk-stats-cats{display:grid; grid-template-columns:repeat(3, minmax(0, 1fr)); gap:18px 16px;}
+  @media (max-width: 1100px){ .walk-stats-cats{grid-template-columns:repeat(2, minmax(0, 1fr));} }
+  @media (max-width: 700px){
+    .walk-stats-cats{grid-template-columns:1fr;}
+    .walk-stats-players{grid-template-columns:repeat(2, minmax(0, 1fr));}
+  }
+  .walk-stats-cat{min-width:0; display:flex; flex-direction:column; gap:6px;}
+  .walk-stats-cat h3{
+    margin:0; font-family:var(--font-mono); font-size:11px; letter-spacing:.12em; text-transform:uppercase; color:var(--quest);
+  }
+  .walk-stats-table{width:100%; border-collapse:collapse; table-layout:fixed; font-size:12.5px; line-height:1.3;}
+  .walk-stats-table th, .walk-stats-table td{border:1px solid var(--line); padding:6px 8px;}
+  .walk-stats-table .walk-stats-corner{width:38%; background:var(--hull);}
   .walk-stats-table thead th{
-    vertical-align:bottom; font-weight:700; color:var(--text);
-    border-bottom:2px solid var(--pc, var(--line)); text-align:right;
+    background:color-mix(in srgb, var(--pc, var(--line)) 16%, var(--hull));
+    border-bottom:2px solid var(--pc, var(--line)); text-align:center; font-weight:700; color:var(--text);
+    overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
   }
-  .walk-stats-table thead th:first-child{border-bottom-color:var(--line);}
-  .walk-stats-dot{display:inline-block; width:9px; height:9px; border-radius:50%; background:var(--pc); margin-right:6px; vertical-align:0;}
-  .walk-stats-place{display:block; font-family:var(--font-mono); font-size:10.5px; font-weight:400; color:var(--text-dim);}
-  .walk-stats-you{font-family:var(--font-mono); font-size:9.5px; text-transform:uppercase; color:var(--pc); border:1px solid var(--pc); border-radius:3px; padding:0 4px;}
-  .walk-stats-group th{
-    text-align:left !important; padding-top:7px; color:var(--quest) !important; font-weight:700 !important;
-    font-family:var(--font-mono); font-size:10.5px; letter-spacing:.08em; text-transform:uppercase;
+  .walk-stats-table tbody th{text-align:left; font-weight:400; color:var(--text-dim); background:var(--hull);}
+  .walk-stats-table td{
+    text-align:center; font-family:var(--font-mono); color:var(--text); font-variant-numeric:tabular-nums;
+    background:var(--panel-2);
   }
+  .walk-stats-table td.is-best{color:var(--amber); font-weight:700; background:rgba(255,181,69,.10);}
+  .walk-stats-dot{display:inline-block; width:9px; height:9px; border-radius:50%; background:var(--pc); margin-right:5px; vertical-align:0;}
+  .walk-stats-foot{margin:0; font-size:11.5px; color:var(--text-dim);}
   .walk-endgame-title{
     font-family:var(--font-display); font-size:22px; font-weight:700; color:var(--text);
   }

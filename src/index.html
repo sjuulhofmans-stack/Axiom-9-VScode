@@ -580,6 +580,18 @@
 
   <!-- kaartvenster: toont de actiekaarten die je op dit moment in handen hebt, op ware
        kaartverhouding. Eén kaart tegelijk selecteerbaar; onderin gecentreerd de keuze. -->
+  <!-- statistieken na afloop: groot venster over het hele scherm, geopend via de knop
+       "Statistieken" op het winscherm — zie soloOpenStats in 97-solo.js -->
+  <div id="walkStatsOverlay" class="card-overlay walk-stats-overlay" hidden>
+    <div class="card-panel walk-stats-modal" role="dialog" aria-modal="true" aria-labelledby="walkStatsTitle">
+      <div class="card-panel-head">
+        <h2 id="walkStatsTitle">Statistieken</h2>
+        <button type="button" id="walkStatsClose" class="small ghost" aria-label="Venster sluiten">Sluiten ✕</button>
+      </div>
+      <div id="walkStatsBody"></div>
+    </div>
+  </div>
+
   <div id="cardOverlay" class="card-overlay" hidden>
     <div class="card-panel" role="dialog" aria-modal="true" aria-labelledby="cardPanelTitle">
       <div class="card-panel-head">

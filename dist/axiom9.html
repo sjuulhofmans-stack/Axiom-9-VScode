@@ -591,44 +591,61 @@
     padding:28px 36px; box-shadow:0 8px 30px rgba(0,0,0,.5);
   }
   .walk-endgame-trophy{font-size:40px; line-height:1;}
-  /* knop "Statistieken" onderaan de uitslag (en "Terug naar de uitslag" onder de tabel) —
-     soloRenderEndgameStats in 97-solo.js */
+  /* knop "Statistieken" onderaan de uitslag — opent de pop-up (soloOpenStats in 97-solo.js) */
   .walk-endgame-stats-btn{margin-top:14px; min-width:200px;}
-  /* in de statistiekenstand mag de kaart breder (1 kolom per speler) en zo nodig scrollen,
-     zodat hij nooit buiten het bord valt */
-  /* compact genoeg (rijhoogte ±19px) om ook op het kleinere laptopbord (±580px hoog) zonder
-     scrollen in één keer te passen; overflow:auto blijft alleen als noodklep */
-  .walk-endgame-card.is-stats{max-width:96%; width:min(860px, 96%); max-height:97%; padding:14px 18px; gap:8px;}
-  .walk-endgame-card.is-stats .walk-endgame-title{font-size:18px;}
-  .walk-endgame-card.is-stats .walk-endgame-stats-btn{margin-top:4px; padding-top:7px; padding-bottom:7px;}
-  /* twee tabellen naast elkaar (soloRenderEndgameStats); pas op een smal scherm onder elkaar */
-  .walk-stats-wrap{
-    width:100%; overflow:auto; min-height:0; flex:1 1 auto;
-    display:grid; grid-template-columns:1fr 1fr; gap:0 20px; align-items:start;
+
+  /* ---------- statistieken-pop-up (#walkStatsOverlay, zelfde overlay als het kaartvenster) ---------- */
+  .card-panel.walk-stats-modal{max-width:none; width:min(1240px, 96vw); gap:16px; padding:20px 22px;}
+  .walk-stats-modal .card-panel-head h2{font-size:13px; color:var(--text);}
+  #walkStatsBody{display:flex; flex-direction:column; gap:18px;}
+  /* bovenaan: elke speler een eigen kolom, van links naar rechts in volgorde van het klassement */
+  .walk-stats-players{display:grid; grid-template-columns:repeat(var(--n, 4), minmax(0, 1fr)); gap:10px;}
+  .walk-stats-player{
+    display:flex; align-items:center; gap:10px; min-width:0; padding:10px 12px;
+    background:var(--hull); border:1px solid var(--line); border-top:3px solid var(--pc); border-radius:6px;
   }
-  @media (max-width: 700px){ .walk-stats-wrap{grid-template-columns:1fr;} }
-  .walk-stats-legend{display:flex; flex-wrap:wrap; justify-content:center; gap:6px 16px; font-size:12.5px;}
-  .walk-stats-legend-item{display:inline-flex; align-items:baseline; gap:5px; color:var(--text);}
-  .walk-stats-legend-item .walk-stats-place{display:inline;}
-  .walk-stats-table{width:100%; border-collapse:collapse; font-size:12px; line-height:1.3; text-align:right;}
-  .walk-stats-table th, .walk-stats-table td{padding:3px 6px; border-bottom:1px solid var(--line-dim); white-space:nowrap;}
-  .walk-stats-table thead th{padding-top:0; padding-bottom:4px; text-align:center !important;}
-  .walk-stats-table thead .walk-stats-dot{margin:0;}
-  .walk-stats-table tbody th{text-align:left; font-weight:400; color:var(--text-dim);}
-  .walk-stats-table td{font-family:var(--font-mono); color:var(--text); font-variant-numeric:tabular-nums;}
-  .walk-stats-table td.is-best{color:var(--amber); font-weight:700;}
+  .walk-stats-player-place{
+    flex:none; width:30px; height:30px; border-radius:50%; display:flex; align-items:center; justify-content:center;
+    font-family:var(--font-mono); font-size:14px; font-weight:700; color:var(--text-dim); border:1px solid var(--line);
+  }
+  .walk-stats-player.r1 .walk-stats-player-place{color:#1a1400; background:#ffd23d; border-color:#ffd23d;}
+  .walk-stats-player.r2 .walk-stats-player-place{color:#15181c; background:#c9d2dc; border-color:#c9d2dc;}
+  .walk-stats-player.r3 .walk-stats-player-place{color:#1c0f05; background:#d08a4e; border-color:#d08a4e;}
+  .walk-stats-player-text{flex:1; min-width:0; display:flex; flex-direction:column; gap:2px;}
+  .walk-stats-player-text b{color:var(--pc); font-size:14px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+  .walk-stats-player-sub{font-family:var(--font-mono); font-size:10.5px; color:var(--text-dim); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+  .walk-stats-player-score{
+    flex:none; display:flex; flex-direction:column; align-items:flex-end; line-height:1.2;
+    font-family:var(--font-mono); font-size:15px; font-weight:700; color:var(--text);
+  }
+  .walk-stats-player-score span{font-size:9.5px; font-weight:400; letter-spacing:.06em; text-transform:uppercase; color:var(--text-dim);}
+  /* elke categorie een eigen tabel, hoogstens 3 naast elkaar */
+  .walk-stats-cats{display:grid; grid-template-columns:repeat(3, minmax(0, 1fr)); gap:18px 16px;}
+  @media (max-width: 1100px){ .walk-stats-cats{grid-template-columns:repeat(2, minmax(0, 1fr));} }
+  @media (max-width: 700px){
+    .walk-stats-cats{grid-template-columns:1fr;}
+    .walk-stats-players{grid-template-columns:repeat(2, minmax(0, 1fr));}
+  }
+  .walk-stats-cat{min-width:0; display:flex; flex-direction:column; gap:6px;}
+  .walk-stats-cat h3{
+    margin:0; font-family:var(--font-mono); font-size:11px; letter-spacing:.12em; text-transform:uppercase; color:var(--quest);
+  }
+  .walk-stats-table{width:100%; border-collapse:collapse; table-layout:fixed; font-size:12.5px; line-height:1.3;}
+  .walk-stats-table th, .walk-stats-table td{border:1px solid var(--line); padding:6px 8px;}
+  .walk-stats-table .walk-stats-corner{width:38%; background:var(--hull);}
   .walk-stats-table thead th{
-    vertical-align:bottom; font-weight:700; color:var(--text);
-    border-bottom:2px solid var(--pc, var(--line)); text-align:right;
+    background:color-mix(in srgb, var(--pc, var(--line)) 16%, var(--hull));
+    border-bottom:2px solid var(--pc, var(--line)); text-align:center; font-weight:700; color:var(--text);
+    overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
   }
-  .walk-stats-table thead th:first-child{border-bottom-color:var(--line);}
-  .walk-stats-dot{display:inline-block; width:9px; height:9px; border-radius:50%; background:var(--pc); margin-right:6px; vertical-align:0;}
-  .walk-stats-place{display:block; font-family:var(--font-mono); font-size:10.5px; font-weight:400; color:var(--text-dim);}
-  .walk-stats-you{font-family:var(--font-mono); font-size:9.5px; text-transform:uppercase; color:var(--pc); border:1px solid var(--pc); border-radius:3px; padding:0 4px;}
-  .walk-stats-group th{
-    text-align:left !important; padding-top:7px; color:var(--quest) !important; font-weight:700 !important;
-    font-family:var(--font-mono); font-size:10.5px; letter-spacing:.08em; text-transform:uppercase;
+  .walk-stats-table tbody th{text-align:left; font-weight:400; color:var(--text-dim); background:var(--hull);}
+  .walk-stats-table td{
+    text-align:center; font-family:var(--font-mono); color:var(--text); font-variant-numeric:tabular-nums;
+    background:var(--panel-2);
   }
+  .walk-stats-table td.is-best{color:var(--amber); font-weight:700; background:rgba(255,181,69,.10);}
+  .walk-stats-dot{display:inline-block; width:9px; height:9px; border-radius:50%; background:var(--pc); margin-right:5px; vertical-align:0;}
+  .walk-stats-foot{margin:0; font-size:11.5px; color:var(--text-dim);}
   .walk-endgame-title{
     font-family:var(--font-display); font-size:22px; font-weight:700; color:var(--text);
   }
@@ -2944,6 +2961,18 @@
 
   <!-- kaartvenster: toont de actiekaarten die je op dit moment in handen hebt, op ware
        kaartverhouding. Eén kaart tegelijk selecteerbaar; onderin gecentreerd de keuze. -->
+  <!-- statistieken na afloop: groot venster over het hele scherm, geopend via de knop
+       "Statistieken" op het winscherm — zie soloOpenStats in 97-solo.js -->
+  <div id="walkStatsOverlay" class="card-overlay walk-stats-overlay" hidden>
+    <div class="card-panel walk-stats-modal" role="dialog" aria-modal="true" aria-labelledby="walkStatsTitle">
+      <div class="card-panel-head">
+        <h2 id="walkStatsTitle">Statistieken</h2>
+        <button type="button" id="walkStatsClose" class="small ghost" aria-label="Venster sluiten">Sluiten ✕</button>
+      </div>
+      <div id="walkStatsBody"></div>
+    </div>
+  </div>
+
   <div id="cardOverlay" class="card-overlay" hidden>
     <div class="card-panel" role="dialog" aria-modal="true" aria-labelledby="cardPanelTitle">
       <div class="card-panel-head">
@@ -10851,7 +10880,6 @@ let soloEndgameView = null;
 function soloRenderEndgameResult(){
   const v = soloEndgameView;
   if (!v) return;
-  walkEndgameCardEl.classList.remove('is-stats');
   walkEndgameCardEl.innerHTML =
     `<span class="walk-endgame-trophy">${v.trophy}</span>` +
     `<span class="walk-endgame-title">${v.title}</span>` +
@@ -10860,68 +10888,103 @@ function soloRenderEndgameResult(){
     (v.players.some(p => p.stats)
       ? `<button type="button" class="ghost walk-endgame-stats-btn" data-endgame-stats>Statistieken</button>` : '');
 }
-// ---------- statistieken per speler (knop op het winscherm) ----------
+// ---------- statistieken per speler (pop-up via de knop op het winscherm) ----------
 // De tellers zelf lopen tijdens het spel mee (newPlayerStats in 95-simulate.js); wat af te leiden
-// is wordt hier pas uitgerekend. `best`: de hoogste waarde in die rij wordt uitgelicht.
-const SOLO_STATS_ROWS = [
-  { group: 'Algemeen' },
-  { label: 'Opdrachten voltooid', best: true, get: p => p.completed, fmt: v => `${v}/${SIM_QUESTS_TO_WIN}` },
-  { label: 'Beurten gespeeld', get: p => p.myTurn || p.ownTurns || 0 },
-  { group: 'Dobbelen en lopen' },
-  { label: 'Loopstenen gegooid', get: p => p.stats.dice },
-  { label: 'Ogen gegooid (totaal)', best: true, get: p => p.stats.pips },
-  { label: 'Gemiddeld per steen', get: p => p.stats.dice ? p.stats.pips / p.stats.dice : 0, fmt: v => nl(v, 2) },
-  { label: 'Vakjes gelopen', best: true, get: p => p.stats.walkSteps },
-  { label: 'Vakjes gesprint (laarzen)', get: p => p.stats.dashSteps },
-  { group: 'Energie' },
-  { label: 'Energie gedobbeld', best: true, get: p => p.stats.energyRolled },
-  { label: 'Energie erbij (ook kaarten)', get: p => p.stats.energyGained },
-  { label: 'Energie verbruikt', best: true, get: p => p.stats.energyGained - p.energy },
-  { label: 'Verloren (voorraad vol)', get: p => p.stats.energyWasted },
-  { label: 'Energie-acties ingezet', get: p => p.actionUses || 0 },
-  { label: 'Energie over', get: p => p.energy },
-  { group: 'Actiekaarten' },
-  { label: 'Getrokken', get: p => p.stats.cardsPlayed + p.stats.cardsDiscarded + p.cards.length },
-  { label: 'Gespeeld', best: true, get: p => p.stats.cardsPlayed },
-  { label: 'Afgelegd', get: p => p.stats.cardsDiscarded },
-  { label: 'Nog in de hand', get: p => p.cards.length },
+// is wordt hier pas uitgerekend. Elke categorie is een eigen tabel (hoogstens 3 naast elkaar,
+// zie .walk-stats-cats in styles.css). `best`: 'max' of 'min' — die waarde wordt in de rij
+// uitgelicht (alleen bij meer dan één speler).
+const turnsOf = p => p.myTurn || p.ownTurns || 0;
+const perOf = (a, b) => b ? a / b : 0;
+const SOLO_STATS_GROUPS = [
+  { title: 'Algemeen', rows: [
+    { label: 'Opdrachten voltooid', best: 'max', get: p => p.completed, fmt: v => `${v}/${SIM_QUESTS_TO_WIN}` },
+    { label: 'Beurten gespeeld', get: turnsOf },
+    { label: 'Beurten per opdracht', best: 'min', get: p => perOf(turnsOf(p), p.completed), fmt: v => v ? nl(v, 1) : '—' },
+  ]},
+  { title: 'Dobbelstenen', rows: [
+    { label: 'Loopstenen gegooid', get: p => p.stats.dice },
+    { label: 'Ogen gegooid', best: 'max', get: p => p.stats.pips },
+    { label: 'Gemiddeld per steen', best: 'max', get: p => perOf(p.stats.pips, p.stats.dice), fmt: v => nl(v, 2) },
+    { label: 'Ogen per beurt', best: 'max', get: p => perOf(p.stats.pips, turnsOf(p)), fmt: v => nl(v, 1) },
+  ]},
+  { title: 'Verplaatsing', rows: [
+    { label: 'Vakjes gelopen', best: 'max', get: p => p.stats.walkSteps },
+    { label: 'Vakjes gesprint (laarzen)', best: 'max', get: p => p.stats.dashSteps },
+    { label: 'Totaal verplaatst', best: 'max', get: p => p.stats.walkSteps + p.stats.dashSteps },
+    { label: 'Vakjes per beurt', best: 'max', get: p => perOf(p.stats.walkSteps + p.stats.dashSteps, turnsOf(p)), fmt: v => nl(v, 1) },
+  ]},
+  { title: 'Energie', rows: [
+    { label: 'Gedobbeld (energiesteen)', best: 'max', get: p => p.stats.energyRolled },
+    { label: 'Erbij (ook via kaarten)', best: 'max', get: p => p.stats.energyGained },
+    { label: 'Verloren (voorraad vol)', best: 'min', get: p => p.stats.energyWasted },
+    { label: 'Over aan het eind', get: p => p.energy },
+  ]},
+  { title: 'Energie-acties', rows: [
+    { label: 'Ingezet', best: 'max', get: p => p.actionUses || 0 },
+    { label: 'Energie verbruikt', best: 'max', get: p => p.stats.energyGained - p.energy },
+    { label: 'Gemiddeld per actie', get: p => perOf(p.stats.energyGained - p.energy, p.actionUses || 0), fmt: v => v ? nl(v, 1) : '—' },
+  ]},
+  { title: 'Actiekaarten', rows: [
+    { label: 'Getrokken', best: 'max', get: p => p.stats.cardsPlayed + p.stats.cardsDiscarded + p.cards.length },
+    { label: 'Gespeeld', best: 'max', get: p => p.stats.cardsPlayed },
+    { label: 'Afgelegd', get: p => p.stats.cardsDiscarded },
+    { label: 'Nog in de hand', get: p => p.cards.length },
+  ]},
 ];
-// Twee tabellen naast elkaar (de eerste twee groepen links, de rest rechts) met bovenaan één
-// spelerslegenda: zo past alles ook op een laptopbord (±580px hoog) zonder scrollen — als één
-// lange tabel was het daar 37-95px te hoog. Kolomkoppen zijn alleen de kleurstippen.
-function soloRenderEndgameStats(){
+const walkStatsOverlayEl = document.getElementById('walkStatsOverlay');
+const walkStatsBodyEl = document.getElementById('walkStatsBody');
+function soloOpenStats(){
   const v = soloEndgameView;
-  if (!v) return;
+  if (!v || !walkStatsOverlayEl) return;
   const players = walkOrderPlayers(v.players).filter(p => p.stats);
-  const legend = players.map(p =>
-    `<span class="walk-stats-legend-item" style="--pc:${p.color}"><span class="walk-stats-dot"></span>` +
-    `<b>${p.name}</b>${v.isMe(p) ? ' <span class="walk-stats-you">jij</span>' : ''}` +
-    `<span class="walk-stats-place">${p.rank ? walkRankLabel(p.rank) : '—'}</span></span>`).join('');
-  const head = `<thead><tr><th></th>${players.map(p => `<th style="--pc:${p.color}" title="${p.name}"><span class="walk-stats-dot"></span></th>`).join('')}</tr></thead>`;
-  const rowHtml = r => {
-    if (r.group) return `<tr class="walk-stats-group"><th colspan="${players.length + 1}">${r.group}</th></tr>`;
-    const vals = players.map(r.get);
-    const max = Math.max(...vals);
-    const fmt = r.fmt || (x => String(x));
-    const cells = vals.map(x => `<td${r.best && players.length > 1 && x === max && max > 0 ? ' class="is-best"' : ''}>${fmt(x)}</td>`).join('');
-    return `<tr><th>${r.label}</th>${cells}</tr>`;
-  };
-  // splitsen bij de 3e groepskop
-  const groupStarts = SOLO_STATS_ROWS.map((r, i) => r.group ? i : -1).filter(i => i >= 0);
-  const split = groupStarts[2] !== undefined ? groupStarts[2] : SOLO_STATS_ROWS.length;
-  const table = rows => `<table class="walk-stats-table">${head}<tbody>${rows.map(rowHtml).join('')}</tbody></table>`;
-  walkEndgameCardEl.classList.add('is-stats');
-  walkEndgameCardEl.innerHTML =
-    `<span class="walk-endgame-title">Statistieken</span>` +
-    `<div class="walk-stats-legend">${legend}</div>` +
-    `<div class="walk-stats-wrap">${table(SOLO_STATS_ROWS.slice(0, split))}${table(SOLO_STATS_ROWS.slice(split))}</div>` +
-    `<button type="button" class="ghost walk-endgame-stats-btn" data-endgame-back>← Terug naar de uitslag</button>`;
+  const n = players.length;
+  // bovenaan: elke speler een eigen kolom, in volgorde van het klassement
+  const cards = players.map(p => {
+    const status = walkIsIn(p) ? 'binnen' : p.rank ? 'niet binnen' : 'afgekapt';
+    const who = p.isHuman !== undefined && p.isHuman ? (v.isMe(p) ? 'jij' : 'mens')
+      : p.strategy && ENERGY_ACTIONS[p.strategy] ? `bot · ${ENERGY_ACTIONS[p.strategy].name}` : 'bot';
+    return `<div class="walk-stats-player${p.rank >= 1 && p.rank <= 3 ? ' r' + p.rank : ''}" style="--pc:${p.color}">` +
+      `<span class="walk-stats-player-place">${p.rank || '—'}</span>` +
+      `<span class="walk-stats-player-text">` +
+        `<b>${p.name}</b>` +
+        `<span class="walk-stats-player-sub">${who}</span>` +
+        (p.startLabel ? `<span class="walk-stats-player-sub">start ${p.startLabel}</span>` : '') +
+      `</span>` +
+      `<span class="walk-stats-player-score">${p.completed}/${SIM_QUESTS_TO_WIN}<span>${status}</span></span>` +
+    `</div>`;
+  }).join('');
+  // per categorie een tabel met vakjes; kolomkop = kleurstip + plaats (zelfde als de spelerkaart
+  // erboven — een naam paste niet in de smalle kolom), de naam staat in de tooltip
+  const head = `<thead><tr><th class="walk-stats-corner"></th>${players.map(p =>
+    `<th style="--pc:${p.color}" title="${p.name}"><span class="walk-stats-dot"></span>${p.rank ? walkRankLabel(p.rank) : '–'}</th>`).join('')}</tr></thead>`;
+  const tables = SOLO_STATS_GROUPS.map(g => {
+    const body = g.rows.map(r => {
+      const vals = players.map(r.get);
+      const pick = r.best === 'min' ? Math.min(...vals) : Math.max(...vals);
+      const fmt = r.fmt || (x => String(x));
+      const lit = x => r.best && n > 1 && x === pick && !vals.every(y => y === pick);
+      return `<tr><th>${r.label}</th>${vals.map(x => `<td${lit(x) ? ' class="is-best"' : ''}>${fmt(x)}</td>`).join('')}</tr>`;
+    }).join('');
+    return `<section class="walk-stats-cat"><h3>${g.title}</h3><table class="walk-stats-table">${head}<tbody>${body}</tbody></table></section>`;
+  }).join('');
+  walkStatsBodyEl.innerHTML =
+    `<div class="walk-stats-players" style="--n:${n}">${cards}</div>` +
+    `<div class="walk-stats-cats">${tables}</div>` +
+    `<p class="walk-stats-foot">Oranje = beste in die rij. Ogen tellen alleen de loopstenen tijdens het spel, niet het dobbelen wie begint.</p>`;
+  walkStatsOverlayEl.hidden = false;
 }
+// zelf opzoeken i.p.v. walkStatsOverlayEl: soloHideEndgame() roept dit aan en kan al tijdens
+// het laden lopen, vóórdat die const hierboven bestaat
+function soloCloseStats(){ const el = document.getElementById('walkStatsOverlay'); if (el) el.hidden = true; }
 if (walkEndgameCardEl){
   walkEndgameCardEl.addEventListener('click', (e) => {
-    if (e.target.closest('[data-endgame-stats]')) soloRenderEndgameStats();
-    else if (e.target.closest('[data-endgame-back]')) soloRenderEndgameResult();
+    if (e.target.closest('[data-endgame-stats]')) soloOpenStats();
   });
+}
+if (walkStatsOverlayEl){
+  document.getElementById('walkStatsClose').addEventListener('click', soloCloseStats);
+  walkStatsOverlayEl.addEventListener('click', (e) => { if (e.target === walkStatsOverlayEl) soloCloseStats(); });
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !walkStatsOverlayEl.hidden) soloCloseStats(); });
 }
 // eindklassering als lijstje: plaats, kleurstip, naam, voortgang. Volgorde uit
 // walkOrderPlayers() (96-walk.js); gedeelde plaatsen krijgen hetzelfde nummer.
@@ -10955,6 +11018,7 @@ function soloEndgameShowMap(){
 // helemaal weg (nieuw potje/stoppen): ook geen "Toon uitslag" meer
 function soloHideEndgame(){
   if (walkEndgameEl) walkEndgameEl.hidden = true;
+  soloCloseStats();   // statistieken-pop-up van het vorige potje hoort ook dicht
   if (btnWalkEndgameShowResult) btnWalkEndgameShowResult.hidden = true;
   soloStopConfetti();
 }
