@@ -738,10 +738,15 @@
      viel de rechterkolom (dobbelstenen, laatste spelerskaart) daardoor buiten beeld, zonder
      scrollbalk (gebruikersmelding). Hier krimpen de bordvakjes mee met de schermbreedte (min.
      14px) zodat alles precies past; de kolommen ernaast houden hun maat. --wcell staat op de
-     rij zodat ook het hoogteplafond van de zijkolommen (= bordhoogte) mee kan schalen. */
-  @media (min-width: 1361px) and (max-width: 1620px){
+     rij zodat ook het hoogteplafond van de zijkolommen (= bordhoogte) mee kan schalen.
+     Sinds kort óók op de schermhoogte (en dus op elk scherm vanaf 1361px breed, niet alleen
+     tot 1620px): het speelscherm moet zonder scrollen in beeld passen (gebruikersmelding: op
+     een Full-HD-scherm met browserbalken was de pagina 70px te hoog). Alles boven en onder het
+     bord samen (paginarand, titel, tabbladen, spelersbalk, legenda/log-knoppen) is gemeten
+     ±318px, de bordrand 71px: vakje = (schermhoogte − 389px) / 32, met 4px speling. */
+  @media (min-width: 1361px){
     .walk-board-row{
-      --wcell: clamp(14px, calc((100vw - 800px) / 40), 20px);
+      --wcell: clamp(14px, min(calc((100vw - 800px) / 40), calc((100vh - 393px) / 32)), 20px);
       grid-template-columns: minmax(280px,1fr) auto minmax(300px,1.4fr);
     }
     /* .walk-board-row ervoor: moet winnen van de algemene #walkBoard{--cell:20px} verderop */
@@ -1085,6 +1090,16 @@
   .quest-check-active{
     font-family:var(--font-mono); font-size:10px; font-weight:700;
     color:var(--qtint, var(--quest)); flex:none;
+  }
+  /* lager scherm: het bord (en dus deze kolom) schaalt mee met de schermhoogte (--wcell), en
+     dan passen 9 rijen van 2 regels er niet meer in. Compact: naam + kamer op één regel. Moet
+     ná de gewone .quest-check-*-regels hierboven staan, anders winnen die. */
+  @media (min-width: 1361px) and (max-height: 1000px){
+    .walk-quest-checklist{gap:4px; padding:10px;}
+    .quest-check-row{padding:4px 8px;}
+    .quest-check-text{flex-direction:row; align-items:baseline; gap:6px;}
+    .quest-check-name{white-space:nowrap;}
+    .quest-check-room{white-space:nowrap; overflow:hidden; text-overflow:ellipsis; min-width:0;}
   }
   /* de nieuwe stat-tegels + altijd-zichtbare spelersrij boven het bord vervangen wat #walkMeta
      en #walkScoreActive lieten zien (beurt/voltooid resp. de eigen rij) — die blijven in de DOM

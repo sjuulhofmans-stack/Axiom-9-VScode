@@ -207,7 +207,11 @@ Check minimaal:
     `mpBroadcastState`).
 11. Speelscherm op ±1400px breed (laptop/half scherm): alles in beeld, niets
     afgeknipt — het bord krimpt daar mee (zie `--wcell` in `styles.css`),
-    onder 1360px staat alles onder elkaar.
+    onder 1360px staat alles onder elkaar. `--wcell` schaalt óók met de
+    schermhoogte: op Full HD met browserbalken (±900–960px zichtbaar) moet het
+    hele speelscherm zonder scrollen passen; dan staat het opdrachtenoverzicht
+    in de compacte stand (naam + kamer op één regel). Onder ±840px zichtbare
+    hoogte zit het bord op zijn minimum (14px-vakjes) en scrolt het nog.
 12. Zelf spelen → energie-paneel toont 4 acties op prijs (Stuwstoot 4,
     Herprioritering 4, Zwaartekracht-laarzen 5, Noodtransport 10).
     Herprioritering laat je huidige én volgende opdracht zien en vraagt welke
