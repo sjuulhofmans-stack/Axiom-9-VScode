@@ -7770,8 +7770,13 @@ function renderOpeningPanel(players, op, opts = {}){
         const dice = up && opts.shaking
           ? die('?', true) + die('?', true)
           : r ? die(r[0]) + die(r[1]) + `<span class="walk-opening-sum">${r[0] + r[1]}</span>` : '';
+        // "gelijk" pas als de dobbelronde van deze groep klaar is: tijdens de ronde zit iedereen
+        // die nog moet gooien ook in dezelfde emmer, dus wie al gooide is dan nog niet gelijk
+        // (gebruikersmelding: de eerste gooier kreeg meteen "gelijk"). Via includes i.p.v.
+        // op.group === b, omdat soloOpening in Multiplayer als kopie (JSON) binnenkomt.
+        const rolledThisRound = op.group && op.group.includes(i) && op.rolls && (i in op.rolls);
         const chip = up ? `<span class="walk-opening-chip up">gooit</span>`
-          : b.length > 1 ? (r ? `<span class="walk-opening-chip tie">gelijk</span>` : '')
+          : b.length > 1 && r && !rolledThisRound ? `<span class="walk-opening-chip tie">gelijk</span>`
           : '';
         rows.push(row(i, b.length === 1 && r ? `${place}e` : '–', `<span class="walk-opening-dice">${dice}</span>${chip}`, up ? ' is-up' : ''));
       }
