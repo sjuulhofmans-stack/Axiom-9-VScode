@@ -2032,6 +2032,12 @@
     width:100%; background:var(--hull); border:1px solid var(--line); color:var(--amber);
     font-family:var(--font-mono); font-size:14px; padding:9px 10px; border-radius:4px;
   }
+  /* Na het kiezen (ook van dezelfde waarde) houdt de dropdown de focus, en dan tekende de
+     browser zijn eigen witte focusrand eromheen (gebruikersmelding: "knop wordt ineens een wit
+     kader"). Zelfde subtiele amberrand als de tekstvelden (input[type=text]:focus) i.p.v. wit. */
+  select:focus, select:focus-visible{
+    outline:none; border-color:var(--amber-dim); box-shadow:0 0 0 2px rgba(255,181,69,.12);
+  }
   .tile-thumb{position:relative;}
   /* De knop loopt mee in de kopregel (#id · letter · ✎). Stond hij absoluut rechtsboven, dan
      dekte hij de positieletter helemaal af en liep de kamernaam op de regel eronder deels
