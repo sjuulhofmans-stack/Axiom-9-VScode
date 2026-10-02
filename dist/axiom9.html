@@ -260,6 +260,19 @@
     outline:none;
   }
   input[type=text]:focus{border-color:var(--amber-dim); box-shadow:0 0 0 2px rgba(255,181,69,.12);}
+  /* getalvelden (bv. "Aantal potjes" bij Simulatie) hadden geen eigen opmaak en waren dus wit
+     (gebruikersmelding) — nu dezelfde donkere stijl als de tekstvelden */
+  input[type=number]{
+    min-width:0; background:var(--hull); border:1px solid var(--line); color:var(--amber);
+    font-family:var(--font-mono); font-size:14px; padding:9px 10px; border-radius:4px;
+    outline:none; color-scheme:dark;
+  }
+  input[type=number]:focus{border-color:var(--amber-dim); box-shadow:0 0 0 2px rgba(255,181,69,.12);}
+  /* Simulatie: aantal potjes + "Draai simulatie" gecentreerd in het midden (gebruikerswens) */
+  .sim-run{display:flex; flex-direction:column; align-items:center; text-align:center;}
+  .sim-run .seed-row{flex-direction:column; align-items:center; gap:10px;}
+  .sim-run input[type=number]{width:130px; text-align:center;}
+  .sim-run button{min-width:200px;}
   /* verplicht-veld-fout (nu alleen #mpHostName, zie mpHostCreate in 99-multiplayer.js) — rode
      rand + gloed i.p.v. de normale amber-focusring, generiek genoeg voor hergebruik elders. */
   input[type=text].mp-field-invalid{border-color:var(--danger);}
@@ -2657,7 +2670,7 @@
     <div class="panel">
       <h2>Simulatie</h2>
       <div class="controls">
-        <div class="field">
+        <div class="field sim-run">
           <label for="simCount">Aantal potjes</label>
           <div class="seed-row">
             <input type="number" id="simCount" min="100" max="20000" step="100" value="2000">
