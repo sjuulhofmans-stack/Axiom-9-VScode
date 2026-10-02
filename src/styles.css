@@ -2170,7 +2170,6 @@
   .thumb-cell.start{background:var(--start);}
   .thumb-cell.empty-slot{background:var(--slot-empty);}
 
-  footer{margin-top:26px; font-size:11.5px; color:var(--text-dim); text-align:center; font-family:var(--font-mono); letter-spacing:.04em;}
 
   /* ---------- mobiel: grotere tekst, ruimere tikgebieden ---------- */
   @media (max-width: 640px){
@@ -2243,7 +2242,6 @@
     .card-show-cap b{letter-spacing:0;}
     .card-show-cap span{font-size:9px; padding-right:14px;}
 
-    footer{font-size:10.5px; padding:0 8px;}
   }
 
   /* hover-tip naast de cursor: alleen voor opdracht-, actiekaart- en startpositievakjes (zie

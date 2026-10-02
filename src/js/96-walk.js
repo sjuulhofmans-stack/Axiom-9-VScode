@@ -48,19 +48,12 @@ const btnWalkStop = document.getElementById('btnWalkStop');
 const walkLobbyEl = document.getElementById('walkLobby');
 const walkPlayAreaEl = document.getElementById('walkPlayArea');
 const walkLobbyStatusEl = document.getElementById('walkLobbyStatus');
-const pageFooterEl = document.querySelector('footer');
-// De voettekst (copyright/disclaimer) kost onderaan de pagina net genoeg hoogte om "Stap voor
-// stap" tijdens het spelen (met legenda/log ingeklapt, zie walkToggleExtra hieronder) alsnog
-// een klein stukje te laten scrollen in fullscreen (gebruikersmelding) — verstopt 'm daarom
-// zolang het speelscherm in beeld is. Aangeroepen vanuit walkFadeSwap() hieronder (dekt
-// Automatisch + Zelf spelen) en switchTab()/mpEnterPlayView()/mpExitPlayView() (80-controls.js
-// resp. 99-multiplayer.js) voor de gevallen die walkFadeSwap() niet gebruiken.
+// Verborg vroeger de voettekst tijdens het spelen; die voettekst is helemaal weg
+// (gebruikerswens), maar de naam blijft omdat walkFadeSwap() hieronder en switchTab()/
+// mpEnterPlayView()/mpExitPlayView() (80-controls.js resp. 99-multiplayer.js) dit op precies de
+// juiste momenten aanroepen om Pauze/Stoppen bij te werken.
 function walkFooterSyncVisibility(){
-  if (!pageFooterEl) return;
-  const onWalkTab = !!walkPanelEl && !walkPanelEl.hidden;
-  const playing = !!walkPlayAreaEl && !walkPlayAreaEl.hidden;
-  pageFooterEl.hidden = onWalkTab && playing;
-  walkPauseStopSyncVisibility();   // hangt van precies dezelfde momenten af
+  walkPauseStopSyncVisibility();
 }
 
 // Pauze/Stoppen staan rechtsboven in de globale tabbladenbalk (index.html, .tab-bar-actions),
