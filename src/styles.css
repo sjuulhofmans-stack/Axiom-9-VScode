@@ -160,7 +160,9 @@
   .logo{height:64px;}
   h1.spaced-title{font-size:18px; letter-spacing:.3em; white-space:nowrap;}
   header .tab-bar{
-    justify-content:center; margin:0; padding:0 28px; border-bottom:none; gap:6px;
+    /* align-items:center expliciet: de algemene .tab-bar staat op baseline, en dan hingen de
+       tabbladen bovenin de kop i.p.v. op één lijn met het midden van het logo */
+    justify-content:center; align-items:center; margin:0; padding:0 28px; border-bottom:none; gap:6px;
     border-left:1px solid var(--line); border-right:1px solid var(--line);
   }
   .header-right{justify-content:flex-end; gap:18px; padding-left:28px;}
