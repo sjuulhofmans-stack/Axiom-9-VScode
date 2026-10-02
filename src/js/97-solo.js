@@ -912,6 +912,13 @@ function soloShoveTargets(){
 function soloEnterTargetPicker(cardId){
   const targets = soloTargetPickerTargets(cardId);
   if (!targets.length) return;
+  // De kaart is gespeeld zodra je hem kiest: meteen uit de hand (en het kaart-slot van deze
+  // beurt is op), niet pas na het kiezen van een doelwit — anders stond hij tijdens het kiezen
+  // nog in je kluis en kon je er opnieuw op klikken, terwijl terug niet meer kan
+  // (gebruikersmelding). soloResolveTargetCard verbruikt hem daarom niet nog eens.
+  useActionCard(solo(), cardId, soloDeck);
+  soloUsedCardId = cardId;
+  if (cardOverlayEl && !cardOverlayEl.hidden) soloCloseCardPanel();
   soloPhase = 'target-pick';
   soloHideStepCounter();
   // deze picker kan nu ook MIDDENIN het lopen geopend worden (kaarten spelen kan tijdens je
@@ -932,6 +939,8 @@ function soloEnterTargetPicker(cardId){
     ).join('') + `</div>`
   );
   walkCardActionsEl.dataset.pendingCard = cardId;
+  soloRefreshCardVault();
+  renderWalkScore(soloPlayers, soloActiveIdx);
 }
 if (walkCardActionsEl){
   walkCardActionsEl.addEventListener('click', (e) => {
@@ -943,26 +952,23 @@ if (walkCardActionsEl){
 }
 function soloResolveTargetCard(cardId, targetIdx){
   if (mpIntercept('resolveTarget', { cardId, targetIdx })) return;
+  // de kaart is al verbruikt bij het openen van de kiezer, dus alleen afhandelen zolang die
+  // kiezer echt openstaat (geen tweede keer via een dubbele klik of een laat bericht)
+  if (soloPhase !== 'target-pick') return;
   soloClearCardActionsPanel();
   const p = solo();
   const victim = soloPlayers[targetIdx];
   if (cardId === 'short'){
     victim.skipEnergyRoll = true;
-    useActionCard(p, 'short', soloDeck);
-    soloUsedCardId = 'short';
     walkLog(`Je speelt <b>Kortsluiting</b> op ${victim.name}: die mist zijn eerstvolgende energiesteen.`, null, p);
     soloAfterCardAction();
   } else if (cardId === 'scan'){
     const label = victim.deck[victim.nextIdx];
-    useActionCard(p, 'scan', soloDeck);
-    soloUsedCardId = 'scan';
     walkLog(`Je speelt <b>Prioriteitspas</b>: ${victim.name}'s volgende opdracht is <b>${label} — ${QUEST_NAMES[label] || ''}</b>.`, null, p);
     soloAfterCardAction();
   } else if (cardId === 'shove'){
     // richting wordt geloot, niet gekozen — zelfde berekening als de bot-AI
     const dest = shoveDestination(soloGraph, soloPlayers, victim, soloRand);
-    useActionCard(p, 'shove', soloDeck);
-    soloUsedCardId = 'shove';
     if (dest){
       victim.pos = dest.key;
       const kompas = ['noord', 'oost', 'zuid', 'west'][dest.dir];
@@ -974,21 +980,15 @@ function soloResolveTargetCard(cardId, targetIdx){
     soloAfterCardAction();
   } else if (cardId === 'lockdown'){
     victim.lockedNextTurn = true;
-    useActionCard(p, 'lockdown', soloDeck);
-    soloUsedCardId = 'lockdown';
     walkLog(`Je speelt <b>Vergrendeling</b> op ${victim.name}: die mist zijn volgende energie- én kaartactie.`, null, p);
     soloAfterCardAction();
   } else if (cardId === 'outage'){
     victim.rollPenalty = 2;
-    useActionCard(p, 'outage', soloDeck);
-    soloUsedCardId = 'outage';
     walkLog(`Je speelt <b>Stroomonderbreking</b> op ${victim.name}: die gooit 2 stappen minder.`, null, p);
     soloAfterCardAction();
   } else if (cardId === 'barrier'){
     const occNow = soloOccupied(); occNow.add(p.pos);
     const spot = soloGraph.adjKey[victim.pos].find(k => !occNow.has(k));
-    useActionCard(p, 'barrier', soloDeck);
-    soloUsedCardId = 'barrier';
     if (spot !== undefined){
       victim.barrierCell = spot;
       walkLog(`Je speelt <b>Noodbarrière</b> naast ${victim.name}.`, null, p);
@@ -998,8 +998,6 @@ function soloResolveTargetCard(cardId, targetIdx){
     soloAfterCardAction();
   } else if (cardId === 'recoil'){
     const { steps, toKey } = soloRecoilSteps(victim, p.pos);
-    useActionCard(p, 'recoil', soloDeck);
-    soloUsedCardId = 'recoil';
     if (steps > 0){
       victim.pos = toKey;
       walkLog(`Je speelt <b>Terugtrekbevel</b> op ${victim.name} en duwt die ${steps} vakje(s) terug.`, null, p);
@@ -1010,8 +1008,6 @@ function soloResolveTargetCard(cardId, targetIdx){
     soloAfterCardAction();
   } else if (cardId === 'jam'){
     victim.reorderBlocked = true;
-    useActionCard(p, 'jam', soloDeck);
-    soloUsedCardId = 'jam';
     walkLog(`Je speelt <b>Signaalstoring</b> op ${victim.name}: diens eerstvolgende doelwissel mislukt.`, null, p);
     soloAfterCardAction();
   }
@@ -1022,6 +1018,8 @@ function soloResolveTargetCard(cardId, targetIdx){
 // worden dan hieronder als allereerste apart afgehandeld.
 function soloPlayCard(id){
   if (mpIntercept('playCard', { id })) return;
+  // tijdens het kiezen van een doelwit is de vorige kaart al gespeeld (kaart-slot op)
+  if (soloPhase === 'target-pick') return;
   const p0 = solo();
   if (soloPhase === 'choose-action' && id === 'boots'){ soloEnterDashDirection('card'); return; }
   if (soloPhase === 'choose-action' && SOLO_PRE_ROLL_CARDS.includes(id)){
