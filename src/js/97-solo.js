@@ -2239,6 +2239,9 @@ function soloShowEndgame(trophy, title, sub, players = soloPlayers, isMe = soloI
   if (!walkEndgameEl || !walkEndgameCardEl) return;
   // bewaard voor de knop "Statistieken" (en "Terug naar de uitslag") hieronder
   soloEndgameView = { trophy, title, sub, players, isMe };
+  // de dobbelstenen van de laatste beurt horen niet meer naast het winscherm (gebruikerswens)
+  if (walkDiceEl) walkDiceEl.innerHTML = '';
+  soloHideStepCounter();
   soloRenderEndgameResult();
   soloReopenEndgame();
 }
@@ -2327,7 +2330,7 @@ function soloOpenStats(){
   // alleen eindstand, naam en of het een bot is (gebruikerswens: start/opdrachten/binnen hoeven niet)
   const cards = players.map(p => {
     const who = p.isHuman ? (v.isMe(p) ? 'jij' : 'mens') : 'bot';
-    return `<div class="walk-stats-player${p.rank >= 1 && p.rank <= 3 ? ' r' + p.rank : ''}" style="--pc:${p.color}">` +
+    return `<div class="walk-stats-player" style="--pc:${p.color}">` +
       `<span class="walk-stats-player-place">${p.rank ? walkRankLabel(p.rank) : '—'}</span>` +
       `<b class="walk-stats-player-name">${p.name}</b>` +
       `<span class="walk-stats-player-who">${who}</span>` +
@@ -2336,7 +2339,7 @@ function soloOpenStats(){
   // per categorie een tabel met vakjes; kolomkop = kleurstip + plaats (zelfde als de spelerkaart
   // erboven — een naam paste niet in de smalle kolom), de naam staat in de tooltip
   const head = `<thead><tr><th class="walk-stats-corner"></th>${players.map(p =>
-    `<th style="--pc:${p.color}" title="${p.name}"><span class="walk-stats-dot"></span>${p.rank ? walkRankLabel(p.rank) : '–'}</th>`).join('')}</tr></thead>`;
+    `<th style="--pc:${p.color};color:var(--pc)" title="${p.name}">${p.rank ? walkRankLabel(p.rank) : '–'}</th>`).join('')}</tr></thead>`;
   const tables = SOLO_STATS_GROUPS.map(g => {
     const body = g.rows.map(r => {
       const vals = players.map(r.get);

@@ -622,22 +622,18 @@
   #walkStatsBody{display:flex; flex-direction:column; gap:18px;}
   /* bovenaan: elke speler een eigen kolom, van links naar rechts in volgorde van het klassement */
   .walk-stats-players{display:grid; grid-template-columns:repeat(var(--n, 4), minmax(0, 1fr)); gap:10px;}
+  /* strak, zelfde stijl als het klassement op het winscherm: plaats + naam in de spelerskleur,
+     geen goud/zilver/brons en geen gekleurde bovenrand meer (gebruikerswens) */
   .walk-stats-player{
-    display:flex; align-items:center; gap:10px; min-width:0; padding:10px 12px;
-    background:var(--hull); border:1px solid var(--line); border-top:3px solid var(--pc); border-radius:6px;
+    display:flex; align-items:baseline; gap:12px; min-width:0; padding:10px 14px;
+    background:var(--hull); border:1px solid var(--line); border-radius:6px;
   }
-  .walk-stats-player-place{
-    flex:none; min-width:38px; height:30px; padding:0 8px; border-radius:15px; display:flex; align-items:center; justify-content:center;
-    font-family:var(--font-mono); font-size:14px; font-weight:700; color:var(--text-dim); border:1px solid var(--line);
-  }
-  .walk-stats-player-name{flex:1; min-width:0; color:var(--pc); font-size:15px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+  .walk-stats-player-place{flex:none; font-family:var(--font-mono); font-size:18px; font-weight:700; color:var(--pc);}
+  .walk-stats-player-name{flex:1; min-width:0; color:var(--pc); font-size:15px; font-weight:700; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
   .walk-stats-player-who{
-    flex:none; padding:2px 7px; border-radius:4px; border:1px solid var(--line);
-    font-family:var(--font-mono); font-size:10px; letter-spacing:.08em; text-transform:uppercase; color:var(--text-dim);
+    flex:none; align-self:center;
+    font-family:var(--font-mono); font-size:10px; letter-spacing:.1em; text-transform:uppercase; color:var(--text-dim);
   }
-  .walk-stats-player.r1 .walk-stats-player-place{color:#1a1400; background:#ffd23d; border-color:#ffd23d;}
-  .walk-stats-player.r2 .walk-stats-player-place{color:#15181c; background:#c9d2dc; border-color:#c9d2dc;}
-  .walk-stats-player.r3 .walk-stats-player-place{color:#1c0f05; background:#d08a4e; border-color:#d08a4e;}
   /* elke categorie een eigen tabel, hoogstens 3 naast elkaar */
   .walk-stats-cats{display:grid; grid-template-columns:repeat(3, minmax(0, 1fr)); gap:18px 16px;}
   @media (max-width: 1100px){ .walk-stats-cats{grid-template-columns:repeat(2, minmax(0, 1fr));} }
@@ -10925,6 +10921,9 @@ function soloShowEndgame(trophy, title, sub, players = soloPlayers, isMe = soloI
   if (!walkEndgameEl || !walkEndgameCardEl) return;
   // bewaard voor de knop "Statistieken" (en "Terug naar de uitslag") hieronder
   soloEndgameView = { trophy, title, sub, players, isMe };
+  // de dobbelstenen van de laatste beurt horen niet meer naast het winscherm (gebruikerswens)
+  if (walkDiceEl) walkDiceEl.innerHTML = '';
+  soloHideStepCounter();
   soloRenderEndgameResult();
   soloReopenEndgame();
 }
@@ -11013,7 +11012,7 @@ function soloOpenStats(){
   // alleen eindstand, naam en of het een bot is (gebruikerswens: start/opdrachten/binnen hoeven niet)
   const cards = players.map(p => {
     const who = p.isHuman ? (v.isMe(p) ? 'jij' : 'mens') : 'bot';
-    return `<div class="walk-stats-player${p.rank >= 1 && p.rank <= 3 ? ' r' + p.rank : ''}" style="--pc:${p.color}">` +
+    return `<div class="walk-stats-player" style="--pc:${p.color}">` +
       `<span class="walk-stats-player-place">${p.rank ? walkRankLabel(p.rank) : '—'}</span>` +
       `<b class="walk-stats-player-name">${p.name}</b>` +
       `<span class="walk-stats-player-who">${who}</span>` +
@@ -11022,7 +11021,7 @@ function soloOpenStats(){
   // per categorie een tabel met vakjes; kolomkop = kleurstip + plaats (zelfde als de spelerkaart
   // erboven — een naam paste niet in de smalle kolom), de naam staat in de tooltip
   const head = `<thead><tr><th class="walk-stats-corner"></th>${players.map(p =>
-    `<th style="--pc:${p.color}" title="${p.name}"><span class="walk-stats-dot"></span>${p.rank ? walkRankLabel(p.rank) : '–'}</th>`).join('')}</tr></thead>`;
+    `<th style="--pc:${p.color};color:var(--pc)" title="${p.name}">${p.rank ? walkRankLabel(p.rank) : '–'}</th>`).join('')}</tr></thead>`;
   const tables = SOLO_STATS_GROUPS.map(g => {
     const body = g.rows.map(r => {
       const vals = players.map(r.get);
@@ -12716,7 +12715,10 @@ function mpApplyState(payload){
   renderSoloMeta(soloMove ? soloMove.stepsLeft : undefined);
   mpRefreshCardVault();
 
-  if (soloMove && soloMove.d1 !== undefined && soloPhase !== 'choose-action' && soloPhase !== 'rolling'){
+  // na afloop geen dobbelstenen meer naast het winscherm (zie soloShowEndgame)
+  if (soloPhase === 'game-over'){
+    if (walkDiceEl) walkDiceEl.innerHTML = '';
+  } else if (soloMove && soloMove.d1 !== undefined && soloPhase !== 'choose-action' && soloPhase !== 'rolling'){
     renderWalkDice(soloMove.d1, soloMove.d2, soloEnergyRoll, false, soloMove.d3, soloMove.roll);
   } else if (soloEnergyRoll !== null && soloPhase === 'rolling'){
     renderSoloDicePending();

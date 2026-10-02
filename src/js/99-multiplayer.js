@@ -925,7 +925,10 @@ function mpApplyState(payload){
   renderSoloMeta(soloMove ? soloMove.stepsLeft : undefined);
   mpRefreshCardVault();
 
-  if (soloMove && soloMove.d1 !== undefined && soloPhase !== 'choose-action' && soloPhase !== 'rolling'){
+  // na afloop geen dobbelstenen meer naast het winscherm (zie soloShowEndgame)
+  if (soloPhase === 'game-over'){
+    if (walkDiceEl) walkDiceEl.innerHTML = '';
+  } else if (soloMove && soloMove.d1 !== undefined && soloPhase !== 'choose-action' && soloPhase !== 'rolling'){
     renderWalkDice(soloMove.d1, soloMove.d2, soloEnergyRoll, false, soloMove.d3, soloMove.roll);
   } else if (soloEnergyRoll !== null && soloPhase === 'rolling'){
     renderSoloDicePending();
