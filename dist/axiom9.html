@@ -39,7 +39,12 @@
      rechts"), óók de vaste 300px-zijkolom met de navigator en de dobbelknop. `scrollbar-gutter:
      stable` reserveert die ruimte altijd, scrollbalk of niet, dus die horizontale sprong is weg. */
   html{scrollbar-gutter: stable;}
-  html,body{margin:0;padding:0; overflow-x:hidden;}
+  html,body{margin:0;padding:0;}
+  /* body op `clip` i.p.v. `hidden`: met hidden op html ÉN body werd body een eigen scrollvak,
+     en dan blijft de sticky kop (header hieronder) niet bovenin staan. clip knipt net zo goed
+     af, maar maakt geen scrollvak. */
+  html{overflow-x:hidden;}
+  body{overflow-x:clip;}
 
   /* ---------- thema-scrollbalk, overal in het document ---------- */
   /* scrollbar-color/-width is de Firefox-variant (geldt globaal via html, wordt overgeërfd);
@@ -86,6 +91,14 @@
     display:flex; flex-wrap:wrap; align-items:flex-end; justify-content:space-between;
     /* padding-bottom was 16px, margin-bottom 22px — zelfde reden als body hierboven. */
     gap:16px; border-bottom:1px solid var(--line); padding-bottom:10px; margin-bottom:14px;
+    /* Blijft altijd bovenin staan als je naar beneden scrolt (gebruikerswens; vooral bij
+       "Speelbord genereren" en "Speelkaarten"). De 14px bovenrand van <body> zit erin
+       (padding-top + negatieve margin), anders schoof de inhoud zichtbaar door dat randje
+       boven de kop heen. Dichte achtergrond zodat er niets doorheen schemert; z-index boven
+       het bord (max. 11) maar onder de pop-ups (100+). */
+    position:sticky; top:0; z-index:50;
+    margin-top:-14px; padding-top:14px;
+    background:var(--hull);
   }
   .title-block{display:flex; align-items:center; gap:18px;}
   /* was 84px — samen met de rest van de kop hierboven de grootste losse bijdrage aan de hoogte
