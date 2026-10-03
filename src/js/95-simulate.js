@@ -1512,8 +1512,15 @@ function clearSimResults(){
   if (typeof hideGenProgress === 'function') hideGenProgress();
   if (!simResultsEl) return;
   simResultsEl.innerHTML = '';
-  simStatusEl.innerHTML = `<span class="sub">Indeling gewijzigd — draai de simulatie opnieuw voor cijfers die bij dit bord horen.</span>`;
+  // Alleen als er al eens een simulatie is gedraaid zijn er "oude" cijfers om voor te waarschuwen
+  // — niet bij het openen of het eerste genereren (gebruikersmelding: stond er meteen al).
+  // Gecentreerd onder de knop, net als de rest van dat vak.
+  simStatusEl.innerHTML = simHasRun
+    ? `<span class="sub sim-stopped">Indeling gewijzigd — draai de simulatie opnieuw voor cijfers die bij dit bord horen.</span>`
+    : '';
 }
+// var (geen let): clearSimResults kan al lopen voordat deze regel geladen is
+var simHasRun = false;   // wordt true zodra er een uitslag is getoond (renderSimResults)
 
 // 95%-foutmarge (in procentpunten) op een winpercentage uit `wins` van `n` potjes.
 function simMarginOfError(wins, n){
@@ -1668,6 +1675,7 @@ function renderHeatmap(graph, heatmap){
 }
 
 function renderSimResults({ n, stuckCount, startWins, startTurnsSum, startRanks, strategyStats, seatWins, gameLengths, questStats, extra, graph, heatmap, elapsedMs }){
+  simHasRun = true;   // vanaf nu een waarschuwing als de indeling verandert (clearSimResults)
   const played = n - stuckCount;
 
   const startPcts = SIM_START_LABELS.map(lbl => played ? (startWins[lbl] / played * 100) : 0);
