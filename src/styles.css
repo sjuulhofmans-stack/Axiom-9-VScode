@@ -1902,6 +1902,9 @@
      Spelen/Simulatie (zie #walkPanel bij de --wcell-regels); de kaarten staan verticaal in het
      midden van wat er onder de uitleg overblijft. */
   #tabCards > .panel:first-child{display:flex; flex-direction:column; container-type:inline-size;}
+  /* ruimte tussen de vakken, net als op "Speelbord genereren" (22px, de gap van .grid-layout) —
+     ze zaten hier tegen elkaar aan */
+  #tabCards > .panel + .panel{margin-top:22px;}
   #cardsQuestGrid{
     display:flex; flex-wrap:wrap; justify-content:center; align-items:stretch;
     margin:auto 0;
