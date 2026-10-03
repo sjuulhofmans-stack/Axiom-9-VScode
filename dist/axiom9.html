@@ -602,8 +602,12 @@
   .walk-lobby-start-row:not(:has(> #btnWalkStart:not([hidden]), > #walkSoloStartRow:not([hidden]))) .walk-intro-toggle{display:none;}
 
   /* ---------- startanimatie (96b-intro.js): zwart scherm, sterren, aftellen, hyperjump ---------- */
+  /* alleen binnen het lobbyvak (#walkPanel), niet over het hele scherm (gebruikerswens);
+     container-type zodat de cijfers meeschalen met het vak (cqmin) i.p.v. met het scherm */
+  #walkPanel{position:relative;}
   .start-intro{
-    position:fixed; inset:0; z-index:9000; background:#000; opacity:0; cursor:pointer;
+    position:absolute; inset:0; z-index:20; background:#000; opacity:0; cursor:pointer;
+    border-radius:inherit; overflow:hidden; container-type:size;
     transition:opacity .32s ease;
   }
   .start-intro.is-in{opacity:1;}
@@ -612,7 +616,7 @@
   .start-intro-count{
     position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
     pointer-events:none; font-family:var(--font-display); font-weight:700;
-    font-size:min(30vmin, 260px); letter-spacing:.04em; line-height:1;
+    font-size:min(42cqmin, 260px); letter-spacing:.04em; line-height:1;
     /* donker metaal met een koude rand: ruimteachtig, niet fel */
     color:transparent;
     background:linear-gradient(180deg, #c9d8ee 0%, #6b7f9e 45%, #1c2638 100%);
@@ -620,7 +624,7 @@
     -webkit-text-stroke:1px rgba(140,180,255,.35);
     filter:drop-shadow(0 0 18px rgba(70,120,220,.35)) drop-shadow(0 0 2px rgba(0,0,0,.9));
   }
-  .start-intro-count.is-go{font-size:min(17vmin, 170px); letter-spacing:.28em; padding-left:.28em;}
+  .start-intro-count.is-go{font-size:min(14cqw, 26cqh, 170px); letter-spacing:.28em; padding-left:.28em;}
   .start-intro-count.pop{animation:introPop .7s cubic-bezier(.15,.8,.25,1) both;}
   @keyframes introPop{
     0%{opacity:0; transform:scale(1.7); filter:blur(14px) drop-shadow(0 0 18px rgba(70,120,220,.35));}
@@ -9068,7 +9072,10 @@ function playStartIntro(onDone){
   overlay.className = 'start-intro';
   overlay.innerHTML = '<canvas></canvas><div class="start-intro-count"></div>' +
     '<div class="start-intro-skip">klik of Esc om over te slaan</div>';
-  document.body.appendChild(overlay);
+  // alleen in het lobbyvak (#walkPanel), niet over het hele scherm (gebruikerswens) — de kop
+  // met logo en tabbladen blijft gewoon zichtbaar
+  const host = document.getElementById('walkPanel') || document.body;
+  host.appendChild(overlay);
   const canvas = overlay.querySelector('canvas');
   const countEl = overlay.querySelector('.start-intro-count');
   const ctx = canvas.getContext('2d');
@@ -9078,12 +9085,14 @@ function playStartIntro(onDone){
   let W = 0, H = 0;
   const resize = () => {
     const dpr = Math.min(2, window.devicePixelRatio || 1);
-    W = window.innerWidth; H = window.innerHeight;
+    W = Math.max(1, overlay.clientWidth); H = Math.max(1, overlay.clientHeight);
     canvas.width = W * dpr; canvas.height = H * dpr;
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   };
   resize();
-  window.addEventListener('resize', resize);
+  // het vak kan van maat veranderen (venster, of het speelscherm dat erachter verschijnt)
+  const ro = typeof ResizeObserver === 'function' ? new ResizeObserver(resize) : null;
+  if (ro) ro.observe(overlay); else window.addEventListener('resize', resize);
 
   // klassiek 3D-sterrenveld: x/y willekeurig, z = diepte; projectie naar het midden
   const STARS = 520;
@@ -9207,7 +9216,7 @@ function playStartIntro(onDone){
     if (finished) return;
     finished = true;
     cancelAnimationFrame(raf);
-    window.removeEventListener('resize', resize);
+    if (ro) ro.disconnect(); else window.removeEventListener('resize', resize);
     document.removeEventListener('keydown', onKey, true);
     if (audio) audio.stop();
     // het spel start nu al achter de overlay, die daarna rustig wegfaadt

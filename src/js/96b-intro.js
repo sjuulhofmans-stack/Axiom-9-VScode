@@ -108,7 +108,10 @@ function playStartIntro(onDone){
   overlay.className = 'start-intro';
   overlay.innerHTML = '<canvas></canvas><div class="start-intro-count"></div>' +
     '<div class="start-intro-skip">klik of Esc om over te slaan</div>';
-  document.body.appendChild(overlay);
+  // alleen in het lobbyvak (#walkPanel), niet over het hele scherm (gebruikerswens) — de kop
+  // met logo en tabbladen blijft gewoon zichtbaar
+  const host = document.getElementById('walkPanel') || document.body;
+  host.appendChild(overlay);
   const canvas = overlay.querySelector('canvas');
   const countEl = overlay.querySelector('.start-intro-count');
   const ctx = canvas.getContext('2d');
@@ -118,12 +121,14 @@ function playStartIntro(onDone){
   let W = 0, H = 0;
   const resize = () => {
     const dpr = Math.min(2, window.devicePixelRatio || 1);
-    W = window.innerWidth; H = window.innerHeight;
+    W = Math.max(1, overlay.clientWidth); H = Math.max(1, overlay.clientHeight);
     canvas.width = W * dpr; canvas.height = H * dpr;
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   };
   resize();
-  window.addEventListener('resize', resize);
+  // het vak kan van maat veranderen (venster, of het speelscherm dat erachter verschijnt)
+  const ro = typeof ResizeObserver === 'function' ? new ResizeObserver(resize) : null;
+  if (ro) ro.observe(overlay); else window.addEventListener('resize', resize);
 
   // klassiek 3D-sterrenveld: x/y willekeurig, z = diepte; projectie naar het midden
   const STARS = 520;
@@ -247,7 +252,7 @@ function playStartIntro(onDone){
     if (finished) return;
     finished = true;
     cancelAnimationFrame(raf);
-    window.removeEventListener('resize', resize);
+    if (ro) ro.disconnect(); else window.removeEventListener('resize', resize);
     document.removeEventListener('keydown', onKey, true);
     if (audio) audio.stop();
     // het spel start nu al achter de overlay, die daarna rustig wegfaadt
