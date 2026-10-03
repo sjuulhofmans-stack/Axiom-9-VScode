@@ -170,7 +170,10 @@ aangeroepen (functiedeclaraties worden gehoist, `const`/`let` niet).
 
 Na een wijziging altijd `python build.py` en dan `dist/axiom9.html` openen.
 Check minimaal:
-1. Dobbelsteenknop → melding "strak aaneengesloten, geen doodlopende doorgangen".
+1. Dobbelsteenknop → nieuwe indeling, seed rechtsboven in de kop; onder de knoppen
+   blijft gewoon "Sleep een tegel…" staan (de lange kwaliteitsmelding is bewust weg).
+   Alleen bij een mislukte indeling verschijnt een korte rode waarschuwing. Het bord
+   staat gecentreerd in zijn vak en niets verschuift tijdens het genereren.
 2. Onbereikbare vakjes (bv. na een tegel-bewerking) krijgen een roze/magenta rand
    direct op het bord — geen apart paneel, dit is de enige indicatie.
 3. Een tegel selecteren → draaiknoppen gaan per **90°** (niet 180).

@@ -233,6 +233,16 @@
     min-width:0;
   }
   .right-col{display:flex; flex-direction:column; gap:22px; min-width:0;}
+  /* "Speelbord genereren": het bord in het midden van zijn vak (horizontaal én verticaal), en
+     het onderste vak rechts rekt mee tot de onderrand van het bordvak, zodat beide kolommen
+     gelijk eindigen (gebruikerswens) */
+  #tabMap > .grid-layout > .panel:first-child{display:flex; align-items:center; justify-content:center;}
+  #tabMap > .grid-layout > .panel:first-child > .board-zoom-wrap{max-width:100%;}
+  #tabMap .right-col > .panel:last-child{flex:1 1 auto;}
+  /* de voortgangsbalk van het genereren houdt zijn plek altijd vrij (onzichtbaar als hij niet
+     loopt), anders schoof de kolom tijdens het genereren 73px op */
+  #genProgress[hidden]{display:flex; visibility:hidden;}
+  #genProgress{min-height:80px; margin-bottom:0;}
   @media (max-width: 880px){ .grid-layout{grid-template-columns:1fr;} }
 
   .panel{

@@ -51,20 +51,14 @@ async function applyGeneratedLayout(seed){
   hideGenProgress();
   selectedSlot = null; highlightTile = null;
   statSeed.textContent = seed;
+  // Geen lange kwaliteitsmelding meer onder de knoppen (gebruikerswens: die liep over meerdere
+  // regels, maakte de kolom langer en liet alles verschuiven). De seed staat al rechtsboven in
+  // de kop; alleen als het NIET gelukt is volgt er een korte waarschuwing.
   const conn = computeConnectivity();
-  const balance = startBalanceScore(layout);
-  const coverage = questCoverageScore(layout);
-  const dead = deadTileCount(layout);
-  const isolation = roomIsolationScore(layout);
-  const spacing = questSpacingScore(layout);
-  const deadNote = dead === 0
-    ? ` Geen dode tegels — elke tegel ligt op een route tussen opdrachten.`
-    : ` <span style="color:var(--danger)">${dead} dode tegel(s)</span> — daar komt vrijwel nooit een speler.`;
-  const qualityNote = ` Hoogstens <b>${isolation}</b> gang(en) tussen twee kamers, opdrachten minstens <b>${spacing.minDist}</b> vakjes uit elkaar, eerlijkheid startposities ±<b>${nl(balance, 1)}</b> vakjes, verste vakje <b>${coverage.maxDist}</b> stappen van een opdracht.` + deadNote;
   if (conn.groups.length === 1 && conn.brokenCount === 0){
-    swapHint.innerHTML = `Indeling gegenereerd met seed <b>${seed}</b> — strak aaneengesloten, geen doodlopende doorgangen, alle 20 tegels bereikbaar.` + qualityNote;
+    swapHint.textContent = 'Sleep een tegel over een andere om ze te verwisselen.';
   } else {
-    swapHint.innerHTML = `Indeling gegenereerd met seed <b>${seed}</b> — beste poging: ${conn.brokenCount} doodlopende naad/naden, ${conn.groups.length} sectie(s). Probeer een andere seed voor een strakkere indeling.`;
+    swapHint.innerHTML = `<span style="color:var(--danger)">Beste poging: ${conn.brokenCount} doodlopende naad/naden — probeer een andere seed.</span>`;
   }
   renderBoard();
 }
