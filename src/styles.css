@@ -611,6 +611,10 @@
   /* ook in de Multiplayer-formulieren: naamveld net zo breed als de keuzelijsten, knoppen in
      het midden */
   .walk-lobby-body .field input[type=text]{width:100%;}
+  /* host-kamer en deelnameformulier beginnen op dezelfde hoogte als het eerste veld in de
+     andere modi en als de chat ernaast (de 14px bovenmarge van .mp-setup zette ze lager) */
+  .walk-lobby-body .mp-setup{margin-top:0;}
+  .walk-lobby-body #mpHostRoom > .hint:first-child{margin-top:0;}
   /* uitgezet keuzeveld (bv. "Beurten van de bots" zonder bots): blijft staan, maar gedimd */
   .walk-lobby-body .field.is-disabled{opacity:.4;}
   .walk-lobby-body .field.is-disabled select{cursor:not-allowed;}
