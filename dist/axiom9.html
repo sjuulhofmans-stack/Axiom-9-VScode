@@ -603,13 +603,39 @@
   .walk-lobby-start-row{display:flex; flex-direction:column; margin-top:auto;}
   /* Multiplayer: alleen de twee keuzeknoppen, even groot als de modus-tabs erboven (een tab is
      een derde van de rij min de 4px tussenruimtes) en in het midden — geen uitlegtekst meer */
-  #mpChoice{display:flex; justify-content:center; gap:4px; margin:0;}
+  /* het middenstuk van de lobby: alles van de gekozen modus verticaal gecentreerd tussen de
+     tabs en de startknop (gebruikerswens); de startknop zelf blijft onderaan op zijn vaste plek */
+  .walk-lobby-body{
+    flex:1 1 auto; min-height:0; display:flex; flex-direction:column; justify-content:center;
+    gap:12px;
+  }
+  .walk-lobby-body > .reach-status:empty, .mp-room-info > .reach-status:empty{display:none;}
+  /* ook in de Multiplayer-formulieren: naamveld net zo breed als de keuzelijsten, knoppen in
+     het midden */
+  .walk-lobby-body .field input[type=text]{width:100%;}
+  .walk-lobby-body .mp-setup .btn-row, .walk-lobby-body #mpJoinWaiting .btn-row,
+  .walk-lobby-body #mpHostRoom .btn-row{justify-content:center;}
+  /* spelerskaartjes in de Zelf-spelen-lobby gecentreerd (ook een losse, bv. bij 1 mens) i.p.v.
+     links in een 2-koloms raster */
+  #walkSoloSetupPlayers{display:flex; flex-wrap:wrap; justify-content:center; margin-top:0;}
+  #walkSoloSetupPlayers[hidden], #walkSoloSetupPlayers:empty{display:none;}
+  #walkSoloSetupPlayers > *{flex:0 0 calc(50% - 5px); min-height:52px;}
+  /* de twee keuzes onder elkaar, allebei neutraal (geen van beide is "de" keuze, dus ook geen
+     van beide licht op — gebruikersmelding), even breed als een modus-tab */
+  /* white-space:nowrap op de knoppen (hieronder): bij het uitrekenen van de hoogte nam de browser
+     de procentbreedte even als 0, liet de tekst over twee regels lopen en rekende zo 120 i.p.v.
+     78px — de knoppen stonden daardoor boven het midden */
+  #mpChoice{display:flex; flex-direction:column; flex-wrap:nowrap; align-items:center; gap:10px; margin:0;}
+  /* zolang alleen de keuze zichtbaar is: geen tussenruimte naar de lege elementen eronder */
+  .mp-room-info:has(> #mpChoice:not([hidden])){gap:0;}
   #mpChoice[hidden]{display:none;}
   #mpChoice > button{
-    flex:0 0 calc((100% - 8px) / 3); min-width:0;
+    width:calc((100% - 8px) / 3); min-width:0; white-space:nowrap;
     font-family:var(--font-mono); font-size:11.5px; letter-spacing:.08em; text-transform:uppercase;
     padding:9px 12px; border-radius:5px;
+    background:var(--hull); border:1px solid var(--line); color:var(--text); box-shadow:none;
   }
+  #mpChoice > button:hover{border-color:var(--quest); color:#eafcff; background:rgba(79,184,224,.1);}
   .walk-lobby-start-row #walkSoloStartRow{display:flex; flex-direction:column;}
   .walk-lobby-start-row #walkSoloStartRow[hidden]{display:none;}
   .walk-lobby-start{width:100%; padding:13px; font-size:15px;}
@@ -2592,7 +2618,10 @@
      plaats van die inhoud netjes te begrenzen tot wat er past. Zonder deze regels werd de
      hele kolom bij veel chatberichten alsnog groter dan de vaste hoogte hierboven en sneed
      overflow-y:hidden het chat-typvak gewoon af (gebruikersmelding). */
-  #walkMultiControls{flex:1; min-height:0;}
+  /* alleen de volle hoogte innemen als er een kamer + chat is; daarvoor (alleen de twee
+     keuzeknoppen) gewoon zijn eigen hoogte, zodat hij in het midden van de lobby staat */
+  #walkMultiControls{flex:0 0 auto; min-height:0;}
+  .walk-lobby-col:has(.mp-chat-panel:not([hidden])) #walkMultiControls{flex:1 1 auto;}
   .mp-room-layout{
     display:grid; grid-template-columns:1fr; grid-template-rows:minmax(0,1fr); gap:16px;
     flex:1; min-height:0;
@@ -2934,6 +2963,10 @@
           <button class="walk-mode-btn" id="walkModeMulti" data-mode="multi" role="tab" aria-selected="false">Multiplayer</button>
         </div>
 
+        <!-- alles van de gekozen modus, verticaal in het midden tussen de tabs en "Start spel"
+             (gebruikerswens); zie .walk-lobby-body in styles.css -->
+        <div class="walk-lobby-body">
+
         <div class="walk-controls walk-lobby-fields" id="walkAutoControls">
           <div class="field">
             <label for="walkPlayers">Aantal spelers</label>
@@ -3105,6 +3138,7 @@
         </div>
 
         <div id="walkLobbyStatus" class="reach-status"></div>
+        </div><!-- /.walk-lobby-body -->
 
         <div class="walk-lobby-start-row">
           <!-- aftellen + hyperjump vóór het potje (96b-intro.js); keuze onthouden per browser -->
