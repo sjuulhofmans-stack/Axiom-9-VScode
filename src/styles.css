@@ -1809,6 +1809,15 @@
     background:var(--qtint, var(--quest)) !important;
     z-index:4; position:relative;
   }
+  /* Multiplayer: het doel van wie er nu aan zet is (als dat niet jij bent), naast je eigen doel —
+     gestippelde rand in diens kleur, rustig en zonder puls zodat je eigen doel het duidelijkst
+     blijft (soloShowTargets in 97-solo.js). ::before, want ::after is al van .walk-target. */
+  .cell.walk-target-other{z-index:4; position:relative;}
+  .cell.walk-target-other::before{
+    content:''; position:absolute; inset:-3px; border-radius:3px; pointer-events:none;
+    border:2px dashed var(--oc, #fff);
+    box-shadow:0 0 8px color-mix(in srgb, var(--oc, #fff) 45%, transparent);
+  }
   .cell.walk-target::after{
     content:''; position:absolute; inset:-2px; border-radius:3px; pointer-events:none;
     --glow: var(--pc, #fff);

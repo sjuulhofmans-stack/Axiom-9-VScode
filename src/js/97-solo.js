@@ -440,14 +440,14 @@ function renderSoloMeta(stepsLeft){
 // eindstand die pas gezet wordt zodra iemand binnen is, zie stopSoloGame-omgeving verderop).
 // Hergebruikt walkOrderPlayers() (96-walk.js), dezelfde sortering als de eindklassering.
 function soloLiveRank(){
-  const p = solo();
+  const p = soloViewer();
   if (!p) return null;
   return walkOrderPlayers(soloPlayers).findIndex(q => q.idx === p.idx) + 1;
 }
 // 3 kleine tegels bovenin het Spelerstatus-vakje. Hangt aan renderSoloMeta zodat hij overal
 // meeloopt waar de rest van je beurtinfo ook al opnieuw getekend wordt.
 function soloRenderStatusExtras(){
-  const p = solo();
+  const p = soloViewer();   // in Multiplayer altijd je eigen tegels, ook in andermans beurt
   // tijdens het dobbelen aan het begin (soloBeginOpening) is je opdracht nog geheim — dan ook
   // geen opdrachtenoverzicht dat "Actief" bij je eerste opdracht zet
   if (!p || !walkStatTilesEl || p.questHidden){
@@ -477,7 +477,7 @@ function soloRenderQuestChecklist(){
   // niet gespiekt werd; staat de muis na de render nog steeds op dezelfde plek, dan pakt de
   // eerstvolgende mousemove het spieken vanzelf weer op via de listener hieronder.
   soloPeekReset();
-  const p = solo();
+  const p = soloViewer();   // in Multiplayer altijd je eigen opdrachten
   if (!p){ walkQuestChecklistEl.innerHTML = ''; return; }
   const done = new Set(p.deck.slice(0, p.nextIdx));
   const current = p.rank ? null : p.deck[p.nextIdx];
@@ -519,7 +519,7 @@ const ENERGY_CELL_CHARGE_MS = 520;   // = duur van ecellCharge in styles.css
 const ENERGY_CELL_DRAIN_MS = 380;    // = duur van ecellDrain in styles.css
 function soloRenderEnergyOverview(){
   if (!walkEnergyOverviewEl || !walkEnergyCellsEl) return;
-  const p = solo();
+  const p = soloViewer();   // in Multiplayer altijd je eigen energie, ook in andermans beurt
   const energy = p ? Math.max(0, Math.min(ENERGY_MAX, p.energy)) : 0;
   const samePlayer = !!p && soloEnergyShown.idx === p.idx;
   const prev = samePlayer ? soloEnergyShown.energy : energy;
@@ -589,9 +589,41 @@ if (walkSoloActionsEl){
 function soloRefreshTarget(){
   const p = solo();
   const label = p.deck[p.nextIdx];
-  soloTargetKey = soloGraph.questCells[label];
-  markWalkTarget(soloGraph, label, soloTargetKey, p.color);
-  renderWalkQuestCard(label);
+  soloTargetKey = soloGraph.questCells[label];   // spellogica: het doel van wie aan zet is
+  soloShowTargets();
+}
+// Wie kijkt er naar dit scherm? In Multiplayer altijd je eigen stoel (mp.myIdx), ook als een
+// ander aan zet is; lokaal gewoon wie aan zet is. Alles wat "jouw" info toont (opdrachtkaart,
+// opdrachtenoverzicht, tegels linksboven, energiecellen) gebruikt deze speler — anders veranderde
+// bij een medespeler het hele scherm continu mee met wat díe aan het doen was
+// (gebruikersfeedback na een echt potje: "hij wil zelf beter zien wat hij zelf kan doen").
+function soloViewer(){
+  if (typeof mp !== 'undefined' && mp.active && mp.phase === 'in-game' &&
+      mp.myIdx >= 0 && soloPlayers[mp.myIdx]) return soloPlayers[mp.myIdx];
+  return solo();
+}
+// Doelmarkering(en) op het bord + de opdrachtkaart in het zijpaneel. Jouw eigen doel (soloViewer)
+// krijgt de gewone markering en de kaart; is er een ander aan zet, dan staat diens doel er extra
+// bij als gestippelde rand in zijn kleur (.walk-target-other) — zo zie je wél waar hij heen wil,
+// zonder dat je eigen opdracht verdwijnt (gebruikerswens).
+function soloShowTargets(){
+  if (!soloGraph) return;
+  const me = soloViewer(), act = solo();
+  const goalOf = (p) => p && !p.questHidden && !p.rank ? p.deck[p.nextIdx] : undefined;
+  const mine = goalOf(me);
+  if (mine){
+    markWalkTarget(soloGraph, mine, soloGraph.questCells[mine], me.color);
+    renderWalkQuestCard(mine);
+  } else {
+    clearWalkTarget();
+  }
+  walkClearClass('walk-target-other');
+  const theirs = act && act !== me ? goalOf(act) : undefined;
+  if (theirs !== undefined){
+    const cell = walkCellDiv(soloGraph, soloGraph.questCells[theirs]);
+    cell.style.setProperty('--oc', act.color);
+    cell.classList.add('walk-target-other');
+  }
 }
 
 // ---------- opdrachtenoverzicht: spieken door te hoveren ----------
@@ -617,7 +649,7 @@ function soloPeekQuest(label){
   const key = soloGraph.questCells[label];
   if (key === undefined) return;
   if (soloPeekEndTimer){ clearTimeout(soloPeekEndTimer); soloPeekEndTimer = null; }
-  const p = solo();
+  const p = soloViewer();
   soloPeeking = true;
   markWalkTarget(soloGraph, label, key, p ? p.color : '#4fb8e0');
 }
@@ -636,11 +668,10 @@ function soloPeekReset(){
   if (soloPeekEndTimer){ clearTimeout(soloPeekEndTimer); soloPeekEndTimer = null; }
   if (!soloPeeking) return;
   soloPeeking = false;
-  const p = solo();
-  // geen lopend potje (meer) of niemand aan zet: gewoon leeg laten i.p.v. soloRefreshTarget()
-  // aanroepen, die anders op p.deck[p.nextIdx] van een niet-bestaande speler zou struikelen.
-  if (!p || !soloGraph || p.rank) { clearWalkTarget(); return; }
-  soloRefreshTarget();
+  // geen lopend potje (meer): gewoon leeg laten. Anders de echte markeringen terug
+  // (soloShowTargets regelt zelf een speler die al binnen is of nog geen opdracht ziet).
+  if (!solo() || !soloGraph) { clearWalkTarget(); return; }
+  soloShowTargets();
 }
 // Delegatie op de vaste containerdiv i.p.v. per rij een listener: soloRenderQuestChecklist()
 // vervangt de rijen bij elke render (elke stap, elke beurt), losse listeners zouden dus telkens

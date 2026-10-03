@@ -921,14 +921,9 @@ function mpApplyState(payload){
   walkSetOpeningMode(opening);
 
   const active = soloPlayers[soloActiveIdx];
-  // tijdens het dobbelen wie begint is ieders opdracht nog geheim — pas bij het kiezen zichtbaar
-  if (active && !active.questHidden){
-    const label = active.deck[active.nextIdx];
-    if (label){ markWalkTarget(soloGraph, label, soloTargetKey, active.color); renderWalkQuestCard(label); }
-    else clearWalkTarget();
-  } else {
-    clearWalkTarget();
-  }
+  // jouw eigen doel + opdrachtkaart, en dat van wie aan zet is er gestippeld bij (soloShowTargets
+  // in 97-solo.js); geheime opdrachten (dobbelen wie begint) tonen ze vanzelf nog niet
+  soloShowTargets();
 
   paintWalkPawns(soloGraph, soloPlayers, soloActiveIdx);
   renderWalkScore(soloPlayers, soloActiveIdx);
