@@ -590,7 +590,19 @@
   .walk-lobby-col:has(.mp-chat-panel:not([hidden])) #walkMultiHint{display:none;}
   .walk-lobby-fields{flex-direction:column; align-items:stretch; gap:14px;}
   .walk-lobby-fields .field{min-width:0; width:100%;}
-  .walk-lobby-start-row{display:flex; flex-direction:column;}
+  /* margin-top:auto: de startknop staat altijd onderaan de (vaste-hoogte) kolom, dus in
+     Automatisch en Zelf spelen op precies dezelfde plek (gebruikersmelding: "elke subtab een
+     andere plek") */
+  .walk-lobby-start-row{display:flex; flex-direction:column; margin-top:auto;}
+  /* Multiplayer: alleen de twee keuzeknoppen, even groot als de modus-tabs erboven (een tab is
+     een derde van de rij min de 4px tussenruimtes) en in het midden — geen uitlegtekst meer */
+  #mpChoice{display:flex; justify-content:center; gap:4px; margin:0;}
+  #mpChoice[hidden]{display:none;}
+  #mpChoice > button{
+    flex:0 0 calc((100% - 8px) / 3); min-width:0;
+    font-family:var(--font-mono); font-size:11.5px; letter-spacing:.08em; text-transform:uppercase;
+    padding:9px 12px; border-radius:5px;
+  }
   .walk-lobby-start-row #walkSoloStartRow{display:flex; flex-direction:column;}
   .walk-lobby-start-row #walkSoloStartRow[hidden]{display:none;}
   .walk-lobby-start{width:100%; padding:13px; font-size:15px;}
@@ -908,6 +920,11 @@
     .walk-status-col .walk-extras-toggle{margin-top:auto;}
     /* .walk-board-row ervoor: moet winnen van de algemene #walkBoard{--cell:20px} verderop */
     .walk-board-row #walkBoard{ --cell: var(--wcell); }
+    /* lobbykolom precies zo hoog als de binnenkant van het vak (#walkPanel min-height hieronder
+       min 24px padding en 2px rand), zodat "Start spel" onderaan gelijk ligt met de onderrand
+       i.p.v. ergens halverwege (de oude 100vh − 274px stamde nog uit de tijd van de footer) */
+    .walk-lobby-col{height:calc(var(--wcell) * 32 + 160px - 26px); gap:12px;}
+    .walk-lobby-col .walk-mode-toggle{margin-bottom:6px;}
     .walk-board-col{max-width:none;}
     .walk-status-col, .walk-side-stack{max-height:calc(var(--wcell) * 32 + 71px);}
     .walk-side-stack.is-opening{height:calc(var(--wcell) * 32 + 71px);}
@@ -935,6 +952,10 @@
     .walk-side-stack{order:2; max-height:none;}
     .walk-side-stack.is-opening{height:auto;}
     .walk-status-col{order:3; max-height:none;}
+    /* hier staat het speelscherm onder elkaar en mag de pagina scrollen: de lobbykolom krijgt
+       een vaste minimale hoogte waar Zelf spelen (de meeste inhoud) in past, zodat "Start spel"
+       ook hier in elke modus op dezelfde plek staat */
+    .walk-lobby-col{height:auto; min-height:max(calc(100vh - 274px), 660px);}
   }
   /* de 3 vakken in de zijkolom mogen niet krimpen (Dobbelstenen/Energieactie/Actiekaarten) —
      in de statuskolom hiernaast geldt dat NIET: .walk-info-panel en .walk-quest-checklist
