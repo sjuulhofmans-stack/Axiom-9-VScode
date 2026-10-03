@@ -409,8 +409,15 @@
      toelichting achter de naam */
   .legend-text{min-width:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
   .legend-text i{font-style:normal; margin-left:6px; font-family:var(--font-mono); font-size:11px; color:var(--text-dim); opacity:.75;}
-  #tabMap .legend{display:grid; grid-template-columns:1fr; gap:2px; margin-top:0;}
-  #tabMap .legend-row{gap:12px; padding:4px 8px; font-size:13px; color:var(--text); border-radius:4px;}
+  /* het legendavak vult de kolom tot de onderrand (flex:1 hierboven); de items verdelen zich
+     gelijk over die hele hoogte, van boven tot onder (gebruikerswens), iets groter */
+  #tabMap .right-col > .panel:last-child{display:flex; flex-direction:column;}
+  #tabMap .right-col > .panel:last-child > .controls{flex:1 1 auto; display:flex; flex-direction:column;}
+  #tabMap .legend{flex:1 1 auto; display:flex; flex-direction:column; justify-content:space-between; gap:2px; margin-top:0;}
+  #tabMap .legend-row{gap:14px; padding:4px 8px; font-size:15px; color:var(--text); border-radius:4px;}
+  #tabMap .legend-row .swatch{width:18px; height:18px; border-radius:3px;}
+  #tabMap .legend-row .swatch-letter{font-size:11px; border-radius:3px 7px 3px 3px;}
+  #tabMap .legend-text i{font-size:12px;}
   #tabMap .legend-row:hover{background:rgba(255,255,255,.03);}
 
   /* ---------- board ---------- */
