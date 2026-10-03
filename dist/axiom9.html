@@ -302,12 +302,6 @@
   @media (min-width: 881px){
     #tabMap > .grid-layout{grid-template-columns:minmax(0,1fr) clamp(300px, 22vw, 420px);}
   }
-  /* legenda in zijn eigen vak iets compacter, zodat de rechterkolom niet langer wordt dan het
-     bordvak (en dat dus even hoog blijft als de vakken van Spelen/Simulatie) */
-  @media (min-width: 881px){
-    #tabMap .legend{gap:3px; margin-top:0;}
-    #tabMap .legend-row{padding:2px 4px;}
-  }
   .gen-slot{display:grid; height:54px; overflow:hidden;}
   .gen-slot > *{grid-area:1 / 1; align-self:start; margin:0;}
   @media (max-width: 880px){ .grid-layout{grid-template-columns:1fr;} }
@@ -409,6 +403,22 @@
   .legend-row.off{opacity:.35;}
   .legend-row.off .swatch{box-shadow:none !important; filter:grayscale(1);}
   .swatch{width:13px;height:13px;border-radius:2px; flex:none;}
+  /* voorbeelden zoals ze echt op de kaart staan (gebruikersmelding: de naden waren een
+     ingevuld blokje, op de kaart is het alleen een gekleurde rand met gloed om een vakje) */
+  .swatch-seam{background:var(--walk); box-shadow:0 0 0 1.5px var(--sc), 0 0 7px var(--sc);}
+  .swatch-empty{background:var(--slot-empty); box-shadow:inset 0 0 0 1px var(--line);}
+  .swatch-letter{
+    display:flex; align-items:center; justify-content:center;
+    font-family:var(--font-mono); font-weight:700; font-size:9px; line-height:1;
+    color:#0b0f14; background:var(--amber); border-radius:2px 5px 2px 2px;
+  }
+  /* legenda op "Speelbord genereren": elk item op één regel, nette uitlijning, kleine grijze
+     toelichting achter de naam */
+  .legend-text{min-width:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+  .legend-text i{font-style:normal; margin-left:6px; font-family:var(--font-mono); font-size:11px; color:var(--text-dim); opacity:.75;}
+  #tabMap .legend{display:grid; grid-template-columns:1fr; gap:2px; margin-top:0;}
+  #tabMap .legend-row{gap:12px; padding:4px 8px; font-size:13px; color:var(--text); border-radius:4px;}
+  #tabMap .legend-row:hover{background:rgba(255,255,255,.03);}
 
   /* ---------- board ---------- */
   .board-outer{
@@ -3082,14 +3092,17 @@
       <h2>Legenda</h2>
       <div class="controls">
         <div class="legend" id="legend">
-          <div class="legend-row" data-key="walk"><span class="swatch" style="background:var(--walk)"></span>Loopbaar vakje</div>
-          <div class="legend-row" data-key="quest"><span class="swatch" style="background:var(--quest)"></span>Opdrachtvakje (2.x)</div>
-          <div class="legend-row" data-key="actioncell"><span class="swatch" style="background:var(--actioncell)"></span>Actiekaartvakje (4.x)</div>
-          <div class="legend-row" data-key="start"><span class="swatch" style="background:var(--start)"></span>Startpositie (3.x)</div>
-          <div class="legend-row" data-key="empty"><span class="swatch" style="background:var(--slot-empty)"></span>Leeg vakje — hier kun je niet lopen</div>
-          <div class="legend-row" data-key="seamopen"><span class="swatch" style="background:var(--amber); box-shadow:0 0 6px var(--amber);"></span>Naad open — tegels sluiten aan</div>
-          <div class="legend-row" data-key="seambroken"><span class="swatch" style="background:var(--danger); box-shadow:0 0 6px var(--danger);"></span>Naad geblokkeerd — doorgang eindigt in een muur</div>
-          <div class="legend-row" data-key="letters"><span class="swatch" style="background:var(--amber);"></span>Positieletters (A–T)</div>
+          <!-- korte teksten op één regel; de naad-voorbeelden zijn net als op de kaart een
+               loopbaar vakje met alleen een gekleurde rand + gloed (niet ingevuld), de
+               positieletter een klein label zoals linksboven op elke tegel -->
+          <div class="legend-row" data-key="walk"><span class="swatch" style="background:var(--walk)"></span><span class="legend-text">Loopbaar vakje</span></div>
+          <div class="legend-row" data-key="quest"><span class="swatch" style="background:var(--quest)"></span><span class="legend-text">Opdrachtvakje <i>2.x</i></span></div>
+          <div class="legend-row" data-key="actioncell"><span class="swatch" style="background:var(--actioncell)"></span><span class="legend-text">Actiekaartvakje <i>4.x</i></span></div>
+          <div class="legend-row" data-key="start"><span class="swatch" style="background:var(--start)"></span><span class="legend-text">Startpositie <i>3.x</i></span></div>
+          <div class="legend-row" data-key="empty"><span class="swatch swatch-empty"></span><span class="legend-text">Leeg vakje <i>niet beloopbaar</i></span></div>
+          <div class="legend-row" data-key="seamopen"><span class="swatch swatch-seam" style="--sc:var(--amber)"></span><span class="legend-text">Naad open <i>tegels sluiten aan</i></span></div>
+          <div class="legend-row" data-key="seambroken"><span class="swatch swatch-seam" style="--sc:var(--danger)"></span><span class="legend-text">Naad geblokkeerd <i>loopt dood</i></span></div>
+          <div class="legend-row" data-key="letters"><span class="swatch swatch-letter">A</span><span class="legend-text">Positieletter <i>A–T</i></span></div>
         </div>
       </div>
     </div>
