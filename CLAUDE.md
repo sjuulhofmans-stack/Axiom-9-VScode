@@ -41,6 +41,7 @@ src/
     90-editor.js      tegel-editor (vakjes aan/uit klikken)
     95-simulate.js    batch-spelsimulatie (2xD6, geen U-turn, bezette vakjes blokkeren)
     96-walk.js        tabblad "Spelen": modus Automatisch, automatische simulatie van 1-4 spelers
+    96b-intro.js      startanimatie na "Start spel" (aftellen 3-2-1, hyperjump, zwart gat) + vinkje in de lobby
     97-solo.js        tabblad "Spelen": modus Zelf spelen, eigen speler besturen tussen bots, energiekaarten
     98-cards.js       kaartvenster/zoom voor opdracht- en actiekaarten
     99-multiplayer.js tabblad "Spelen": modus Multiplayer, lobby + peer-to-peer spelen met vrienden (WebRTC)

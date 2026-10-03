@@ -111,9 +111,8 @@ function walkPauseStopSyncVisibility(){
 // btnWalkStop-listener hieronder resp. #btnWalkSoloReset in 97-solo.js. 99-multiplayer.js
 // wisselt zelf nog rechtstreeks (ongeanimeerd) omdat switchTab() daar toch al in één klap
 // van tabblad wisselt.
-// TODO: hier komt straks nog een kort introfilmpje na het klikken op "Start spel", vóórdat het
-// bord verschijnt (moet nog gemaakt worden) — walkTryStart() hieronder is de plek om dat later
-// tussen te haken.
+// Na "Start spel" speelt eerst de startanimatie (96b-intro.js) als die aan staat — zie
+// walkTryStart() hieronder.
 const WALK_FADE_MS = 350;   // moet gelijk blijven aan .walk-fade's transition-duur in styles.css
 function walkFadeSwap(hideEl, showEl){
   if (!hideEl || !showEl){ if (hideEl) hideEl.hidden = true; if (showEl) showEl.hidden = false; return; }
@@ -157,8 +156,20 @@ function walkTryStart(startFn){
   const err = walkLobbyValidate();
   if (walkLobbyStatusEl) walkLobbyStatusEl.innerHTML = err ? `<span class="bad">✕ ${err}</span>` : '';
   if (err) return;
-  walkFadeToPlay();
-  startFn();
+  // startanimatie (aftellen + hyperjump, 96b-intro.js) als die in de lobby aan staat. Daarna
+  // meteen (achter het nog zwarte scherm) naar het speelscherm wisselen, zonder crossfade —
+  // anders schemerde de lobby nog door terwijl de animatie wegfaadde.
+  if (introEnabled()){
+    if (!introRunning) playStartIntro(() => {
+      if (walkLobbyEl) walkLobbyEl.hidden = true;
+      if (walkPlayAreaEl){ walkPlayAreaEl.classList.remove('walk-fade-hidden'); walkPlayAreaEl.hidden = false; }
+      walkFooterSyncVisibility();
+      startFn();
+    });
+  } else {
+    walkFadeToPlay();
+    startFn();
+  }
 }
 
 let walkCellEls = null;      // [R][C] -> div, pas opgebouwd bij het eerste gebruik

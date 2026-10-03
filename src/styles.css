@@ -584,6 +584,55 @@
   .walk-lobby-start-row #walkSoloStartRow{display:flex; flex-direction:column;}
   .walk-lobby-start-row #walkSoloStartRow[hidden]{display:none;}
   .walk-lobby-start{width:100%; padding:13px; font-size:15px;}
+  /* vinkje "Startanimatie tonen" boven de startknop (96b-intro.js); weg zolang er geen
+     startknop te zien is (modus Multiplayer heeft zijn eigen start, zonder animatie) */
+  .walk-intro-toggle{
+    display:flex; align-items:center; justify-content:center; gap:8px; margin:0 0 10px;
+    font-family:var(--font-mono); font-size:11px; letter-spacing:.12em; text-transform:uppercase;
+    color:var(--text-dim); cursor:pointer; user-select:none;
+  }
+  .walk-intro-toggle input{width:16px; height:16px; margin:0; accent-color:var(--start); cursor:pointer;}
+  .walk-lobby-start-row:not(:has(> #btnWalkStart:not([hidden]), > #walkSoloStartRow:not([hidden]))) .walk-intro-toggle{display:none;}
+
+  /* ---------- startanimatie (96b-intro.js): zwart scherm, sterren, aftellen, hyperjump ---------- */
+  .start-intro{
+    position:fixed; inset:0; z-index:9000; background:#000; opacity:0; cursor:pointer;
+    transition:opacity .32s ease;
+  }
+  .start-intro.is-in{opacity:1;}
+  .start-intro.is-leaving{opacity:0; transition-duration:.38s;}
+  .start-intro canvas{position:absolute; inset:0; width:100%; height:100%; display:block;}
+  .start-intro-count{
+    position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
+    pointer-events:none; font-family:var(--font-display); font-weight:700;
+    font-size:min(30vmin, 260px); letter-spacing:.04em; line-height:1;
+    /* donker metaal met een koude rand: ruimteachtig, niet fel */
+    color:transparent;
+    background:linear-gradient(180deg, #c9d8ee 0%, #6b7f9e 45%, #1c2638 100%);
+    -webkit-background-clip:text; background-clip:text;
+    -webkit-text-stroke:1px rgba(140,180,255,.35);
+    filter:drop-shadow(0 0 18px rgba(70,120,220,.35)) drop-shadow(0 0 2px rgba(0,0,0,.9));
+  }
+  .start-intro-count.is-go{font-size:min(17vmin, 170px); letter-spacing:.28em; padding-left:.28em;}
+  .start-intro-count.pop{animation:introPop .7s cubic-bezier(.15,.8,.25,1) both;}
+  @keyframes introPop{
+    0%{opacity:0; transform:scale(1.7); filter:blur(14px) drop-shadow(0 0 18px rgba(70,120,220,.35));}
+    25%{opacity:1; transform:scale(1); filter:blur(0) drop-shadow(0 0 18px rgba(70,120,220,.35));}
+    80%{opacity:1; transform:scale(.94);}
+    100%{opacity:.0; transform:scale(.9);}
+  }
+  .start-intro-count.is-go.pop{animation:introGo .5s cubic-bezier(.15,.8,.25,1) both;}
+  @keyframes introGo{
+    0%{opacity:0; transform:scale(1.5); filter:blur(12px);}
+    100%{opacity:1; transform:scale(1); filter:blur(0) drop-shadow(0 0 18px rgba(70,120,220,.35));}
+  }
+  .start-intro-count.is-gone{opacity:0; transform:scale(2.4); filter:blur(10px); transition:opacity .45s ease-in, transform .45s ease-in, filter .45s;}
+  .start-intro-count.is-gone.pop{animation:none;}
+  .start-intro-skip{
+    position:absolute; bottom:18px; left:0; right:0; text-align:center; pointer-events:none;
+    font-family:var(--font-mono); font-size:10.5px; letter-spacing:.16em; text-transform:uppercase;
+    color:rgba(150,170,200,.35);
+  }
 
   /* #walkLobby en #walkPlayArea liggen als grid-cel bovenop elkaar (i.p.v. onder elkaar) zodat
      ze tijdens walkFadeSwap() (96-walk.js) tegelijk zichtbaar kunnen zijn en dus echt kunnen
