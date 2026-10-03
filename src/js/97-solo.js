@@ -793,7 +793,10 @@ function soloDiscardCard(id){
   const p = solo();
   useActionCard(p, id, soloDeck);
   // useActionCard telt elke kaart als "gespeeld" — deze is afgelegd
-  if (p.stats){ p.stats.cardsPlayed--; p.stats.cardsDiscarded++; }
+  if (p.stats){
+    p.stats.cardsPlayed--; p.stats.cardsDiscarded++;
+    if (p.stats.cardUse && p.stats.cardUse[id]) p.stats.cardUse[id]--;
+  }
   soloDiscardedCardId = id;
   walkLog(`Je legt <b>${ACTION_CARDS[id].name}</b> af.`, null, p);
   soloAfterCardAction();
@@ -1224,6 +1227,7 @@ function soloPlayCard(id){
     soloAfterCardAction();
   } else if (id === 'reroll'){
     const d1 = simRollD6(soloRand, p), d2 = simRollD6(soloRand, p);
+    statsRecordRoll(p, d1 + d2);
     const d3 = soloMove.d3 !== null && soloMove.d3 !== undefined ? simRollD6(soloRand, p) : null;
     // een Stroomonderbreking op de oorspronkelijke worp geldt ook voor de nieuwe
     const penalty = soloMove.penalty || 0;
@@ -1246,6 +1250,7 @@ function soloUseEnergyAction(id){
   if (id === 'gravity' && (soloUsedBoots || !soloDashOptions().length)) return;
   p.energy -= act.cost;
   p.actionUses = (p.actionUses || 0) + 1;   // telde vroeger alleen bij bots; nu ook voor het winscherm
+  statsUseEnergy(p, id);
   soloRenderEnergyOverview();
   soloUsedEnergyId = id;
   // kosten steeds uit ENERGY_ACTIONS i.p.v. hier een getal te herhalen — dat liep bij eerdere
@@ -1584,6 +1589,7 @@ function soloRollDice(){
   if (mpIntercept('rollDice', {})) return;
   const p = solo();
   const d1 = simRollD6(soloRand, p), d2 = simRollD6(soloRand, p);
+  statsRecordRoll(p, d1 + d2);
   const d3 = soloPendingBoost ? simRollD6(soloRand, p) : null;
   soloRollEnergyForTurn();
   let roll = d1 + d2 + (d3 || 0);
@@ -1864,6 +1870,7 @@ function soloBeginHumanTurn(pIdx){
   // beurtnummer van deze speler zelf (i.p.v. soloTurn, dat over ALLE spelers samen telt —
   // gebruikerswens: de "beurt"-tegel in de statushub moet je eigen beurt tonen, niet die van
   // het hele potje incl. bot-beurten ertussenin).
+  statsTurnSnapshot(soloPlayers[pIdx]);   // voortgang/energie bij het begin van de beurt (grafieken)
   soloPlayers[pIdx].myTurn++;
   soloUsedEnergyId = null;
   soloUsedCardId = null;
@@ -1935,6 +1942,7 @@ function soloBeginHumanTurn(pIdx){
 // soloAnimateBotTurn() de beurt daarna zichtbaar kan naspelen als die lobby-optie aan staat.
 function soloResolveBotTurn(player){
   soloTurn++;
+  statsTurnSnapshot(player);   // voortgang/energie bij het begin van de beurt (grafieken)
   player.myTurn++;   // eigen beurtenteller, net als bij een mens (soloBeginHumanTurn)
   soloActionCellDrawnThisTurn = false;
   const pIdx = player.idx;
@@ -2065,6 +2073,7 @@ function soloResolveBotTurn(player){
   if (!targetSwapped && !energyActionUsed && player.strategy === 'reorder' && player.energy >= ENERGY_ACTIONS.reorder.cost
       && botWantsReorderPeek(soloGraph, shim, player.pos)){
     player.energy -= ENERGY_ACTIONS.reorder.cost; player.actionUses++; energyActionUsed = true;
+    statsUseEnergy(player, 'reorder');
     const swapped = energyReorderTarget(soloGraph, shim, player.pos);
     if (swapped === null){
       walkLog(`${player.name} bekijkt met <b>Herprioritering</b> zijn volgende opdracht en houdt zijn huidige.`, null, player);
@@ -2097,6 +2106,7 @@ function soloResolveBotTurn(player){
       useActionCard(player, 'boots', soloDeck); cardActionUsed = true;
     } else {
       player.energy -= ENERGY_ACTIONS[pre.kind].cost; player.actionUses++; energyActionUsed = true;
+      statsUseEnergy(player, pre.kind);
     }
     walkLog(pre.kind === 'jump'
       ? `${player.name} springt met <b>Noodtransport</b> ${pre.path.length - 1} vakjes${pre.endsTurn ? ', precies op zijn opdracht' : ''}.`
@@ -2110,11 +2120,13 @@ function soloResolveBotTurn(player){
   } else {
     let dice = 2;
     d1 = simRollD6(soloRand, player); d2 = simRollD6(soloRand, player);
+    statsRecordRoll(player, d1 + d2);
     roll = d1 + d2;
     if (!cardActionUsed && player.cards.includes('boostcell')){
       d3 = simRollD6(soloRand, player); roll += d3; dice = 3; useActionCard(player, 'boostcell', soloDeck); cardActionUsed = true;
     } else if (!energyActionUsed && player.strategy === 'boost' && player.energy >= ENERGY_ACTIONS.boost.cost){
       d3 = simRollD6(soloRand, player); roll += d3; dice = 3; player.energy -= ENERGY_ACTIONS.boost.cost; player.actionUses++; energyActionUsed = true;
+      statsUseEnergy(player, 'boost');
     }
     if (player.rollPenalty){ rollPenalty = player.rollPenalty; roll = Math.max(1, roll - rollPenalty); player.rollPenalty = 0; }
     if (!cardActionUsed && player.cards.includes('fastlane')){
@@ -2125,6 +2137,7 @@ function soloResolveBotTurn(player){
     // Koerscorrectie: tegenvallende worp overdoen (zie simulateOneGame voor de drempel)
     if (!rollMove.bankedQuest && !cardActionUsed && player.cards.includes('reroll') && roll < dice * 3.5){
       d1 = simRollD6(soloRand, player); d2 = simRollD6(soloRand, player);
+      statsRecordRoll(player, d1 + d2);
       if (dice === 3) d3 = simRollD6(soloRand, player);
       roll = d1 + d2 + (dice === 3 ? d3 : 0);
       if (rollPenalty) roll = Math.max(1, roll - rollPenalty);   // Stroomonderbreking blijft gelden
@@ -2461,11 +2474,136 @@ function soloOpenStats(){
     }).join('');
     return `<section class="walk-stats-cat"><h3>${g.title}</h3><table class="walk-stats-table">${head}<tbody>${body}</tbody></table></section>`;
   }).join('');
+  // twee weergaven: de tabellen (zoals altijd) en grafieken (gebruikerswens: "meer graphs");
+  // wisselen met de knoppen, onthouden zolang de pagina openstaat
+  const view = soloStatsView;
   walkStatsBodyEl.innerHTML =
     `<div class="walk-stats-players" style="--n:${n}">${cards}</div>` +
-    `<div class="walk-stats-cats">${tables}</div>` +
-    `<p class="walk-stats-foot">Oranje = beste in die rij. Ogen tellen alleen de loopstenen tijdens het spel, niet het dobbelen wie begint.</p>`;
+    `<div class="walk-stats-switch" role="tablist">` +
+      `<button type="button" class="walk-stats-tab${view === 'tables' ? ' active' : ''}" data-stats-view="tables">Tabellen</button>` +
+      `<button type="button" class="walk-stats-tab${view === 'charts' ? ' active' : ''}" data-stats-view="charts">Grafieken</button>` +
+    `</div>` +
+    (view === 'charts'
+      ? soloStatsChartsHtml(players)
+      : `<div class="walk-stats-cats">${tables}</div>` +
+        `<p class="walk-stats-foot">Oranje = beste in die rij. Ogen tellen alleen de loopstenen tijdens het spel, niet het dobbelen wie begint.</p>`);
   walkStatsOverlayEl.hidden = false;
+}
+let soloStatsView = 'tables';
+if (walkStatsBodyEl){
+  walkStatsBodyEl.addEventListener('click', (e) => {
+    const b = e.target.closest('[data-stats-view]');
+    if (!b) return;
+    soloStatsView = b.dataset.statsView;
+    soloOpenStats();
+  });
+}
+
+// ---------- grafieken in de statistieken (SVG, met de hand getekend: geen library nodig) ----------
+// Gegevens komen uit newPlayerStats (95-simulate.js): hist (stand bij het begin van elke eigen
+// beurt), rolls (som van de 2 loopstenen), energyUse en cardUse, plus walkSteps/dashSteps.
+const STATS_ENERGY_COLORS = { boost: '#ffb545', reorder: '#4fb8e0', gravity: '#b98cff', jump: '#55d68a' };
+// genoeg verschillende tinten voor alle 18 actiekaarten (met 8 deelden sommige kaarten een kleur)
+const STATS_CARD_PALETTE = ['#4fb8e0', '#ffb545', '#b98cff', '#55d68a', '#ff7a45', '#ff4fd8', '#e6e15a', '#8fa3b8',
+  '#2f7fff', '#c46b2b', '#7a5cff', '#1fb39a', '#ff9db0', '#a3d65c', '#d4a4ff', '#5ad1e6', '#b8865a', '#e85d5d'];
+function statsEsc(s){ return String(s).replace(/[<>&"]/g, ''); }
+// lijngrafiek: series = [{color, points:[[x,y],...], name}], yMax vast (6 opdrachten / 10 energie)
+function statsLineChart(series, { yMax, yLabel, step }){
+  const W = 520, H = 216, L = 34, R = 10, T = 22, B = 40;
+  const xMax = Math.max(1, ...series.map(s => s.points.length ? s.points[s.points.length - 1][0] : 1));
+  const X = x => L + (x / xMax) * (W - L - R), Y = y => T + (1 - y / yMax) * (H - T - B);
+  let g = '';
+  for (let y = 0; y <= yMax; y += (yMax > 6 ? 2 : 1)){
+    g += `<line x1="${L}" x2="${W - R}" y1="${Y(y)}" y2="${Y(y)}" class="sc-grid"/>` +
+         `<text x="${L - 6}" y="${Y(y) + 4}" class="sc-ax" text-anchor="end">${y}</text>`;
+  }
+  const xStep = Math.max(1, Math.ceil(xMax / 10));
+  for (let x = 0; x <= xMax; x += xStep) g += `<text x="${X(x)}" y="${H - 22}" class="sc-ax" text-anchor="middle">${x}</text>`;
+  // asnamen buiten de getallen: links boven de y-as, onder het midden van de x-as
+  g += `<text x="${(L + W - R) / 2}" y="${H - 3}" class="sc-ax sc-ax-name" text-anchor="middle">beurt</text>`;
+  g += `<text x="${L - 6}" y="10" class="sc-ax sc-ax-name" text-anchor="start">${yLabel}</text>`;
+  const lines = series.map(s => {
+    if (!s.points.length) return '';
+    let d = '';
+    s.points.forEach(([x, y], i) => {
+      if (i === 0) d += `M${X(x)},${Y(y)}`;
+      else if (step){ d += `H${X(x)}V${Y(y)}`; }
+      else d += `L${X(x)},${Y(y)}`;
+    });
+    const [lx, ly] = s.points[s.points.length - 1];
+    return `<path d="${d}" class="sc-line" style="stroke:${s.color}"/>` +
+           `<circle cx="${X(lx)}" cy="${Y(ly)}" r="3.5" style="fill:${s.color}"/>`;
+  }).join('');
+  return `<svg viewBox="0 0 ${W} ${H}" class="sc-svg" role="img">${g}${lines}</svg>`;
+}
+function statsSeries(players, idx){
+  // stand bij het begin van elke beurt, plus de eindstand als laatste punt
+  return players.map(p => {
+    const hist = (p.stats.hist || []).map((h, i) => [i, h[idx]]);
+    hist.push([hist.length, idx === 0 ? p.completed : p.energy]);
+    return { color: p.color, name: p.name, points: hist };
+  });
+}
+function statsDiceChart(players){
+  const W = 520, H = 216, L = 34, R = 10, T = 22, B = 40;
+  const sums = [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
+  const yMax = Math.max(1, ...players.flatMap(p => sums.map(s => (p.stats.rolls || [])[s] || 0)));
+  const gw = (W - L - R) / sums.length, bw = Math.max(2, (gw - 6) / players.length);
+  const Y = y => T + (1 - y / yMax) * (H - T - B);
+  let g = '';
+  const yStep = Math.max(1, Math.ceil(yMax / 5));
+  for (let y = 0; y <= yMax; y += yStep){
+    g += `<line x1="${L}" x2="${W - R}" y1="${Y(y)}" y2="${Y(y)}" class="sc-grid"/>` +
+         `<text x="${L - 6}" y="${Y(y) + 4}" class="sc-ax" text-anchor="end">${y}</text>`;
+  }
+  sums.forEach((s, i) => {
+    const x0 = L + i * gw + 3;
+    g += `<text x="${x0 + (gw - 6) / 2}" y="${H - 22}" class="sc-ax" text-anchor="middle">${s}</text>`;
+    players.forEach((p, j) => {
+      const v = (p.stats.rolls || [])[s] || 0;
+      if (!v) return;
+      g += `<rect x="${x0 + j * bw}" y="${Y(v)}" width="${Math.max(1, bw - 1)}" height="${Y(0) - Y(v)}" rx="1.5" style="fill:${p.color}"><title>${statsEsc(p.name)}: ${v}× ${s}</title></rect>`;
+    });
+  });
+  g += `<text x="${L - 6}" y="10" class="sc-ax sc-ax-name" text-anchor="start">keer</text>`;
+  g += `<text x="${(L + W - R) / 2}" y="${H - 3}" class="sc-ax sc-ax-name" text-anchor="middle">som van de worp</text>`;
+  return `<svg viewBox="0 0 ${W} ${H}" class="sc-svg" role="img">${g}</svg>`;
+}
+// per speler gestapelde balkjes: energie-acties, gespeelde kaarten, gelopen vs gesprint
+function statsMixHtml(players){
+  const bar = (parts) => {
+    const total = parts.reduce((a, p) => a + p.v, 0);
+    if (!total) return `<span class="sc-bar sc-bar-empty">—</span>`;
+    return `<span class="sc-bar">${parts.filter(p => p.v).map(p =>
+      `<span style="flex:${p.v};background:${p.c}" title="${statsEsc(p.label)}: ${p.v}">${p.v}</span>`).join('')}</span>`;
+  };
+  const usedCards = [...new Set(players.flatMap(p => Object.keys(p.stats.cardUse || {}).filter(id => p.stats.cardUse[id] > 0)))];
+  const cardColor = id => STATS_CARD_PALETTE[usedCards.indexOf(id) % STATS_CARD_PALETTE.length];
+  const rows = players.map(p => {
+    const eu = p.stats.energyUse || {}, cu = p.stats.cardUse || {};
+    return `<div class="sc-mix-player" style="--pc:${p.color}"><b>${statsEsc(p.name)}</b>` +
+      `<span class="sc-mix-lbl">Energie</span>${bar(Object.keys(STATS_ENERGY_COLORS).map(k => ({ v: eu[k] || 0, c: STATS_ENERGY_COLORS[k], label: ENERGY_ACTIONS[k].name })))}` +
+      `<span class="sc-mix-lbl">Kaarten</span>${bar(usedCards.map(id => ({ v: cu[id] || 0, c: cardColor(id), label: ACTION_CARDS[id].name })))}` +
+      `<span class="sc-mix-lbl">Vakjes</span>${bar([{ v: p.stats.walkSteps, c: '#8fa3b8', label: 'gelopen' }, { v: p.stats.dashSteps, c: '#b98cff', label: 'gesprint' }])}` +
+    `</div>`;
+  }).join('');
+  const legend = (items) => items.map(([c, t]) => `<span class="sc-key"><i style="background:${c}"></i>${t}</span>`).join('');
+  return `<div class="sc-mix">${rows}</div>` +
+    `<div class="sc-legend">${legend(Object.keys(STATS_ENERGY_COLORS).map(k => [STATS_ENERGY_COLORS[k], ENERGY_ACTIONS[k].name]))}</div>` +
+    (usedCards.length ? `<div class="sc-legend">${legend(usedCards.map(id => [cardColor(id), ACTION_CARDS[id].name]))}</div>` : '') +
+    `<div class="sc-legend">${legend([['#8fa3b8', 'gelopen'], ['#b98cff', 'gesprint (laarzen)']])}</div>`;
+}
+function soloStatsChartsHtml(players){
+  const legend = `<div class="sc-legend sc-legend-players">${players.map(p =>
+    `<span class="sc-key"><i style="background:${p.color}"></i>${statsEsc(p.name)}</span>`).join('')}</div>`;
+  const avg = p => { const r = p.stats.rolls || []; let n = 0, s = 0; for (let k = 2; k <= 12; k++){ n += r[k] || 0; s += (r[k] || 0) * k; } return n ? nl(s / n, 1) : '—'; };
+  return `<div class="sc-grid-wrap">` +
+    `<section class="sc-card"><h3>Voortgang per beurt</h3>${statsLineChart(statsSeries(players, 0), { yMax: SIM_QUESTS_TO_WIN, yLabel: 'opdrachten', step: true })}${legend}</section>` +
+    `<section class="sc-card"><h3>Energie per beurt</h3>${statsLineChart(statsSeries(players, 1), { yMax: ENERGY_MAX, yLabel: 'energie', step: false })}${legend}</section>` +
+    `<section class="sc-card"><h3>Worpen-verdeling <span>(som van 2 loopstenen · gemiddeld 7)</span></h3>${statsDiceChart(players)}` +
+      `<div class="sc-legend sc-legend-players">${players.map(p => `<span class="sc-key"><i style="background:${p.color}"></i>${statsEsc(p.name)} · gem. ${avg(p)}</span>`).join('')}</div></section>` +
+    `<section class="sc-card"><h3>Acties, kaarten en verplaatsing</h3>${statsMixHtml(players)}</section>` +
+  `</div>`;
 }
 // zelf opzoeken i.p.v. walkStatsOverlayEl: soloHideEndgame() roept dit aan en kan al tijdens
 // het laden lopen, vóórdat die const hierboven bestaat

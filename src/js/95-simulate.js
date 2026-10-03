@@ -477,7 +477,10 @@ function useActionCard(player, id, deck, extra){
   player.cards.splice(i, 1);
   deck.discard.push(id);
   if (extra) extra.cardUses[id]++;
-  if (player.stats) player.stats.cardsPlayed++;   // afleggen corrigeert dit (soloDiscardCard)
+  if (player.stats){   // afleggen corrigeert dit (soloDiscardCard)
+    player.stats.cardsPlayed++;
+    if (player.stats.cardUse) player.stats.cardUse[id] = (player.stats.cardUse[id] || 0) + 1;
+  }
 }
 
 // Loopt vanaf `fromKey` een vaste richting `dir` uit tot `maxSteps`, geen bochten. Stopt bij
@@ -995,7 +998,22 @@ function newPlayerStats(){
     cardsPlayed: 0, cardsDiscarded: 0,
     walkSteps: 0,                  // vakjes gelopen met de worp
     dashSteps: 0,                  // vakjes gesprint met de Zwaartekracht-laarzen
+    // voor de grafieken in de statistieken-pop-up (soloRenderStatsCharts, 97-solo.js):
+    hist: [],                      // per eigen beurt [opdrachten voltooid, energie] bij het BEGIN, + eindstand
+    rolls: Array(13).fill(0),      // hoe vaak de 2 loopstenen samen 2..12 gooiden (index = som)
+    energyUse: {},                 // energie-actie-id → keer ingezet
+    cardUse: {},                   // actiekaart-id → keer gespeeld
   };
+}
+// kleine tellers voor die grafieken; doen niets bij spelers zonder `stats` (batch-simulatie)
+function statsTurnSnapshot(player){
+  if (player && player.stats && player.stats.hist) player.stats.hist.push([player.completed, player.energy]);
+}
+function statsRecordRoll(player, sum){
+  if (player && player.stats && player.stats.rolls && sum >= 2 && sum <= 12) player.stats.rolls[sum]++;
+}
+function statsUseEnergy(player, kind){
+  if (player && player.stats && player.stats.energyUse) player.stats.energyUse[kind] = (player.stats.energyUse[kind] || 0) + 1;
 }
 
 // "Pech-reeksen": zoektochten van 12 beurten of langer komen in één bak

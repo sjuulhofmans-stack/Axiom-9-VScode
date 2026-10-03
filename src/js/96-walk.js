@@ -897,6 +897,7 @@ async function runWalkSimulation(){
       const player = players[pIdx];
       if (player.rank) continue;   // binnen: speelt niet meer mee
       turn++;
+      statsTurnSnapshot(player);   // voortgang/energie bij het begin van de beurt (grafieken)
       player.ownTurns = (player.ownTurns || 0) + 1;   // eigen beurten, voor "wint in N beurten"
       // Energie-acties en kaarten hebben ELK hun eigen actie-slot per beurt (max 1 van elk) —
       // zelfde opzet als simulateOneGame() in 95-simulate.js, zie de uitgebreide toelichting
@@ -1050,6 +1051,7 @@ async function runWalkSimulation(){
         player.energy -= ENERGY_ACTIONS.reorder.cost;
         player.actionUses++;
         energyActionUsed = true; usedEnergyAction = 'reorder';
+        statsUseEnergy(player, 'reorder');
         const before = player.deck[player.nextIdx];
         const swapped = energyReorderTarget(graph, shim, player.pos);
         if (swapped === null){
@@ -1138,6 +1140,7 @@ async function runWalkSimulation(){
           player.energy -= ENERGY_ACTIONS[pre.kind].cost;
           player.actionUses++;
           energyActionUsed = true; usedEnergyAction = pre.kind;
+          statsUseEnergy(player, pre.kind);
         }
         if (pre.kind === 'jump'){
           walkLog(`${player.name} springt met <b>Noodtransport</b> ${pre.path.length - 1} vakjes${pre.endsTurn ? ', precies op zijn opdracht' : ''}.`, null, player);
@@ -1171,6 +1174,7 @@ async function runWalkSimulation(){
         // loopstenen met Stuwlading (kaart) of Stuwstoot (energie) als derde steen — die twee
         // doen hetzelfde en blijven daarom via else-if elkaar uitsluiten
         d1 = simRollD6(rand, player); d2 = simRollD6(rand, player);
+        statsRecordRoll(player, d1 + d2);
         if (!cardActionUsed && player.cards.includes('boostcell')){
           d3 = simRollD6(rand, player);
           useActionCard(player, 'boostcell', deck);
@@ -1180,6 +1184,7 @@ async function runWalkSimulation(){
           player.energy -= ENERGY_ACTIONS.boost.cost;
           player.actionUses++;
           energyActionUsed = true; usedEnergyAction = 'boost';
+          statsUseEnergy(player, 'boost');
         }
         roll = d1 + d2 + (d3 || 0);
         if (player.rollPenalty){
@@ -1203,6 +1208,7 @@ async function runWalkSimulation(){
         const dice = d3 ? 3 : 2;
         if (!rollMove.bankedQuest && !cardActionUsed && player.cards.includes('reroll') && roll < dice * 3.5){
           d1 = simRollD6(rand, player); d2 = simRollD6(rand, player);
+          statsRecordRoll(player, d1 + d2);
           if (d3) d3 = simRollD6(rand, player);
           roll = d1 + d2 + (d3 || 0);
           // Stroomonderbreking geldt ook voor de nieuwe worp (zie simulateOneGame)

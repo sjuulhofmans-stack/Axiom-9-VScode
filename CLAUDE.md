@@ -246,7 +246,12 @@ Check minimaal:
     hoogstens 3 naast elkaar. Past zonder scrollen op ±1400px. Tellers:
     `newPlayerStats` (95-simulate.js), lopen mee via `simRollD6(rand, player)`,
     `simGainEnergy` en `useActionCard`; afgeleide waarden en de indeling in
-    `SOLO_STATS_GROUPS` (97-solo.js).
+    `SOLO_STATS_GROUPS` (97-solo.js). Knop "Grafieken" in dezelfde pop-up: voortgang
+    en energie per beurt (lijnen), worpen-verdeling 2–12 (staafjes) en per speler
+    energie-acties/kaarten/vakjes (gestapelde balken). Data: `stats.hist`/`rolls`/
+    `energyUse`/`cardUse`, gevuld via `statsTurnSnapshot`, `statsRecordRoll` en
+    `statsUseEnergy` (95-simulate.js) — nieuwe plek waar gedobbeld of energie
+    uitgegeven wordt? Daar ook die aanroep toevoegen.
 
 ## Nog te doen
 
