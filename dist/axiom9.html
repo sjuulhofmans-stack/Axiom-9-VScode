@@ -541,10 +541,11 @@
   .sim-heat-swatch.start{box-shadow:inset 0 0 0 1px var(--start);}
 
   /* ---------- stap voor stap ---------- */
-  .walk-mode-toggle{display:flex; gap:4px; margin-bottom:14px;}
+  .walk-mode-toggle{display:flex; gap:6px; margin-bottom:14px;}
+  /* groter (gebruikerswens): was 11,5px / 9px padding */
   .walk-mode-btn{
-    flex:1; font-family:var(--font-mono); font-size:11.5px; letter-spacing:.08em;
-    text-transform:uppercase; padding:9px 12px; background:var(--hull);
+    flex:1; font-family:var(--font-mono); font-size:13px; letter-spacing:.1em;
+    text-transform:uppercase; padding:14px 12px; background:var(--hull);
     border:1px solid var(--line-dim); border-radius:5px; color:var(--text-dim);
   }
   .walk-mode-btn.active{
@@ -605,14 +606,21 @@
      een derde van de rij min de 4px tussenruimtes) en in het midden — geen uitlegtekst meer */
   /* het middenstuk van de lobby: alles van de gekozen modus verticaal gecentreerd tussen de
      tabs en de startknop (gebruikerswens); de startknop zelf blijft onderaan op zijn vaste plek */
+  /* Bovenaan uitgelijnd op een vaste afstand onder de tabs (i.p.v. verticaal gecentreerd): zo
+     begint het eerste keuzeveld in alle drie de modi op dezelfde hoogte, en springt er niets
+     als je bij Zelf spelen het aantal spelers verandert (er komt dan een kaartje bij, en met
+     centreren schoof alles erboven mee — gebruikersmelding: "schots en scheef", "floept"). */
   .walk-lobby-body{
-    flex:1 1 auto; min-height:0; display:flex; flex-direction:column; justify-content:center;
-    gap:12px;
+    flex:1 1 auto; min-height:0; display:flex; flex-direction:column; justify-content:flex-start;
+    gap:12px; padding-top:var(--lobby-space, 36px);
   }
   .walk-lobby-body > .reach-status:empty, .mp-room-info > .reach-status:empty{display:none;}
   /* ook in de Multiplayer-formulieren: naamveld net zo breed als de keuzelijsten, knoppen in
      het midden */
   .walk-lobby-body .field input[type=text]{width:100%;}
+  /* uitgezet keuzeveld (bv. "Beurten van de bots" zonder bots): blijft staan, maar gedimd */
+  .walk-lobby-body .field.is-disabled{opacity:.4;}
+  .walk-lobby-body .field.is-disabled select{cursor:not-allowed;}
   .walk-lobby-body .mp-setup .btn-row, .walk-lobby-body #mpJoinWaiting .btn-row,
   .walk-lobby-body #mpHostRoom .btn-row{justify-content:center;}
   /* spelerskaartjes in de Zelf-spelen-lobby gecentreerd (ook een losse, bv. bij 1 mens) i.p.v.
@@ -630,9 +638,9 @@
   .mp-room-info:has(> #mpChoice:not([hidden])){gap:0;}
   #mpChoice[hidden]{display:none;}
   #mpChoice > button{
-    width:calc((100% - 8px) / 3); min-width:0; white-space:nowrap;
-    font-family:var(--font-mono); font-size:11.5px; letter-spacing:.08em; text-transform:uppercase;
-    padding:9px 12px; border-radius:5px;
+    width:calc((100% - 12px) / 3); min-width:0; white-space:nowrap;
+    font-family:var(--font-mono); font-size:13px; letter-spacing:.1em; text-transform:uppercase;
+    padding:14px 12px; border-radius:5px;
     background:var(--hull); border:1px solid var(--line); color:var(--text); box-shadow:none;
   }
   #mpChoice > button:hover{border-color:var(--quest); color:#eafcff; background:rgba(79,184,224,.1);}
@@ -956,8 +964,13 @@
     /* lobbykolom precies zo hoog als de binnenkant van het vak (#walkPanel min-height hieronder
        min 24px padding en 2px rand), zodat "Start spel" onderaan gelijk ligt met de onderrand
        i.p.v. ergens halverwege (de oude 100vh − 274px stamde nog uit de tijd van de footer) */
-    .walk-lobby-col{height:calc(var(--wcell) * 32 + 160px - 26px); gap:12px;}
-    .walk-lobby-col .walk-mode-toggle{margin-bottom:6px;}
+    /* --lobby-space: ruimte boven de tabs en tussen de tabs en de inhoud; schaalt mee met de
+       vakhoogte (40px op een groot scherm, ±16px op een laptop), zodat Zelf spelen ook daar past */
+    .walk-lobby-col{
+      height:calc(var(--wcell) * 32 + 160px - 26px); gap:12px;
+      --lobby-space: clamp(10px, calc(var(--wcell) * 4 - 40px), 40px);
+    }
+    .walk-lobby-col .walk-mode-toggle{margin:var(--lobby-space) 0 0;}
     .walk-board-col{max-width:none;}
     .walk-status-col, .walk-side-stack{max-height:calc(var(--wcell) * 32 + 71px);}
     .walk-side-stack.is-opening{height:calc(var(--wcell) * 32 + 71px);}
@@ -9552,8 +9565,14 @@ function soloRebuildSetup(){
   }
   soloRenderSetupUI();
   // "Beurten van de bots" heeft zonder bots niets te doen
+  // Zonder bots niet verbergen maar uitzetten (gedimd): verbergen liet de rest van de lobby
+  // 72px verspringen bij het wisselen van het aantal spelers (gebruikersmelding: "floept")
   const botViewField = walkSoloBotViewSel && walkSoloBotViewSel.closest('.field');
-  if (botViewField) botViewField.hidden = bots === 0;
+  if (botViewField){
+    botViewField.hidden = false;
+    botViewField.classList.toggle('is-disabled', bots === 0);
+    walkSoloBotViewSel.disabled = bots === 0;
+  }
 }
 
 function soloRenderSetupUI(){

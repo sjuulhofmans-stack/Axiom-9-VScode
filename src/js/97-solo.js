@@ -202,8 +202,14 @@ function soloRebuildSetup(){
   }
   soloRenderSetupUI();
   // "Beurten van de bots" heeft zonder bots niets te doen
+  // Zonder bots niet verbergen maar uitzetten (gedimd): verbergen liet de rest van de lobby
+  // 72px verspringen bij het wisselen van het aantal spelers (gebruikersmelding: "floept")
   const botViewField = walkSoloBotViewSel && walkSoloBotViewSel.closest('.field');
-  if (botViewField) botViewField.hidden = bots === 0;
+  if (botViewField){
+    botViewField.hidden = false;
+    botViewField.classList.toggle('is-disabled', bots === 0);
+    walkSoloBotViewSel.disabled = bots === 0;
+  }
 }
 
 function soloRenderSetupUI(){
