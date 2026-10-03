@@ -4,9 +4,10 @@
 // die eindigt in een implosie zoals een zwart gat — en dan pas start het spel. Kort gehouden
 // (±5,5 s). Klik of Esc slaat hem over. Aan/uit via het vinkje "Startanimatie" in de lobby
 // (#walkIntroToggle), onthouden in localStorage (puur een gemak per browser).
-// Wordt aangeroepen vanuit walkTryStart() in 96-walk.js. Multiplayer gebruikt hem bewust niet:
-// daar loopt het potje bij iedereen tegelijk door, en een gast die nog naar sterren kijkt zou
-// de opening missen.
+// Wordt aangeroepen vanuit walkTryStart() in 96-walk.js, en in Multiplayer vanuit
+// mpHostStartClick() (99-multiplayer.js): de host stuurt dan een 'intro'-bericht zodat alle gasten
+// hem tegelijk afspelen, en start het potje pas als de animatie klaar is — zo mist niemand de
+// opening.
 const INTRO_STORE_KEY = 'axiom9.startIntro';
 const INTRO_T = {          // tijdlijn in ms vanaf de start van de animatie
   fadeIn: 320,             // lobby → zwart
@@ -23,12 +24,15 @@ const INTRO_T = {          // tijdlijn in ms vanaf de start van de animatie
 function introEnabled(){
   try { return localStorage.getItem(INTRO_STORE_KEY) !== 'off'; } catch (e){ return true; }
 }
+// twee vinkjes met dezelfde waarde: in de lobby (Automatisch/Zelf spelen) en in de
+// Multiplayer-kamer van de host — wijzig je er één, dan gaat de ander mee
 {
-  const box = document.getElementById('walkIntroToggle');
-  if (box){
+  const boxes = ['walkIntroToggle', 'mpIntroToggle'].map(id => document.getElementById(id)).filter(Boolean);
+  for (const box of boxes){
     box.checked = introEnabled();
     box.addEventListener('change', () => {
       try { localStorage.setItem(INTRO_STORE_KEY, box.checked ? 'on' : 'off'); } catch (e){}
+      for (const other of boxes) other.checked = box.checked;
     });
   }
 }

@@ -602,6 +602,12 @@
      Automatisch en Zelf spelen op precies dezelfde plek (gebruikersmelding: "elke subtab een
      andere plek") */
   .walk-lobby-start-row{display:flex; flex-direction:column; margin-top:auto;}
+  /* een stuk hoger dan helemaal onderaan (gebruikerswens): zelfde ruimte als boven de tabs, × 2 */
+  .walk-lobby-col > .walk-lobby-start-row{margin-bottom:calc(var(--lobby-space, 36px) * 2);}
+  /* "Spel starten"/"Spel afbreken" van de host: even dik als "Start spel", maar niet over de
+     hele breedte */
+  .mp-host-start-row > button{padding:13px 22px; font-size:15px; min-width:240px;}
+  #mpHostRoom > .walk-intro-toggle{margin:4px 0 12px;}
   /* Multiplayer: alleen de twee keuzeknoppen, even groot als de modus-tabs erboven (een tab is
      een derde van de rij min de 4px tussenruimtes) en in het midden — geen uitlegtekst meer */
   /* het middenstuk van de lobby: alles van de gekozen modus verticaal gecentreerd tussen de
@@ -3106,7 +3112,10 @@
                     <button type="button" id="btnMpCopyCode" class="small ghost">Kopieer</button>
                   </div>
                   <div id="mpHostSeats" class="walk-solo-setup"></div>
-                  <div class="btn-row">
+                  <!-- zelfde keuze als #walkIntroToggle (zelfde onthouden waarde, 96b-intro.js);
+                       geldt voor iedereen in de kamer -->
+                  <label class="walk-intro-toggle"><input type="checkbox" id="mpIntroToggle" checked> Startanimatie tonen</label>
+                  <div class="btn-row mp-host-start-row">
                     <button type="button" id="btnMpHostStart" class="primary" disabled>Spel starten</button>
                     <button type="button" id="btnMpHostStop" class="ghost">Spel afbreken</button>
                   </div>
@@ -9096,9 +9105,10 @@ if (walkEnergyModeEl){
 // die eindigt in een implosie zoals een zwart gat — en dan pas start het spel. Kort gehouden
 // (±5,5 s). Klik of Esc slaat hem over. Aan/uit via het vinkje "Startanimatie" in de lobby
 // (#walkIntroToggle), onthouden in localStorage (puur een gemak per browser).
-// Wordt aangeroepen vanuit walkTryStart() in 96-walk.js. Multiplayer gebruikt hem bewust niet:
-// daar loopt het potje bij iedereen tegelijk door, en een gast die nog naar sterren kijkt zou
-// de opening missen.
+// Wordt aangeroepen vanuit walkTryStart() in 96-walk.js, en in Multiplayer vanuit
+// mpHostStartClick() (99-multiplayer.js): de host stuurt dan een 'intro'-bericht zodat alle gasten
+// hem tegelijk afspelen, en start het potje pas als de animatie klaar is — zo mist niemand de
+// opening.
 const INTRO_STORE_KEY = 'axiom9.startIntro';
 const INTRO_T = {          // tijdlijn in ms vanaf de start van de animatie
   fadeIn: 320,             // lobby → zwart
@@ -9115,12 +9125,15 @@ const INTRO_T = {          // tijdlijn in ms vanaf de start van de animatie
 function introEnabled(){
   try { return localStorage.getItem(INTRO_STORE_KEY) !== 'off'; } catch (e){ return true; }
 }
+// twee vinkjes met dezelfde waarde: in de lobby (Automatisch/Zelf spelen) en in de
+// Multiplayer-kamer van de host — wijzig je er één, dan gaat de ander mee
 {
-  const box = document.getElementById('walkIntroToggle');
-  if (box){
+  const boxes = ['walkIntroToggle', 'mpIntroToggle'].map(id => document.getElementById(id)).filter(Boolean);
+  for (const box of boxes){
     box.checked = introEnabled();
     box.addEventListener('change', () => {
       try { localStorage.setItem(INTRO_STORE_KEY, box.checked ? 'on' : 'off'); } catch (e){}
+      for (const other of boxes) other.checked = box.checked;
     });
   }
 }
@@ -12965,7 +12978,7 @@ async function mpConnect(code){
 }
 
 function mpRegisterActions(room){
-  const names = ['hello', 'lobby', 'start', 'state', 'leave', 'intent', 'stop', 'chat'];
+  const names = ['hello', 'lobby', 'start', 'state', 'leave', 'intent', 'stop', 'chat', 'intro'];
   mp.actions = {};
   for (const n of names) mp.actions[n] = room.makeAction(n);
 
@@ -12987,6 +13000,9 @@ function mpRegisterActions(room){
   // host stopt het lopende potje bewust (zie btnMpLeaveGame) terwijl de room open blijft —
   // anders dan 'leave' verlaat niemand de room hierbij, gasten gaan terug naar de wachtkamer.
   mp.actions.stop.onMessage = () => { if (!mp.isHost) mpClientOnStop(); };
+  // de host start het potje met de startanimatie (96b-intro.js): iedereen speelt hem tegelijk
+  // af; het potje zelf ('start') komt pas zodra de animatie bij de host klaar is
+  mp.actions.intro.onMessage = () => { if (!mp.isHost && mp.phase === 'joining') playStartIntro(() => {}); };
 
   // room.onPeerJoin vuurt pas zodra de WebRTC-datachannel naar die peer daadwerkelijk klaar is
   // (dat kan een paar seconden na joinRoom() duren, via de signaling-relay) — een 'hello' die je
@@ -13080,10 +13096,8 @@ function mpBroadcastLobby(){
 }
 function mpRenderHostSeats(){
   if (!mpHostSeatsEl) return;
-  mpHostSeatsEl.innerHTML = mp.seats.map((s, i) => mpSeatRowHtml(s, i)).join('') +
-    (mp.seats.length < mp.totalSeats
-      ? `<p class="hint">Wachten op ${mp.totalSeats - mp.seats.length} speler(s)${mp.fillBots ? ' (of start met bots op de rest)' : ''}...</p>`
-      : '');
+  // (geen "Wachten op N speler(s)…"-regel meer, gebruikerswens)
+  mpHostSeatsEl.innerHTML = mp.seats.map((s, i) => mpSeatRowHtml(s, i)).join('');
   const btn = document.getElementById('btnMpHostStart');
   if (btn) btn.disabled = mp.seats.length < 1 || (!mp.fillBots && mp.seats.length < mp.totalSeats);
 }
@@ -13235,6 +13249,20 @@ function mpOnPeerLeave(peerId, explicit){
 }
 
 // ---------- host: potje starten ----------
+// knop "Spel starten": eerst (als die aan staat) de startanimatie bij iedereen, dan pas het potje.
+// Het bord eerst controleren, anders zag je de hele animatie en daarna pas de foutmelding.
+function mpHostStartClick(){
+  if (introRunning) return;
+  const err = walkLobbyValidate();
+  if (err){ mpSetStatus(err, 'bad'); return; }
+  if (introEnabled()){
+    if (mp.actions && mp.actions.intro) mp.actions.intro.send({});
+    // alleen starten als de kamer er na de animatie nog is (niet intussen afgebroken)
+    playStartIntro(() => { if (mp.isHost && mp.phase === 'hosting') mpHostStartGame(); });
+  } else {
+    mpHostStartGame();
+  }
+}
 function mpHostStartGame(){
   const total = mp.totalSeats;
   const humans = mp.seats.slice(0, total);
@@ -13876,7 +13904,7 @@ if (mpHostNameFieldEl) mpHostNameFieldEl.addEventListener('input', () => {
 const mpJoinNameFieldEl = document.getElementById('mpJoinName');
 if (mpJoinNameFieldEl) mpJoinNameFieldEl.addEventListener('input', () => mpJoinNameFieldEl.classList.remove('mp-field-invalid'));
 if (btnMpJoinConnect) btnMpJoinConnect.addEventListener('click', mpJoinConnect);
-if (btnMpHostStart) btnMpHostStart.addEventListener('click', mpHostStartGame);
+if (btnMpHostStart) btnMpHostStart.addEventListener('click', mpHostStartClick);
 if (btnMpHostStop) btnMpHostStop.addEventListener('click', mpHostStop);
 if (btnMpJoinLeave) btnMpJoinLeave.addEventListener('click', mpJoinLeave);
 if (btnMpCopyCode) btnMpCopyCode.addEventListener('click', () => {

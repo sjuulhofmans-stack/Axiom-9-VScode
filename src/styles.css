@@ -595,6 +595,12 @@
      Automatisch en Zelf spelen op precies dezelfde plek (gebruikersmelding: "elke subtab een
      andere plek") */
   .walk-lobby-start-row{display:flex; flex-direction:column; margin-top:auto;}
+  /* een stuk hoger dan helemaal onderaan (gebruikerswens): zelfde ruimte als boven de tabs, × 2 */
+  .walk-lobby-col > .walk-lobby-start-row{margin-bottom:calc(var(--lobby-space, 36px) * 2);}
+  /* "Spel starten"/"Spel afbreken" van de host: even dik als "Start spel", maar niet over de
+     hele breedte */
+  .mp-host-start-row > button{padding:13px 22px; font-size:15px; min-width:240px;}
+  #mpHostRoom > .walk-intro-toggle{margin:4px 0 12px;}
   /* Multiplayer: alleen de twee keuzeknoppen, even groot als de modus-tabs erboven (een tab is
      een derde van de rij min de 4px tussenruimtes) en in het midden — geen uitlegtekst meer */
   /* het middenstuk van de lobby: alles van de gekozen modus verticaal gecentreerd tussen de

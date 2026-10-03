@@ -409,7 +409,7 @@ async function mpConnect(code){
 }
 
 function mpRegisterActions(room){
-  const names = ['hello', 'lobby', 'start', 'state', 'leave', 'intent', 'stop', 'chat'];
+  const names = ['hello', 'lobby', 'start', 'state', 'leave', 'intent', 'stop', 'chat', 'intro'];
   mp.actions = {};
   for (const n of names) mp.actions[n] = room.makeAction(n);
 
@@ -431,6 +431,9 @@ function mpRegisterActions(room){
   // host stopt het lopende potje bewust (zie btnMpLeaveGame) terwijl de room open blijft —
   // anders dan 'leave' verlaat niemand de room hierbij, gasten gaan terug naar de wachtkamer.
   mp.actions.stop.onMessage = () => { if (!mp.isHost) mpClientOnStop(); };
+  // de host start het potje met de startanimatie (96b-intro.js): iedereen speelt hem tegelijk
+  // af; het potje zelf ('start') komt pas zodra de animatie bij de host klaar is
+  mp.actions.intro.onMessage = () => { if (!mp.isHost && mp.phase === 'joining') playStartIntro(() => {}); };
 
   // room.onPeerJoin vuurt pas zodra de WebRTC-datachannel naar die peer daadwerkelijk klaar is
   // (dat kan een paar seconden na joinRoom() duren, via de signaling-relay) — een 'hello' die je
@@ -524,10 +527,8 @@ function mpBroadcastLobby(){
 }
 function mpRenderHostSeats(){
   if (!mpHostSeatsEl) return;
-  mpHostSeatsEl.innerHTML = mp.seats.map((s, i) => mpSeatRowHtml(s, i)).join('') +
-    (mp.seats.length < mp.totalSeats
-      ? `<p class="hint">Wachten op ${mp.totalSeats - mp.seats.length} speler(s)${mp.fillBots ? ' (of start met bots op de rest)' : ''}...</p>`
-      : '');
+  // (geen "Wachten op N speler(s)…"-regel meer, gebruikerswens)
+  mpHostSeatsEl.innerHTML = mp.seats.map((s, i) => mpSeatRowHtml(s, i)).join('');
   const btn = document.getElementById('btnMpHostStart');
   if (btn) btn.disabled = mp.seats.length < 1 || (!mp.fillBots && mp.seats.length < mp.totalSeats);
 }
@@ -679,6 +680,20 @@ function mpOnPeerLeave(peerId, explicit){
 }
 
 // ---------- host: potje starten ----------
+// knop "Spel starten": eerst (als die aan staat) de startanimatie bij iedereen, dan pas het potje.
+// Het bord eerst controleren, anders zag je de hele animatie en daarna pas de foutmelding.
+function mpHostStartClick(){
+  if (introRunning) return;
+  const err = walkLobbyValidate();
+  if (err){ mpSetStatus(err, 'bad'); return; }
+  if (introEnabled()){
+    if (mp.actions && mp.actions.intro) mp.actions.intro.send({});
+    // alleen starten als de kamer er na de animatie nog is (niet intussen afgebroken)
+    playStartIntro(() => { if (mp.isHost && mp.phase === 'hosting') mpHostStartGame(); });
+  } else {
+    mpHostStartGame();
+  }
+}
 function mpHostStartGame(){
   const total = mp.totalSeats;
   const humans = mp.seats.slice(0, total);
@@ -1320,7 +1335,7 @@ if (mpHostNameFieldEl) mpHostNameFieldEl.addEventListener('input', () => {
 const mpJoinNameFieldEl = document.getElementById('mpJoinName');
 if (mpJoinNameFieldEl) mpJoinNameFieldEl.addEventListener('input', () => mpJoinNameFieldEl.classList.remove('mp-field-invalid'));
 if (btnMpJoinConnect) btnMpJoinConnect.addEventListener('click', mpJoinConnect);
-if (btnMpHostStart) btnMpHostStart.addEventListener('click', mpHostStartGame);
+if (btnMpHostStart) btnMpHostStart.addEventListener('click', mpHostStartClick);
 if (btnMpHostStop) btnMpHostStop.addEventListener('click', mpHostStop);
 if (btnMpJoinLeave) btnMpJoinLeave.addEventListener('click', mpJoinLeave);
 if (btnMpCopyCode) btnMpCopyCode.addEventListener('click', () => {
