@@ -912,7 +912,9 @@
        groot als die van het potje"). Speelscherm = bordrij (--wcell × 32 + 71px) + spelersbalk,
        tussenruimte en paneelrand = 89px, gemeten. Zelfde --wcell als .walk-board-row hierboven,
        hier op #walkPanel zodat ook de lobby ermee kan rekenen. */
-    #walkPanel{
+    /* het simulatievak net zo groot (gebruikerswens: "allebei anders"); met uitslag erin mag
+       het gewoon langer worden */
+    #walkPanel, #tabSimulate > .panel{
       --wcell: clamp(13px, min(calc((100vw - 800px) / 40), calc((100vh - 300px) / 32)), 20px);
       min-height:calc(var(--wcell) * 32 + 160px);
     }
