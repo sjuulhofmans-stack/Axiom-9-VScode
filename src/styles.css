@@ -242,43 +242,51 @@
      Tijdens het genereren én bij het openen: geen bord (visibility, dus het vak houdt zijn maat),
      alleen een vakje in ruimtestijl: een planeet met een draaiende baan en een maantje. */
   .map-board-panel{position:relative;}
-  .map-board-panel.is-generating > .board-zoom-wrap{visibility:hidden;}
-  .gen-overlay{position:absolute; inset:0; display:flex; align-items:center; justify-content:center; z-index:3; pointer-events:none;}
-  .gen-overlay[hidden]{display:none;}
+  /* Rustig in- en uitfaden (0,9 s, = GEN_FADE_MS in 80-controls.js): tijdens het genereren (en
+     bij "Vorige indeling", .is-swapping) faadt de kaart uit; het genereer-vakje faadt in. */
+  .map-board-panel > .board-zoom-wrap{transition:opacity .9s ease;}
+  .map-board-panel.is-generating > .board-zoom-wrap,
+  .map-board-panel.is-swapping > .board-zoom-wrap{opacity:0; pointer-events:none;}
+  .gen-overlay{
+    position:absolute; inset:0; display:flex; align-items:center; justify-content:center; z-index:3;
+    pointer-events:none; opacity:0; transition:opacity .9s ease;
+  }
+  .map-board-panel.is-generating > .gen-overlay{opacity:1;}
   .gen-box{
-    display:flex; flex-direction:column; align-items:center; gap:14px; padding:30px 46px;
-    border-radius:10px; border:1px solid rgba(79,184,224,.35);
-    background:radial-gradient(ellipse at 50% 30%, rgba(79,184,224,.10), transparent 70%), rgba(5,8,14,.85);
-    box-shadow:0 0 30px rgba(79,184,224,.15), inset 0 0 22px rgba(79,184,224,.08);
+    display:flex; flex-direction:column; align-items:center; gap:18px; padding:44px 84px;
+    border-radius:14px; border:1px solid rgba(79,184,224,.35);
+    background:radial-gradient(ellipse at 50% 30%, rgba(79,184,224,.12), transparent 70%), rgba(5,8,14,.88);
+    box-shadow:0 0 40px rgba(79,184,224,.18), inset 0 0 30px rgba(79,184,224,.08);
   }
-  .gen-orbit{position:relative; width:84px; height:84px;}
+  .gen-orbit{position:relative; width:150px; height:150px;}
+  /* voortgangsring: vult zich met de voortgang (stroke-dashoffset via setGenRing) */
+  .gen-progress{position:absolute; inset:0; width:100%; height:100%; transform:rotate(-90deg);}
+  .gen-track{fill:none; stroke:rgba(79,184,224,.16); stroke-width:4;}
+  .gen-arc{
+    fill:none; stroke:#4fb8e0; stroke-width:4; stroke-linecap:round;
+    stroke-dasharray:339.29; stroke-dashoffset:339.29;
+    filter:drop-shadow(0 0 4px rgba(79,184,224,.8)); transition:stroke-dashoffset .35s ease;
+  }
   .gen-planet{
-    position:absolute; inset:28px; border-radius:50%;
+    position:absolute; inset:46px; border-radius:50%;
     background:radial-gradient(circle at 35% 30%, #9fdcff, #2a6a9a 55%, #0b1d33 100%);
-    box-shadow:0 0 18px rgba(79,184,224,.55);
+    box-shadow:0 0 24px rgba(79,184,224,.55);
   }
-  .gen-ring{
-    position:absolute; inset:6px; border-radius:50%; border:1px dashed rgba(79,184,224,.45);
-    animation:genSpin 6s linear infinite reverse;
-  }
-  .gen-moon{
-    position:absolute; inset:0; border-radius:50%; animation:genSpin 1.8s linear infinite;
-  }
+  .gen-moon{position:absolute; inset:22px; border-radius:50%; animation:genSpin 2.4s linear infinite;}
   .gen-moon::before{
-    content:''; position:absolute; top:2px; left:50%; width:9px; height:9px; margin-left:-4.5px; border-radius:50%;
-    background:#ffd27a; box-shadow:0 0 10px #ffb545, 0 0 3px #fff;
+    content:''; position:absolute; top:-5px; left:50%; width:11px; height:11px; margin-left:-5.5px; border-radius:50%;
+    background:#ffd27a; box-shadow:0 0 12px #ffb545, 0 0 3px #fff;
   }
   @keyframes genSpin{to{transform:rotate(360deg);}}
   .gen-title{
-    font-family:var(--font-mono); font-size:14px; letter-spacing:.32em; text-transform:uppercase; color:#dff4ff;
+    font-family:var(--font-mono); font-size:17px; letter-spacing:.32em; text-transform:uppercase; color:#dff4ff;
     text-shadow:0 0 10px rgba(79,184,224,.6);
   }
   .gen-dots i{font-style:normal; animation:genDot 1.2s infinite;}
   .gen-dots i:nth-child(2){animation-delay:.2s;}
   .gen-dots i:nth-child(3){animation-delay:.4s;}
   @keyframes genDot{0%,100%{opacity:.15;} 40%{opacity:1;}}
-  .gen-sub{font-family:var(--font-mono); font-size:11px; letter-spacing:.12em; color:var(--text-dim);}
-  .gen-sub:empty{display:none;}
+  .gen-sub{font-family:var(--font-mono); font-size:13px; letter-spacing:.12em; color:var(--text-dim);}
   #tabMap .right-col > .panel:last-child{flex:1 1 auto;}
   /* vaste hoogte voor "Geselecteerde tegel": een hoektegel heeft een extra regel ("Hoektegel —
      vast") en duwde alles eronder dan omlaag (gebruikersmelding) */
@@ -287,20 +295,14 @@
   @media (min-width: 881px){
     #tabMap > .grid-layout{grid-template-columns:minmax(0,1fr) clamp(300px, 22vw, 420px);}
   }
-  /* de voortgangsbalk van het genereren houdt zijn plek altijd vrij (onzichtbaar als hij niet
-     loopt), anders schoof de kolom tijdens het genereren 73px op */
-  #genProgress[hidden]{display:flex; visibility:hidden;}
-  #genProgress{min-height:64px; margin:0;}
-  #genProgressText{min-height:2.9em; align-items:flex-start;}
   /* legenda in zijn eigen vak iets compacter, zodat de rechterkolom niet langer wordt dan het
      bordvak (en dat dus even hoog blijft als de vakken van Spelen/Simulatie) */
   @media (min-width: 881px){
     #tabMap .legend{gap:3px; margin-top:0;}
     #tabMap .legend-row{padding:2px 4px;}
   }
-  .gen-slot{display:grid; height:76px; overflow:hidden;}
+  .gen-slot{display:grid; height:54px; overflow:hidden;}
   .gen-slot > *{grid-area:1 / 1; align-self:start; margin:0;}
-  .gen-slot:has(> #genProgress:not([hidden])) > #swapHint{visibility:hidden;}
   @media (max-width: 880px){ .grid-layout{grid-template-columns:1fr;} }
 
   .panel{

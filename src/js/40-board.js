@@ -250,6 +250,6 @@ function trySwap(slotA, slotB){
   }
   clearSimResults();
   [layout[slotA], layout[slotB]] = [layout[slotB], layout[slotA]];
-  swapHint.textContent = `Tegels ${letterForSlot(slotA)} en ${letterForSlot(slotB)} verwisseld.`;
+  swapHint.textContent = '';   // geen tekst onder de knoppen bij succes (gebruikerswens), alleen bij fouten
   return true;
 }

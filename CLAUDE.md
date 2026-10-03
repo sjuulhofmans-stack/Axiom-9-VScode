@@ -172,10 +172,11 @@ aangeroepen (functiedeclaraties worden gehoist, `const`/`let` niet).
 Na een wijziging altijd `python build.py` en dan `dist/axiom9.html` openen.
 Check minimaal:
 1. "Genereer nieuwe map" → willekeurige nieuwe kaart (geen dobbelsteentje meer; het
-   seed-veld is alleen-lezen en toont de huidige seed), seed ook rechtsboven; onder de knoppen
-   blijft gewoon "Sleep een tegel…" staan (de lange kwaliteitsmelding is bewust weg).
-   Alleen bij een mislukte indeling verschijnt een korte rode waarschuwing. Het bord
-   staat gecentreerd in zijn vak en niets verschuift tijdens het genereren.
+   seed-veld is alleen-lezen en toont de huidige seed), seed ook rechtsboven. De kaart
+   faadt uit, in het bordvak verschijnt "Aan het genereren" met een voortgangsring en
+   aftellende tijd, daarna faadt de nieuwe kaart in (0,9 s, GEN_FADE_MS). Onder de knoppen
+   staat normaal niets; alleen bij een fout (mislukte indeling, kan niet draaien/wisselen)
+   een korte rode melding. Niets verschuift tijdens het genereren.
 2. Onbereikbare vakjes (bv. na een tegel-bewerking) krijgen een roze/magenta rand
    direct op het bord — geen apart paneel, dit is de enige indicatie.
 3. Een tegel selecteren → draaiknoppen gaan per **90°** (niet 180).

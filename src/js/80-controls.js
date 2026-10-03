@@ -7,41 +7,59 @@
 // zorgt dat de balk en knoppen direct resetten zodra het bord op een ANDERE manier verandert
 // terwijl er nog gegenereerd wordt (bv. een tegel slepen) — de simRunId-check in
 // applyGeneratedLayout zorgt dat zo'n verouderde run zijn resultaat dan ook niet meer toepast.
-const genProgressEl = document.getElementById('genProgress');
-const genProgressFillEl = document.getElementById('genProgressFill');
-const genProgressTextEl = document.getElementById('genProgressText');
 let genRunning = false;
 
-// Het "aan het genereren"-vakje over het bordvak (index.html, #genOverlay): het bord zelf is
-// dan onzichtbaar, zodat je bij het openen niet eerst een (oude) kaart ziet.
+// ---------- "Aan het genereren"-vakje (index.html, #genOverlay) ----------
+// Tijdens het genereren (én bij het openen, vóórdat er een kaart is) faadt de kaart rustig uit en
+// verschijnt in het midden een vakje in ruimtestijl: een planeet met een ring die zich vult met
+// de voortgang, en eronder hoe lang het nog duurt (telt af). Klaar → het vakje faadt uit en de
+// nieuwe kaart faadt in. De losse voortgangsbalk rechts is weg (gebruikerswens).
+// GEN_FADE_MS moet gelijk blijven aan de transitieduur van .map-board-panel/.gen-overlay.
+const GEN_FADE_MS = 900;
 const genOverlayEl = document.getElementById('genOverlay');
 const mapBoardPanelEl = document.querySelector('.map-board-panel');
-function showGenOverlay(seed){
-  if (genOverlayEl) genOverlayEl.hidden = false;
+const genArcEl = document.getElementById('genArc');
+const genEtaEl = document.getElementById('genEta');
+const GEN_ARC_LEN = 2 * Math.PI * 54;   // omtrek van de ring (r = 54 in het SVG-plaatje)
+let genEtaEnd = null, genEtaTimer = null;
+function genSleep(ms){ return new Promise(r => setTimeout(r, ms)); }
+function showGenOverlay(){
   if (mapBoardPanelEl) mapBoardPanelEl.classList.add('is-generating');
-  const s = document.getElementById('genOverlaySeed');
-  if (s) s.textContent = seed ? `seed: ${seed}` : '';
+  setGenRing(0);
+  genEtaEnd = null;
+  if (genEtaEl) genEtaEl.textContent = 'even geduld…';
+  clearInterval(genEtaTimer);
+  // aftellen per seconde op basis van de laatste schatting (updateGenProgress)
+  // het getal mag alleen dalen (de schatting schommelt per brok), en is de ring vol dan wordt
+  // er nog afgerond: "bijna klaar…" i.p.v. een "nog 1 seconde" die blijft hangen
+  let shown = Infinity;
+  genEtaTimer = setInterval(() => {
+    if (!genEtaEl || genEtaEnd === null) return;
+    if (genPct >= 100){ genEtaEl.textContent = 'bijna klaar…'; return; }
+    const left = Math.max(0, Math.ceil((genEtaEnd - performance.now()) / 1000));
+    shown = Math.min(shown, left);
+    genEtaEl.textContent = shown > 0 ? `nog ${shown} ${shown === 1 ? 'seconde' : 'seconden'}` : 'bijna klaar…';
+  }, 200);
 }
 function hideGenOverlay(){
-  if (genOverlayEl) genOverlayEl.hidden = true;
   if (mapBoardPanelEl) mapBoardPanelEl.classList.remove('is-generating');
+  clearInterval(genEtaTimer); genEtaTimer = null;
+}
+let genPct = 0;
+function setGenRing(pct){
+  genPct = pct;
+  if (genArcEl) genArcEl.style.strokeDashoffset = String(GEN_ARC_LEN * (1 - pct / 100));
 }
 function hideGenProgress(){
-  if (genProgressEl) genProgressEl.hidden = true;
   hideGenOverlay();
   genRunning = false;
   const btnShuffleEl = document.getElementById('btnShuffle');
   if (btnShuffleEl) btnShuffleEl.disabled = false;
 }
 function updateGenProgress(found, target, elapsedMs){
-  if (!genProgressEl) return;
   const pct = target ? Math.min(100, (found / target) * 100) : 0;
-  genProgressFillEl.style.width = `${pct.toFixed(1)}%`; // CSS: hier moet de punt blijven staan
-  const perCandidate = found ? elapsedMs / found : 0;
-  const etaMs = perCandidate * (target - found);
-  genProgressTextEl.innerHTML =
-    `<span><b>${found}</b> / ${target} kandidaten (${nl(pct, 0)}%)</span>` +
-    `<span>verstreken ${formatSimSeconds(elapsedMs)} · nog ongeveer ${found > 0 ? formatSimSeconds(etaMs) : '…'}</span>`;
+  setGenRing(pct);
+  if (found > 0) genEtaEnd = performance.now() + (elapsedMs / found) * (target - found);
 }
 
 async function applyGeneratedLayout(seed){
@@ -51,10 +69,9 @@ async function applyGeneratedLayout(seed){
   clearSimResults();
   const runId = simRunId; // clearSimResults() heeft 'm net verhoogd; deze aanroep "claimt" dat nummer
   genRunning = true;
-  showGenOverlay(seed);
+  showGenOverlay();
   const btnShuffleEl = document.getElementById('btnShuffle');
   if (btnShuffleEl) btnShuffleEl.disabled = true;
-  if (genProgressEl){ genProgressEl.hidden = false; updateGenProgress(0, 60, 0); }
 
   const t0 = performance.now();
   const generated = await constrainedShuffleAsync(seed, (found, target) => {
@@ -62,23 +79,25 @@ async function applyGeneratedLayout(seed){
     updateGenProgress(found, target, performance.now() - t0);
   });
   if (runId !== simRunId){ return; } // verouderd: bord is inmiddels iets anders geworden
+  setGenRing(100);
+  // de oude kaart moet helemaal uitgefaded zijn vóórdat de nieuwe erin komt
+  const waited = performance.now() - t0;
+  if (waited < GEN_FADE_MS) await genSleep(GEN_FADE_MS - waited);
+  if (runId !== simRunId){ return; }
 
   layout = generated;
-  hideGenProgress();
   selectedSlot = null; highlightTile = null;
   statSeed.textContent = seed;
   hasGeneratedLayout = true;
   if (before){ previousLayout = before; if (btnPrevLayout) btnPrevLayout.disabled = false; }
-  // Geen lange kwaliteitsmelding meer onder de knoppen (gebruikerswens: die liep over meerdere
-  // regels, maakte de kolom langer en liet alles verschuiven). De seed staat al rechtsboven in
-  // de kop; alleen als het NIET gelukt is volgt er een korte waarschuwing.
+  // Geen tekst meer onder de knoppen (gebruikerswens); alleen als het NIET gelukt is volgt er
+  // een korte waarschuwing. De seed staat in het seed-veld en rechtsboven in de kop.
   const conn = computeConnectivity();
-  if (conn.groups.length === 1 && conn.brokenCount === 0){
-    swapHint.textContent = 'Sleep een tegel over een andere om ze te verwisselen.';
-  } else {
-    swapHint.innerHTML = `<span style="color:var(--danger)">Beste poging: ${conn.brokenCount} doodlopende naad/naden — probeer een andere seed.</span>`;
-  }
+  swapHint.innerHTML = conn.groups.length === 1 && conn.brokenCount === 0
+    ? ''
+    : `<span style="color:var(--danger)">Beste poging: ${conn.brokenCount} doodlopende naad/naden — probeer een nieuwe map.</span>`;
   renderBoard();
+  hideGenProgress();   // vakje faadt uit, nieuwe kaart faadt in
 }
 
 // "Genereer nieuwe map": altijd een willekeurige nieuwe kaart (gebruikerswens — het losse
@@ -103,8 +122,13 @@ function snapshotLayout(){
   for (let tid = 1; tid <= 20; tid++) rot[tid] = tileRotation[tid] || 0;
   return { layout: layout.slice(), rot, seed: statSeed.textContent };
 }
-if (btnPrevLayout) btnPrevLayout.addEventListener('click', () => {
-  if (!previousLayout || genRunning) return;
+// ook hier rustig: kaart uitfaden, wisselen, nieuwe kaart infaden (zonder genereer-vakje)
+let prevSwapping = false;
+if (btnPrevLayout) btnPrevLayout.addEventListener('click', async () => {
+  if (!previousLayout || genRunning || prevSwapping) return;
+  prevSwapping = true;
+  if (mapBoardPanelEl) mapBoardPanelEl.classList.add('is-swapping');
+  await genSleep(GEN_FADE_MS);
   const current = snapshotLayout();
   clearSimResults();
   layout = previousLayout.layout.slice();
@@ -113,8 +137,10 @@ if (btnPrevLayout) btnPrevLayout.addEventListener('click', () => {
   seedInput.value = previousLayout.seed;
   previousLayout = current;
   selectedSlot = null; highlightTile = null;
-  swapHint.textContent = 'Sleep een tegel over een andere om ze te verwisselen.';
+  swapHint.textContent = '';
   renderBoard();
+  if (mapBoardPanelEl) mapBoardPanelEl.classList.remove('is-swapping');
+  prevSwapping = false;
 });
 
 function tryRotate(delta){

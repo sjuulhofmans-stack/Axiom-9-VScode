@@ -74,9 +74,17 @@
            laden al aan, zodat je nooit eerst een oude kaart ziet. -->
       <div class="gen-overlay" id="genOverlay">
         <div class="gen-box">
-          <div class="gen-orbit" aria-hidden="true"><span class="gen-planet"></span><span class="gen-ring"></span><span class="gen-moon"></span></div>
+          <!-- planeet + ring die zich vult met de voortgang (#genArc) + een draaiend maantje -->
+          <div class="gen-orbit" aria-hidden="true">
+            <svg class="gen-progress" viewBox="0 0 120 120">
+              <circle class="gen-track" cx="60" cy="60" r="54"/>
+              <circle class="gen-arc" id="genArc" cx="60" cy="60" r="54"/>
+            </svg>
+            <span class="gen-planet"></span>
+            <span class="gen-moon"></span>
+          </div>
           <b class="gen-title">Aan het genereren<span class="gen-dots"><i>.</i><i>.</i><i>.</i></span></b>
-          <span class="gen-sub" id="genOverlaySeed"></span>
+          <span class="gen-sub" id="genEta">even geduld…</span>
         </div>
       </div>
       <div class="board-zoom-wrap">
@@ -122,14 +130,11 @@
         </div>
         <div id="layoutCode" hidden></div>
 
-        <!-- voortgangsbalk en hint delen één plek: tijdens het genereren de balk, anders de
-             hint — zo verschuift er niets en kost het geen extra hoogte -->
+        <!-- alleen nog voor foutmeldingen (bv. "kan niet draaien"); normaal leeg. Vaste hoogte,
+             zodat een melding niets laat verschuiven. De voortgang van het genereren staat nu in
+             de ring van het "Aan het genereren"-vakje op het bord. -->
         <div class="gen-slot">
-          <div id="genProgress" class="sim-progress" hidden>
-            <div class="sim-progress-bar"><div class="sim-progress-fill" id="genProgressFill"></div></div>
-            <div class="sim-progress-text" id="genProgressText"></div>
-          </div>
-          <p class="hint" id="swapHint">Sleep een tegel over een andere om ze te verwisselen.</p>
+          <p class="hint" id="swapHint"></p>
         </div>
       </div>
     </div>

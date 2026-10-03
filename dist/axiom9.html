@@ -249,43 +249,51 @@
      Tijdens het genereren én bij het openen: geen bord (visibility, dus het vak houdt zijn maat),
      alleen een vakje in ruimtestijl: een planeet met een draaiende baan en een maantje. */
   .map-board-panel{position:relative;}
-  .map-board-panel.is-generating > .board-zoom-wrap{visibility:hidden;}
-  .gen-overlay{position:absolute; inset:0; display:flex; align-items:center; justify-content:center; z-index:3; pointer-events:none;}
-  .gen-overlay[hidden]{display:none;}
+  /* Rustig in- en uitfaden (0,9 s, = GEN_FADE_MS in 80-controls.js): tijdens het genereren (en
+     bij "Vorige indeling", .is-swapping) faadt de kaart uit; het genereer-vakje faadt in. */
+  .map-board-panel > .board-zoom-wrap{transition:opacity .9s ease;}
+  .map-board-panel.is-generating > .board-zoom-wrap,
+  .map-board-panel.is-swapping > .board-zoom-wrap{opacity:0; pointer-events:none;}
+  .gen-overlay{
+    position:absolute; inset:0; display:flex; align-items:center; justify-content:center; z-index:3;
+    pointer-events:none; opacity:0; transition:opacity .9s ease;
+  }
+  .map-board-panel.is-generating > .gen-overlay{opacity:1;}
   .gen-box{
-    display:flex; flex-direction:column; align-items:center; gap:14px; padding:30px 46px;
-    border-radius:10px; border:1px solid rgba(79,184,224,.35);
-    background:radial-gradient(ellipse at 50% 30%, rgba(79,184,224,.10), transparent 70%), rgba(5,8,14,.85);
-    box-shadow:0 0 30px rgba(79,184,224,.15), inset 0 0 22px rgba(79,184,224,.08);
+    display:flex; flex-direction:column; align-items:center; gap:18px; padding:44px 84px;
+    border-radius:14px; border:1px solid rgba(79,184,224,.35);
+    background:radial-gradient(ellipse at 50% 30%, rgba(79,184,224,.12), transparent 70%), rgba(5,8,14,.88);
+    box-shadow:0 0 40px rgba(79,184,224,.18), inset 0 0 30px rgba(79,184,224,.08);
   }
-  .gen-orbit{position:relative; width:84px; height:84px;}
+  .gen-orbit{position:relative; width:150px; height:150px;}
+  /* voortgangsring: vult zich met de voortgang (stroke-dashoffset via setGenRing) */
+  .gen-progress{position:absolute; inset:0; width:100%; height:100%; transform:rotate(-90deg);}
+  .gen-track{fill:none; stroke:rgba(79,184,224,.16); stroke-width:4;}
+  .gen-arc{
+    fill:none; stroke:#4fb8e0; stroke-width:4; stroke-linecap:round;
+    stroke-dasharray:339.29; stroke-dashoffset:339.29;
+    filter:drop-shadow(0 0 4px rgba(79,184,224,.8)); transition:stroke-dashoffset .35s ease;
+  }
   .gen-planet{
-    position:absolute; inset:28px; border-radius:50%;
+    position:absolute; inset:46px; border-radius:50%;
     background:radial-gradient(circle at 35% 30%, #9fdcff, #2a6a9a 55%, #0b1d33 100%);
-    box-shadow:0 0 18px rgba(79,184,224,.55);
+    box-shadow:0 0 24px rgba(79,184,224,.55);
   }
-  .gen-ring{
-    position:absolute; inset:6px; border-radius:50%; border:1px dashed rgba(79,184,224,.45);
-    animation:genSpin 6s linear infinite reverse;
-  }
-  .gen-moon{
-    position:absolute; inset:0; border-radius:50%; animation:genSpin 1.8s linear infinite;
-  }
+  .gen-moon{position:absolute; inset:22px; border-radius:50%; animation:genSpin 2.4s linear infinite;}
   .gen-moon::before{
-    content:''; position:absolute; top:2px; left:50%; width:9px; height:9px; margin-left:-4.5px; border-radius:50%;
-    background:#ffd27a; box-shadow:0 0 10px #ffb545, 0 0 3px #fff;
+    content:''; position:absolute; top:-5px; left:50%; width:11px; height:11px; margin-left:-5.5px; border-radius:50%;
+    background:#ffd27a; box-shadow:0 0 12px #ffb545, 0 0 3px #fff;
   }
   @keyframes genSpin{to{transform:rotate(360deg);}}
   .gen-title{
-    font-family:var(--font-mono); font-size:14px; letter-spacing:.32em; text-transform:uppercase; color:#dff4ff;
+    font-family:var(--font-mono); font-size:17px; letter-spacing:.32em; text-transform:uppercase; color:#dff4ff;
     text-shadow:0 0 10px rgba(79,184,224,.6);
   }
   .gen-dots i{font-style:normal; animation:genDot 1.2s infinite;}
   .gen-dots i:nth-child(2){animation-delay:.2s;}
   .gen-dots i:nth-child(3){animation-delay:.4s;}
   @keyframes genDot{0%,100%{opacity:.15;} 40%{opacity:1;}}
-  .gen-sub{font-family:var(--font-mono); font-size:11px; letter-spacing:.12em; color:var(--text-dim);}
-  .gen-sub:empty{display:none;}
+  .gen-sub{font-family:var(--font-mono); font-size:13px; letter-spacing:.12em; color:var(--text-dim);}
   #tabMap .right-col > .panel:last-child{flex:1 1 auto;}
   /* vaste hoogte voor "Geselecteerde tegel": een hoektegel heeft een extra regel ("Hoektegel —
      vast") en duwde alles eronder dan omlaag (gebruikersmelding) */
@@ -294,20 +302,14 @@
   @media (min-width: 881px){
     #tabMap > .grid-layout{grid-template-columns:minmax(0,1fr) clamp(300px, 22vw, 420px);}
   }
-  /* de voortgangsbalk van het genereren houdt zijn plek altijd vrij (onzichtbaar als hij niet
-     loopt), anders schoof de kolom tijdens het genereren 73px op */
-  #genProgress[hidden]{display:flex; visibility:hidden;}
-  #genProgress{min-height:64px; margin:0;}
-  #genProgressText{min-height:2.9em; align-items:flex-start;}
   /* legenda in zijn eigen vak iets compacter, zodat de rechterkolom niet langer wordt dan het
      bordvak (en dat dus even hoog blijft als de vakken van Spelen/Simulatie) */
   @media (min-width: 881px){
     #tabMap .legend{gap:3px; margin-top:0;}
     #tabMap .legend-row{padding:2px 4px;}
   }
-  .gen-slot{display:grid; height:76px; overflow:hidden;}
+  .gen-slot{display:grid; height:54px; overflow:hidden;}
   .gen-slot > *{grid-area:1 / 1; align-self:start; margin:0;}
-  .gen-slot:has(> #genProgress:not([hidden])) > #swapHint{visibility:hidden;}
   @media (max-width: 880px){ .grid-layout{grid-template-columns:1fr;} }
 
   .panel{
@@ -3010,9 +3012,17 @@
            laden al aan, zodat je nooit eerst een oude kaart ziet. -->
       <div class="gen-overlay" id="genOverlay">
         <div class="gen-box">
-          <div class="gen-orbit" aria-hidden="true"><span class="gen-planet"></span><span class="gen-ring"></span><span class="gen-moon"></span></div>
+          <!-- planeet + ring die zich vult met de voortgang (#genArc) + een draaiend maantje -->
+          <div class="gen-orbit" aria-hidden="true">
+            <svg class="gen-progress" viewBox="0 0 120 120">
+              <circle class="gen-track" cx="60" cy="60" r="54"/>
+              <circle class="gen-arc" id="genArc" cx="60" cy="60" r="54"/>
+            </svg>
+            <span class="gen-planet"></span>
+            <span class="gen-moon"></span>
+          </div>
           <b class="gen-title">Aan het genereren<span class="gen-dots"><i>.</i><i>.</i><i>.</i></span></b>
-          <span class="gen-sub" id="genOverlaySeed"></span>
+          <span class="gen-sub" id="genEta">even geduld…</span>
         </div>
       </div>
       <div class="board-zoom-wrap">
@@ -3058,14 +3068,11 @@
         </div>
         <div id="layoutCode" hidden></div>
 
-        <!-- voortgangsbalk en hint delen één plek: tijdens het genereren de balk, anders de
-             hint — zo verschuift er niets en kost het geen extra hoogte -->
+        <!-- alleen nog voor foutmeldingen (bv. "kan niet draaien"); normaal leeg. Vaste hoogte,
+             zodat een melding niets laat verschuiven. De voortgang van het genereren staat nu in
+             de ring van het "Aan het genereren"-vakje op het bord. -->
         <div class="gen-slot">
-          <div id="genProgress" class="sim-progress" hidden>
-            <div class="sim-progress-bar"><div class="sim-progress-fill" id="genProgressFill"></div></div>
-            <div class="sim-progress-text" id="genProgressText"></div>
-          </div>
-          <p class="hint" id="swapHint">Sleep een tegel over een andere om ze te verwisselen.</p>
+          <p class="hint" id="swapHint"></p>
         </div>
       </div>
     </div>
@@ -4331,7 +4338,7 @@ function trySwap(slotA, slotB){
   }
   clearSimResults();
   [layout[slotA], layout[slotB]] = [layout[slotB], layout[slotA]];
-  swapHint.textContent = `Tegels ${letterForSlot(slotA)} en ${letterForSlot(slotB)} verwisseld.`;
+  swapHint.textContent = '';   // geen tekst onder de knoppen bij succes (gebruikerswens), alleen bij fouten
   return true;
 }
 
@@ -5252,41 +5259,59 @@ function constrainedShuffleAsync(seedStr, onProgress){
 // zorgt dat de balk en knoppen direct resetten zodra het bord op een ANDERE manier verandert
 // terwijl er nog gegenereerd wordt (bv. een tegel slepen) — de simRunId-check in
 // applyGeneratedLayout zorgt dat zo'n verouderde run zijn resultaat dan ook niet meer toepast.
-const genProgressEl = document.getElementById('genProgress');
-const genProgressFillEl = document.getElementById('genProgressFill');
-const genProgressTextEl = document.getElementById('genProgressText');
 let genRunning = false;
 
-// Het "aan het genereren"-vakje over het bordvak (index.html, #genOverlay): het bord zelf is
-// dan onzichtbaar, zodat je bij het openen niet eerst een (oude) kaart ziet.
+// ---------- "Aan het genereren"-vakje (index.html, #genOverlay) ----------
+// Tijdens het genereren (én bij het openen, vóórdat er een kaart is) faadt de kaart rustig uit en
+// verschijnt in het midden een vakje in ruimtestijl: een planeet met een ring die zich vult met
+// de voortgang, en eronder hoe lang het nog duurt (telt af). Klaar → het vakje faadt uit en de
+// nieuwe kaart faadt in. De losse voortgangsbalk rechts is weg (gebruikerswens).
+// GEN_FADE_MS moet gelijk blijven aan de transitieduur van .map-board-panel/.gen-overlay.
+const GEN_FADE_MS = 900;
 const genOverlayEl = document.getElementById('genOverlay');
 const mapBoardPanelEl = document.querySelector('.map-board-panel');
-function showGenOverlay(seed){
-  if (genOverlayEl) genOverlayEl.hidden = false;
+const genArcEl = document.getElementById('genArc');
+const genEtaEl = document.getElementById('genEta');
+const GEN_ARC_LEN = 2 * Math.PI * 54;   // omtrek van de ring (r = 54 in het SVG-plaatje)
+let genEtaEnd = null, genEtaTimer = null;
+function genSleep(ms){ return new Promise(r => setTimeout(r, ms)); }
+function showGenOverlay(){
   if (mapBoardPanelEl) mapBoardPanelEl.classList.add('is-generating');
-  const s = document.getElementById('genOverlaySeed');
-  if (s) s.textContent = seed ? `seed: ${seed}` : '';
+  setGenRing(0);
+  genEtaEnd = null;
+  if (genEtaEl) genEtaEl.textContent = 'even geduld…';
+  clearInterval(genEtaTimer);
+  // aftellen per seconde op basis van de laatste schatting (updateGenProgress)
+  // het getal mag alleen dalen (de schatting schommelt per brok), en is de ring vol dan wordt
+  // er nog afgerond: "bijna klaar…" i.p.v. een "nog 1 seconde" die blijft hangen
+  let shown = Infinity;
+  genEtaTimer = setInterval(() => {
+    if (!genEtaEl || genEtaEnd === null) return;
+    if (genPct >= 100){ genEtaEl.textContent = 'bijna klaar…'; return; }
+    const left = Math.max(0, Math.ceil((genEtaEnd - performance.now()) / 1000));
+    shown = Math.min(shown, left);
+    genEtaEl.textContent = shown > 0 ? `nog ${shown} ${shown === 1 ? 'seconde' : 'seconden'}` : 'bijna klaar…';
+  }, 200);
 }
 function hideGenOverlay(){
-  if (genOverlayEl) genOverlayEl.hidden = true;
   if (mapBoardPanelEl) mapBoardPanelEl.classList.remove('is-generating');
+  clearInterval(genEtaTimer); genEtaTimer = null;
+}
+let genPct = 0;
+function setGenRing(pct){
+  genPct = pct;
+  if (genArcEl) genArcEl.style.strokeDashoffset = String(GEN_ARC_LEN * (1 - pct / 100));
 }
 function hideGenProgress(){
-  if (genProgressEl) genProgressEl.hidden = true;
   hideGenOverlay();
   genRunning = false;
   const btnShuffleEl = document.getElementById('btnShuffle');
   if (btnShuffleEl) btnShuffleEl.disabled = false;
 }
 function updateGenProgress(found, target, elapsedMs){
-  if (!genProgressEl) return;
   const pct = target ? Math.min(100, (found / target) * 100) : 0;
-  genProgressFillEl.style.width = `${pct.toFixed(1)}%`; // CSS: hier moet de punt blijven staan
-  const perCandidate = found ? elapsedMs / found : 0;
-  const etaMs = perCandidate * (target - found);
-  genProgressTextEl.innerHTML =
-    `<span><b>${found}</b> / ${target} kandidaten (${nl(pct, 0)}%)</span>` +
-    `<span>verstreken ${formatSimSeconds(elapsedMs)} · nog ongeveer ${found > 0 ? formatSimSeconds(etaMs) : '…'}</span>`;
+  setGenRing(pct);
+  if (found > 0) genEtaEnd = performance.now() + (elapsedMs / found) * (target - found);
 }
 
 async function applyGeneratedLayout(seed){
@@ -5296,10 +5321,9 @@ async function applyGeneratedLayout(seed){
   clearSimResults();
   const runId = simRunId; // clearSimResults() heeft 'm net verhoogd; deze aanroep "claimt" dat nummer
   genRunning = true;
-  showGenOverlay(seed);
+  showGenOverlay();
   const btnShuffleEl = document.getElementById('btnShuffle');
   if (btnShuffleEl) btnShuffleEl.disabled = true;
-  if (genProgressEl){ genProgressEl.hidden = false; updateGenProgress(0, 60, 0); }
 
   const t0 = performance.now();
   const generated = await constrainedShuffleAsync(seed, (found, target) => {
@@ -5307,23 +5331,25 @@ async function applyGeneratedLayout(seed){
     updateGenProgress(found, target, performance.now() - t0);
   });
   if (runId !== simRunId){ return; } // verouderd: bord is inmiddels iets anders geworden
+  setGenRing(100);
+  // de oude kaart moet helemaal uitgefaded zijn vóórdat de nieuwe erin komt
+  const waited = performance.now() - t0;
+  if (waited < GEN_FADE_MS) await genSleep(GEN_FADE_MS - waited);
+  if (runId !== simRunId){ return; }
 
   layout = generated;
-  hideGenProgress();
   selectedSlot = null; highlightTile = null;
   statSeed.textContent = seed;
   hasGeneratedLayout = true;
   if (before){ previousLayout = before; if (btnPrevLayout) btnPrevLayout.disabled = false; }
-  // Geen lange kwaliteitsmelding meer onder de knoppen (gebruikerswens: die liep over meerdere
-  // regels, maakte de kolom langer en liet alles verschuiven). De seed staat al rechtsboven in
-  // de kop; alleen als het NIET gelukt is volgt er een korte waarschuwing.
+  // Geen tekst meer onder de knoppen (gebruikerswens); alleen als het NIET gelukt is volgt er
+  // een korte waarschuwing. De seed staat in het seed-veld en rechtsboven in de kop.
   const conn = computeConnectivity();
-  if (conn.groups.length === 1 && conn.brokenCount === 0){
-    swapHint.textContent = 'Sleep een tegel over een andere om ze te verwisselen.';
-  } else {
-    swapHint.innerHTML = `<span style="color:var(--danger)">Beste poging: ${conn.brokenCount} doodlopende naad/naden — probeer een andere seed.</span>`;
-  }
+  swapHint.innerHTML = conn.groups.length === 1 && conn.brokenCount === 0
+    ? ''
+    : `<span style="color:var(--danger)">Beste poging: ${conn.brokenCount} doodlopende naad/naden — probeer een nieuwe map.</span>`;
   renderBoard();
+  hideGenProgress();   // vakje faadt uit, nieuwe kaart faadt in
 }
 
 // "Genereer nieuwe map": altijd een willekeurige nieuwe kaart (gebruikerswens — het losse
@@ -5348,8 +5374,13 @@ function snapshotLayout(){
   for (let tid = 1; tid <= 20; tid++) rot[tid] = tileRotation[tid] || 0;
   return { layout: layout.slice(), rot, seed: statSeed.textContent };
 }
-if (btnPrevLayout) btnPrevLayout.addEventListener('click', () => {
-  if (!previousLayout || genRunning) return;
+// ook hier rustig: kaart uitfaden, wisselen, nieuwe kaart infaden (zonder genereer-vakje)
+let prevSwapping = false;
+if (btnPrevLayout) btnPrevLayout.addEventListener('click', async () => {
+  if (!previousLayout || genRunning || prevSwapping) return;
+  prevSwapping = true;
+  if (mapBoardPanelEl) mapBoardPanelEl.classList.add('is-swapping');
+  await genSleep(GEN_FADE_MS);
   const current = snapshotLayout();
   clearSimResults();
   layout = previousLayout.layout.slice();
@@ -5358,8 +5389,10 @@ if (btnPrevLayout) btnPrevLayout.addEventListener('click', () => {
   seedInput.value = previousLayout.seed;
   previousLayout = current;
   selectedSlot = null; highlightTile = null;
-  swapHint.textContent = 'Sleep een tegel over een andere om ze te verwisselen.';
+  swapHint.textContent = '';
   renderBoard();
+  if (mapBoardPanelEl) mapBoardPanelEl.classList.remove('is-swapping');
+  prevSwapping = false;
 });
 
 function tryRotate(delta){
