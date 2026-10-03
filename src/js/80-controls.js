@@ -12,8 +12,23 @@ const genProgressFillEl = document.getElementById('genProgressFill');
 const genProgressTextEl = document.getElementById('genProgressText');
 let genRunning = false;
 
+// Het "aan het genereren"-vakje over het bordvak (index.html, #genOverlay): het bord zelf is
+// dan onzichtbaar, zodat je bij het openen niet eerst een (oude) kaart ziet.
+const genOverlayEl = document.getElementById('genOverlay');
+const mapBoardPanelEl = document.querySelector('.map-board-panel');
+function showGenOverlay(seed){
+  if (genOverlayEl) genOverlayEl.hidden = false;
+  if (mapBoardPanelEl) mapBoardPanelEl.classList.add('is-generating');
+  const s = document.getElementById('genOverlaySeed');
+  if (s) s.textContent = seed ? `seed: ${seed}` : '';
+}
+function hideGenOverlay(){
+  if (genOverlayEl) genOverlayEl.hidden = true;
+  if (mapBoardPanelEl) mapBoardPanelEl.classList.remove('is-generating');
+}
 function hideGenProgress(){
   if (genProgressEl) genProgressEl.hidden = true;
+  hideGenOverlay();
   genRunning = false;
   const btnShuffleEl = document.getElementById('btnShuffle'), btnDiceEl = document.getElementById('btnDice');
   if (btnShuffleEl) btnShuffleEl.disabled = false;
@@ -32,9 +47,12 @@ function updateGenProgress(found, target, elapsedMs){
 
 async function applyGeneratedLayout(seed){
   if (genRunning) return; // een dubbele klik mag geen tweede generatie tegelijk starten
+  // de huidige kaart onthouden voor "Vorige indeling" (alleen als er al een gegenereerde is)
+  const before = hasGeneratedLayout ? snapshotLayout() : null;
   clearSimResults();
   const runId = simRunId; // clearSimResults() heeft 'm net verhoogd; deze aanroep "claimt" dat nummer
   genRunning = true;
+  showGenOverlay(seed);
   const btnShuffleEl = document.getElementById('btnShuffle'), btnDiceEl = document.getElementById('btnDice');
   if (btnShuffleEl) btnShuffleEl.disabled = true;
   if (btnDiceEl) btnDiceEl.disabled = true;
@@ -51,6 +69,8 @@ async function applyGeneratedLayout(seed){
   hideGenProgress();
   selectedSlot = null; highlightTile = null;
   statSeed.textContent = seed;
+  hasGeneratedLayout = true;
+  if (before){ previousLayout = before; if (btnPrevLayout) btnPrevLayout.disabled = false; }
   // Geen lange kwaliteitsmelding meer onder de knoppen (gebruikerswens: die liep over meerdere
   // regels, maakte de kolom langer en liet alles verschuiven). De seed staat al rechtsboven in
   // de kop; alleen als het NIET gelukt is volgt er een korte waarschuwing.
@@ -68,12 +88,28 @@ document.getElementById('btnShuffle').addEventListener('click', ()=>{
   applyGeneratedLayout(seed);
 });
 
-document.getElementById('btnReset').addEventListener('click', ()=>{
+// ---------- "Vorige indeling" ----------
+// Eén stap terug: de kaart (indeling + draaiingen + seed) van vóór de laatste keer genereren.
+// Klik je nog eens, dan wissel je weer terug — zo kun je twee kaarten makkelijk vergelijken.
+// (Vervangt "Herstel alles": er is geen vaste beginkaart meer, je begint altijd vers.)
+let hasGeneratedLayout = false;
+let previousLayout = null;
+const btnPrevLayout = document.getElementById('btnPrevLayout');
+function snapshotLayout(){
+  const rot = {};
+  for (let tid = 1; tid <= 20; tid++) rot[tid] = tileRotation[tid] || 0;
+  return { layout: layout.slice(), rot, seed: statSeed.textContent };
+}
+if (btnPrevLayout) btnPrevLayout.addEventListener('click', () => {
+  if (!previousLayout || genRunning) return;
+  const current = snapshotLayout();
   clearSimResults();
-  layout = defaultLayout.slice();
-  resetRotations();
+  layout = previousLayout.layout.slice();
+  for (let tid = 1; tid <= 20; tid++) tileRotation[tid] = previousLayout.rot[tid] || 0;
+  statSeed.textContent = previousLayout.seed;
+  seedInput.value = previousLayout.seed;
+  previousLayout = current;
   selectedSlot = null; highlightTile = null;
-  statSeed.textContent = 'origineel';
   swapHint.textContent = 'Sleep een tegel over een andere om ze te verwisselen.';
   renderBoard();
 });

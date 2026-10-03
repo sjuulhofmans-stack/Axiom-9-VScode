@@ -245,6 +245,47 @@
      gelijk eindigen (gebruikerswens) */
   #tabMap > .grid-layout > .panel:first-child{display:flex; align-items:center; justify-content:center;}
   #tabMap > .grid-layout > .panel:first-child > .board-zoom-wrap{max-width:100%;}
+  /* ---------- "Aan het genereren" (showGenOverlay in 80-controls.js) ----------
+     Tijdens het genereren én bij het openen: geen bord (visibility, dus het vak houdt zijn maat),
+     alleen een vakje in ruimtestijl: een planeet met een draaiende baan en een maantje. */
+  .map-board-panel{position:relative;}
+  .map-board-panel.is-generating > .board-zoom-wrap{visibility:hidden;}
+  .gen-overlay{position:absolute; inset:0; display:flex; align-items:center; justify-content:center; z-index:3; pointer-events:none;}
+  .gen-overlay[hidden]{display:none;}
+  .gen-box{
+    display:flex; flex-direction:column; align-items:center; gap:14px; padding:30px 46px;
+    border-radius:10px; border:1px solid rgba(79,184,224,.35);
+    background:radial-gradient(ellipse at 50% 30%, rgba(79,184,224,.10), transparent 70%), rgba(5,8,14,.85);
+    box-shadow:0 0 30px rgba(79,184,224,.15), inset 0 0 22px rgba(79,184,224,.08);
+  }
+  .gen-orbit{position:relative; width:84px; height:84px;}
+  .gen-planet{
+    position:absolute; inset:28px; border-radius:50%;
+    background:radial-gradient(circle at 35% 30%, #9fdcff, #2a6a9a 55%, #0b1d33 100%);
+    box-shadow:0 0 18px rgba(79,184,224,.55);
+  }
+  .gen-ring{
+    position:absolute; inset:6px; border-radius:50%; border:1px dashed rgba(79,184,224,.45);
+    animation:genSpin 6s linear infinite reverse;
+  }
+  .gen-moon{
+    position:absolute; inset:0; border-radius:50%; animation:genSpin 1.8s linear infinite;
+  }
+  .gen-moon::before{
+    content:''; position:absolute; top:2px; left:50%; width:9px; height:9px; margin-left:-4.5px; border-radius:50%;
+    background:#ffd27a; box-shadow:0 0 10px #ffb545, 0 0 3px #fff;
+  }
+  @keyframes genSpin{to{transform:rotate(360deg);}}
+  .gen-title{
+    font-family:var(--font-mono); font-size:14px; letter-spacing:.32em; text-transform:uppercase; color:#dff4ff;
+    text-shadow:0 0 10px rgba(79,184,224,.6);
+  }
+  .gen-dots i{font-style:normal; animation:genDot 1.2s infinite;}
+  .gen-dots i:nth-child(2){animation-delay:.2s;}
+  .gen-dots i:nth-child(3){animation-delay:.4s;}
+  @keyframes genDot{0%,100%{opacity:.15;} 40%{opacity:1;}}
+  .gen-sub{font-family:var(--font-mono); font-size:11px; letter-spacing:.12em; color:var(--text-dim);}
+  .gen-sub:empty{display:none;}
   #tabMap .right-col > .panel:last-child{flex:1 1 auto;}
   /* vaste hoogte voor "Geselecteerde tegel": een hoektegel heeft een extra regel ("Hoektegel —
      vast") en duwde alles eronder dan omlaag (gebruikersmelding) */
@@ -2954,7 +2995,7 @@
 
     <div class="status">
       <div><span class="dot"></span>SYSTEEM ACTIEF</div>
-      <div>SEED: <b id="statSeed" title="De seed waarmee de huidige indeling is gegenereerd">origineel</b></div>
+      <div>SEED: <b id="statSeed" title="De seed waarmee de huidige indeling is gegenereerd">…</b></div>
     </div>
     </div>
   </header>
@@ -2963,7 +3004,17 @@
 
   <div class="grid-layout">
 
-    <div class="panel">
+    <div class="panel map-board-panel is-generating">
+      <!-- tijdens het genereren (en bij het openen, vóórdat er een kaart is): geen bord, alleen
+           een vakje in ruimtestijl — zie applyGeneratedLayout in 80-controls.js. Staat bij het
+           laden al aan, zodat je nooit eerst een oude kaart ziet. -->
+      <div class="gen-overlay" id="genOverlay">
+        <div class="gen-box">
+          <div class="gen-orbit" aria-hidden="true"><span class="gen-planet"></span><span class="gen-ring"></span><span class="gen-moon"></span></div>
+          <b class="gen-title">Aan het genereren<span class="gen-dots"><i>.</i><i>.</i><i>.</i></span></b>
+          <span class="gen-sub" id="genOverlaySeed"></span>
+        </div>
+      </div>
       <div class="board-zoom-wrap">
         <div class="board-tools">
           <button type="button" class="small ghost board-zoom">Vergroten</button>
@@ -3000,7 +3051,9 @@
         </div>
         <div class="btn-row">
           <button id="btnShuffle" class="primary">Genereer indeling</button>
-          <button id="btnReset" class="ghost">Herstel alles</button>
+          <!-- haalt de indeling van vóór de laatste keer genereren terug (80-controls.js);
+               "Herstel alles" is weg: je begint nu altijd met een vers gegenereerde kaart -->
+          <button id="btnPrevLayout" class="ghost" disabled title="Zet de kaart van vóór de laatste keer genereren terug">Vorige indeling</button>
         </div>
         <div id="layoutCode" hidden></div>
 
@@ -5203,8 +5256,23 @@ const genProgressFillEl = document.getElementById('genProgressFill');
 const genProgressTextEl = document.getElementById('genProgressText');
 let genRunning = false;
 
+// Het "aan het genereren"-vakje over het bordvak (index.html, #genOverlay): het bord zelf is
+// dan onzichtbaar, zodat je bij het openen niet eerst een (oude) kaart ziet.
+const genOverlayEl = document.getElementById('genOverlay');
+const mapBoardPanelEl = document.querySelector('.map-board-panel');
+function showGenOverlay(seed){
+  if (genOverlayEl) genOverlayEl.hidden = false;
+  if (mapBoardPanelEl) mapBoardPanelEl.classList.add('is-generating');
+  const s = document.getElementById('genOverlaySeed');
+  if (s) s.textContent = seed ? `seed: ${seed}` : '';
+}
+function hideGenOverlay(){
+  if (genOverlayEl) genOverlayEl.hidden = true;
+  if (mapBoardPanelEl) mapBoardPanelEl.classList.remove('is-generating');
+}
 function hideGenProgress(){
   if (genProgressEl) genProgressEl.hidden = true;
+  hideGenOverlay();
   genRunning = false;
   const btnShuffleEl = document.getElementById('btnShuffle'), btnDiceEl = document.getElementById('btnDice');
   if (btnShuffleEl) btnShuffleEl.disabled = false;
@@ -5223,9 +5291,12 @@ function updateGenProgress(found, target, elapsedMs){
 
 async function applyGeneratedLayout(seed){
   if (genRunning) return; // een dubbele klik mag geen tweede generatie tegelijk starten
+  // de huidige kaart onthouden voor "Vorige indeling" (alleen als er al een gegenereerde is)
+  const before = hasGeneratedLayout ? snapshotLayout() : null;
   clearSimResults();
   const runId = simRunId; // clearSimResults() heeft 'm net verhoogd; deze aanroep "claimt" dat nummer
   genRunning = true;
+  showGenOverlay(seed);
   const btnShuffleEl = document.getElementById('btnShuffle'), btnDiceEl = document.getElementById('btnDice');
   if (btnShuffleEl) btnShuffleEl.disabled = true;
   if (btnDiceEl) btnDiceEl.disabled = true;
@@ -5242,6 +5313,8 @@ async function applyGeneratedLayout(seed){
   hideGenProgress();
   selectedSlot = null; highlightTile = null;
   statSeed.textContent = seed;
+  hasGeneratedLayout = true;
+  if (before){ previousLayout = before; if (btnPrevLayout) btnPrevLayout.disabled = false; }
   // Geen lange kwaliteitsmelding meer onder de knoppen (gebruikerswens: die liep over meerdere
   // regels, maakte de kolom langer en liet alles verschuiven). De seed staat al rechtsboven in
   // de kop; alleen als het NIET gelukt is volgt er een korte waarschuwing.
@@ -5259,12 +5332,28 @@ document.getElementById('btnShuffle').addEventListener('click', ()=>{
   applyGeneratedLayout(seed);
 });
 
-document.getElementById('btnReset').addEventListener('click', ()=>{
+// ---------- "Vorige indeling" ----------
+// Eén stap terug: de kaart (indeling + draaiingen + seed) van vóór de laatste keer genereren.
+// Klik je nog eens, dan wissel je weer terug — zo kun je twee kaarten makkelijk vergelijken.
+// (Vervangt "Herstel alles": er is geen vaste beginkaart meer, je begint altijd vers.)
+let hasGeneratedLayout = false;
+let previousLayout = null;
+const btnPrevLayout = document.getElementById('btnPrevLayout');
+function snapshotLayout(){
+  const rot = {};
+  for (let tid = 1; tid <= 20; tid++) rot[tid] = tileRotation[tid] || 0;
+  return { layout: layout.slice(), rot, seed: statSeed.textContent };
+}
+if (btnPrevLayout) btnPrevLayout.addEventListener('click', () => {
+  if (!previousLayout || genRunning) return;
+  const current = snapshotLayout();
   clearSimResults();
-  layout = defaultLayout.slice();
-  resetRotations();
+  layout = previousLayout.layout.slice();
+  for (let tid = 1; tid <= 20; tid++) tileRotation[tid] = previousLayout.rot[tid] || 0;
+  statSeed.textContent = previousLayout.seed;
+  seedInput.value = previousLayout.seed;
+  previousLayout = current;
   selectedSlot = null; highlightTile = null;
-  statSeed.textContent = 'origineel';
   swapHint.textContent = 'Sleep een tegel over een andere om ze te verwisselen.';
   renderBoard();
 });

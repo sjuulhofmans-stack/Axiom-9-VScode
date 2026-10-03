@@ -59,7 +59,7 @@
 
     <div class="status">
       <div><span class="dot"></span>SYSTEEM ACTIEF</div>
-      <div>SEED: <b id="statSeed" title="De seed waarmee de huidige indeling is gegenereerd">origineel</b></div>
+      <div>SEED: <b id="statSeed" title="De seed waarmee de huidige indeling is gegenereerd">…</b></div>
     </div>
     </div>
   </header>
@@ -68,7 +68,17 @@
 
   <div class="grid-layout">
 
-    <div class="panel">
+    <div class="panel map-board-panel is-generating">
+      <!-- tijdens het genereren (en bij het openen, vóórdat er een kaart is): geen bord, alleen
+           een vakje in ruimtestijl — zie applyGeneratedLayout in 80-controls.js. Staat bij het
+           laden al aan, zodat je nooit eerst een oude kaart ziet. -->
+      <div class="gen-overlay" id="genOverlay">
+        <div class="gen-box">
+          <div class="gen-orbit" aria-hidden="true"><span class="gen-planet"></span><span class="gen-ring"></span><span class="gen-moon"></span></div>
+          <b class="gen-title">Aan het genereren<span class="gen-dots"><i>.</i><i>.</i><i>.</i></span></b>
+          <span class="gen-sub" id="genOverlaySeed"></span>
+        </div>
+      </div>
       <div class="board-zoom-wrap">
         <div class="board-tools">
           <button type="button" class="small ghost board-zoom">Vergroten</button>
@@ -105,7 +115,9 @@
         </div>
         <div class="btn-row">
           <button id="btnShuffle" class="primary">Genereer indeling</button>
-          <button id="btnReset" class="ghost">Herstel alles</button>
+          <!-- haalt de indeling van vóór de laatste keer genereren terug (80-controls.js);
+               "Herstel alles" is weg: je begint nu altijd met een vers gegenereerde kaart -->
+          <button id="btnPrevLayout" class="ghost" disabled title="Zet de kaart van vóór de laatste keer genereren terug">Vorige indeling</button>
         </div>
         <div id="layoutCode" hidden></div>
 

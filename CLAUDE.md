@@ -37,7 +37,8 @@ src/
     50-interaction.js slepen om tegels te verwisselen, selecteren
     60-palette.js     het register onderaan (twee tabellen: Kamers / Gangen)
     70-generator.js   backtracking-solver die een geldige indeling zoekt
-    80-controls.js    knoppen: seed, dobbelsteen, herstel, draaien, legenda
+    80-controls.js    knoppen: seed, dobbelsteen, vorige indeling, draaien, legenda; bij het openen
+                      meteen een willekeurige kaart (met "Aan het genereren"-vakje i.p.v. het bord)
     90-editor.js      tegel-editor (vakjes aan/uit klikken)
     95-simulate.js    batch-spelsimulatie (2xD6, geen U-turn, bezette vakjes blokkeren)
     96-walk.js        tabblad "Spelen": modus Automatisch, automatische simulatie van 1-4 spelers
