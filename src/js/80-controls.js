@@ -96,15 +96,27 @@ function tryRotate(delta){
 document.getElementById('btnRotL').addEventListener('click', ()=> tryRotate(270));
 document.getElementById('btnRotR').addEventListener('click', ()=> tryRotate(90));
 
-document.getElementById('btnDice').addEventListener('click', ()=>{
+function randomSeedName(){
   const adjectives = ['zwart','stil','koud','verweerd','duister','verloren','laatst','ijl'];
   const nouns = ['nova','komeet','ruim','koers','sector','baan','romp','sein'];
   const rand = () => Math.floor(Math.random()*1000);
-  const seed = `${adjectives[rand()%adjectives.length]}-${nouns[rand()%nouns.length]}-${rand()%100}`;
+  return `${adjectives[rand()%adjectives.length]}-${nouns[rand()%nouns.length]}-${rand()%100}`;
+}
+document.getElementById('btnDice').addEventListener('click', ()=>{
+  const seed = randomSeedName();
   seedInput.value = seed;
   // direct genereren, geen extra klik op "Genereer indeling" nodig
   applyGeneratedLayout(seed);
 });
+// Bij elke keer openen (of verversen) van het document meteen een nieuwe, willekeurige indeling
+// i.p.v. telkens dezelfde beginkaart (gebruikerswens) — precies wat de dobbelsteenknop doet.
+// "Herstel alles" brengt de originele indeling nog steeds terug. setTimeout: pas nadat het hele
+// script geladen is, want applyGeneratedLayout gebruikt dingen uit latere bestanden (95-simulate).
+setTimeout(() => {
+  const seed = randomSeedName();
+  seedInput.value = seed;
+  applyGeneratedLayout(seed);
+}, 0);
 
 // ---------- tabbladen ----------
 const tabButtons = document.querySelectorAll('.tab-btn');
