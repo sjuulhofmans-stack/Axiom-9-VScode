@@ -908,6 +908,14 @@
     .walk-board-col{max-width:none;}
     .walk-status-col, .walk-side-stack{max-height:calc(var(--wcell) * 32 + 71px);}
     .walk-side-stack.is-opening{height:calc(var(--wcell) * 32 + 71px);}
+    /* Lobby even hoog als het speelscherm (gebruikersmelding: "de kolom van de lobby is niet zo
+       groot als die van het potje"). Speelscherm = bordrij (--wcell × 32 + 71px) + spelersbalk,
+       tussenruimte en paneelrand = 89px, gemeten. Zelfde --wcell als .walk-board-row hierboven,
+       hier op #walkPanel zodat ook de lobby ermee kan rekenen. */
+    #walkPanel{
+      --wcell: clamp(13px, min(calc((100vw - 800px) / 40), calc((100vh - 300px) / 32)), 20px);
+      min-height:calc(var(--wcell) * 32 + 160px);
+    }
   }
   /* was 1150px — onder de 1360px zou het bord hierboven kleiner dan 14px per vakje worden,
      dan liever alles onder elkaar met een bord op volle maat */
