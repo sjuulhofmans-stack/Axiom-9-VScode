@@ -246,10 +246,27 @@
   #tabMap > .grid-layout > .panel:first-child{display:flex; align-items:center; justify-content:center;}
   #tabMap > .grid-layout > .panel:first-child > .board-zoom-wrap{max-width:100%;}
   #tabMap .right-col > .panel:last-child{flex:1 1 auto;}
+  /* vaste hoogte voor "Geselecteerde tegel": een hoektegel heeft een extra regel ("Hoektegel —
+     vast") en duwde alles eronder dan omlaag (gebruikersmelding) */
+  #selectedBox{min-height:68px; box-sizing:border-box;}
+  /* rechterkolom een stuk breder (was vast 290px), groeit mee met het scherm */
+  @media (min-width: 881px){
+    #tabMap > .grid-layout{grid-template-columns:minmax(0,1fr) clamp(300px, 22vw, 420px);}
+  }
   /* de voortgangsbalk van het genereren houdt zijn plek altijd vrij (onzichtbaar als hij niet
      loopt), anders schoof de kolom tijdens het genereren 73px op */
   #genProgress[hidden]{display:flex; visibility:hidden;}
-  #genProgress{min-height:80px; margin-bottom:0;}
+  #genProgress{min-height:64px; margin:0;}
+  #genProgressText{min-height:2.9em; align-items:flex-start;}
+  /* legenda in zijn eigen vak iets compacter, zodat de rechterkolom niet langer wordt dan het
+     bordvak (en dat dus even hoog blijft als de vakken van Spelen/Simulatie) */
+  @media (min-width: 881px){
+    #tabMap .legend{gap:3px; margin-top:0;}
+    #tabMap .legend-row{padding:2px 4px;}
+  }
+  .gen-slot{display:grid; height:76px; overflow:hidden;}
+  .gen-slot > *{grid-area:1 / 1; align-self:start; margin:0;}
+  .gen-slot:has(> #genProgress:not([hidden])) > #swapHint{visibility:hidden;}
   @media (max-width: 880px){ .grid-layout{grid-template-columns:1fr;} }
 
   .panel{
@@ -2979,15 +2996,24 @@
           <button id="btnShuffle" class="primary">Genereer indeling</button>
           <button id="btnReset" class="ghost">Herstel alles</button>
         </div>
-        <div id="genProgress" class="sim-progress" hidden>
-          <div class="sim-progress-bar"><div class="sim-progress-fill" id="genProgressFill"></div></div>
-          <div class="sim-progress-text" id="genProgressText"></div>
-        </div>
-
         <div id="layoutCode" hidden></div>
 
-        <p class="hint" id="swapHint">Sleep een tegel over een andere om ze te verwisselen.</p>
+        <!-- voortgangsbalk en hint delen één plek: tijdens het genereren de balk, anders de
+             hint — zo verschuift er niets en kost het geen extra hoogte -->
+        <div class="gen-slot">
+          <div id="genProgress" class="sim-progress" hidden>
+            <div class="sim-progress-bar"><div class="sim-progress-fill" id="genProgressFill"></div></div>
+            <div class="sim-progress-text" id="genProgressText"></div>
+          </div>
+          <p class="hint" id="swapHint">Sleep een tegel over een andere om ze te verwisselen.</p>
+        </div>
+      </div>
+    </div>
 
+    <!-- legenda als eigen vak onder Besturing (gebruikerswens) -->
+    <div class="panel">
+      <h2>Legenda</h2>
+      <div class="controls">
         <div class="legend" id="legend">
           <div class="legend-row" data-key="walk"><span class="swatch" style="background:var(--walk)"></span>Loopbaar vakje</div>
           <div class="legend-row" data-key="quest"><span class="swatch" style="background:var(--quest)"></span>Opdrachtvakje (2.x)</div>

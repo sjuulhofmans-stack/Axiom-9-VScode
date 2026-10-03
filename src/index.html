@@ -107,15 +107,24 @@
           <button id="btnShuffle" class="primary">Genereer indeling</button>
           <button id="btnReset" class="ghost">Herstel alles</button>
         </div>
-        <div id="genProgress" class="sim-progress" hidden>
-          <div class="sim-progress-bar"><div class="sim-progress-fill" id="genProgressFill"></div></div>
-          <div class="sim-progress-text" id="genProgressText"></div>
-        </div>
-
         <div id="layoutCode" hidden></div>
 
-        <p class="hint" id="swapHint">Sleep een tegel over een andere om ze te verwisselen.</p>
+        <!-- voortgangsbalk en hint delen één plek: tijdens het genereren de balk, anders de
+             hint — zo verschuift er niets en kost het geen extra hoogte -->
+        <div class="gen-slot">
+          <div id="genProgress" class="sim-progress" hidden>
+            <div class="sim-progress-bar"><div class="sim-progress-fill" id="genProgressFill"></div></div>
+            <div class="sim-progress-text" id="genProgressText"></div>
+          </div>
+          <p class="hint" id="swapHint">Sleep een tegel over een andere om ze te verwisselen.</p>
+        </div>
+      </div>
+    </div>
 
+    <!-- legenda als eigen vak onder Besturing (gebruikerswens) -->
+    <div class="panel">
+      <h2>Legenda</h2>
+      <div class="controls">
         <div class="legend" id="legend">
           <div class="legend-row" data-key="walk"><span class="swatch" style="background:var(--walk)"></span>Loopbaar vakje</div>
           <div class="legend-row" data-key="quest"><span class="swatch" style="background:var(--quest)"></span>Opdrachtvakje (2.x)</div>
