@@ -907,7 +907,8 @@
        hier op #walkPanel zodat ook de lobby ermee kan rekenen. */
     /* het simulatievak net zo groot (gebruikerswens: "allebei anders"); met uitslag erin mag
        het gewoon langer worden */
-    #walkPanel, #tabSimulate > .panel{
+    /* en het bordvak (eerste kolom) van "Speelbord genereren" ook (gebruikerswens) */
+    #walkPanel, #tabSimulate > .panel, #tabMap > .grid-layout > .panel:first-child{
       --wcell: clamp(13px, min(calc((100vw - 800px) / 40), calc((100vh - 300px) / 32)), 20px);
       min-height:calc(var(--wcell) * 32 + 160px);
     }
