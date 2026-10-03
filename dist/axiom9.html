@@ -8966,7 +8966,7 @@ if (walkEnergyModeEl){
 // Gebruikerswens: na "Start spel" faadt de lobby uit naar een zwart scherm met sterren, er wordt
 // afgeteld 3-2-1-START met bij elke tel een donkere dreun, daarna een hyperjump door de sterren
 // die eindigt in een implosie zoals een zwart gat — en dan pas start het spel. Kort gehouden
-// (±4 s). Klik of Esc slaat hem over. Aan/uit via het vinkje "Startanimatie" in de lobby
+// (±5,5 s). Klik of Esc slaat hem over. Aan/uit via het vinkje "Startanimatie" in de lobby
 // (#walkIntroToggle), onthouden in localStorage (puur een gemak per browser).
 // Wordt aangeroepen vanuit walkTryStart() in 96-walk.js. Multiplayer gebruikt hem bewust niet:
 // daar loopt het potje bij iedereen tegelijk door, en een gast die nog naar sterren kijkt zou
@@ -8976,9 +8976,11 @@ const INTRO_T = {          // tijdlijn in ms vanaf de start van de animatie
   fadeIn: 320,             // lobby → zwart
   count: [320, 1020, 1720],// 3, 2, 1
   go: 2420,                // START
+  // hyperjump en zwart gat iets ruimer (gebruikerswens: "gaat iets te snel"): sprong 1,3 s
+  // (was 0,75 s), implosie 1,2 s (was 0,6 s)
   jump: 2900,              // hyperjump begint (START vervaagt)
-  implode: 3650,           // zwart gat trekt alles naar binnen
-  end: 4250,               // klaar: spel start, overlay faadt weg
+  implode: 4200,           // zwart gat trekt alles naar binnen
+  end: 5400,               // klaar: spel start, overlay faadt weg
   fadeOut: 380,
 };
 
@@ -9130,7 +9132,7 @@ function playStartIntro(onDone){
     // snelheid: rustig drijven → hyperjump (steeds sneller) → implosie
     const jumpP = ease((t - INTRO_T.jump) / (INTRO_T.implode - INTRO_T.jump));
     const impP = Math.max(0, Math.min(1, (t - INTRO_T.implode) / (INTRO_T.end - INTRO_T.implode)));
-    const speed = 0.0025 + jumpP * jumpP * 0.06;
+    const speed = 0.0025 + jumpP * jumpP * 0.042;   // topsnelheid iets lager: rustiger sprong
 
     // achtergrond met een beetje nagloei, zodat strepen ontstaan tijdens de sprong
     ctx.fillStyle = `rgba(0,0,0,${impP > 0 ? 0.35 : 0.55 - jumpP * 0.35})`;
