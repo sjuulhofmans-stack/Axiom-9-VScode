@@ -171,7 +171,8 @@ aangeroepen (functiedeclaraties worden gehoist, `const`/`let` niet).
 
 Na een wijziging altijd `python build.py` en dan `dist/axiom9.html` openen.
 Check minimaal:
-1. Dobbelsteenknop → nieuwe indeling, seed rechtsboven in de kop; onder de knoppen
+1. "Genereer nieuwe map" → willekeurige nieuwe kaart (geen dobbelsteentje meer; het
+   seed-veld is alleen-lezen en toont de huidige seed), seed ook rechtsboven; onder de knoppen
    blijft gewoon "Sleep een tegel…" staan (de lange kwaliteitsmelding is bewust weg).
    Alleen bij een mislukte indeling verschijnt een korte rode waarschuwing. Het bord
    staat gecentreerd in zijn vak en niets verschuift tijdens het genereren.

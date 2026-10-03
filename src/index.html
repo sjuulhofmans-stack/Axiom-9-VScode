@@ -109,12 +109,13 @@
         <div class="field">
           <label for="seedInput">Seed</label>
           <div class="seed-row">
-            <input type="text" id="seedInput" placeholder="bijv. terra-nova-07" value="axiom-9">
-            <button id="btnDice" class="small" title="Willekeurige seed" aria-label="Willekeurige seed">🎲</button>
+            <!-- alleen ter info: de seed van de kaart die nu op het bord ligt. "Genereer nieuwe
+                 map" kiest zelf altijd een willekeurige seed (geen dobbelsteentje meer) -->
+            <input type="text" id="seedInput" value="…" readonly title="De seed van de kaart die nu op het bord ligt">
           </div>
         </div>
         <div class="btn-row">
-          <button id="btnShuffle" class="primary">Genereer indeling</button>
+          <button id="btnShuffle" class="primary">Genereer nieuwe map</button>
           <!-- haalt de indeling van vóór de laatste keer genereren terug (80-controls.js);
                "Herstel alles" is weg: je begint nu altijd met een vers gegenereerde kaart -->
           <button id="btnPrevLayout" class="ghost" disabled title="Zet de kaart van vóór de laatste keer genereren terug">Vorige indeling</button>

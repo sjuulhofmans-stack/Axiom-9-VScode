@@ -30,9 +30,8 @@ function hideGenProgress(){
   if (genProgressEl) genProgressEl.hidden = true;
   hideGenOverlay();
   genRunning = false;
-  const btnShuffleEl = document.getElementById('btnShuffle'), btnDiceEl = document.getElementById('btnDice');
+  const btnShuffleEl = document.getElementById('btnShuffle');
   if (btnShuffleEl) btnShuffleEl.disabled = false;
-  if (btnDiceEl) btnDiceEl.disabled = false;
 }
 function updateGenProgress(found, target, elapsedMs){
   if (!genProgressEl) return;
@@ -53,9 +52,8 @@ async function applyGeneratedLayout(seed){
   const runId = simRunId; // clearSimResults() heeft 'm net verhoogd; deze aanroep "claimt" dat nummer
   genRunning = true;
   showGenOverlay(seed);
-  const btnShuffleEl = document.getElementById('btnShuffle'), btnDiceEl = document.getElementById('btnDice');
+  const btnShuffleEl = document.getElementById('btnShuffle');
   if (btnShuffleEl) btnShuffleEl.disabled = true;
-  if (btnDiceEl) btnDiceEl.disabled = true;
   if (genProgressEl){ genProgressEl.hidden = false; updateGenProgress(0, 60, 0); }
 
   const t0 = performance.now();
@@ -83,10 +81,15 @@ async function applyGeneratedLayout(seed){
   renderBoard();
 }
 
-document.getElementById('btnShuffle').addEventListener('click', ()=>{
-  const seed = seedInput.value.trim() || 'axiom-9';
+// "Genereer nieuwe map": altijd een willekeurige nieuwe kaart (gebruikerswens — het losse
+// dobbelsteentje ernaast is weg). Het seed-veld toont alleen nog welke seed er nu ligt.
+function generateRandomMap(){
+  if (genRunning) return;
+  const seed = randomSeedName();
+  seedInput.value = seed;
   applyGeneratedLayout(seed);
-});
+}
+document.getElementById('btnShuffle').addEventListener('click', generateRandomMap);
 
 // ---------- "Vorige indeling" ----------
 // Eén stap terug: de kaart (indeling + draaiingen + seed) van vóór de laatste keer genereren.
@@ -138,21 +141,11 @@ function randomSeedName(){
   const rand = () => Math.floor(Math.random()*1000);
   return `${adjectives[rand()%adjectives.length]}-${nouns[rand()%nouns.length]}-${rand()%100}`;
 }
-document.getElementById('btnDice').addEventListener('click', ()=>{
-  const seed = randomSeedName();
-  seedInput.value = seed;
-  // direct genereren, geen extra klik op "Genereer indeling" nodig
-  applyGeneratedLayout(seed);
-});
-// Bij elke keer openen (of verversen) van het document meteen een nieuwe, willekeurige indeling
-// i.p.v. telkens dezelfde beginkaart (gebruikerswens) — precies wat de dobbelsteenknop doet.
-// "Herstel alles" brengt de originele indeling nog steeds terug. setTimeout: pas nadat het hele
-// script geladen is, want applyGeneratedLayout gebruikt dingen uit latere bestanden (95-simulate).
-setTimeout(() => {
-  const seed = randomSeedName();
-  seedInput.value = seed;
-  applyGeneratedLayout(seed);
-}, 0);
+// Bij elke keer openen (of verversen) van het document meteen een nieuwe, willekeurige kaart
+// i.p.v. telkens dezelfde beginkaart (gebruikerswens) — precies wat "Genereer nieuwe map" doet.
+// setTimeout: pas nadat het hele script geladen is, want applyGeneratedLayout gebruikt dingen uit
+// latere bestanden (95-simulate).
+setTimeout(generateRandomMap, 0);
 
 // ---------- tabbladen ----------
 const tabButtons = document.querySelectorAll('.tab-btn');
