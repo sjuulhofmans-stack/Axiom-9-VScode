@@ -45,6 +45,10 @@
     <div class="header-right">
     <div class="tab-bar-actions">
       <button type="button" id="btnWalkSoloReset" class="ghost tab-bar-action" disabled hidden>Nieuw potje</button>
+      <!-- "Verlaat potje"/"Terug naar lobby" (Multiplayer, zie mpEnterPlayView/mpExitPlayView in
+           99-multiplayer.js) — stond in het dobbelvak, nu hier rechtsboven zodat de zijkolom
+           ruimte houdt voor de chat ernaast; altijd bereikbaar, ook buiten je eigen beurt -->
+      <button type="button" id="btnMpLeaveGame" class="ghost tab-bar-action" hidden>Verlaat potje</button>
       <!-- tempo tijdens het lopen (Automatisch) — gekoppeld aan #walkSpeed in de lobby, zie 96-walk.js -->
       <label class="tab-bar-tempo" id="walkSpeedPlayWrap" hidden>Tempo
         <input type="range" id="walkSpeedPlay" min="0" max="4" step="1" value="2" aria-label="Tempo">
@@ -503,12 +507,6 @@
                 <button id="btnWalkSoloRoll" class="primary" hidden>🎲 Gooi de dobbelstenen</button>
                 <button id="btnWalkSoloSkip" class="primary" hidden>Dobbelen</button>
               </div>
-              <!-- alleen zichtbaar tijdens een lopend multiplayer-potje (zie mpEnterPlayView/
-                   mpExitPlayView in 99-multiplayer.js) — staat BUITEN walkSoloActions, dat elke
-                   broadcast wordt overschreven, en dus ook buiten je eigen beurt bereikbaar is. -->
-              <div class="btn-row walk-mp-leave-row">
-                <button type="button" id="btnMpLeaveGame" class="small ghost" hidden>Verlaat potje</button>
-              </div>
             </div>
 
             <!-- "of": je kunt dobbelen, óf eerst een energie-actie inzetten. Zichtbaar zolang de
@@ -551,19 +549,21 @@
                  styles.css); soloRenderCardActionsPanel in 97-solo.js zet 'm ook pulserend
                  zodra je hier echt iets moet kiezen. -->
             <div class="walk-panel-box walk-card-actions" id="walkCardActions"></div>
+          </div>
 
-            <!-- alleen zichtbaar tijdens een lopend multiplayer-potje (zie mpEnterPlayView/
-                 mpExitPlayView in 99-multiplayer.js) — dezelfde berichten als op het
-                 lobby-tabblad (#mpChatPanel), gewoon een tweede weergave van mpChatMessages. -->
-            <div class="panel mp-chat-panel" id="mpChatPanelGame" hidden>
-              <h2>Chat</h2>
-              <div id="mpChatLogGame" class="mp-chat-log" role="log" aria-live="polite"></div>
-              <form id="mpChatFormGame" class="mp-chat-form" autocomplete="off">
-                <input type="text" id="mpChatInputGame" maxlength="240" placeholder="Typ een bericht…" aria-label="Chatbericht">
-                <button type="submit" class="small primary">Stuur</button>
-              </form>
-              <p class="hint">Typ alleen een cijfer (bv. <b>7</b>) voor een taunt.</p>
-            </div>
+          <!-- Eigen (4e) kolom rechts van de zijkolom — stond eerst ín de zijkolom en drukte daar
+               dobbelen/energie/kaarten weg (gebruikersmelding: "nu kun je niet spelen").
+               Alleen zichtbaar tijdens een lopend multiplayer-potje (zie mpEnterPlayView/
+               mpExitPlayView in 99-multiplayer.js) — dezelfde berichten als op het
+               lobby-tabblad (#mpChatPanel), gewoon een tweede weergave van mpChatMessages. -->
+          <div class="panel mp-chat-panel walk-chat-col" id="mpChatPanelGame" hidden>
+            <h2>Chat</h2>
+            <div id="mpChatLogGame" class="mp-chat-log" role="log" aria-live="polite"></div>
+            <form id="mpChatFormGame" class="mp-chat-form" autocomplete="off">
+              <input type="text" id="mpChatInputGame" maxlength="240" placeholder="Typ een bericht…" aria-label="Chatbericht">
+              <button type="submit" class="small primary">Stuur</button>
+            </form>
+            <p class="hint">Typ alleen een cijfer (bv. <b>7</b>) voor een taunt.</p>
           </div>
           </div>
           </div>

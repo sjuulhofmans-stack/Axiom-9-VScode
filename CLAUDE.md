@@ -197,7 +197,9 @@ Check minimaal:
     smalle kolomstijl). Check: "Spel hosten" geeft een kamercode + een
     spelerskaartje in dezelfde 2-koloms stijl als de Zelf-spelen-opzet, chat
     staat eronder (niet meer ernaast). Laat een tweede speler meedoen, start
-    een potje, en klik daarna (als host én als gast) op "Verlaat potje" —
+    een potje (de chat staat dan als eigen 4e kolom rechts, de zijkolom met
+    dobbelen/energie/kaarten blijft volledig zichtbaar; "Verlaat potje" staat
+    rechtsboven in de kop), en klik daarna (als host én als gast) op "Verlaat potje" —
     dat moet terugkeren naar déze multiplayer-lobby (kamercode/spelers nog
     intact), niet naar de modus Automatisch. Speel ook een potje uit: host én
     gast krijgen het winscherm met klassement, en "Terug naar lobby" (dezelfde

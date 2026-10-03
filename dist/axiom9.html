@@ -898,6 +898,9 @@
     font-family:var(--font-mono); font-size:15px; font-weight:700; color:var(--text);
   }
   .walk-rank-head .walk-rank-score{justify-content:flex-end; text-align:right;}
+  /* chat tijdens een multiplayer-potje: eigen kolom rechts van de zijkolom */
+  .walk-chat-col{grid-column:4; grid-row:1; min-width:0; min-height:0; margin:0; padding:14px;}
+  .walk-chat-col .mp-chat-log{max-height:none;}
   .walk-side-stack{
     grid-column:3;
     display:flex; flex-direction:column; gap:10px; min-width:0;
@@ -984,6 +987,22 @@
     .walk-lobby-col .walk-mode-toggle{margin:var(--lobby-space) 0 0;}
     .walk-board-col{max-width:none;}
     .walk-status-col, .walk-side-stack{max-height:calc(var(--wcell) * 32 + 71px);}
+    /* Multiplayer: de chat als 4e kolom rechts (zie #mpChatPanelGame in index.html). Het bord
+       krimpt daarvoor wat mee (±270px minder ruimte in de breedte), en het vak eromheen rekent
+       met dezelfde kleinere --wcell. */
+    .walk-board-row:has(> #mpChatPanelGame:not([hidden])),
+    #walkPanel:has(#mpChatPanelGame:not([hidden])){
+      --wcell: clamp(11px, min(calc((100vw - 990px) / 40), calc((100vh - 300px) / 32)), 20px);
+    }
+    /* zijkolom net zo breed als bij Zelf spelen (min. 300px): smaller liet de uitleg van de
+       energie-acties over twee regels lopen en paste het energievak niet meer */
+    .walk-board-row:has(> #mpChatPanelGame:not([hidden])){
+      grid-template-columns: minmax(215px,1fr) auto minmax(300px,1.2fr) minmax(185px,1fr);
+    }
+    /* op een laptop is het (kleinere) bord lager dan dobbelen + energie samen: dan liever een
+       paar px scrollen dan dat de knoppen onderaan wegvallen */
+    .walk-board-row:has(> #mpChatPanelGame:not([hidden])) > .walk-side-stack{max-height:none;}
+    .walk-chat-col{height:calc(var(--wcell) * 32 + 71px);}
     .walk-side-stack.is-opening{height:calc(var(--wcell) * 32 + 71px);}
     /* Lobby even hoog als het speelscherm (gebruikersmelding: "de kolom van de lobby is niet zo
        groot als die van het potje"). Speelscherm = bordrij (--wcell × 32 + 71px) + spelersbalk,
@@ -1009,6 +1028,7 @@
     .walk-side-stack{order:2; max-height:none;}
     .walk-side-stack.is-opening{height:auto;}
     .walk-status-col{order:3; max-height:none;}
+    .walk-chat-col{grid-column:1; grid-row:auto; order:4; height:420px;}
     /* hier staat het speelscherm onder elkaar en mag de pagina scrollen: de lobbykolom krijgt
        een vaste minimale hoogte waar Zelf spelen (de meeste inhoud) in past, zodat "Start spel"
        ook hier in elke modus op dezelfde plek staat */
@@ -2827,6 +2847,10 @@
     <div class="header-right">
     <div class="tab-bar-actions">
       <button type="button" id="btnWalkSoloReset" class="ghost tab-bar-action" disabled hidden>Nieuw potje</button>
+      <!-- "Verlaat potje"/"Terug naar lobby" (Multiplayer, zie mpEnterPlayView/mpExitPlayView in
+           99-multiplayer.js) — stond in het dobbelvak, nu hier rechtsboven zodat de zijkolom
+           ruimte houdt voor de chat ernaast; altijd bereikbaar, ook buiten je eigen beurt -->
+      <button type="button" id="btnMpLeaveGame" class="ghost tab-bar-action" hidden>Verlaat potje</button>
       <!-- tempo tijdens het lopen (Automatisch) — gekoppeld aan #walkSpeed in de lobby, zie 96-walk.js -->
       <label class="tab-bar-tempo" id="walkSpeedPlayWrap" hidden>Tempo
         <input type="range" id="walkSpeedPlay" min="0" max="4" step="1" value="2" aria-label="Tempo">
@@ -3285,12 +3309,6 @@
                 <button id="btnWalkSoloRoll" class="primary" hidden>🎲 Gooi de dobbelstenen</button>
                 <button id="btnWalkSoloSkip" class="primary" hidden>Dobbelen</button>
               </div>
-              <!-- alleen zichtbaar tijdens een lopend multiplayer-potje (zie mpEnterPlayView/
-                   mpExitPlayView in 99-multiplayer.js) — staat BUITEN walkSoloActions, dat elke
-                   broadcast wordt overschreven, en dus ook buiten je eigen beurt bereikbaar is. -->
-              <div class="btn-row walk-mp-leave-row">
-                <button type="button" id="btnMpLeaveGame" class="small ghost" hidden>Verlaat potje</button>
-              </div>
             </div>
 
             <!-- "of": je kunt dobbelen, óf eerst een energie-actie inzetten. Zichtbaar zolang de
@@ -3333,19 +3351,21 @@
                  styles.css); soloRenderCardActionsPanel in 97-solo.js zet 'm ook pulserend
                  zodra je hier echt iets moet kiezen. -->
             <div class="walk-panel-box walk-card-actions" id="walkCardActions"></div>
+          </div>
 
-            <!-- alleen zichtbaar tijdens een lopend multiplayer-potje (zie mpEnterPlayView/
-                 mpExitPlayView in 99-multiplayer.js) — dezelfde berichten als op het
-                 lobby-tabblad (#mpChatPanel), gewoon een tweede weergave van mpChatMessages. -->
-            <div class="panel mp-chat-panel" id="mpChatPanelGame" hidden>
-              <h2>Chat</h2>
-              <div id="mpChatLogGame" class="mp-chat-log" role="log" aria-live="polite"></div>
-              <form id="mpChatFormGame" class="mp-chat-form" autocomplete="off">
-                <input type="text" id="mpChatInputGame" maxlength="240" placeholder="Typ een bericht…" aria-label="Chatbericht">
-                <button type="submit" class="small primary">Stuur</button>
-              </form>
-              <p class="hint">Typ alleen een cijfer (bv. <b>7</b>) voor een taunt.</p>
-            </div>
+          <!-- Eigen (4e) kolom rechts van de zijkolom — stond eerst ín de zijkolom en drukte daar
+               dobbelen/energie/kaarten weg (gebruikersmelding: "nu kun je niet spelen").
+               Alleen zichtbaar tijdens een lopend multiplayer-potje (zie mpEnterPlayView/
+               mpExitPlayView in 99-multiplayer.js) — dezelfde berichten als op het
+               lobby-tabblad (#mpChatPanel), gewoon een tweede weergave van mpChatMessages. -->
+          <div class="panel mp-chat-panel walk-chat-col" id="mpChatPanelGame" hidden>
+            <h2>Chat</h2>
+            <div id="mpChatLogGame" class="mp-chat-log" role="log" aria-live="polite"></div>
+            <form id="mpChatFormGame" class="mp-chat-form" autocomplete="off">
+              <input type="text" id="mpChatInputGame" maxlength="240" placeholder="Typ een bericht…" aria-label="Chatbericht">
+              <button type="submit" class="small primary">Stuur</button>
+            </form>
+            <p class="hint">Typ alleen een cijfer (bv. <b>7</b>) voor een taunt.</p>
           </div>
           </div>
           </div>
