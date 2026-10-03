@@ -610,7 +610,8 @@
   .walk-lobby-body > .reach-status:empty, .mp-room-info > .reach-status:empty{display:none;}
   /* ook in de Multiplayer-formulieren: naamveld net zo breed als de keuzelijsten, knoppen in
      het midden */
-  .walk-lobby-body .field input[type=text]{width:100%;}
+  /* even breed én even hoog als de keuzelijsten (tekstveld was 37px, een select 39px) */
+  .walk-lobby-body .field input[type=text]{width:100%; height:39px;}
   /* host-kamer en deelnameformulier beginnen op dezelfde hoogte als het eerste veld in de
      andere modi en als de chat ernaast (de 14px bovenmarge van .mp-setup zette ze lager) */
   .walk-lobby-body .mp-setup{margin-top:0;}
