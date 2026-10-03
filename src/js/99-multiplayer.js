@@ -811,6 +811,27 @@ function mpBroadcastTick(){
   // oogt tijdens andermans beurt dus soms nog even interactief, maar doet functioneel niets.
   mpRefreshCardVault();
   mpBroadcastState();
+  mpSyncTurnOwner();
+}
+// Is een ander aan zet, dan hoort je eigen scherm geen dobbelknop/energie-acties/klikbare
+// vakjes te tonen (gebruikersmelding: "je ziet dat je kan dobbelen terwijl je niet aan de beurt
+// bent"). Bij de host stonden die er wél: zijn DOM is de bron die naar de gast gaat
+// (mpBroadcastState leest .hidden/innerHTML), dus daar mogen we niets aan veranderen — vandaar
+// alleen een klasse op het speelscherm die het met CSS verbergt (.mp-not-my-turn in styles.css),
+// en een rustige melding wie er aan zet is. Geldt voor host én gast.
+function mpSyncTurnOwner(){
+  const area = walkPlayAreaEl, note = document.getElementById('mpWaitTurn');
+  const active = soloPlayers && soloPlayers[soloActiveIdx];
+  const inGame = mp.active && mp.phase === 'in-game' && soloPhase !== 'game-over' && !soloOpening;
+  const notMine = inGame && !!active && active.peerId !== mp.myPeerId;
+  if (area) area.classList.toggle('mp-not-my-turn', notMine);
+  if (note){
+    note.hidden = !notMine;
+    if (notMine){
+      note.style.setProperty('--pc', active.color);
+      note.innerHTML = `<b>${active.name}</b> is aan zet${active.isHuman ? '' : ' (bot)'} — even wachten…`;
+    }
+  }
 }
 // ---------- publieke view: nooit verborgen informatie uitzenden ----------
 // soloPlayers/soloDeck bevatten spelinterne info die geen enkele client mag kunnen aflezen:
@@ -971,6 +992,7 @@ function mpApplyState(payload){
   }
   if (payload.newLogLines && payload.newLogLines.length) walkLogEl.scrollTop = walkLogEl.scrollHeight;
 
+  mpSyncTurnOwner();
   if (soloPhase === 'game-over') mpOnGameOver();
 }
 
@@ -1113,6 +1135,9 @@ function mpEnterPlayView(){
 function mpExitPlayView(){
   window.mpGameActive = false;
   mp.gameOverView = false;
+  if (walkPlayAreaEl) walkPlayAreaEl.classList.remove('mp-not-my-turn');
+  const waitNote = document.getElementById('mpWaitTurn');
+  if (waitNote) waitNote.hidden = true;
   if (mpTabBarEl) mpTabBarEl.classList.remove('mp-locked');
   if (btnMpLeaveGame) btnMpLeaveGame.hidden = true;
   if (mpChatPanelGameEl) mpChatPanelGameEl.hidden = true;

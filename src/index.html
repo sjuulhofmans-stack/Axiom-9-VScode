@@ -507,6 +507,9 @@
                 <button id="btnWalkSoloRoll" class="primary" hidden>🎲 Gooi de dobbelstenen</button>
                 <button id="btnWalkSoloSkip" class="primary" hidden>Dobbelen</button>
               </div>
+              <!-- Multiplayer, tijdens andermans beurt: i.p.v. de (verborgen) bediening van die
+                   speler alleen wie er aan zet is (mpSyncTurnOwner in 99-multiplayer.js) -->
+              <p class="mp-wait-turn" id="mpWaitTurn" hidden></p>
             </div>
 
             <!-- "of": je kunt dobbelen, óf eerst een energie-actie inzetten. Zichtbaar zolang de

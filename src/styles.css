@@ -924,6 +924,24 @@
     font-family:var(--font-mono); font-size:15px; font-weight:700; color:var(--text);
   }
   .walk-rank-head .walk-rank-score{justify-content:flex-end; text-align:right;}
+  /* Multiplayer, tijdens andermans beurt (mpSyncTurnOwner in 99-multiplayer.js): diens
+     bediening niet tonen op jouw scherm — alleen wie er aan zet is. Puur CSS, omdat de host-DOM
+     de bron is van wat naar de gasten gaat. */
+  #walkPlayArea.mp-not-my-turn #btnWalkSoloRoll,
+  #walkPlayArea.mp-not-my-turn #btnWalkSoloSkip,
+  #walkPlayArea.mp-not-my-turn #walkStepCounter,
+  #walkPlayArea.mp-not-my-turn #walkSoloActions,
+  #walkPlayArea.mp-not-my-turn #walkCardActions,
+  #walkPlayArea.mp-not-my-turn .walk-or-sep{display:none !important;}
+  #walkPlayArea.mp-not-my-turn .cell.walk-clickable{box-shadow:none !important; cursor:default;}
+  #walkPlayArea.mp-not-my-turn .walk-die-pending{animation:none;}
+  .mp-wait-turn{
+    margin:4px 0 0; padding:12px; text-align:center; border-radius:6px;
+    border:1px dashed color-mix(in srgb, var(--pc, var(--line)) 55%, transparent);
+    font-size:13.5px; color:var(--text-dim);
+  }
+  .mp-wait-turn[hidden]{display:none;}
+  .mp-wait-turn b{color:var(--pc, var(--text));}
   /* chat tijdens een multiplayer-potje: eigen kolom rechts van de zijkolom */
   .walk-chat-col{grid-column:4; grid-row:1; min-width:0; min-height:0; margin:0; padding:14px;}
   .walk-chat-col .mp-chat-log{max-height:none;}
