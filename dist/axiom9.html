@@ -2537,14 +2537,20 @@
   .tag.startroom{color:var(--start); border-color:var(--start);}
 
   /* ---------- palette ---------- */
+  /* Kamers en Gangen onder elkaar, elk over de volle breedte, met de 10 tegels naast elkaar
+     (gebruikerswens: "veel groter en netter"; stonden eerst als 2 smalle kolommen naast elkaar) */
   .register-grid{
-    display:grid; grid-template-columns:1fr 1fr; gap:22px; margin-top:22px; align-items:start;
+    display:grid; grid-template-columns:1fr; gap:22px; margin-top:22px; align-items:start;
   }
-  @media (max-width:900px){ .register-grid{grid-template-columns:1fr;} }
   .palette-strip{margin-top:0;}
   .palette-list{
-    display:grid; grid-template-columns:repeat(auto-fill,minmax(84px,1fr)); gap:10px;
+    display:grid; grid-template-columns:repeat(10, minmax(0, 1fr)); gap:14px;
   }
+  .palette-list .tile-thumb{padding:10px;}
+  .palette-list .tile-thumb .id{font-size:12px; margin-bottom:7px;}
+  .palette-list .room-tag{font-size:12px; margin-bottom:8px;}
+  /* te smal voor 10 naast elkaar: 5 per rij (2 nette rijen) */
+  @media (max-width: 1100px){ .palette-list{grid-template-columns:repeat(5, minmax(0, 1fr));} }
   .panel h2 .count{
     font-family:var(--font-mono); font-size:10px; color:var(--amber); letter-spacing:.08em;
   }
@@ -3033,18 +3039,8 @@
 
   <div id="connStatus" style="display:none;"></div>
 
-  <div class="panel" style="margin-top:22px;">
-    <h2>Opdrachten <span class="count" id="countQuests"></span></h2>
-    <p class="hint" style="margin-bottom:10px;">Namen zijn puur thematisch (voor op de fysieke opdrachtkaarten) — de speelregel blijft dat een opdracht telt zodra je op het vakje staat. Hernoemen kan in <code>10-rules.js</code> (<code>QUEST_NAMES</code>).</p>
-    <div id="questRegister"></div>
-  </div>
-
-  <div class="panel" style="margin-top:22px;">
-    <h2>Actiekaartvakjes <span class="count" id="countActionCells"></span></h2>
-    <p class="hint" style="margin-bottom:10px;">Elke gangtegel heeft er precies één. Loop je er tijdens je beurt overheen, dan trek je een beloningskaart — je zet stopt er niet voor, en hooguit 1 kaart per beurt op deze manier.</p>
-    <div id="actionCellRegister"></div>
-  </div>
-
+  <!-- (vakken "Opdrachten" en "Actiekaartvakjes" weggehaald, gebruikerswens: irrelevant;
+       renderQuestRegister/renderActionCellRegister in 60-palette.js doen dan vanzelf niets) -->
   <div class="register-grid">
     <div class="panel palette-strip">
       <h2>Kamers <span class="count" id="countRooms"></span></h2>
