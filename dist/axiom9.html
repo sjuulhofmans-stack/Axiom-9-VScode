@@ -1904,9 +1904,8 @@
        de hoogte van zijn eigen rij en staat het raster scheef */
     grid-auto-rows:1fr;
   }
-  /* De 9 opdrachtkaarten: netjes verdeeld en gecentreerd (gebruikerswens) — op een breed
-     scherm alle 9 op één rij, anders lopen ze door naar een volgende rij die ook in het midden
-     staat (bv. 5 + 4) i.p.v. een losse rest links. Het vak is net zo hoog als de vakken van
+  /* De 9 opdrachtkaarten: netjes verdeeld en gecentreerd (gebruikerswens) — 5 bovenin, 4
+     eronder, beide rijen in het midden. Het vak is net zo hoog als de vakken van
      Spelen/Simulatie (zie #walkPanel bij de --wcell-regels); de kaarten staan verticaal in het
      midden van wat er onder de uitleg overblijft. */
   #tabCards > .panel:first-child{display:flex; flex-direction:column; container-type:inline-size;}
@@ -1914,22 +1913,25 @@
     display:flex; flex-wrap:wrap; justify-content:center; align-items:stretch;
     margin:auto 0;
   }
-  /* altijd evenwichtige rijen: 9 op één rij, anders 5 + 4, op een smal scherm 3 × 3 — nooit
-     een 8 + 1 */
-  /* max-width op de rij zelf: dan passen er nooit méér kaarten op een rij dan bedoeld, ook als
-     ze hun maximale breedte (192px) bereiken. Eén rij van 9 tot ±120px per kaart — zo blijft
-     het vak op laptops even hoog als de andere tabbladen. */
-  #cardsQuestGrid{max-width:calc(9 * 192px + 8 * 16px); margin-inline:auto; width:100%;}
-  #cardsQuestGrid > *{flex:0 0 min(calc((100% - 8 * 16px) / 9), 192px); min-width:0;}
-  /* in de rij van 9 kunnen de kaarten smal worden (±125px op een laptop): titel dan
-     meeschalen met de kaartbreedte, anders brak bv. "VOEDSELTEKOR-T" middenin het woord af */
+  /* 5 + 4, op een telefoon 3 × 3 — nooit een losse kaart op een rij */
+  /* Altijd 5 bovenin en 4 eronder (gebruikerswens). max-width op de rij zelf zorgt dat er nooit
+     een 6e kaart bij past. De kaartbreedte schaalt ook mee met de hoogte van het vak (--wcell,
+     zie #walkPanel), zodat beide rijen erin passen: per rij (vakhoogte − kop/uitleg) / 2, minus
+     het bijschrift (±112px), × 63/88 voor de kaartverhouding. Zonder --wcell (smal scherm, vak
+     groeit gewoon mee) valt die grens weg. */
+  /* --qw = kaartbreedte; de rij is precies 5 kaarten breed, dus er past nooit een 6e bij */
+  #cardsQuestGrid{
+    --qw: min(192px, calc(((var(--wcell, 40px) * 32 + 60px) / 2 - 100px) * 0.716));
+    max-width:calc(5 * var(--qw) + 4 * 16px); margin-inline:auto; width:100%;
+  }
+  #cardsQuestGrid > *{flex:0 0 min(calc((100% - 4 * 16px) / 5), var(--qw)); min-width:0;}
+  /* lager bijschrift dan elders (was 104px), zodat de kaarten zelf groter kunnen */
+  #cardsQuestGrid .card-show-cap{min-height:84px;}
+  /* op een laptop worden de kaarten smal (±110px): titel dan meeschalen met de kaartbreedte,
+     anders brak bv. "VOEDSELTEKOR-T" middenin het woord af */
   #cardsQuestGrid .card-show{container-type:inline-size;}
   #cardsQuestGrid .card-show-cap{padding:9px 9px;}
   #cardsQuestGrid .card-show-cap b{font-size:clamp(9.5px, 8.2cqw, 14px); letter-spacing:0;}
-  @container (max-width: 1210px){
-    #cardsQuestGrid{max-width:calc(5 * 192px + 4 * 16px);}
-    #cardsQuestGrid > *{flex-basis:min(calc((100% - 4 * 16px) / 5), 192px);}
-  }
   @container (max-width: 700px){
     #cardsQuestGrid{gap:10px; max-width:calc(3 * 192px + 2 * 10px);}
     #cardsQuestGrid > *{flex-basis:calc((100% - 2 * 10px) / 3);}
