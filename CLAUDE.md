@@ -190,7 +190,10 @@ Check minimaal:
 4. Een tegel over een andere slepen → wisselt om, rood kader = niet toegestaan.
 5. Browserconsole moet leeg zijn.
 6. Paneel Simulatie → "Draai simulatie" → 4 startposities laten allemaal winst
-   zien, "vastgelopen potjes" is 0 of bijna 0.
+   zien, "vastgelopen potjes" is 0 of bijna 0. Tijdens het rekenen staat er een
+   "Aan het simuleren"-vakje (radarscherm + dezelfde voortgangsring als bij genereren,
+   gedeelde code: `createProgressLoader` in `80-controls.js`) met aftellende tijd,
+   potjesteller en "Stoppen"; bij klaar faadt het uit en de uitslag in.
 7. Onderaan de simulatie: tabel "koudste tegels" — geen enkele tegel mag op
    0,0% verkeer staan. Gebeurt dat toch, dan is er een dode lus ontstaan en
    klopt `deadTileCount` in `70-generator.js` niet meer.
