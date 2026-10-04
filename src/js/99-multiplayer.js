@@ -409,7 +409,7 @@ async function mpConnect(code){
 }
 
 function mpRegisterActions(room){
-  const names = ['hello', 'lobby', 'start', 'state', 'leave', 'intent', 'stop', 'chat', 'intro'];
+  const names = ['hello', 'lobby', 'start', 'state', 'leave', 'intent', 'stop', 'chat', 'intro', 'botturn'];
   mp.actions = {};
   for (const n of names) mp.actions[n] = room.makeAction(n);
 
@@ -421,6 +421,7 @@ function mpRegisterActions(room){
   mp.actions.chat.onMessage = (data, { peerId }) => mpOnRemoteChat(peerId, data);
   mp.actions.start.onMessage = (data) => { if (!mp.isHost) mpClientOnStart(data); };
   mp.actions.state.onMessage = (data) => { if (!mp.isHost) mpApplyState(data); };
+  mp.actions.botturn.onMessage = (data) => { if (!mp.isHost && mp.phase === 'in-game') mpClientOnBotTurn(data); };
   mp.actions.intent.onMessage = (data, { peerId }) => { if (mp.isHost) mpHandleIntent(peerId, data); };
   mp.actions.leave.onMessage = (data, { peerId }) => {
     // een 'leave' MET reden is een weigering van de host aan ons (naam bezet / kamer vol) —
@@ -464,6 +465,8 @@ async function mpHostCreate(){
   nameInput.classList.remove('mp-field-invalid');
   mp.totalSeats = Math.max(2, Math.min(WALK_MAX_PLAYERS, parseInt(document.getElementById('mpHostTotal').value, 10) || 4));
   mp.fillBots = document.getElementById('mpHostFillBots').value === 'bots';
+  const botView = document.getElementById('mpHostBotView');
+  mp.botViewSpeed = !botView || botView.value === 'instant' ? null : (parseInt(botView.value, 10) || 2);
   const code = mpGenRoomCode();
   mpSetStatus('Verbinden...', '');
   try {
@@ -853,7 +856,8 @@ function mpHostStartGame(){
     return;
   }
   soloGraph = graph;
-  soloBotViewSpeed = null;   // bot-beurten zichtbaar afspelen is alleen voor Zelf spelen (97-solo.js)
+  // lobby-keuze "Beurten van de bots" (mpHostBotView); gasten spelen die beurten na via mpOnBotReplay
+  soloBotViewSpeed = mp.botViewSpeed === undefined ? null : mp.botViewSpeed;
   soloPlayers = players;
   soloSetupRand = soloSeedRand;
   soloRand = soloSeedRand;
@@ -935,7 +939,7 @@ function mpBroadcastTick(){
 // en een rustige melding wie er aan zet is. Geldt voor host én gast.
 function mpSyncTurnOwner(){
   const area = walkPlayAreaEl, note = document.getElementById('mpWaitTurn');
-  const active = soloPlayers && soloPlayers[soloActiveIdx];
+  const active = soloPlayers && soloPlayers[mpReplayIdx >= 0 ? mpReplayIdx : soloActiveIdx];
   const inGame = mp.active && mp.phase === 'in-game' && soloPhase !== 'game-over' && !soloOpening;
   const notMine = inGame && !!active && active.peerId !== mp.myPeerId;
   if (area) area.classList.toggle('mp-not-my-turn', notMine);
@@ -970,9 +974,92 @@ function mpPublicDeck(deck){
   return { draw: { length: deck.draw.length }, discard: { length: deck.discard.length } };
 }
 
+// ---------- bot-beurten zichtbaar naspelen (lobby-keuze "Beurten van de bots") ----------
+// De host speelt een bot-beurt af met soloAnimateBotTurn (97-solo.js). Gewoon de stand elke
+// 200 ms uitzenden zou de pion bij de gasten met horten en stoten laten verspringen, en de
+// score/log alvast op het eindresultaat zetten. Daarom: tijdens 'bots' zendt de host géén stand
+// (zie mpBroadcastState) maar één 'botturn'-bericht per beurt, en elke gast speelt diezelfde
+// animatie zelf af. De logregels van die beurt gaan mee in dat bericht en worden bij de host
+// gemarkeerd (data-mp-sent), zodat de eerstvolgende gewone uitzending ze niet nog eens stuurt.
+let mpReplayIdx = -1;          // wie er nu (bot) zichtbaar loopt — voor de "X is aan zet"-melding
+let mpGuestReplay = null;      // gast: { runId, logNodes, done }
+let mpTrailClearedTurn = -1;
+function mpOnBotReplay(player, replay, logNodes){
+  // logregels van vlak daarvoor (bv. het einde van de beurt van een mens) zijn nog niet
+  // uitgezonden — er zat geen tick tussen — dus die gaan hier eerst mee, in de goede volgorde
+  const pending = [...walkLogEl.children].slice(mp.lastLogCount).filter(el => !el.dataset.mpSent);
+  for (const n of pending) n.dataset.mpSent = '1';
+  for (const n of logNodes) n.dataset.mpSent = '1';
+  mpReplayIdx = player.idx;
+  mpSyncTurnOwner();
+  if (!mp.actions || !mp.actions.botturn) return;
+  // alleen de opdrachten die deze beurt echt gehaald worden + de volgende (die wordt toch het
+  // nieuwe, publieke doel) — de rest van de stapel van de bot blijft geheim, net als in mpPublicPlayer
+  let r = replay;
+  if (replay.bank && replay.bank.seq){
+    const keep = (replay.preBanked || 0) + (replay.rollBanked || 0) + 1;
+    r = { ...replay, bank: { ...replay.bank, seq: replay.bank.seq.slice(0, keep) } };
+  }
+  mp.actions.botturn.send({
+    idx: player.idx, replay: r, speed: soloBotViewSpeed, turn: soloTurn,
+    before: mpPublicPlayers(replayScoreBefore || soloPlayers),
+    after: mpPublicPlayers(soloPlayers),
+    logsBefore: pending.map(el => ({ html: el.innerHTML, cls: el.className })),
+    logs: logNodes.map(el => ({ html: el.innerHTML, cls: el.className })),
+  });
+}
+function mpClientOnBotTurn(data){
+  mpGuestFinishReplay();   // vorige nog bezig (kleine vertraging)? die meteen afronden
+  soloPlayers = data.after;
+  soloTurn = data.turn;
+  soloBotViewSpeed = data.speed;
+  replayScoreBefore = data.before;
+  const player = soloPlayers[data.idx];
+  if (!player) return;
+  const mkLine = line => {
+    const div = document.createElement('div');
+    div.className = line.cls || '';
+    div.innerHTML = line.html;
+    return div;
+  };
+  for (const line of data.logsBefore || []) walkLogEl.appendChild(mkLine(line));
+  const logNodes = (data.logs || []).map(mkLine);
+  // begint de eerste bot-beurt meteen na het kiezen van de startposities, dan zat daar geen
+  // uitzending tussen en stond bij de gast het kiespaneel nog open
+  if (soloOpening){ soloOpening = null; walkSetOpeningMode(false); }
+  soloRunId++;
+  const job = { runId: soloRunId, logNodes, done: false };
+  mpGuestReplay = job;
+  mpReplayIdx = data.idx;
+  mpSyncTurnOwner();
+  soloAnimateBotTurn(player, data.replay, logNodes, job.runId).then(() => {
+    job.done = true;   // logregels heeft soloAnimateBotTurn zelf al toegevoegd
+    if (mpGuestReplay === job) mpGuestReplay = null;
+    // het naspelen wiste/verving de opdrachtkaart in het zijpaneel — dat is altijd de jouwe
+    const me = mpMe();
+    if (me && !me.questHidden && !me.rank) renderWalkQuestCard(me.deck[me.nextIdx]);
+  });
+  // soloAnimateBotTurn toont de hand van "wie aan zet is" — in multiplayer altijd je eigen hand
+  mpRefreshCardVault();
+}
+// een lopende naspeel-animatie bij de gast afbreken, maar zijn logregels niet kwijtraken
+function mpGuestFinishReplay(){
+  const job = mpGuestReplay;
+  mpGuestReplay = null;
+  if (!job || job.done) return;
+  job.done = true;
+  if (job.runId === soloRunId) soloRunId++;
+  for (const n of job.logNodes) if (!n.parentNode) walkLogEl.appendChild(n);
+  walkLogEl.scrollTop = walkLogEl.scrollHeight;
+}
+
 function mpBroadcastState(){
   if (!mp.isHost || !mp.actions || mp.phase !== 'in-game') return;
+  // bot-beurt wordt zichtbaar afgespeeld: de gasten krijgen die via 'botturn' (mpOnBotReplay)
+  if (soloPhase === 'bots') return;
+  mpReplayIdx = -1;
   const newLines = [...walkLogEl.children].slice(mp.lastLogCount)
+    .filter(el => !el.dataset.mpSent)
     .map(el => ({ html: el.innerHTML, cls: el.className }));
   const core = {
     soloPlayers: mpPublicPlayers(soloPlayers), soloActiveIdx, soloPhase, soloTurn, soloTargetKey, soloMove,
@@ -1021,6 +1108,16 @@ function mpBroadcastState(){
 function mpApplyState(payload){
   if (payload.stateVersion <= mp.stateVersion) return;   // verouderd/dubbel, negeren
   mp.stateVersion = payload.stateVersion;
+  // de bots zijn klaar (de host zendt weer): een eventueel nog lopende naspeel-animatie afronden
+  mpGuestFinishReplay();
+  mpReplayIdx = -1;
+  // sporen van de nagespeelde bot-beurten weg zodra er een nieuwe mensen-beurt begint — net als
+  // bij de host (soloBeginHumanTurn)
+  if (payload.soloPhase === 'choose-action' && payload.soloTurn !== mpTrailClearedTurn){
+    mpTrailClearedTurn = payload.soloTurn;
+    walkClearClass('walk-trail');
+    walkClearClass('walk-jump');
+  }
 
   soloPlayers = payload.soloPlayers;
   soloActiveIdx = payload.soloActiveIdx;

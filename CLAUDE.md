@@ -226,6 +226,10 @@ Check minimaal:
     "Wachten op speler"), knoppen vast onderaan gelijk met de chat. De gast
     heeft onderaan een statusbalk: na 10 s volle kamer wordt die "Stuur host
     herinnering" (taunt 14, daarna 5 s afkoelen) — `mpUpdateWaitStatus`.
+    Host-keuze "Beurten van de bots" (Laten zien): de host stuurt per bot-beurt één
+    'botturn'-bericht (`mpOnBotReplay`) en zendt tijdens soloPhase 'bots' géén stand; elke
+    gast speelt de beurt zelf na (`mpClientOnBotTurn` → `soloAnimateBotTurn`). Check: bij de
+    gast loopt de bot-pion vloeiend, en het log is gelijk aan dat van de host (geen dubbele regels).
 11. Speelscherm op ±1400px breed (laptop/half scherm): alles in beeld, niets
     afgeknipt — het bord krimpt daar mee (zie `--wcell` in `styles.css`),
     onder 1360px staat alles onder elkaar. `--wcell` schaalt óók met de

@@ -2312,6 +2312,8 @@ function soloAdvanceLoop(){
       const replay = soloResolveBotTurn(player);
       const logNodes = [...walkLogEl.children].slice(logStart);
       for (const n of logNodes) n.remove();
+      // multiplayer-host: dezelfde beurt naar de gasten, die 'm zelf naspelen (99-multiplayer.js)
+      if (mp.active && mp.isHost) mpOnBotReplay(player, replay, logNodes);
       soloRoundPos++;
       const runId = soloRunId;
       soloAnimateBotTurn(player, replay, logNodes, runId).then(ok => {

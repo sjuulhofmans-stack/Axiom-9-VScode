@@ -355,6 +355,17 @@
                       <option value="wait">niet starten — wachten tot vol</option>
                     </select>
                   </div>
+                  <!-- zelfde keuze als bij Zelf spelen (#walkSoloBotView); de host speelt de bot-beurt
+                       af en stuurt 'm naar de gasten, die 'm zelf naspelen (mpOnBotReplay) -->
+                  <div class="field">
+                    <label for="mpHostBotView">Beurten van de bots</label>
+                    <select id="mpHostBotView">
+                      <option value="instant" selected>Meteen doorspelen</option>
+                      <option value="3">Laten zien — snel</option>
+                      <option value="2">Laten zien — normaal</option>
+                      <option value="1">Laten zien — langzaam</option>
+                    </select>
+                  </div>
                   <div class="btn-row">
                     <button type="button" id="btnMpHostCreate" class="primary">Aanmaken</button>
                     <button type="button" id="btnMpHostCancel" class="ghost">Terug</button>
