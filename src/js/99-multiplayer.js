@@ -440,10 +440,11 @@ function mpRegisterActions(room){
   // daarvóór al verstuurt, verdwijnt dus in het niets. Zelfherstellend: (opnieuw) versturen zodra
   // er echt een verbinding tot stand komt, niet meteen na het aanroepen van joinRoom().
   room.onPeerJoin = (peerId) => {
+    if (mp.room !== room) return;   // oude room van een herverbinding (mpJoinReconnect)
     if (mp.isHost) mpHostOnPeerJoin(peerId);
     else if (mp.pendingName !== null) mp.actions.hello.send({ name: mp.pendingName });
   };
-  room.onPeerLeave = (peerId) => { mpOnPeerLeave(peerId, false); };
+  room.onPeerLeave = (peerId) => { if (mp.room === room) mpOnPeerLeave(peerId, false); };
 }
 
 // ---------- host: lobby ----------
@@ -491,7 +492,8 @@ async function mpHostCreate(){
 // vergelijkingssleutel voor namen: hoofdletterongevoelig, spaties genormaliseerd
 function mpNameKey(name){ return soloCleanName(name || '').toLowerCase(); }
 function mpHostOnHello(peerId, data){
-  if (mp.seats.some(s => s.peerId === peerId)) return;
+  // al binnen (herhaalde 'hello' van mpJoinWatchdog): kennelijk mist hij de lijst nog — stuur 'm opnieuw
+  if (mp.seats.some(s => s.peerId === peerId)){ mpHostOnPeerJoin(peerId); return; }
   if (mp.seats.length >= mp.totalSeats){
     mp.actions.leave.send({ reason: 'vol' }, peerId);
     return;
@@ -517,9 +519,12 @@ function mpHostOnHello(peerId, data){
   mpBroadcastLobby();
   mpRenderHostSeats();
 }
-function mpHostOnPeerJoin(){
-  // niets te doen — we wachten op hun 'hello' met gekozen naam vóórdat we ze aan de lobby
-  // toevoegen. Zie mpHostOnHello.
+function mpHostOnPeerJoin(peerId){
+  // we wachten op hun 'hello' met gekozen naam vóórdat we ze aan de lobby toevoegen (zie
+  // mpHostOnHello) — maar de huidige spelerslijst krijgen ze meteen, zodat een gast direct
+  // weet dat de verbinding met de host er is (mp.gotLobby, zie mpJoinWatchdog)
+  if (mp.phase === 'hosting' && mp.actions)
+    mp.actions.lobby.send({ seats: mp.seats, totalSeats: mp.totalSeats, fillBots: mp.fillBots }, peerId);
 }
 function mpBroadcastLobby(){
   if (!mp.isHost || !mp.actions) return;
@@ -571,10 +576,15 @@ function mpUpdateWaitStatus(){
   if (mp.phase !== 'joining'){ clearInterval(mpWaitTimer); mpWaitTimer = null; mpFullSince = null; return; }
   // (weer) in de wachtkamer, bv. na een potje: de klok loopt vanzelf opnieuw
   if (!mpWaitTimer) mpWaitTimer = setInterval(mpUpdateWaitStatus, 250);
+  mpJoinWatchdog();
+  const seated = mp.seats.some(s => s.peerId === mp.myPeerId);
   const full = mp.totalSeats > 0 && mp.seats.length >= mp.totalSeats;
   const now = Date.now();
   let state, html, ready = false;
-  if (!full){
+  if (!seated){
+    mpFullSince = null;
+    state = 'connecting'; html = mpWaveText('Verbinden met de host…');
+  } else if (!full){
     mpFullSince = null;
     state = 'waiting'; html = mpWaveText('Wachten op spelers');
   } else {
@@ -597,6 +607,40 @@ function mpStartWaitTimer(){
   clearInterval(mpWaitTimer); mpWaitTimer = null;
   mpFullSince = null; mpRemindReadyAt = 0;
   mpUpdateWaitStatus();   // start zelf de klok (zie hierboven)
+}
+
+// ---------- gast: verbinding met de host bewaken ----------
+// Gebruikersmelding: bij 4 tabs (host + 3 gasten) kwam de laatste gast wel in de wachtkamer,
+// maar zag niemand en niemand zag hem — de WebRTC-verbinding met de host kwam nooit tot stand
+// (of zijn 'hello' ging verloren), en dan gebeurde er nooit meer iets. Nu: zolang we niet in de
+// spelerslijst staan elke 2 s opnieuw 'hello'; en hebben we na 12 s nog nooit iets van de host
+// gehoord (geen 'lobby'), dan verlaten we de room en verbinden opnieuw.
+const MP_HELLO_RETRY_MS = 2000, MP_RECONNECT_AFTER_MS = 12000;
+function mpJoinWatchdog(){
+  if (mp.phase !== 'joining' || !mp.actions || mp.reconnecting) return;
+  if (mp.seats.some(s => s.peerId === mp.myPeerId)) return;
+  const now = Date.now();
+  if (!mp.gotLobby && now - (mp.connectAt || now) > MP_RECONNECT_AFTER_MS){ mpJoinReconnect(); return; }
+  if (now - (mp.helloAt || 0) > MP_HELLO_RETRY_MS){
+    mp.helloAt = now;
+    try { mp.actions.hello.send({ name: mp.pendingName }); } catch (e){}
+  }
+}
+async function mpJoinReconnect(){
+  const session = mp, code = mp.roomCode;
+  session.reconnecting = true;
+  try { session.room.leave(); } catch (e){}
+  try { await mpConnect(code); } catch (e){}
+  if (mp !== session || mp.phase !== 'joining'){
+    // intussen zelf vertrokken (mpTeardown maakte een nieuw mp-object): die verse room weer dicht
+    try { if (mp.room) mp.room.leave(); } catch (e){}
+    mp.room = null; mp.actions = null; mp.roomCode = null;
+    return;
+  }
+  session.reconnecting = false;
+  session.connectAt = Date.now();
+  session.helloAt = 0;
+  mpJoinWatchdog();
 }
 {
   const el = document.getElementById('mpWaitStatus');
@@ -631,6 +675,7 @@ async function mpJoinConnect(){
   // leeg mag: de host kiest dan zelf een vrije "Speler N" (zie mpHostOnHello) — voorheen werd
   // dat hier "Speler", waardoor een tweede gast zonder naam als dubbele naam geweigerd zou worden
   mp.pendingName = name;
+  mp.connectAt = mp.helloAt = Date.now(); mp.gotLobby = false;
   mp.actions.hello.send({ name: mp.pendingName });   // meteen proberen; onPeerJoin herhaalt 'm zodra de verbinding er echt is
   mpRenderLobby();   // keuze + formulier weg, wachtkamer + chat erbij
   mpSetStatus('', '');
@@ -640,6 +685,7 @@ async function mpJoinConnect(){
   mpStartWaitTimer();
 }
 function mpClientOnLobby(data){
+  mp.gotLobby = true;
   mp.seats = data.seats;
   mp.totalSeats = data.totalSeats;
   mp.fillBots = data.fillBots;
