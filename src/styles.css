@@ -296,6 +296,11 @@
     #tabMap > .grid-layout{grid-template-columns:minmax(0,1fr) clamp(300px, 22vw, 420px);}
   }
   .gen-slot{display:grid; height:54px; overflow:hidden;}
+  /* "Genereer nieuwe map" en "Vorige indeling" even breed, samen precies zo breed als het
+     seed-veld erboven (gebruikerswens) */
+  #tabMap .btn-row.map-gen-row{display:grid; grid-template-columns:1fr 1fr; gap:8px;}
+  #tabMap .btn-row.map-gen-row > button{width:100%; min-width:0; white-space:nowrap; flex:none;}
+  @media (max-width: 1500px){ #tabMap .btn-row.map-gen-row > button{font-size:12.5px; padding-left:6px; padding-right:6px;} }
   .gen-slot > *{grid-area:1 / 1; align-self:start; margin:0;}
   @media (max-width: 880px){ .grid-layout{grid-template-columns:1fr;} }
 

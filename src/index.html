@@ -100,19 +100,8 @@
 
     <div class="right-col">
 
-    <div class="panel">
-      <h2>Geselecteerde tegel</h2>
-      <div class="controls">
-        <div class="selected-tile-box" id="selectedBox">Geen selectie — klik een tegel op het bord of in het register</div>
-        <div class="rotate-row">
-          <button id="btnRotL" disabled>↺ 90° links</button>
-          <button id="btnRotR" disabled>90° rechts ↻</button>
-        </div>
-      </div>
-    </div>
-
-    <div class="panel">
-      <h2>Besturing</h2>
+    <!-- seed + genereren bovenaan (zonder kopje "Besturing", gebruikerswens) -->
+    <div class="panel map-controls-panel">
       <div class="controls">
         <div class="field">
           <label for="seedInput">Seed</label>
@@ -122,7 +111,7 @@
             <input type="text" id="seedInput" value="…" readonly title="De seed van de kaart die nu op het bord ligt">
           </div>
         </div>
-        <div class="btn-row">
+        <div class="btn-row map-gen-row">
           <button id="btnShuffle" class="primary">Genereer nieuwe map</button>
           <!-- haalt de indeling van vóór de laatste keer genereren terug (80-controls.js);
                "Herstel alles" is weg: je begint nu altijd met een vers gegenereerde kaart -->
@@ -135,6 +124,17 @@
              de ring van het "Aan het genereren"-vakje op het bord. -->
         <div class="gen-slot">
           <p class="hint" id="swapHint"></p>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h2>Geselecteerde tegel</h2>
+      <div class="controls">
+        <div class="selected-tile-box" id="selectedBox">Geen selectie — klik een tegel op het bord of in het register</div>
+        <div class="rotate-row">
+          <button id="btnRotL" disabled>↺ 90° links</button>
+          <button id="btnRotR" disabled>90° rechts ↻</button>
         </div>
       </div>
     </div>
