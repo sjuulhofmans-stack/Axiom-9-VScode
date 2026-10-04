@@ -692,8 +692,6 @@
   .walk-lobby-col > .walk-lobby-start-row{margin-bottom:calc(var(--lobby-space, 36px) * 2);}
   /* "Spel starten"/"Spel afbreken" van de host: even dik als "Start spel", maar niet over de
      hele breedte */
-  .mp-host-start-row > button{padding:13px 22px; font-size:15px; min-width:240px;}
-  #mpHostRoom > .walk-intro-toggle{margin:4px 0 12px;}
   /* Multiplayer: alleen de twee keuzeknoppen, even groot als de modus-tabs erboven (een tab is
      een derde van de rij min de 4px tussenruimtes) en in het midden — geen uitlegtekst meer */
   /* het middenstuk van de lobby: alles van de gekozen modus verticaal gecentreerd tussen de
@@ -2801,8 +2799,55 @@
   /* max-width was 360px, zelfde reden als .mp-setup hierboven — nu op volle kolombreedte,
      zodat deze spelerskaartjes er via de gedeelde .walk-solo-setup-klasse identiek uitzien
      als die van de solo-lobby (gebruikerswens: "net zo netjes als nu"). */
-  #mpHostSeats, #mpWaitSeats{margin-bottom:14px;}
-  #mpHostSeats:empty, #mpWaitSeats:empty{display:none;}
+  /* ---------- kamer (host én gast, .mp-room): deelcode, een vak per plek, knoppen onderaan ----------
+     De kamer vult de hele hoogte van de infokolom, zodat de knoppen onderaan (.mp-room-bottom)
+     precies gelijk liggen met de onderkant van de chat ernaast. */
+  #mpHostSetup:has(> #mpHostRoom:not([hidden])){flex:1 1 auto; min-height:0;}
+  .mp-room{display:flex; flex-direction:column; gap:12px; flex:1 1 auto; min-height:0;}
+  .mp-room[hidden]{display:none;}
+  .mp-room > .hint{margin:0;}
+  .mp-room .mp-room-code{margin:0; height:56px; box-sizing:border-box;}
+  .mp-seats{display:flex; flex-direction:column; gap:10px;}
+  .mp-seats:empty{display:none;}
+  /* even groot en dik als het vak met de deelcode */
+  .mp-seat{
+    display:flex; align-items:center; gap:12px; height:56px; padding:0 16px; box-sizing:border-box;
+    background:var(--hull); border:1px solid var(--line-dim); border-left:3px solid var(--pc); border-radius:6px;
+  }
+  .mp-seat-dot{flex:none; width:11px; height:11px; border-radius:50%; background:var(--pc);}
+  .mp-seat-name{min-width:0; font-size:17px; font-weight:700; color:var(--pc); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+  .mp-seat-name i{font-style:normal; font-weight:400; color:var(--text-dim); font-size:14px;}
+  .mp-seat-tag{
+    margin-left:auto; flex:none; padding:3px 9px; border-radius:4px; border:1px solid var(--amber);
+    font-family:var(--font-mono); font-size:11px; letter-spacing:.12em; text-transform:uppercase; color:var(--amber);
+  }
+  .mp-seat.is-empty{border-left-color:var(--line); border-style:dashed; border-left-style:solid;}
+  .mp-seat.is-empty .mp-seat-dot{background:transparent; box-shadow:inset 0 0 0 1.5px var(--line);}
+  .mp-seat.is-empty .mp-seat-name{font-weight:400; font-size:15px; color:var(--text-dim);}
+  /* "Wachten op speler": letters faden één voor één van links naar rechts uit en weer in */
+  .mp-wave i{font-style:normal; display:inline-block; animation:mpWave 2.2s ease-in-out infinite; animation-delay:calc(var(--k) * 70ms);}
+  @keyframes mpWave{0%, 60%, 100%{opacity:1;} 30%{opacity:.12;}}
+  .mp-room-bottom{margin-top:auto; display:flex; flex-direction:column; gap:10px;}
+  .mp-room-bottom .walk-intro-toggle{margin:0;}
+  .mp-room-bottom .btn-row.mp-host-start-row{display:flex; flex-direction:column; gap:10px; margin:0;}
+  .mp-room-bottom .mp-host-start-row > button{width:100%; min-width:0; height:45px; padding:0 16px; font-size:15px;}
+  /* lage schermen (laptop): alles iets compacter, anders vallen de knoppen onder de rand */
+  @media (max-height: 820px){
+    .mp-room{gap:8px;}
+    .mp-seats{gap:6px;}
+    .mp-room .mp-room-code, .mp-seat{height:46px;}
+    .mp-room .mp-room-code b{font-size:19px;}
+    .mp-seat-name{font-size:16px;}
+    .mp-room-bottom{gap:6px;}
+    .mp-room-bottom .mp-host-start-row{gap:6px !important;}
+    .mp-room-bottom .mp-host-start-row > button{height:40px;}
+  }
+  /* statusbalk van de gast: rustig zolang je wacht, oplichtend zodra je een herinnering kunt sturen */
+  .mp-wait-status{background:var(--hull); border:1px solid var(--line); color:var(--text-dim); cursor:default;}
+  .mp-wait-status:disabled{opacity:1;}
+  .mp-wait-status.is-ready{cursor:pointer; color:#eafcff; border-color:var(--amber); background:rgba(255,181,69,.12);
+    box-shadow:0 0 10px rgba(255,181,69,.25);}
+  .mp-wait-status.is-ready:hover{background:rgba(255,181,69,.2);}
   .mp-seat-you{color:var(--start) !important;}
   .mp-seat-host{color:var(--amber) !important;}
 

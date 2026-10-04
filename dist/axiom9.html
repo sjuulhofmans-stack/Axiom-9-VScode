@@ -699,8 +699,6 @@
   .walk-lobby-col > .walk-lobby-start-row{margin-bottom:calc(var(--lobby-space, 36px) * 2);}
   /* "Spel starten"/"Spel afbreken" van de host: even dik als "Start spel", maar niet over de
      hele breedte */
-  .mp-host-start-row > button{padding:13px 22px; font-size:15px; min-width:240px;}
-  #mpHostRoom > .walk-intro-toggle{margin:4px 0 12px;}
   /* Multiplayer: alleen de twee keuzeknoppen, even groot als de modus-tabs erboven (een tab is
      een derde van de rij min de 4px tussenruimtes) en in het midden — geen uitlegtekst meer */
   /* het middenstuk van de lobby: alles van de gekozen modus verticaal gecentreerd tussen de
@@ -2808,8 +2806,55 @@
   /* max-width was 360px, zelfde reden als .mp-setup hierboven — nu op volle kolombreedte,
      zodat deze spelerskaartjes er via de gedeelde .walk-solo-setup-klasse identiek uitzien
      als die van de solo-lobby (gebruikerswens: "net zo netjes als nu"). */
-  #mpHostSeats, #mpWaitSeats{margin-bottom:14px;}
-  #mpHostSeats:empty, #mpWaitSeats:empty{display:none;}
+  /* ---------- kamer (host én gast, .mp-room): deelcode, een vak per plek, knoppen onderaan ----------
+     De kamer vult de hele hoogte van de infokolom, zodat de knoppen onderaan (.mp-room-bottom)
+     precies gelijk liggen met de onderkant van de chat ernaast. */
+  #mpHostSetup:has(> #mpHostRoom:not([hidden])){flex:1 1 auto; min-height:0;}
+  .mp-room{display:flex; flex-direction:column; gap:12px; flex:1 1 auto; min-height:0;}
+  .mp-room[hidden]{display:none;}
+  .mp-room > .hint{margin:0;}
+  .mp-room .mp-room-code{margin:0; height:56px; box-sizing:border-box;}
+  .mp-seats{display:flex; flex-direction:column; gap:10px;}
+  .mp-seats:empty{display:none;}
+  /* even groot en dik als het vak met de deelcode */
+  .mp-seat{
+    display:flex; align-items:center; gap:12px; height:56px; padding:0 16px; box-sizing:border-box;
+    background:var(--hull); border:1px solid var(--line-dim); border-left:3px solid var(--pc); border-radius:6px;
+  }
+  .mp-seat-dot{flex:none; width:11px; height:11px; border-radius:50%; background:var(--pc);}
+  .mp-seat-name{min-width:0; font-size:17px; font-weight:700; color:var(--pc); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+  .mp-seat-name i{font-style:normal; font-weight:400; color:var(--text-dim); font-size:14px;}
+  .mp-seat-tag{
+    margin-left:auto; flex:none; padding:3px 9px; border-radius:4px; border:1px solid var(--amber);
+    font-family:var(--font-mono); font-size:11px; letter-spacing:.12em; text-transform:uppercase; color:var(--amber);
+  }
+  .mp-seat.is-empty{border-left-color:var(--line); border-style:dashed; border-left-style:solid;}
+  .mp-seat.is-empty .mp-seat-dot{background:transparent; box-shadow:inset 0 0 0 1.5px var(--line);}
+  .mp-seat.is-empty .mp-seat-name{font-weight:400; font-size:15px; color:var(--text-dim);}
+  /* "Wachten op speler": letters faden één voor één van links naar rechts uit en weer in */
+  .mp-wave i{font-style:normal; display:inline-block; animation:mpWave 2.2s ease-in-out infinite; animation-delay:calc(var(--k) * 70ms);}
+  @keyframes mpWave{0%, 60%, 100%{opacity:1;} 30%{opacity:.12;}}
+  .mp-room-bottom{margin-top:auto; display:flex; flex-direction:column; gap:10px;}
+  .mp-room-bottom .walk-intro-toggle{margin:0;}
+  .mp-room-bottom .btn-row.mp-host-start-row{display:flex; flex-direction:column; gap:10px; margin:0;}
+  .mp-room-bottom .mp-host-start-row > button{width:100%; min-width:0; height:45px; padding:0 16px; font-size:15px;}
+  /* lage schermen (laptop): alles iets compacter, anders vallen de knoppen onder de rand */
+  @media (max-height: 820px){
+    .mp-room{gap:8px;}
+    .mp-seats{gap:6px;}
+    .mp-room .mp-room-code, .mp-seat{height:46px;}
+    .mp-room .mp-room-code b{font-size:19px;}
+    .mp-seat-name{font-size:16px;}
+    .mp-room-bottom{gap:6px;}
+    .mp-room-bottom .mp-host-start-row{gap:6px !important;}
+    .mp-room-bottom .mp-host-start-row > button{height:40px;}
+  }
+  /* statusbalk van de gast: rustig zolang je wacht, oplichtend zodra je een herinnering kunt sturen */
+  .mp-wait-status{background:var(--hull); border:1px solid var(--line); color:var(--text-dim); cursor:default;}
+  .mp-wait-status:disabled{opacity:1;}
+  .mp-wait-status.is-ready{cursor:pointer; color:#eafcff; border-color:var(--amber); background:rgba(255,181,69,.12);
+    box-shadow:0 0 10px rgba(255,181,69,.25);}
+  .mp-wait-status.is-ready:hover{background:rgba(255,181,69,.2);}
   .mp-seat-you{color:var(--start) !important;}
   .mp-seat-host{color:var(--amber) !important;}
 
@@ -3333,19 +3378,24 @@
                   </div>
                 </div>
 
-                <div id="mpHostRoom" hidden>
+                <!-- kamer van de host: deelcode, per plek een vak (bezet = naam, leeg = "Wachten op
+                     speler" met golvende letters, zie mpSeatRowsHtml) en onderaan vast de knoppen,
+                     gelijk met de onderkant van de chat -->
+                <div id="mpHostRoom" class="mp-room" hidden>
                   <p class="hint">Deel deze code met je vrienden:</p>
                   <div class="mp-room-code">
                     <b id="mpRoomCodeText"></b>
                     <button type="button" id="btnMpCopyCode" class="small ghost">Kopieer</button>
                   </div>
-                  <div id="mpHostSeats" class="walk-solo-setup"></div>
-                  <!-- zelfde keuze als #walkIntroToggle (zelfde onthouden waarde, 96b-intro.js);
-                       geldt voor iedereen in de kamer -->
-                  <label class="walk-intro-toggle"><input type="checkbox" id="mpIntroToggle" checked> Startanimatie tonen</label>
-                  <div class="btn-row mp-host-start-row">
-                    <button type="button" id="btnMpHostStart" class="primary" disabled>Spel starten</button>
-                    <button type="button" id="btnMpHostStop" class="ghost">Spel afbreken</button>
+                  <div id="mpHostSeats" class="mp-seats"></div>
+                  <div class="mp-room-bottom">
+                    <!-- zelfde keuze als #walkIntroToggle (zelfde onthouden waarde, 96b-intro.js);
+                         geldt voor iedereen in de kamer -->
+                    <label class="walk-intro-toggle"><input type="checkbox" id="mpIntroToggle" checked> Startanimatie tonen</label>
+                    <div class="btn-row mp-host-start-row">
+                      <button type="button" id="btnMpHostStart" class="primary" disabled>Spel starten</button>
+                      <button type="button" id="btnMpHostStop" class="ghost">Spel afbreken</button>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -3364,11 +3414,21 @@
                 </div>
               </div>
 
-              <div id="mpJoinWaiting" hidden>
-                <p class="hint">Verbonden — wacht tot de host het spel start.</p>
-                <div id="mpWaitSeats" class="walk-solo-setup"></div>
-                <div class="btn-row">
-                  <button type="button" id="btnMpJoinLeave" class="ghost">Verlaten</button>
+              <!-- wachtkamer van een gast: precies dezelfde opbouw als die van de host, maar
+                   onderaan een statusbalk (wachten → host moet starten → na 10 s "Stuur host
+                   herinnering", zie mpUpdateWaitStatus) i.p.v. de startknop -->
+              <div id="mpJoinWaiting" class="mp-room" hidden>
+                <p class="hint">Deel deze code met je vrienden:</p>
+                <div class="mp-room-code">
+                  <b id="mpWaitCodeText"></b>
+                  <button type="button" id="btnMpCopyCodeGuest" class="small ghost">Kopieer</button>
+                </div>
+                <div id="mpWaitSeats" class="mp-seats"></div>
+                <div class="mp-room-bottom">
+                  <div class="btn-row mp-host-start-row">
+                    <button type="button" id="mpWaitStatus" class="mp-wait-status" disabled></button>
+                    <button type="button" id="btnMpJoinLeave" class="ghost">Verlaten</button>
+                  </div>
                 </div>
               </div>
 
@@ -13657,22 +13717,85 @@ function mpBroadcastLobby(){
 }
 function mpRenderHostSeats(){
   if (!mpHostSeatsEl) return;
-  // (geen "Wachten op N speler(s)…"-regel meer, gebruikerswens)
-  mpHostSeatsEl.innerHTML = mp.seats.map((s, i) => mpSeatRowHtml(s, i)).join('');
+  mpHostSeatsEl.innerHTML = mpSeatRowsHtml(mp.seats, mp.totalSeats);
   const btn = document.getElementById('btnMpHostStart');
   if (btn) btn.disabled = mp.seats.length < 1 || (!mp.fillBots && mp.seats.length < mp.totalSeats);
 }
-function mpSeatRowHtml(seat, i){
-  const you = seat.peerId === mp.myPeerId;
-  const cls = you ? 'mp-seat-you' : (seat.isHost ? 'mp-seat-host' : '');
-  const tag = seat.isHost ? ' · host' : '';
-  // alleen speler + naam: de startpositie kiest iedereen pas aan het begin van het potje
-  return `<div class="walk-solo-setup-player" style="--pc:${WALK_PLAYER_COLORS[i % WALK_PLAYER_COLORS.length]}">` +
-    `<span class="walk-solo-setup-row1">` +
-      `<span class="walk-solo-setup-dot"></span>` +
-      `<span class="${cls}">${seat.name}${you ? ' (jij)' : ''}${tag}</span>` +
-    `</span>` +
-  `</div>`;
+// Eén vak per plek in de kamer (gebruikerswens: je moet zien voor hoeveel spelers het potje
+// is): bezette plek = naam (+ "Host" rechts), lege plek = "Wachten op speler" waarvan de letters
+// één voor één van links naar rechts uit- en weer infaden. Host en gasten zien precies hetzelfde.
+function mpSeatRowsHtml(seats, total){
+  const rows = [];
+  for (let i = 0; i < Math.max(total || 0, seats.length); i++){
+    const seat = seats[i];
+    const color = WALK_PLAYER_COLORS[i % WALK_PLAYER_COLORS.length];
+    if (seat){
+      const you = seat.peerId === mp.myPeerId;
+      rows.push(`<div class="mp-seat" style="--pc:${color}">` +
+        `<span class="mp-seat-dot"></span>` +
+        `<span class="mp-seat-name">${seat.name}${you ? ' <i>(jij)</i>' : ''}</span>` +
+        (seat.isHost ? `<span class="mp-seat-tag">Host</span>` : '') +
+      `</div>`);
+    } else {
+      rows.push(`<div class="mp-seat is-empty" style="--pc:${color}">` +
+        `<span class="mp-seat-dot"></span><span class="mp-seat-name">${mpWaveText('Wachten op speler')}</span></div>`);
+    }
+  }
+  return rows.join('');
+}
+// tekst als losse letters met een oplopende vertraging (.mp-wave in styles.css)
+function mpWaveText(text){
+  return `<span class="mp-wave">${[...text].map((ch, k) =>
+    `<i style="--k:${k}">${ch === ' ' ? '&nbsp;' : ch}</i>`).join('')}</span>`;
+}
+
+// ---------- statusbalk onderaan de wachtkamer van een gast ----------
+// Niet vol → "Wachten op spelers" (golvend). Vol → "Host moet het spel starten". Start de host
+// na 10 s nog steeds niet, dan wordt de balk klikbaar: "Stuur host herinnering" → taunt 14 voor
+// iedereen (via de chat, mpSendChatMessage), daarna 5 s afkoelen met aftellen in de balk.
+const MP_REMIND_AFTER_MS = 10000, MP_REMIND_COOLDOWN_MS = 5000;
+let mpFullSince = null, mpRemindReadyAt = 0, mpWaitTimer = null;
+function mpUpdateWaitStatus(){
+  const el = document.getElementById('mpWaitStatus');
+  if (!el) return;
+  if (mp.phase !== 'joining'){ clearInterval(mpWaitTimer); mpWaitTimer = null; mpFullSince = null; return; }
+  // (weer) in de wachtkamer, bv. na een potje: de klok loopt vanzelf opnieuw
+  if (!mpWaitTimer) mpWaitTimer = setInterval(mpUpdateWaitStatus, 250);
+  const full = mp.totalSeats > 0 && mp.seats.length >= mp.totalSeats;
+  const now = Date.now();
+  let state, html, ready = false;
+  if (!full){
+    mpFullSince = null;
+    state = 'waiting'; html = mpWaveText('Wachten op spelers');
+  } else {
+    if (mpFullSince === null) mpFullSince = now;
+    if (now - mpFullSince < MP_REMIND_AFTER_MS){
+      state = 'full'; html = 'Host moet het spel starten';
+    } else if (now < mpRemindReadyAt){
+      const s = Math.ceil((mpRemindReadyAt - now) / 1000);
+      state = 'cool' + s; html = `Herinnering verstuurd — opnieuw over ${s} s`;
+    } else {
+      state = 'ready'; html = '🔔 Stuur host herinnering'; ready = true;
+    }
+  }
+  // alleen herschrijven als er iets verandert, anders begint de golf telkens opnieuw
+  if (el.dataset.state !== state){ el.dataset.state = state; el.innerHTML = html; }
+  el.disabled = !ready;
+  el.classList.toggle('is-ready', ready);
+}
+function mpStartWaitTimer(){
+  clearInterval(mpWaitTimer); mpWaitTimer = null;
+  mpFullSince = null; mpRemindReadyAt = 0;
+  mpUpdateWaitStatus();   // start zelf de klok (zie hierboven)
+}
+{
+  const el = document.getElementById('mpWaitStatus');
+  if (el) el.addEventListener('click', () => {
+    if (el.disabled || mp.phase !== 'joining') return;
+    mpSendChatMessage('14');   // taunt 14, hoorbaar voor iedereen in de kamer
+    mpRemindReadyAt = Date.now() + MP_REMIND_COOLDOWN_MS;
+    mpUpdateWaitStatus();
+  });
 }
 
 function mpHostStop(){
@@ -13701,6 +13824,10 @@ async function mpJoinConnect(){
   mp.actions.hello.send({ name: mp.pendingName });   // meteen proberen; onPeerJoin herhaalt 'm zodra de verbinding er echt is
   mpRenderLobby();   // keuze + formulier weg, wachtkamer + chat erbij
   mpSetStatus('', '');
+  const codeEl = document.getElementById('mpWaitCodeText');
+  if (codeEl) codeEl.textContent = code;
+  if (mpWaitSeatsEl) mpWaitSeatsEl.innerHTML = '';
+  mpStartWaitTimer();
 }
 function mpClientOnLobby(data){
   mp.seats = data.seats;
@@ -13711,7 +13838,8 @@ function mpClientOnLobby(data){
   // (zie mpOnPeerLeave) i.p.v. elke vertrekkende medespeler daarvoor aan te zien.
   const hostSeat = mp.seats.find(s => s.isHost);
   if (hostSeat) mp.hostPeerId = hostSeat.peerId;
-  if (mpWaitSeatsEl) mpWaitSeatsEl.innerHTML = mp.seats.map((s, i) => mpSeatRowHtml(s, i)).join('');
+  if (mpWaitSeatsEl) mpWaitSeatsEl.innerHTML = mpSeatRowsHtml(mp.seats, mp.totalSeats);
+  mpUpdateWaitStatus();
 }
 function mpJoinLeave(){
   mpTeardown();
@@ -14494,6 +14622,11 @@ if (btnMpJoinLeave) btnMpJoinLeave.addEventListener('click', mpJoinLeave);
 if (btnMpCopyCode) btnMpCopyCode.addEventListener('click', () => {
   if (navigator.clipboard) navigator.clipboard.writeText(mp.roomCode || '');
 });
+// zelfde kopieerknop in de wachtkamer van een gast
+{
+  const b = document.getElementById('btnMpCopyCodeGuest');
+  if (b) b.addEventListener('click', () => { if (navigator.clipboard) navigator.clipboard.writeText(mp.roomCode || ''); });
+}
 
 </script>
 </body>

@@ -361,19 +361,24 @@
                   </div>
                 </div>
 
-                <div id="mpHostRoom" hidden>
+                <!-- kamer van de host: deelcode, per plek een vak (bezet = naam, leeg = "Wachten op
+                     speler" met golvende letters, zie mpSeatRowsHtml) en onderaan vast de knoppen,
+                     gelijk met de onderkant van de chat -->
+                <div id="mpHostRoom" class="mp-room" hidden>
                   <p class="hint">Deel deze code met je vrienden:</p>
                   <div class="mp-room-code">
                     <b id="mpRoomCodeText"></b>
                     <button type="button" id="btnMpCopyCode" class="small ghost">Kopieer</button>
                   </div>
-                  <div id="mpHostSeats" class="walk-solo-setup"></div>
-                  <!-- zelfde keuze als #walkIntroToggle (zelfde onthouden waarde, 96b-intro.js);
-                       geldt voor iedereen in de kamer -->
-                  <label class="walk-intro-toggle"><input type="checkbox" id="mpIntroToggle" checked> Startanimatie tonen</label>
-                  <div class="btn-row mp-host-start-row">
-                    <button type="button" id="btnMpHostStart" class="primary" disabled>Spel starten</button>
-                    <button type="button" id="btnMpHostStop" class="ghost">Spel afbreken</button>
+                  <div id="mpHostSeats" class="mp-seats"></div>
+                  <div class="mp-room-bottom">
+                    <!-- zelfde keuze als #walkIntroToggle (zelfde onthouden waarde, 96b-intro.js);
+                         geldt voor iedereen in de kamer -->
+                    <label class="walk-intro-toggle"><input type="checkbox" id="mpIntroToggle" checked> Startanimatie tonen</label>
+                    <div class="btn-row mp-host-start-row">
+                      <button type="button" id="btnMpHostStart" class="primary" disabled>Spel starten</button>
+                      <button type="button" id="btnMpHostStop" class="ghost">Spel afbreken</button>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -392,11 +397,21 @@
                 </div>
               </div>
 
-              <div id="mpJoinWaiting" hidden>
-                <p class="hint">Verbonden — wacht tot de host het spel start.</p>
-                <div id="mpWaitSeats" class="walk-solo-setup"></div>
-                <div class="btn-row">
-                  <button type="button" id="btnMpJoinLeave" class="ghost">Verlaten</button>
+              <!-- wachtkamer van een gast: precies dezelfde opbouw als die van de host, maar
+                   onderaan een statusbalk (wachten → host moet starten → na 10 s "Stuur host
+                   herinnering", zie mpUpdateWaitStatus) i.p.v. de startknop -->
+              <div id="mpJoinWaiting" class="mp-room" hidden>
+                <p class="hint">Deel deze code met je vrienden:</p>
+                <div class="mp-room-code">
+                  <b id="mpWaitCodeText"></b>
+                  <button type="button" id="btnMpCopyCodeGuest" class="small ghost">Kopieer</button>
+                </div>
+                <div id="mpWaitSeats" class="mp-seats"></div>
+                <div class="mp-room-bottom">
+                  <div class="btn-row mp-host-start-row">
+                    <button type="button" id="mpWaitStatus" class="mp-wait-status" disabled></button>
+                    <button type="button" id="btnMpJoinLeave" class="ghost">Verlaten</button>
+                  </div>
                 </div>
               </div>
 

@@ -221,7 +221,11 @@ Check minimaal:
     formulier met rood naamveld (`mpHostOnHello` / `mpJoinRejected`). Speel als
     gast een hinderkaart (bv. Stroomonderbreking): je krijgt de doelwit-keuze te
     zien, net als het Blinde-Vlek-aanbod (`ownerUi.cardActionsHtml` in
-    `mpBroadcastState`).
+    `mpBroadcastState`). Kamer (host én gast, zelfde opbouw): code + Kopieer,
+    één vak per plek (naam in spelerkleur, "Host" rechts, lege plek golvend
+    "Wachten op speler"), knoppen vast onderaan gelijk met de chat. De gast
+    heeft onderaan een statusbalk: na 10 s volle kamer wordt die "Stuur host
+    herinnering" (taunt 14, daarna 5 s afkoelen) — `mpUpdateWaitStatus`.
 11. Speelscherm op ±1400px breed (laptop/half scherm): alles in beeld, niets
     afgeknipt — het bord krimpt daar mee (zie `--wcell` in `styles.css`),
     onder 1360px staat alles onder elkaar. `--wcell` schaalt óók met de
