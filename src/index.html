@@ -231,6 +231,12 @@
           <button class="walk-mode-btn" id="walkModeSolo" data-mode="solo" role="tab" aria-selected="false">Zelf spelen</button>
           <button class="walk-mode-btn" id="walkModeMulti" data-mode="multi" role="tab" aria-selected="false">Multiplayer</button>
         </div>
+        <!-- Tabblad Multiplayer: "Spel hosten" als balk op exact de plek en hoogte van de
+             modusknoppen hierboven (gebruikerswens); alleen zichtbaar zolang je kiest tussen
+             hosten en deelnemen (zie .mp-host-toggle in styles.css) -->
+        <div class="walk-mode-toggle mp-host-toggle">
+          <button type="button" id="btnMpHost" class="primary">Spel hosten</button>
+        </div>
 
         <!-- alles van de gekozen modus, verticaal in het midden tussen de tabs en "Start spel"
              (gebruikerswens); zie .walk-lobby-body in styles.css -->
@@ -314,8 +320,9 @@
             <div class="mp-room-info">
               <!-- "Spel hosten", een lijn met "of", en daaronder meteen het deelnameformulier
                    (#mpJoinForm hieronder) — geen extra klik meer nodig (gebruikerswens) -->
+              <!-- #btnMpHost staat in .mp-host-toggle bovenaan de lobby (zelfde plek/hoogte als de
+                   modusknoppen bij Spelen); hier alleen de "of"-lijn tussen die knop en het formulier -->
               <div id="mpChoice" class="btn-row">
-                <button type="button" id="btnMpHost" class="primary">Spel hosten</button>
                 <div class="mp-or-line"><span>of</span></div>
               </div>
 

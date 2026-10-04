@@ -725,25 +725,33 @@
   #walkSoloSetupPlayers{display:flex; flex-wrap:wrap; justify-content:center; margin-top:0;}
   #walkSoloSetupPlayers[hidden], #walkSoloSetupPlayers:empty{display:none;}
   #walkSoloSetupPlayers > *{flex:0 0 calc(50% - 5px); min-height:52px;}
-  /* Tabblad Multiplayer (gebruikerswens): "Spel hosten" als grote knop over de volle breedte
-     (zelfde stijl als "Start spel" bij Spelen), dan een lijn met "of", en daaronder meteen het
-     deelnameformulier (naam + spelcode) met een even grote knop "Deelnemen aan spel". */
-  #mpChoice{display:flex; flex-direction:column; flex-wrap:nowrap; align-items:stretch; gap:18px; margin:0;}
+  /* Tabblad Multiplayer (gebruikerswens): "Spel hosten" als balk op exact de plek en hoogte
+     van de modusknoppen bij Spelen (.mp-host-toggle heeft dezelfde klasse .walk-mode-toggle,
+     dus dezelfde marges), en "Jouw naam"/"Spelcode" op exact de hoogte van "Aantal spelers"/
+     "Energie-inzet": #mpChoice neemt zelf geen hoogte in (de "of"-lijn zweeft in de ruimte
+     erboven), zodat het formulier begint waar bij Spelen de velden beginnen. */
+  .mp-host-toggle{display:none;}
+  #mpChoice{position:relative; height:0; margin:0;}
   #mpChoice[hidden]{display:none;}
-  #mpChoice > #btnMpHost, .mp-join-row > #btnMpJoinConnect{
-    width:100%; padding:13px; font-size:15px; white-space:nowrap;
-  }
-  .btn-row.mp-join-row{display:flex; margin-top:4px;}
   .mp-or-line{
-    display:flex; align-items:center; gap:14px; margin:4px 0;
+    /* midden in de ruimte tussen de balk en het eerste veld (12px rij-afstand + --lobby-space) */
+    position:absolute; left:0; right:0; bottom:calc(var(--lobby-space, 50px) / 2);
+    display:flex; align-items:center; gap:14px;
     font-family:var(--font-mono); font-size:11px; letter-spacing:.2em; text-transform:uppercase; color:var(--text-dim);
   }
   .mp-or-line::before, .mp-or-line::after{content:''; flex:1; height:1px; background:var(--line);}
+  /* overflow zichtbaar: de "of"-lijn zweeft boven dit blok en werd anders weggeknipt */
+  .mp-room-info:has(> #mpChoice:not([hidden])){gap:0; overflow:visible;}
+  #btnMpHost{flex:1; height:45px; padding:0 12px; font-size:15px; white-space:nowrap;}
+  .mp-join-row > #btnMpJoinConnect{width:100%; padding:13px; font-size:15px; white-space:nowrap;}
+  .btn-row.mp-join-row{display:flex; margin-top:4px;}
   /* Spelen heeft alleen nog Automatisch en Zelf spelen (Multiplayer is een eigen tabblad) */
   #walkModeMulti{display:none;}
-  /* in het tabblad Multiplayer geen modusknoppen, maar wel hun ruimte (zelfde begin-hoogte als
-     bij Spelen) */
+  /* tabblad Multiplayer: de modusknoppen niet tonen maar wel hun ruimte houden (zelfde
+     begin-hoogte als bij Spelen); zolang je kiest staat op die plek de balk "Spel hosten" */
   #tabWalk.is-multi-tab .walk-mode-toggle{visibility:hidden;}
+  #tabWalk.is-multi-tab .walk-lobby-col:has(#mpChoice:not([hidden])) .walk-mode-toggle:not(.mp-host-toggle){display:none;}
+  #tabWalk.is-multi-tab .walk-lobby-col:has(#mpChoice:not([hidden])) .mp-host-toggle{display:flex; visibility:visible;}
   .walk-lobby-start-row #walkSoloStartRow{display:flex; flex-direction:column;}
   .walk-lobby-start-row #walkSoloStartRow[hidden]{display:none;}
   .walk-lobby-start{width:100%; padding:13px; font-size:15px;}
