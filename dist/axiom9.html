@@ -149,7 +149,7 @@
   .tab-panel[hidden]{display:none;}
   /* zolang een multiplayer-potje loopt (zie switchTab-guard in 80-controls.js) zijn de andere
      tabbladen niet aanklikbaar — visueel gedimd zodat dat ook zonder klikken duidelijk is */
-  .tab-bar.mp-locked .tab-btn:not([data-tab="walk"]){opacity:.35; pointer-events:none;}
+  .tab-bar.mp-locked .tab-btn:not([data-tab="multi"]){opacity:.35; pointer-events:none;}
   /* "Nieuw potje" (#btnWalkSoloReset) — margin-left:auto duwt 'm helemaal naar rechts in
      dezelfde balk als de tabbladen, los van hoeveel tabbladen ervoor staan. align-self:center
      + eigen margin i.p.v. .tab-btn's padding/margin-bottom: dit is geen tabblad en moet niet
@@ -219,7 +219,8 @@
     .header-right{padding-left:20px;}
   }
   /* smal scherm: logo/titel en status op de eerste regel, tabbladen eronder over de hele breedte */
-  @media (max-width: 1200px){
+  /* 1300 (was 1200): met vijf tabbladen raakte de titel ze daaronder net */
+  @media (max-width: 1300px){
     header{grid-template-columns:minmax(0, 1fr) auto; row-gap:12px;}
     header .tab-bar{grid-column:1 / -1; order:3; border:none; padding:0; justify-content:safe center;}
     .header-right{order:2;}
@@ -731,22 +732,25 @@
   #walkSoloSetupPlayers{display:flex; flex-wrap:wrap; justify-content:center; margin-top:0;}
   #walkSoloSetupPlayers[hidden], #walkSoloSetupPlayers:empty{display:none;}
   #walkSoloSetupPlayers > *{flex:0 0 calc(50% - 5px); min-height:52px;}
-  /* de twee keuzes onder elkaar, allebei neutraal (geen van beide is "de" keuze, dus ook geen
-     van beide licht op — gebruikersmelding), even breed als een modus-tab */
-  /* white-space:nowrap op de knoppen (hieronder): bij het uitrekenen van de hoogte nam de browser
-     de procentbreedte even als 0, liet de tekst over twee regels lopen en rekende zo 120 i.p.v.
-     78px — de knoppen stonden daardoor boven het midden */
-  #mpChoice{display:flex; flex-direction:column; flex-wrap:nowrap; align-items:center; gap:10px; margin:0;}
-  /* zolang alleen de keuze zichtbaar is: geen tussenruimte naar de lege elementen eronder */
-  .mp-room-info:has(> #mpChoice:not([hidden])){gap:0;}
+  /* Tabblad Multiplayer (gebruikerswens): "Spel hosten" als grote knop over de volle breedte
+     (zelfde stijl als "Start spel" bij Spelen), dan een lijn met "of", en daaronder meteen het
+     deelnameformulier (naam + spelcode) met een even grote knop "Deelnemen aan spel". */
+  #mpChoice{display:flex; flex-direction:column; flex-wrap:nowrap; align-items:stretch; gap:18px; margin:0;}
   #mpChoice[hidden]{display:none;}
-  #mpChoice > button{
-    width:calc((100% - 12px) / 3); min-width:0; white-space:nowrap;
-    font-family:var(--font-mono); font-size:13px; letter-spacing:.1em; text-transform:uppercase;
-    padding:14px 12px; border-radius:5px;
-    background:var(--hull); border:1px solid var(--line); color:var(--text); box-shadow:none;
+  #mpChoice > #btnMpHost, .mp-join-row > #btnMpJoinConnect{
+    width:100%; padding:13px; font-size:15px; white-space:nowrap;
   }
-  #mpChoice > button:hover{border-color:var(--quest); color:#eafcff; background:rgba(79,184,224,.1);}
+  .btn-row.mp-join-row{display:flex; margin-top:4px;}
+  .mp-or-line{
+    display:flex; align-items:center; gap:14px; margin:4px 0;
+    font-family:var(--font-mono); font-size:11px; letter-spacing:.2em; text-transform:uppercase; color:var(--text-dim);
+  }
+  .mp-or-line::before, .mp-or-line::after{content:''; flex:1; height:1px; background:var(--line);}
+  /* Spelen heeft alleen nog Automatisch en Zelf spelen (Multiplayer is een eigen tabblad) */
+  #walkModeMulti{display:none;}
+  /* in het tabblad Multiplayer geen modusknoppen, maar wel hun ruimte (zelfde begin-hoogte als
+     bij Spelen) */
+  #tabWalk.is-multi-tab .walk-mode-toggle{visibility:hidden;}
   .walk-lobby-start-row #walkSoloStartRow{display:flex; flex-direction:column;}
   .walk-lobby-start-row #walkSoloStartRow[hidden]{display:none;}
   .walk-lobby-start{width:100%; padding:13px; font-size:15px;}
@@ -2985,6 +2989,10 @@
     <button class="tab-btn active" id="tabBtnMap" data-tab="map" role="tab" aria-selected="true">Speelbord genereren</button>
     <button class="tab-btn" id="tabBtnSimulate" data-tab="simulate" role="tab" aria-selected="false">Simulatie</button>
     <button class="tab-btn" id="tabBtnWalk" data-tab="walk" role="tab" aria-selected="false">Spelen</button>
+    <!-- Multiplayer als eigen tabblad (gebruikerswens: "te veel klikken"). Gebruikt hetzelfde
+         vak als Spelen (#tabWalk), maar dan meteen in de modus Multiplayer — zie switchTab()
+         in 80-controls.js. -->
+    <button class="tab-btn" id="tabBtnMulti" data-tab="multi" role="tab" aria-selected="false">Multiplayer</button>
     <button class="tab-btn" id="tabBtnCards" data-tab="cards" role="tab" aria-selected="false">Speelkaarten</button>
     <!-- Het tabblad heette eerst ook "Zelf spelen", net als de modusknop erin — verwarrend, want
          daar zit ook Automatisch (waar je juist niet zelf speelt). Nu "Spelen".
@@ -3266,9 +3274,11 @@
                normale 560px-kolombreedte geen ruimte voor twee leesbare kolommen naast elkaar. -->
           <div class="mp-room-layout" id="mpRoomLayout">
             <div class="mp-room-info">
+              <!-- "Spel hosten", een lijn met "of", en daaronder meteen het deelnameformulier
+                   (#mpJoinForm hieronder) — geen extra klik meer nodig (gebruikerswens) -->
               <div id="mpChoice" class="btn-row">
                 <button type="button" id="btnMpHost" class="primary">Spel hosten</button>
-                <button type="button" id="btnMpJoinShow" class="ghost">Deelnemen aan spel</button>
+                <div class="mp-or-line"><span>of</span></div>
               </div>
 
               <div id="mpHostSetup" class="mp-setup" hidden>
@@ -3332,9 +3342,8 @@
                   <label for="mpJoinCode">Spelcode</label>
                   <input type="text" id="mpJoinCode" maxlength="8" placeholder="bv. AXQ7K2" style="text-transform:uppercase;">
                 </div>
-                <div class="btn-row">
-                  <button type="button" id="btnMpJoinConnect" class="primary">Verbinden</button>
-                  <button type="button" id="btnMpJoinCancel" class="ghost">Terug</button>
+                <div class="btn-row mp-join-row">
+                  <button type="button" id="btnMpJoinConnect" class="primary">Deelnemen aan spel</button>
                 </div>
               </div>
 
@@ -5461,14 +5470,23 @@ const tabPanels = {
 // Zolang een multiplayer-potje loopt (window.mpGameActive, gezet door 99-multiplayer.js) mag
 // je het tabblad "Zelf spelen" niet verlaten — anders loop je zomaar uit je eigen potje weg
 // terwijl je medespelers nog wachten (gebruikersverzoek).
+// Tabblad "multi" (Multiplayer) is GEEN eigen paneel: het gebruikt hetzelfde #tabWalk als
+// Spelen, maar dan meteen in de modus Multiplayer (setWalkMode, 97-solo.js); Spelen zelf heeft
+// alleen nog Automatisch en Zelf spelen. De klasse .is-multi-tab op #tabWalk verbergt daar de
+// modusknoppen (styles.css). Tijdens een multiplayer-potje kan alleen dit tabblad open staan.
 function switchTab(name){
-  if (window.mpGameActive && name !== 'walk') return;
+  if (window.mpGameActive && name !== 'multi') return;
+  const panelKey = name === 'multi' ? 'walk' : name;
   for (const btn of tabButtons){
     const active = btn.dataset.tab === name;
     btn.classList.toggle('active', active);
     btn.setAttribute('aria-selected', active ? 'true' : 'false');
   }
-  for (const key of Object.keys(tabPanels)) tabPanels[key].hidden = key !== name;
+  for (const key of Object.keys(tabPanels)) tabPanels[key].hidden = key !== panelKey;
+  tabPanels.walk.classList.toggle('is-multi-tab', name === 'multi');
+  const multiModeOn = typeof walkModeMultiBtn !== 'undefined' && walkModeMultiBtn && walkModeMultiBtn.classList.contains('active');
+  if (name === 'multi' && !multiModeOn) setWalkMode('multi');
+  else if (name === 'walk' && multiModeOn) setWalkMode('auto');
   // "Nieuw potje" (97-solo.js) leeft in de tabbladenbalk zelf, niet in #tabWalk — die balk
   // verbergt niet vanzelf mee met de rest van dit tabblad, dus hier expliciet herchecken.
   walkSoloResetSyncVisibility();
@@ -5487,12 +5505,11 @@ function switchTab(name){
   // walkRunning bewaakt de Automatisch-modus, soloGraph (null buiten een potje) Zelf spelen én
   // multiplayer — samen dus "loopt er ergens een potje", en zo niet, dan mag het bord gewoon vers
   // getekend worden zoals hiervoor.
-  if (name === 'walk' && !walkRunning && !soloGraph) renderWalkBoard();
+  if (panelKey === 'walk' && !walkRunning && !soloGraph) renderWalkBoard();
   // de kamernaam op een opdrachtkaart hangt aan de tegel, dus bij elk openen opnieuw opbouwen
   if (name === 'cards') renderCardsTab();
-  // multiplayer heeft geen eigen tabblad meer (zit als derde modus in #walkLobby, zie
-  // #walkModeMulti/setWalkMode() in 97-solo.js) — mpRenderLobby() wordt daarom vanuit
-  // setWalkMode('multi') aangeroepen, niet meer hiervandaan.
+  // mpRenderLobby() wordt vanuit setWalkMode('multi') aangeroepen (hierboven, bij het openen
+  // van het tabblad Multiplayer), niet apart hiervandaan.
 }
 tabButtons.forEach(btn => btn.addEventListener('click', () => switchTab(btn.dataset.tab)));
 
@@ -13600,8 +13617,7 @@ async function mpJoinConnect(){
   // dat hier "Speler", waardoor een tweede gast zonder naam als dubbele naam geweigerd zou worden
   mp.pendingName = name;
   mp.actions.hello.send({ name: mp.pendingName });   // meteen proberen; onPeerJoin herhaalt 'm zodra de verbinding er echt is
-  mpJoinWaitingEl.hidden = false;
-  if (mpChatPanelEl) mpChatPanelEl.hidden = false;
+  mpRenderLobby();   // keuze + formulier weg, wachtkamer + chat erbij
   mpSetStatus('', '');
 }
 function mpClientOnLobby(data){
@@ -14131,7 +14147,7 @@ function mpHandleIntent(peerId, msg){
 function mpEnterPlayView(){
   window.mpGameActive = true;
   if (mpTabBarEl) mpTabBarEl.classList.add('mp-locked');
-  switchTab('walk');
+  switchTab('multi');   // het speelscherm hoort bij het tabblad Multiplayer
   // Multiplayer heeft geen apart lobby-scherm meer nodig (dat is de modus "Multiplayer" hier
   // binnen #walkLobby — hosten/deelnemen/spelers klaarzetten) en ook geen Pauze/Stoppen/Nieuw
   // potje (dat is "Verlaat potje" hieronder), dus meteen door naar het speelscherm zonder fade
@@ -14227,7 +14243,10 @@ function mpClientOnStop(){
 // ---------- lobby-tabblad: welk deelscherm ----------
 function mpRenderLobby(){
   const show = (el, on) => { if (el) el.hidden = !on; };
-  show(mpChoiceEl, mp.phase === 'idle');
+  // keuzescherm = "Spel hosten" + lijn + meteen het deelnameformulier (ook na een geweigerde
+  // naam, fase 'join-form': dan staat het rode naamveld gewoon in hetzelfde scherm)
+  const choosing = mp.phase === 'idle' || mp.phase === 'join-form';
+  show(mpChoiceEl, choosing);
   show(mpHostSetupEl, mp.phase === 'host-setup' || mp.phase === 'hosting');
   // #mpHostForm (naam/spelersaantal/bot-keuze + Aanmaken/Terug) hoort alleen bij het INSTELLEN
   // van een kamer — eenmaal aan het hosten heeft dat formulier geen functie meer en verdween
@@ -14235,7 +14254,7 @@ function mpRenderLobby(){
   // scrollt bewust niet mee (gebruikersmelding: "2 knoppen linksonder niet te zien").
   show(mpHostFormEl, mp.phase === 'host-setup');
   show(mpHostRoomEl, mp.phase === 'hosting');
-  show(mpJoinFormEl, mp.phase === 'join-form');
+  show(mpJoinFormEl, choosing);
   show(mpJoinWaitingEl, mp.phase === 'joining');
   show(mpChatPanelEl, mp.phase === 'hosting' || mp.phase === 'joining');
   if (mp.phase === 'hosting') mpRenderHostSeats();

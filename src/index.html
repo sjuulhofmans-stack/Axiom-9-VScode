@@ -25,6 +25,10 @@
     <button class="tab-btn active" id="tabBtnMap" data-tab="map" role="tab" aria-selected="true">Speelbord genereren</button>
     <button class="tab-btn" id="tabBtnSimulate" data-tab="simulate" role="tab" aria-selected="false">Simulatie</button>
     <button class="tab-btn" id="tabBtnWalk" data-tab="walk" role="tab" aria-selected="false">Spelen</button>
+    <!-- Multiplayer als eigen tabblad (gebruikerswens: "te veel klikken"). Gebruikt hetzelfde
+         vak als Spelen (#tabWalk), maar dan meteen in de modus Multiplayer — zie switchTab()
+         in 80-controls.js. -->
+    <button class="tab-btn" id="tabBtnMulti" data-tab="multi" role="tab" aria-selected="false">Multiplayer</button>
     <button class="tab-btn" id="tabBtnCards" data-tab="cards" role="tab" aria-selected="false">Speelkaarten</button>
     <!-- Het tabblad heette eerst ook "Zelf spelen", net als de modusknop erin — verwarrend, want
          daar zit ook Automatisch (waar je juist niet zelf speelt). Nu "Spelen".
@@ -306,9 +310,11 @@
                normale 560px-kolombreedte geen ruimte voor twee leesbare kolommen naast elkaar. -->
           <div class="mp-room-layout" id="mpRoomLayout">
             <div class="mp-room-info">
+              <!-- "Spel hosten", een lijn met "of", en daaronder meteen het deelnameformulier
+                   (#mpJoinForm hieronder) — geen extra klik meer nodig (gebruikerswens) -->
               <div id="mpChoice" class="btn-row">
                 <button type="button" id="btnMpHost" class="primary">Spel hosten</button>
-                <button type="button" id="btnMpJoinShow" class="ghost">Deelnemen aan spel</button>
+                <div class="mp-or-line"><span>of</span></div>
               </div>
 
               <div id="mpHostSetup" class="mp-setup" hidden>
@@ -372,9 +378,8 @@
                   <label for="mpJoinCode">Spelcode</label>
                   <input type="text" id="mpJoinCode" maxlength="8" placeholder="bv. AXQ7K2" style="text-transform:uppercase;">
                 </div>
-                <div class="btn-row">
-                  <button type="button" id="btnMpJoinConnect" class="primary">Verbinden</button>
-                  <button type="button" id="btnMpJoinCancel" class="ghost">Terug</button>
+                <div class="btn-row mp-join-row">
+                  <button type="button" id="btnMpJoinConnect" class="primary">Deelnemen aan spel</button>
                 </div>
               </div>
 

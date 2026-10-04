@@ -569,8 +569,7 @@ async function mpJoinConnect(){
   // dat hier "Speler", waardoor een tweede gast zonder naam als dubbele naam geweigerd zou worden
   mp.pendingName = name;
   mp.actions.hello.send({ name: mp.pendingName });   // meteen proberen; onPeerJoin herhaalt 'm zodra de verbinding er echt is
-  mpJoinWaitingEl.hidden = false;
-  if (mpChatPanelEl) mpChatPanelEl.hidden = false;
+  mpRenderLobby();   // keuze + formulier weg, wachtkamer + chat erbij
   mpSetStatus('', '');
 }
 function mpClientOnLobby(data){
@@ -1100,7 +1099,7 @@ function mpHandleIntent(peerId, msg){
 function mpEnterPlayView(){
   window.mpGameActive = true;
   if (mpTabBarEl) mpTabBarEl.classList.add('mp-locked');
-  switchTab('walk');
+  switchTab('multi');   // het speelscherm hoort bij het tabblad Multiplayer
   // Multiplayer heeft geen apart lobby-scherm meer nodig (dat is de modus "Multiplayer" hier
   // binnen #walkLobby — hosten/deelnemen/spelers klaarzetten) en ook geen Pauze/Stoppen/Nieuw
   // potje (dat is "Verlaat potje" hieronder), dus meteen door naar het speelscherm zonder fade
@@ -1196,7 +1195,10 @@ function mpClientOnStop(){
 // ---------- lobby-tabblad: welk deelscherm ----------
 function mpRenderLobby(){
   const show = (el, on) => { if (el) el.hidden = !on; };
-  show(mpChoiceEl, mp.phase === 'idle');
+  // keuzescherm = "Spel hosten" + lijn + meteen het deelnameformulier (ook na een geweigerde
+  // naam, fase 'join-form': dan staat het rode naamveld gewoon in hetzelfde scherm)
+  const choosing = mp.phase === 'idle' || mp.phase === 'join-form';
+  show(mpChoiceEl, choosing);
   show(mpHostSetupEl, mp.phase === 'host-setup' || mp.phase === 'hosting');
   // #mpHostForm (naam/spelersaantal/bot-keuze + Aanmaken/Terug) hoort alleen bij het INSTELLEN
   // van een kamer — eenmaal aan het hosten heeft dat formulier geen functie meer en verdween
@@ -1204,7 +1206,7 @@ function mpRenderLobby(){
   // scrollt bewust niet mee (gebruikersmelding: "2 knoppen linksonder niet te zien").
   show(mpHostFormEl, mp.phase === 'host-setup');
   show(mpHostRoomEl, mp.phase === 'hosting');
-  show(mpJoinFormEl, mp.phase === 'join-form');
+  show(mpJoinFormEl, choosing);
   show(mpJoinWaitingEl, mp.phase === 'joining');
   show(mpChatPanelEl, mp.phase === 'hosting' || mp.phase === 'joining');
   if (mp.phase === 'hosting') mpRenderHostSeats();

@@ -45,7 +45,7 @@ src/
     96b-intro.js      startanimatie na "Start spel" (aftellen 3-2-1, hyperjump, zwart gat) + vinkje in de lobby
     97-solo.js        tabblad "Spelen": modus Zelf spelen, eigen speler besturen tussen bots, energiekaarten
     98-cards.js       kaartvenster/zoom voor opdracht- en actiekaarten
-    99-multiplayer.js tabblad "Spelen": modus Multiplayer, lobby + peer-to-peer spelen met vrienden (WebRTC)
+    99-multiplayer.js tabblad "Multiplayer": lobby + peer-to-peer spelen met vrienden (WebRTC)
 build.py              plakt alles tot dist/axiom9.html
 dist/axiom9.html      GEBOUWD — niet handmatig bewerken
 ```
@@ -70,7 +70,8 @@ aangeroepen (functiedeclaraties worden gehoist, `const`/`let` niet).
 | de spelsimulatie aanpassen                  | `95-simulate.js`      |
 | een energie-actie of de prijs ervan aanpassen | `95-simulate.js` (`ENERGY_ACTIONS`, `botPreRollMove`) + knoppen in `97-solo.js` (`soloRenderActionPanel`/`soloUseEnergyAction`) |
 | iets aan "Spelen" → Automatisch (pion, tempo) | `96-walk.js`   |
-| de modus-schakelaar zelf (Automatisch/Zelf spelen/Multiplayer) | `97-solo.js` (`setWalkMode`) |
+| de modus-schakelaar zelf (Automatisch/Zelf spelen) | `97-solo.js` (`setWalkMode`) |
+| het tabblad Multiplayer (deelt #tabWalk met Spelen) | `80-controls.js` (`switchTab`, tab `multi`) |
 | de namen van de bots (alle modi)             | `96-walk.js` (`BOT_NAMES`, `pickBotNames`) |
 | het actiekaartvakje van een gang verplaatsen | tegel-editor in de tool (of `src/data/tiles.json`, labels `4.1`–`4.10`) |
 
@@ -198,9 +199,10 @@ Check minimaal:
    "Actiekaartvakje (4.x)"). Loopt een pion er tijdens "Zelf spelen"
    overheen, dan verschijnt een logregel "trekt een beloningskaart" en loopt
    de pion gewoon door — de beurt stopt er niet voor.
-10. Tabblad "Spelen" → modus "Multiplayer" is sinds kort geen eigen
-    tabblad meer maar de derde knop naast Automatisch/Zelf spelen (zelfde
-    smalle kolomstijl). Check: "Spel hosten" geeft een kamercode + een
+10. Tabblad "Multiplayer" (eigen tabblad naast Spelen; gebruikt hetzelfde vak
+    #tabWalk in de modus 'multi', Spelen heeft alleen Automatisch/Zelf spelen).
+    Lobby: grote knop "Spel hosten", lijn "of", daaronder meteen naam + spelcode
+    + "Deelnemen aan spel". Check: "Spel hosten" geeft een kamercode + een
     spelerskaartje in dezelfde 2-koloms stijl als de Zelf-spelen-opzet, chat
     staat eronder (niet meer ernaast). Laat een tweede speler meedoen, start
     een potje (de chat staat dan als eigen 4e kolom rechts, de zijkolom met

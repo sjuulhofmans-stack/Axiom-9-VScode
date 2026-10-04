@@ -184,14 +184,23 @@ const tabPanels = {
 // Zolang een multiplayer-potje loopt (window.mpGameActive, gezet door 99-multiplayer.js) mag
 // je het tabblad "Zelf spelen" niet verlaten — anders loop je zomaar uit je eigen potje weg
 // terwijl je medespelers nog wachten (gebruikersverzoek).
+// Tabblad "multi" (Multiplayer) is GEEN eigen paneel: het gebruikt hetzelfde #tabWalk als
+// Spelen, maar dan meteen in de modus Multiplayer (setWalkMode, 97-solo.js); Spelen zelf heeft
+// alleen nog Automatisch en Zelf spelen. De klasse .is-multi-tab op #tabWalk verbergt daar de
+// modusknoppen (styles.css). Tijdens een multiplayer-potje kan alleen dit tabblad open staan.
 function switchTab(name){
-  if (window.mpGameActive && name !== 'walk') return;
+  if (window.mpGameActive && name !== 'multi') return;
+  const panelKey = name === 'multi' ? 'walk' : name;
   for (const btn of tabButtons){
     const active = btn.dataset.tab === name;
     btn.classList.toggle('active', active);
     btn.setAttribute('aria-selected', active ? 'true' : 'false');
   }
-  for (const key of Object.keys(tabPanels)) tabPanels[key].hidden = key !== name;
+  for (const key of Object.keys(tabPanels)) tabPanels[key].hidden = key !== panelKey;
+  tabPanels.walk.classList.toggle('is-multi-tab', name === 'multi');
+  const multiModeOn = typeof walkModeMultiBtn !== 'undefined' && walkModeMultiBtn && walkModeMultiBtn.classList.contains('active');
+  if (name === 'multi' && !multiModeOn) setWalkMode('multi');
+  else if (name === 'walk' && multiModeOn) setWalkMode('auto');
   // "Nieuw potje" (97-solo.js) leeft in de tabbladenbalk zelf, niet in #tabWalk — die balk
   // verbergt niet vanzelf mee met de rest van dit tabblad, dus hier expliciet herchecken.
   walkSoloResetSyncVisibility();
@@ -210,12 +219,11 @@ function switchTab(name){
   // walkRunning bewaakt de Automatisch-modus, soloGraph (null buiten een potje) Zelf spelen én
   // multiplayer — samen dus "loopt er ergens een potje", en zo niet, dan mag het bord gewoon vers
   // getekend worden zoals hiervoor.
-  if (name === 'walk' && !walkRunning && !soloGraph) renderWalkBoard();
+  if (panelKey === 'walk' && !walkRunning && !soloGraph) renderWalkBoard();
   // de kamernaam op een opdrachtkaart hangt aan de tegel, dus bij elk openen opnieuw opbouwen
   if (name === 'cards') renderCardsTab();
-  // multiplayer heeft geen eigen tabblad meer (zit als derde modus in #walkLobby, zie
-  // #walkModeMulti/setWalkMode() in 97-solo.js) — mpRenderLobby() wordt daarom vanuit
-  // setWalkMode('multi') aangeroepen, niet meer hiervandaan.
+  // mpRenderLobby() wordt vanuit setWalkMode('multi') aangeroepen (hierboven, bij het openen
+  // van het tabblad Multiplayer), niet apart hiervandaan.
 }
 tabButtons.forEach(btn => btn.addEventListener('click', () => switchTab(btn.dataset.tab)));
 

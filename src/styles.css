@@ -142,7 +142,7 @@
   .tab-panel[hidden]{display:none;}
   /* zolang een multiplayer-potje loopt (zie switchTab-guard in 80-controls.js) zijn de andere
      tabbladen niet aanklikbaar — visueel gedimd zodat dat ook zonder klikken duidelijk is */
-  .tab-bar.mp-locked .tab-btn:not([data-tab="walk"]){opacity:.35; pointer-events:none;}
+  .tab-bar.mp-locked .tab-btn:not([data-tab="multi"]){opacity:.35; pointer-events:none;}
   /* "Nieuw potje" (#btnWalkSoloReset) — margin-left:auto duwt 'm helemaal naar rechts in
      dezelfde balk als de tabbladen, los van hoeveel tabbladen ervoor staan. align-self:center
      + eigen margin i.p.v. .tab-btn's padding/margin-bottom: dit is geen tabblad en moet niet
@@ -212,7 +212,8 @@
     .header-right{padding-left:20px;}
   }
   /* smal scherm: logo/titel en status op de eerste regel, tabbladen eronder over de hele breedte */
-  @media (max-width: 1200px){
+  /* 1300 (was 1200): met vijf tabbladen raakte de titel ze daaronder net */
+  @media (max-width: 1300px){
     header{grid-template-columns:minmax(0, 1fr) auto; row-gap:12px;}
     header .tab-bar{grid-column:1 / -1; order:3; border:none; padding:0; justify-content:safe center;}
     .header-right{order:2;}
@@ -724,22 +725,25 @@
   #walkSoloSetupPlayers{display:flex; flex-wrap:wrap; justify-content:center; margin-top:0;}
   #walkSoloSetupPlayers[hidden], #walkSoloSetupPlayers:empty{display:none;}
   #walkSoloSetupPlayers > *{flex:0 0 calc(50% - 5px); min-height:52px;}
-  /* de twee keuzes onder elkaar, allebei neutraal (geen van beide is "de" keuze, dus ook geen
-     van beide licht op — gebruikersmelding), even breed als een modus-tab */
-  /* white-space:nowrap op de knoppen (hieronder): bij het uitrekenen van de hoogte nam de browser
-     de procentbreedte even als 0, liet de tekst over twee regels lopen en rekende zo 120 i.p.v.
-     78px — de knoppen stonden daardoor boven het midden */
-  #mpChoice{display:flex; flex-direction:column; flex-wrap:nowrap; align-items:center; gap:10px; margin:0;}
-  /* zolang alleen de keuze zichtbaar is: geen tussenruimte naar de lege elementen eronder */
-  .mp-room-info:has(> #mpChoice:not([hidden])){gap:0;}
+  /* Tabblad Multiplayer (gebruikerswens): "Spel hosten" als grote knop over de volle breedte
+     (zelfde stijl als "Start spel" bij Spelen), dan een lijn met "of", en daaronder meteen het
+     deelnameformulier (naam + spelcode) met een even grote knop "Deelnemen aan spel". */
+  #mpChoice{display:flex; flex-direction:column; flex-wrap:nowrap; align-items:stretch; gap:18px; margin:0;}
   #mpChoice[hidden]{display:none;}
-  #mpChoice > button{
-    width:calc((100% - 12px) / 3); min-width:0; white-space:nowrap;
-    font-family:var(--font-mono); font-size:13px; letter-spacing:.1em; text-transform:uppercase;
-    padding:14px 12px; border-radius:5px;
-    background:var(--hull); border:1px solid var(--line); color:var(--text); box-shadow:none;
+  #mpChoice > #btnMpHost, .mp-join-row > #btnMpJoinConnect{
+    width:100%; padding:13px; font-size:15px; white-space:nowrap;
   }
-  #mpChoice > button:hover{border-color:var(--quest); color:#eafcff; background:rgba(79,184,224,.1);}
+  .btn-row.mp-join-row{display:flex; margin-top:4px;}
+  .mp-or-line{
+    display:flex; align-items:center; gap:14px; margin:4px 0;
+    font-family:var(--font-mono); font-size:11px; letter-spacing:.2em; text-transform:uppercase; color:var(--text-dim);
+  }
+  .mp-or-line::before, .mp-or-line::after{content:''; flex:1; height:1px; background:var(--line);}
+  /* Spelen heeft alleen nog Automatisch en Zelf spelen (Multiplayer is een eigen tabblad) */
+  #walkModeMulti{display:none;}
+  /* in het tabblad Multiplayer geen modusknoppen, maar wel hun ruimte (zelfde begin-hoogte als
+     bij Spelen) */
+  #tabWalk.is-multi-tab .walk-mode-toggle{visibility:hidden;}
   .walk-lobby-start-row #walkSoloStartRow{display:flex; flex-direction:column;}
   .walk-lobby-start-row #walkSoloStartRow[hidden]{display:none;}
   .walk-lobby-start{width:100%; padding:13px; font-size:15px;}
