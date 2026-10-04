@@ -14143,7 +14143,7 @@ function mpOnMyAvatarChanged(){
 
 function mpRenderHostSeats(){
   if (!mpHostSeatsEl) return;
-  mpHostSeatsEl.innerHTML = mpSeatRowsHtml(mp.seats, mp.totalSeats);
+  mpSetSeatsHtml(mpHostSeatsEl, mpSeatRowsHtml(mp.seats, mp.totalSeats));
   mpRenderAvatarRow();
   const btn = document.getElementById('btnMpHostStart');
   if (btn) btn.disabled = mp.seats.length < 1 || (!mp.fillBots && mp.seats.length < mp.totalSeats);
@@ -14169,6 +14169,13 @@ function mpSeatRowsHtml(seats, total){
     }
   }
   return rows.join('');
+}
+// alleen herschrijven als er echt iets aan de plekken verandert — anders begon de golf van
+// "Wachten op speler" opnieuw bij elke lobby-update (bv. iemand kiest een andere avatar)
+function mpSetSeatsHtml(el, html){
+  if (el.dataset.html === html) return;
+  el.dataset.html = html;
+  el.innerHTML = html;
 }
 // tekst als losse letters met een oplopende vertraging (.mp-wave in styles.css)
 function mpWaveText(text){
@@ -14293,7 +14300,7 @@ async function mpJoinConnect(){
   mpSetStatus('', '');
   const codeEl = document.getElementById('mpWaitCodeText');
   if (codeEl) codeEl.textContent = code;
-  if (mpWaitSeatsEl) mpWaitSeatsEl.innerHTML = '';
+  if (mpWaitSeatsEl) mpSetSeatsHtml(mpWaitSeatsEl, '');
   mpStartWaitTimer();
 }
 function mpClientOnLobby(data){
@@ -14306,7 +14313,7 @@ function mpClientOnLobby(data){
   // (zie mpOnPeerLeave) i.p.v. elke vertrekkende medespeler daarvoor aan te zien.
   const hostSeat = mp.seats.find(s => s.isHost);
   if (hostSeat) mp.hostPeerId = hostSeat.peerId;
-  if (mpWaitSeatsEl) mpWaitSeatsEl.innerHTML = mpSeatRowsHtml(mp.seats, mp.totalSeats);
+  if (mpWaitSeatsEl) mpSetSeatsHtml(mpWaitSeatsEl, mpSeatRowsHtml(mp.seats, mp.totalSeats));
   mpRenderAvatarRow();
   mpUpdateWaitStatus();
 }
