@@ -2893,16 +2893,22 @@
        dus zonder deze cap zou het vak gewoon oneindig meegroeien met het aantal berichten
        i.p.v. een scrollbalk te tonen). */
     flex:1; min-height:0; max-height:520px; overflow-y:auto;
-    display:flex; flex-direction:column; gap:5px;
-    background:var(--hull); border:1px solid var(--line-dim); border-radius:6px; padding:10px;
-    font-family:var(--font-mono); font-size:13px; line-height:1.5;
+    /* Als een tabel (gebruikerswens): kolom 1 = namen (zo breed als de langste naam, hoogstens
+       40%), kolom 2 = tekst. Een tweede regel tekst loopt zo netjes onder de tekst door i.p.v.
+       onder de naam. Alles op hele pixels (regelhoogte 20px i.p.v. 1.5 × 13 = 19,5px): halve
+       pixels lieten de regels bij het scrollen een fractie op en neer verspringen. */
+    display:grid; grid-template-columns:fit-content(40%) minmax(0, 1fr);
+    column-gap:10px; row-gap:6px; align-content:start;
+    background:var(--hull); border:1px solid var(--line-dim); border-radius:6px; padding:10px 12px;
+    font-family:var(--font-mono); font-size:13px; line-height:20px;
   }
-  .mp-chat-log:empty::before{content:'Nog geen berichten.'; color:var(--text-dim);}
+  .mp-chat-log:empty::before{content:'Nog geen berichten.'; color:var(--text-dim); grid-column:1 / -1;}
   /* thema-scrollbalk: nu overal in het document geregeld, zie de `*::-webkit-scrollbar-*`-
      regels vlak na `html{scrollbar-gutter: stable;}` bovenaan dit bestand. */
-  .mp-chat-msg b{margin-right:5px;}
-  .mp-chat-msg span{overflow-wrap:anywhere;}
-  .mp-chat-msg.mp-chat-me{opacity:.82;}
+  .mp-chat-msg{display:contents;}
+  .mp-chat-msg > b{text-align:right; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+  .mp-chat-msg > span{overflow-wrap:anywhere; min-width:0;}
+  .mp-chat-msg.mp-chat-me > *{opacity:.82;}   /* display:contents: opacity op de rij zelf werkt niet */
   .mp-chant{color:var(--quest); font-weight:700; letter-spacing:.02em;}
   .mp-chat-form{display:flex; gap:8px;}
   .mp-chat-form input[type=text]{

@@ -1371,7 +1371,7 @@ function mpRenderChat(){
         ? `<span class="mp-egg">${MP_EGG_LABELS[msg.egg] || msg.egg}</span>`
         : `<span>${mpEscapeHtml(msg.text)}</span>`;
     return `<div class="mp-chat-msg${mine ? ' mp-chat-me' : ''}">` +
-      `<b style="color:${msg.color}">${mpEscapeHtml(msg.name)}:</b>${body}` +
+      `<b style="color:${msg.color}" title="${mpEscapeHtml(msg.name)}">${mpEscapeHtml(msg.name)}</b>${body}` +
     `</div>`;
   }).join('');
   for (const el of [mpChatLogEl, mpChatLogGameEl]){
