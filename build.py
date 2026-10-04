@@ -43,6 +43,7 @@ JS_ORDER = [
     "96b-intro.js",
     "97-solo.js",
     "98-cards.js",
+    "98b-avatar.js",
     "99-multiplayer.js",
 ]
 

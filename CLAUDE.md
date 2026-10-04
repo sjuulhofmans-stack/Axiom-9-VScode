@@ -45,6 +45,7 @@ src/
     96b-intro.js      startanimatie na "Start spel" (aftellen 3-2-1, hyperjump, zwart gat) + vinkje in de lobby
     97-solo.js        tabblad "Spelen": modus Zelf spelen, eigen speler besturen tussen bots, energiekaarten
     98-cards.js       kaartvenster/zoom voor opdracht- en actiekaarten
+    98b-avatar.js     avatars in de multiplayer-kamer: 5 karakters, 5 brillen, 5 hoedjes (SVG) + editor
     99-multiplayer.js tabblad "Multiplayer": lobby + peer-to-peer spelen met vrienden (WebRTC)
 build.py              plakt alles tot dist/axiom9.html
 dist/axiom9.html      GEBOUWD — niet handmatig bewerken
@@ -230,6 +231,10 @@ Check minimaal:
     'botturn'-bericht (`mpOnBotReplay`) en zendt tijdens soloPhase 'bots' géén stand; elke
     gast speelt de beurt zelf na (`mpClientOnBotTurn` → `soloAnimateBotTurn`). Check: bij de
     gast loopt de bot-pion vloeiend, en het log is gelijk aan dat van de host (geen dubbele regels).
+    Kamer = 3 kolommen: plekken | 4 avatarvakjes + chat (gecentreerd) | avatar-editor. Eerst een
+    karakter (tab Accessoires zit tot dan op slot), daarna bril/hoedje — staat meteen op je vakje
+    en bij de anderen (gast → 'avatar'-bericht → host zet `seat.avatar` en stuurt de lijst rond).
+    Nog een keer klikken op een item = weer af. Wordt per browser onthouden (localStorage).
 11. Speelscherm op ±1400px breed (laptop/half scherm): alles in beeld, niets
     afgeknipt — het bord krimpt daar mee (zie `--wcell` in `styles.css`),
     onder 1360px staat alles onder elkaar. `--wcell` schaalt óók met de

@@ -409,7 +409,7 @@ async function mpConnect(code){
 }
 
 function mpRegisterActions(room){
-  const names = ['hello', 'lobby', 'start', 'state', 'leave', 'intent', 'stop', 'chat', 'intro', 'botturn'];
+  const names = ['hello', 'lobby', 'start', 'state', 'leave', 'intent', 'stop', 'chat', 'intro', 'botturn', 'avatar'];
   mp.actions = {};
   for (const n of names) mp.actions[n] = room.makeAction(n);
 
@@ -422,6 +422,15 @@ function mpRegisterActions(room){
   mp.actions.start.onMessage = (data) => { if (!mp.isHost) mpClientOnStart(data); };
   mp.actions.state.onMessage = (data) => { if (!mp.isHost) mpApplyState(data); };
   mp.actions.botturn.onMessage = (data) => { if (!mp.isHost && mp.phase === 'in-game') mpClientOnBotTurn(data); };
+  // een gast koos een (andere) avatar in de lobby: de host zet 'm bij zijn plek en stuurt de lijst rond
+  mp.actions.avatar.onMessage = (data, { peerId }) => {
+    if (!mp.isHost) return;
+    const seat = mp.seats.find(s => s.peerId === peerId);
+    if (!seat) return;
+    seat.avatar = avatarClean(data && data.avatar);
+    mpBroadcastLobby();
+    mpRenderHostSeats();
+  };
   mp.actions.intent.onMessage = (data, { peerId }) => { if (mp.isHost) mpHandleIntent(peerId, data); };
   mp.actions.leave.onMessage = (data, { peerId }) => {
     // een 'leave' MET reden is een weigering van de host aan ons (naam bezet / kamer vol) —
@@ -443,7 +452,7 @@ function mpRegisterActions(room){
   room.onPeerJoin = (peerId) => {
     if (mp.room !== room) return;   // oude room van een herverbinding (mpJoinReconnect)
     if (mp.isHost) mpHostOnPeerJoin(peerId);
-    else if (mp.pendingName !== null) mp.actions.hello.send({ name: mp.pendingName });
+    else if (mp.pendingName !== null) mp.actions.hello.send(mpHelloPayload());
   };
   room.onPeerLeave = (peerId) => { if (mp.room === room) mpOnPeerLeave(peerId, false); };
 }
@@ -479,7 +488,7 @@ async function mpHostCreate(){
   mp.isHost = true;
   mp.phase = 'hosting';
   mp.hostPeerId = mp.myPeerId;
-  mp.seats = [{ peerId: mp.myPeerId, name, isHost: true }];
+  mp.seats = [{ peerId: mp.myPeerId, name, isHost: true, avatar: avatarMine }];
   mpRoomCodeTextEl.textContent = code;
   // rechtstreekse DOM-aanpassing i.p.v. de volledige mpRenderLobby() — vandaar dat #mpHostForm
   // (naam/spelersaantal/bots + Aanmaken/Terug, geen functie meer zodra de kamer bestaat) hier
@@ -488,7 +497,7 @@ async function mpHostCreate(){
   // (gebruikersmelding: "niet te zien en te lezen").
   if (mpHostFormEl) mpHostFormEl.hidden = true;
   mpHostRoomEl.hidden = false;
-  if (mpChatPanelEl) mpChatPanelEl.hidden = false;
+  mpShowRoomCols(true);
   mpSetStatus('', '');
   mpRenderHostSeats();
 }
@@ -518,7 +527,7 @@ function mpHostOnHello(peerId, data){
   }
   // geen startpositie in de lobby: die kiest iedereen pas aan het begin van het potje, in de
   // volgorde van de worp (soloBeginOpening in 97-solo.js)
-  mp.seats.push({ peerId, name, isHost: false });
+  mp.seats.push({ peerId, name, isHost: false, avatar: avatarClean(data && data.avatar) });
   mpBroadcastLobby();
   mpRenderHostSeats();
 }
@@ -533,9 +542,38 @@ function mpBroadcastLobby(){
   if (!mp.isHost || !mp.actions) return;
   mp.actions.lobby.send({ seats: mp.seats, totalSeats: mp.totalSeats, fillBots: mp.fillBots });
 }
+// ---------- avatars in de kamer (tekeningen + editor: 98b-avatar.js) ----------
+function mpHelloPayload(){ return { name: mp.pendingName, avatar: avatarMine }; }
+function mpRenderAvatarRow(){
+  const el = document.getElementById('mpAvatarRow');
+  if (el) el.innerHTML = avatarRowHtml(mp.seats || [], mp.totalSeats, mp.myPeerId);
+}
+// de middelste (avatars + chat) en rechter (editor) kolom horen alleen bij een bestaande kamer
+function mpShowRoomCols(on){
+  if (mpChatPanelEl) mpChatPanelEl.hidden = !on;
+  const mid = document.getElementById('mpMidCol'), ed = document.getElementById('mpAvatarEditor');
+  if (mid) mid.hidden = !on;
+  if (ed) ed.hidden = !on;
+  if (on){ mpRenderAvatarRow(); avatarRenderEditor(); }
+}
+// aangeroepen door avatarSetMine (98b-avatar.js) zodra je in de editor iets kiest
+function mpOnMyAvatarChanged(){
+  if (!mp.active || !mp.actions) return;
+  const seat = mp.seats.find(s => s.peerId === mp.myPeerId);
+  if (mp.isHost){
+    if (seat) seat.avatar = avatarMine;
+    mpBroadcastLobby();
+    mpRenderHostSeats();
+  } else {
+    if (seat){ seat.avatar = avatarMine; mpRenderAvatarRow(); }   // meteen zichtbaar, de host bevestigt
+    try { mp.actions.avatar.send({ avatar: avatarMine }); } catch (e){}
+  }
+}
+
 function mpRenderHostSeats(){
   if (!mpHostSeatsEl) return;
   mpHostSeatsEl.innerHTML = mpSeatRowsHtml(mp.seats, mp.totalSeats);
+  mpRenderAvatarRow();
   const btn = document.getElementById('btnMpHostStart');
   if (btn) btn.disabled = mp.seats.length < 1 || (!mp.fillBots && mp.seats.length < mp.totalSeats);
 }
@@ -626,7 +664,7 @@ function mpJoinWatchdog(){
   if (!mp.gotLobby && now - (mp.connectAt || now) > MP_RECONNECT_AFTER_MS){ mpJoinReconnect(); return; }
   if (now - (mp.helloAt || 0) > MP_HELLO_RETRY_MS){
     mp.helloAt = now;
-    try { mp.actions.hello.send({ name: mp.pendingName }); } catch (e){}
+    try { mp.actions.hello.send(mpHelloPayload()); } catch (e){}
   }
 }
 async function mpJoinReconnect(){
@@ -679,7 +717,7 @@ async function mpJoinConnect(){
   // dat hier "Speler", waardoor een tweede gast zonder naam als dubbele naam geweigerd zou worden
   mp.pendingName = name;
   mp.connectAt = mp.helloAt = Date.now(); mp.gotLobby = false;
-  mp.actions.hello.send({ name: mp.pendingName });   // meteen proberen; onPeerJoin herhaalt 'm zodra de verbinding er echt is
+  mp.actions.hello.send(mpHelloPayload());   // meteen proberen; onPeerJoin herhaalt 'm zodra de verbinding er echt is
   mpRenderLobby();   // keuze + formulier weg, wachtkamer + chat erbij
   mpSetStatus('', '');
   const codeEl = document.getElementById('mpWaitCodeText');
@@ -698,6 +736,7 @@ function mpClientOnLobby(data){
   const hostSeat = mp.seats.find(s => s.isHost);
   if (hostSeat) mp.hostPeerId = hostSeat.peerId;
   if (mpWaitSeatsEl) mpWaitSeatsEl.innerHTML = mpSeatRowsHtml(mp.seats, mp.totalSeats);
+  mpRenderAvatarRow();
   mpUpdateWaitStatus();
 }
 function mpJoinLeave(){
@@ -732,7 +771,7 @@ function mpTeardown(){
   window.mpGameActive = false;
   if (mpTabBarEl) mpTabBarEl.classList.remove('mp-locked');
   if (btnMpLeaveGame) btnMpLeaveGame.hidden = true;
-  if (mpChatPanelEl) mpChatPanelEl.hidden = true;
+  mpShowRoomCols(false);
   if (mpChatPanelGameEl) mpChatPanelGameEl.hidden = true;
   // een nieuwe room is een vers gesprek — het vorige hoort niet ineens weer op te duiken
   // zodra je een andere keer opnieuw host/join doet
@@ -1420,7 +1459,7 @@ function mpRenderLobby(){
   show(mpHostRoomEl, mp.phase === 'hosting');
   show(mpJoinFormEl, choosing);
   show(mpJoinWaitingEl, mp.phase === 'joining');
-  show(mpChatPanelEl, mp.phase === 'hosting' || mp.phase === 'joining');
+  mpShowRoomCols(mp.phase === 'hosting' || mp.phase === 'joining');
   if (mp.phase === 'hosting') mpRenderHostSeats();
 }
 

@@ -2882,7 +2882,67 @@
     display:grid; grid-template-columns:1fr; grid-template-rows:minmax(0,1fr); gap:16px;
     flex:1; min-height:0;
   }
-  .mp-room-layout:has(> .mp-chat-panel:not([hidden])){grid-template-columns:440px minmax(320px,1fr);}
+  /* kamer = 3 kolommen (gebruikerswens): links de plekken (smaller dan eerst), midden de 4
+     avatars + chat (gecentreerd), rechts de avatar-editor. De lobbykolom wordt daarvoor breder
+     dan de vaste 1160px (de modusknoppen staan in de kamer toch niet in beeld). */
+  .walk-lobby-col:has(#mpChatPanel:not([hidden])){max-width:1480px;}
+  .mp-room-layout:has(#mpChatPanel:not([hidden])){grid-template-columns:320px minmax(0,1fr) minmax(300px,400px);}
+  .mp-mid-col{display:flex; flex-direction:column; gap:14px; min-height:0; min-width:0;
+    width:100%; max-width:620px; justify-self:center;}
+  .mp-mid-col[hidden]{display:none;}
+  .mp-mid-col > .mp-chat-panel{flex:1 1 auto;}
+  @media (max-width:1300px){
+    .mp-room-layout:has(#mpChatPanel:not([hidden])){grid-template-columns:280px minmax(0,1fr) 290px;}
+  }
+
+  /* ---------- avatars (98b-avatar.js) ---------- */
+  .mp-avatars{display:grid; grid-template-columns:repeat(4, minmax(0,1fr)); gap:12px; flex:0 0 auto;}
+  .mp-avatar{
+    position:relative; aspect-ratio:1; border-radius:8px; overflow:hidden;
+    border:1px solid var(--line); border-top:3px solid var(--pc);
+    background:radial-gradient(circle at 50% 42%, color-mix(in srgb, var(--pc) 16%, transparent), transparent 70%), var(--hull);
+    display:flex; align-items:center; justify-content:center;
+  }
+  .mp-avatar .av-svg{width:88%; height:88%; margin-bottom:10%;}
+  .mp-avatar.is-you{box-shadow:0 0 0 1px var(--pc), 0 0 14px color-mix(in srgb, var(--pc) 35%, transparent);}
+  .mp-avatar.is-empty{border:1px dashed var(--line); background:var(--hull);}
+  .mp-avatar.is-unused{opacity:.35;}
+  .mp-avatar-name{
+    position:absolute; left:0; right:0; bottom:0; padding:4px 6px 5px; text-align:center;
+    font-size:12px; font-weight:700; color:var(--pc); line-height:14px;
+    background:linear-gradient(transparent, rgba(0,0,0,.75) 45%);
+    white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+  }
+  .mp-avatar-none{font-size:11px; color:var(--text-dim); text-align:center; line-height:15px; margin-bottom:14px;}
+
+  .mp-avatar-editor{display:flex; flex-direction:column; gap:14px; min-height:0; min-width:0; overflow:hidden;}
+  .mp-avatar-editor[hidden]{display:none;}
+  .av-tabs{display:grid; grid-template-columns:1fr 1fr; gap:8px;}
+  .av-tab{height:38px; background:var(--hull); border:1px solid var(--line); color:var(--text-dim);
+    font-weight:700; letter-spacing:.04em; cursor:pointer;}
+  .av-tab:hover{color:var(--text);}
+  .av-tab.active{color:#eafcff; border-color:var(--quest); background:rgba(79,184,224,.12);
+    box-shadow:0 0 10px rgba(79,184,224,.18);}
+  .av-tab.is-locked{opacity:.45; cursor:not-allowed;}
+  .av-tab.is-locked::before{content:'🔒 '; font-size:11px;}
+  .av-grid{display:grid; gap:10px; align-content:start;}
+  .av-grid-chars{grid-template-columns:repeat(3, minmax(0,1fr));}
+  .av-grid-items{grid-template-columns:1fr; gap:14px;}
+  .av-row{display:grid; grid-template-columns:repeat(5, minmax(0,1fr)); gap:8px;}
+  .av-row + .av-row{padding-top:14px; border-top:1px solid var(--line-dim);}
+  .av-pick{
+    aspect-ratio:1; padding:6%; border-radius:8px; cursor:pointer;
+    background:var(--hull); border:1px solid var(--line-dim);
+    display:flex; align-items:center; justify-content:center;
+    transition:border-color .15s, background .15s, transform .15s;
+  }
+  .av-pick .av-svg{width:100%; height:100%;}
+  .av-pick:hover{border-color:var(--line); background:#111a24; transform:translateY(-1px);}
+  .av-pick.is-on{border-color:var(--start); background:rgba(85,214,138,.1);
+    box-shadow:0 0 0 1px var(--start), 0 0 12px rgba(85,214,138,.25);}
+  /* "Accessoires" aangeklikt zonder karakter: de karakters lichten even op */
+  .av-grid.av-nudge .av-pick{animation:avNudge .7s ease;}
+  @keyframes avNudge{0%,100%{border-color:var(--line-dim);} 35%{border-color:var(--amber); box-shadow:0 0 12px rgba(255,181,69,.4);}}
   /* overflow-y:hidden, niet auto — ook de informatiekolom mag geen eigen scrollbalk krijgen
      (gebruikerswens: alleen de chat mag scrollen). Bij normaal gebruik (max. 4 spelers) past
      dit ruim binnen de vaste hoogte; mocht dat ooit toch niet zo zijn, dan verdwijnt het
