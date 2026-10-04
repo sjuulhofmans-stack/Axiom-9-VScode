@@ -1851,9 +1851,11 @@ function renderSimResults({ n, stuckCount, startWins, startTurnsSum, startRanks,
   const nailBiterPct = extra.winGapCount ? (extra.nailBiters / extra.winGapCount * 100) : 0;
 
   simSectionOpened = false;
-  let html = `<p class="hint"><b>${n}</b> potjes gesimuleerd op indeling <b>${layout.join(',')}</b>`;
-  if (stuckCount) html += ` — <span style="color:var(--danger)">${stuckCount} vastgelopen</span> (afgekapt na ${SIM_MAX_TURNS} beurten, niet meegeteld in de percentages)`;
-  html += `.</p>`;
+  // geen regel "N potjes gesimuleerd op indeling …" meer (gebruikerswens); alleen als er potjes
+  // vastliepen een korte uitleg dat die niet meetellen
+  let html = stuckCount
+    ? `<p class="hint"><span style="color:var(--danger)">${stuckCount} vastgelopen</span> (afgekapt na ${SIM_MAX_TURNS} beurten, niet meegeteld in de percentages).</p>`
+    : '';
 
   // De twaalf secties hieronder zijn het bewijsmateriaal; deze vier vakjes beantwoorden de
   // vraag waar je de simulatie eigenlijk voor draait — is dit bord goed genoeg om te spelen?
@@ -2075,7 +2077,7 @@ function renderSimResults({ n, stuckCount, startWins, startTurnsSum, startRanks,
     expandBtn.setAttribute('aria-expanded', String(open));
     expandBtn.textContent = open ? 'Alle details inklappen' : 'Alle details uitklappen';
   });
-  simStatusEl.innerHTML = `<span class="ok">✓ Klaar in ${formatSimSeconds(elapsedMs)}</span>`;
+  simStatusEl.innerHTML = '';   // geen "✓ Klaar in … seconden" meer (gebruikerswens)
 }
 
 // na hoeveel potjes we de klok checken. Was 64 ("klok-uitlezen kost ook tijd"), maar één potje

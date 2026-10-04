@@ -261,9 +261,10 @@
   .map-board-panel.is-swapping > .board-zoom-wrap{opacity:0; pointer-events:none;}
   .gen-overlay{
     position:absolute; inset:0; display:flex; align-items:center; justify-content:center; z-index:3;
-    pointer-events:none; opacity:0; transition:opacity .9s ease; will-change:opacity;
+    pointer-events:none; opacity:0; will-change:opacity;
+    visibility:hidden; transition:opacity .9s ease, visibility 0s linear .9s;   /* zie .sim-loader */
   }
-  .map-board-panel.is-generating > .gen-overlay{opacity:1;}
+  .map-board-panel.is-generating > .gen-overlay{opacity:1; visibility:visible; transition:opacity .9s ease, visibility 0s;}
   .gen-box{
     display:flex; flex-direction:column; align-items:center; gap:18px; padding:44px 84px;
     border-radius:14px; border:1px solid rgba(79,184,224,.35);
@@ -511,9 +512,12 @@
   .sim-stage.is-running, .sim-stage.is-holding{min-height:380px;}
   .sim-loader{
     position:absolute; top:0; left:0; right:0; display:flex; justify-content:center; padding-top:6px;
-    z-index:3; opacity:0; pointer-events:none; transition:opacity .9s ease; will-change:opacity;
+    z-index:3; opacity:0; pointer-events:none; will-change:opacity;
+    /* na het uitfaden ook echt weg (visibility), anders zat de onzichtbare tekst ("Aan het
+       simuleren…", "Stoppen") nog op de pagina en kwam die mee bij selecteren/kopiëren */
+    visibility:hidden; transition:opacity .9s ease, visibility 0s linear .9s;
   }
-  .sim-stage.is-running > .sim-loader{opacity:1; pointer-events:auto;}
+  .sim-stage.is-running > .sim-loader{opacity:1; pointer-events:auto; visibility:visible; transition:opacity .9s ease, visibility 0s;}
   .sim-stage > #simResults, .sim-stage > #simStatus{transition:opacity .9s ease;}
   .sim-stage.is-running > #simResults, .sim-stage.is-running > #simStatus{opacity:0;}
   .sim-stage > #simStatus:not(:empty){margin-bottom:10px;}
@@ -8165,9 +8169,11 @@ function renderSimResults({ n, stuckCount, startWins, startTurnsSum, startRanks,
   const nailBiterPct = extra.winGapCount ? (extra.nailBiters / extra.winGapCount * 100) : 0;
 
   simSectionOpened = false;
-  let html = `<p class="hint"><b>${n}</b> potjes gesimuleerd op indeling <b>${layout.join(',')}</b>`;
-  if (stuckCount) html += ` — <span style="color:var(--danger)">${stuckCount} vastgelopen</span> (afgekapt na ${SIM_MAX_TURNS} beurten, niet meegeteld in de percentages)`;
-  html += `.</p>`;
+  // geen regel "N potjes gesimuleerd op indeling …" meer (gebruikerswens); alleen als er potjes
+  // vastliepen een korte uitleg dat die niet meetellen
+  let html = stuckCount
+    ? `<p class="hint"><span style="color:var(--danger)">${stuckCount} vastgelopen</span> (afgekapt na ${SIM_MAX_TURNS} beurten, niet meegeteld in de percentages).</p>`
+    : '';
 
   // De twaalf secties hieronder zijn het bewijsmateriaal; deze vier vakjes beantwoorden de
   // vraag waar je de simulatie eigenlijk voor draait — is dit bord goed genoeg om te spelen?
@@ -8389,7 +8395,7 @@ function renderSimResults({ n, stuckCount, startWins, startTurnsSum, startRanks,
     expandBtn.setAttribute('aria-expanded', String(open));
     expandBtn.textContent = open ? 'Alle details inklappen' : 'Alle details uitklappen';
   });
-  simStatusEl.innerHTML = `<span class="ok">✓ Klaar in ${formatSimSeconds(elapsedMs)}</span>`;
+  simStatusEl.innerHTML = '';   // geen "✓ Klaar in … seconden" meer (gebruikerswens)
 }
 
 // na hoeveel potjes we de klok checken. Was 64 ("klok-uitlezen kost ook tijd"), maar één potje

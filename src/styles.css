@@ -254,9 +254,10 @@
   .map-board-panel.is-swapping > .board-zoom-wrap{opacity:0; pointer-events:none;}
   .gen-overlay{
     position:absolute; inset:0; display:flex; align-items:center; justify-content:center; z-index:3;
-    pointer-events:none; opacity:0; transition:opacity .9s ease; will-change:opacity;
+    pointer-events:none; opacity:0; will-change:opacity;
+    visibility:hidden; transition:opacity .9s ease, visibility 0s linear .9s;   /* zie .sim-loader */
   }
-  .map-board-panel.is-generating > .gen-overlay{opacity:1;}
+  .map-board-panel.is-generating > .gen-overlay{opacity:1; visibility:visible; transition:opacity .9s ease, visibility 0s;}
   .gen-box{
     display:flex; flex-direction:column; align-items:center; gap:18px; padding:44px 84px;
     border-radius:14px; border:1px solid rgba(79,184,224,.35);
@@ -504,9 +505,12 @@
   .sim-stage.is-running, .sim-stage.is-holding{min-height:380px;}
   .sim-loader{
     position:absolute; top:0; left:0; right:0; display:flex; justify-content:center; padding-top:6px;
-    z-index:3; opacity:0; pointer-events:none; transition:opacity .9s ease; will-change:opacity;
+    z-index:3; opacity:0; pointer-events:none; will-change:opacity;
+    /* na het uitfaden ook echt weg (visibility), anders zat de onzichtbare tekst ("Aan het
+       simuleren…", "Stoppen") nog op de pagina en kwam die mee bij selecteren/kopiëren */
+    visibility:hidden; transition:opacity .9s ease, visibility 0s linear .9s;
   }
-  .sim-stage.is-running > .sim-loader{opacity:1; pointer-events:auto;}
+  .sim-stage.is-running > .sim-loader{opacity:1; pointer-events:auto; visibility:visible; transition:opacity .9s ease, visibility 0s;}
   .sim-stage > #simResults, .sim-stage > #simStatus{transition:opacity .9s ease;}
   .sim-stage.is-running > #simResults, .sim-stage.is-running > #simStatus{opacity:0;}
   .sim-stage > #simStatus:not(:empty){margin-bottom:10px;}
