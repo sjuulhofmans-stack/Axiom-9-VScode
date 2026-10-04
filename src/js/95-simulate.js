@@ -2024,9 +2024,11 @@ function renderSimResults({ n, stuckCount, startWins, startTurnsSum, startRanks,
   simStatusEl.innerHTML = `<span class="ok">✓ Klaar in ${formatSimSeconds(elapsedMs)}</span>`;
 }
 
-// richttijd per brok werk vóór we de klok checken (ononderbroken doorrekenen, dan pas
-// performance.now() aanroepen) — zo blijft het klok-uitlezen zelf verwaarloosbaar
-const SIM_PROGRESS_CHECK_EVERY = 64;
+// na hoeveel potjes we de klok checken. Was 64 ("klok-uitlezen kost ook tijd"), maar één potje
+// duurt al gauw 5-20 ms, dus een brok liep dan vaak 0,3-1 s door i.p.v. 30 ms — de browser kreeg
+// al die tijd geen beeldje, en de voortgangsring kon zijn animatie niet eens starten (begon zo
+// steeds opnieuw vanaf 0). performance.now() kost een fractie van een microseconde: elk potje dus.
+const SIM_PROGRESS_CHECK_EVERY = 1;
 // hoe lang een brok werk maximaal ononderbroken doorrekent voordat we een frame teruggeven
 // aan de browser — 30ms geeft de voortgangsbalk een vloeiende, ~30fps-achtige update zonder
 // dat de duizenden setTimeout-overgangen zelf noemenswaardige tijd kosten

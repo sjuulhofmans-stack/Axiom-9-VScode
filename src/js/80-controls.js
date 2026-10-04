@@ -125,6 +125,9 @@ function createProgressLoader(root){
     // langzame op-gang-komen-stuk uit start()).
     const firstEstimate = seg.p1 < GEN_RING_CAP;
     if (!firstEstimate && t - lastStart < 250) return;
+    // is het vorige stuk nog niet eens gestart (de browser heeft sindsdien geen beeldje gemaakt),
+    // dan dat stuk laten staan — steeds vervangen hield de ring anders eindeloos op zijn beginstand
+    if (!firstEstimate && anims[2] && anims[2].pending) return;
     if (now() < GEN_RING_CAP) setTarget(GEN_RING_CAP, Math.max(200, left));
   }
   // ring rustig volmaken (afremmend)

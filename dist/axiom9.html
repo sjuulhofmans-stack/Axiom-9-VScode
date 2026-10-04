@@ -514,8 +514,9 @@
     z-index:3; opacity:0; pointer-events:none; transition:opacity .9s ease; will-change:opacity;
   }
   .sim-stage.is-running > .sim-loader{opacity:1; pointer-events:auto;}
-  .sim-stage > #simResults{transition:opacity .9s ease;}
-  .sim-stage.is-running > #simResults{opacity:0;}
+  .sim-stage > #simResults, .sim-stage > #simStatus{transition:opacity .9s ease;}
+  .sim-stage.is-running > #simResults, .sim-stage.is-running > #simStatus{opacity:0;}
+  .sim-stage > #simStatus:not(:empty){margin-bottom:10px;}
   .sim-loader .gen-box{padding:36px 84px 26px; gap:14px;}
   .sim-loader-count{font-size:11.5px; font-variant-numeric:tabular-nums; margin-top:-8px; opacity:.75;}
   .sim-stop{align-self:center; margin-top:4px; min-width:140px;}
@@ -3352,12 +3353,14 @@
             <button id="btnSimulate" class="primary">Draai simulatie</button>
           </div>
         </div>
-        <div id="simStatus" class="reach-status"></div>
         <!-- "Aan het simuleren"-vakje: zelfde laadvakje + voortgangsring als bij map genereren
              (createProgressLoader in 80-controls.js), maar in het midden een radarscherm met een
              draaiende scanstraal en vier pionnen. Ligt tijdens het rekenen óver de (lege) uitslag
-             en faadt bij klaar uit terwijl de uitslag infaadt — zie runSimulationBatch. -->
+             en faadt bij klaar uit terwijl de uitslag infaadt — zie runSimulationBatch.
+             #simStatus staat bewust BINNEN .sim-stage: daarbuiten (erboven) duwde de melding
+             "✓ Klaar in …" het nog zichtbare vakje bij het uitfaden een regel omlaag. -->
         <div class="sim-stage" id="simStage">
+          <div id="simStatus" class="reach-status"></div>
           <div class="sim-loader" id="simLoader">
             <div class="gen-box">
               <div class="gen-orbit" aria-hidden="true">
@@ -5692,6 +5695,9 @@ function createProgressLoader(root){
     // langzame op-gang-komen-stuk uit start()).
     const firstEstimate = seg.p1 < GEN_RING_CAP;
     if (!firstEstimate && t - lastStart < 250) return;
+    // is het vorige stuk nog niet eens gestart (de browser heeft sindsdien geen beeldje gemaakt),
+    // dan dat stuk laten staan — steeds vervangen hield de ring anders eindeloos op zijn beginstand
+    if (!firstEstimate && anims[2] && anims[2].pending) return;
     if (now() < GEN_RING_CAP) setTarget(GEN_RING_CAP, Math.max(200, left));
   }
   // ring rustig volmaken (afremmend)
@@ -8327,9 +8333,11 @@ function renderSimResults({ n, stuckCount, startWins, startTurnsSum, startRanks,
   simStatusEl.innerHTML = `<span class="ok">✓ Klaar in ${formatSimSeconds(elapsedMs)}</span>`;
 }
 
-// richttijd per brok werk vóór we de klok checken (ononderbroken doorrekenen, dan pas
-// performance.now() aanroepen) — zo blijft het klok-uitlezen zelf verwaarloosbaar
-const SIM_PROGRESS_CHECK_EVERY = 64;
+// na hoeveel potjes we de klok checken. Was 64 ("klok-uitlezen kost ook tijd"), maar één potje
+// duurt al gauw 5-20 ms, dus een brok liep dan vaak 0,3-1 s door i.p.v. 30 ms — de browser kreeg
+// al die tijd geen beeldje, en de voortgangsring kon zijn animatie niet eens starten (begon zo
+// steeds opnieuw vanaf 0). performance.now() kost een fractie van een microseconde: elk potje dus.
+const SIM_PROGRESS_CHECK_EVERY = 1;
 // hoe lang een brok werk maximaal ononderbroken doorrekent voordat we een frame teruggeven
 // aan de browser — 30ms geeft de voortgangsbalk een vloeiende, ~30fps-achtige update zonder
 // dat de duizenden setTimeout-overgangen zelf noemenswaardige tijd kosten

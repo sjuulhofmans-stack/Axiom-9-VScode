@@ -203,12 +203,14 @@
             <button id="btnSimulate" class="primary">Draai simulatie</button>
           </div>
         </div>
-        <div id="simStatus" class="reach-status"></div>
         <!-- "Aan het simuleren"-vakje: zelfde laadvakje + voortgangsring als bij map genereren
              (createProgressLoader in 80-controls.js), maar in het midden een radarscherm met een
              draaiende scanstraal en vier pionnen. Ligt tijdens het rekenen óver de (lege) uitslag
-             en faadt bij klaar uit terwijl de uitslag infaadt — zie runSimulationBatch. -->
+             en faadt bij klaar uit terwijl de uitslag infaadt — zie runSimulationBatch.
+             #simStatus staat bewust BINNEN .sim-stage: daarbuiten (erboven) duwde de melding
+             "✓ Klaar in …" het nog zichtbare vakje bij het uitfaden een regel omlaag. -->
         <div class="sim-stage" id="simStage">
+          <div id="simStatus" class="reach-status"></div>
           <div class="sim-loader" id="simLoader">
             <div class="gen-box">
               <div class="gen-orbit" aria-hidden="true">

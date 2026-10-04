@@ -507,8 +507,9 @@
     z-index:3; opacity:0; pointer-events:none; transition:opacity .9s ease; will-change:opacity;
   }
   .sim-stage.is-running > .sim-loader{opacity:1; pointer-events:auto;}
-  .sim-stage > #simResults{transition:opacity .9s ease;}
-  .sim-stage.is-running > #simResults{opacity:0;}
+  .sim-stage > #simResults, .sim-stage > #simStatus{transition:opacity .9s ease;}
+  .sim-stage.is-running > #simResults, .sim-stage.is-running > #simStatus{opacity:0;}
+  .sim-stage > #simStatus:not(:empty){margin-bottom:10px;}
   .sim-loader .gen-box{padding:36px 84px 26px; gap:14px;}
   .sim-loader-count{font-size:11.5px; font-variant-numeric:tabular-nums; margin-top:-8px; opacity:.75;}
   .sim-stop{align-self:center; margin-top:4px; min-width:140px;}
