@@ -2049,9 +2049,17 @@ function updateSimProgress(done, n, elapsedMs){
 function runSimulationBatch(){
   if (simRunning) return;   // een dubbele klik mag geen tweede reeks potjes tegelijk starten
 
+  // tijdens het genereren is er nog geen (geldig) bord — de bereikbaarheidscheck hieronder gaf dan
+  // een verwarrende "26 onbereikbare vakjes" (gebruikersmelding)
+  if (genRunning){
+    simStatusEl.innerHTML = `<span class="bad sim-stopped">✕ De map wordt nog gegenereerd — wacht tot hij klaar is en probeer het dan opnieuw.</span>`;
+    simResultsEl.innerHTML = '';
+    return;
+  }
+
   const reach = analyseCellReachability();
   if (reach.unreachable.length > 0){
-    simStatusEl.innerHTML = `<span class="bad">✕ Dit bord heeft ${reach.unreachable.length} onbereikbare vakjes (roze omrand op de kaart) — pas de indeling aan voordat je simuleert.</span>`;
+    simStatusEl.innerHTML = `<span class="bad sim-stopped">✕ Dit bord heeft ${reach.unreachable.length} onbereikbare vakjes (roze omrand op de kaart) — pas de indeling aan voordat je simuleert.</span>`;
     simResultsEl.innerHTML = '';
     return;
   }
@@ -2063,7 +2071,7 @@ function runSimulationBatch(){
   const missing = [...SIM_QUEST_LABELS, ...SIM_START_LABELS].filter(lbl =>
     graphCheck.questCells[lbl] === undefined && graphCheck.startCells[lbl] === undefined);
   if (missing.length){
-    simStatusEl.innerHTML = `<span class="bad">✕ Deze vakjes ontbreken op het bord: ${missing.join(', ')} — zet ze terug via de tegel-editor voordat je simuleert.</span>`;
+    simStatusEl.innerHTML = `<span class="bad sim-stopped">✕ Deze vakjes ontbreken op het bord: ${missing.join(', ')} — zet ze terug via de tegel-editor voordat je simuleert.</span>`;
     simResultsEl.innerHTML = '';
     return;
   }
