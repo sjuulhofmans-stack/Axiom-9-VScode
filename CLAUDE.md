@@ -268,6 +268,10 @@ Check minimaal:
 
 ## Nog te doen
 
+- Een eigen tabblad **Spelregels** (later, "als alles perfect is"). De uitlegteksten die
+  eerst onder Automatisch en Zelf spelen stonden (#walkAutoHint/#walkSoloHint, o.a. de
+  volgorde van een beurt) zijn daarom weggehaald uit de lobby; die inhoud hoort straks daar.
+
 - Een **5e energie-actie** (later te bedenken). Ideeën die nog niet gemeten
   konden worden omdat bots ze niet zinnig spelen: een schild tegen de volgende
   hinderkaart, of een energieversperring op een gang naar keuze.
