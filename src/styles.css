@@ -106,6 +106,10 @@
      vóór de tabbladen (gebruikersmelding "alles boven de tabbladen staat ver naar beneden");
      60px is nog ruim leesbaar naast de titel. */
   .logo{height:60px; width:auto; border-radius:3px; display:block;}
+  /* klik op het logo = pagina vernieuwen (80-controls.js) */
+  #logoReload{cursor:pointer; transition:filter .2s;}
+  #logoReload:hover{filter:brightness(1.15) drop-shadow(0 0 6px rgba(120,200,255,.35));}
+  #logoReload:focus-visible{outline:2px solid var(--line); outline-offset:3px;}
   h1.spaced-title{
     margin:0; font-family:var(--font-display); font-weight:700;
     font-size:clamp(20px,3vw,30px); letter-spacing:.34em; line-height:1;

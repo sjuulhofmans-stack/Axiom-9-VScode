@@ -243,3 +243,20 @@ document.querySelectorAll('.board-zoom').forEach(btn => {
     }
   });
 });
+
+// ---------- klik op het logo = pagina vernieuwen (gebruikerswens) ----------
+// Loopt er een potje of zit je in een multiplayer-kamer, dan eerst even vragen: vernieuwen
+// verbreekt de verbinding en het potje is dan weg.
+{
+  const logo = document.getElementById('logoReload');
+  const reload = () => {
+    const busy = (typeof mp !== 'undefined' && mp.active) ||
+      (typeof soloPhase !== 'undefined' && soloPhase !== 'idle' && soloPhase !== 'game-over');
+    if (busy && !confirm('Pagina vernieuwen? Het lopende potje of de multiplayer-kamer wordt dan afgesloten.')) return;
+    location.reload();
+  };
+  if (logo){
+    logo.addEventListener('click', reload);
+    logo.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' '){ e.preventDefault(); reload(); } });
+  }
+}
