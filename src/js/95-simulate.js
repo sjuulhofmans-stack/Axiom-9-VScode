@@ -1667,6 +1667,59 @@ function computeQuestDistances(graph){
 // bewijsmateriaal eronder staat standaard open (klap je zelf in als je het niet wilt zien) —
 // zonder <details> was de uitslag ~3900px aan tabellen achter elkaar, allemaal even zwaar
 // opgemaakt, dus blijft het wel indeelbaar per sectie.
+// De kaarten staan in vaste kolommen (.sim-col): 3 op een breed scherm, 2 op een laptop, 1 op een
+// telefoon (kolom minstens 420px). Vroeger deed CSS `columns` dat, maar die verdeelt bij elk
+// in-/uitklappen alles opnieuw en dan sprong een kaart van links naar het midden
+// (gebruikersmelding). Nu verdelen we één keer, op de UITGEKLAPTE hoogtes, en blijft dat zo tot
+// het aantal kolommen verandert (venster smaller/breder). Verdeling zoals krantenkolommen: op
+// volgorde van boven naar beneden, links eerst, met de hoogste kolom zo laag mogelijk.
+const SIM_COL_MIN_W = 420, SIM_COL_GAP = 14;
+function layoutSimSections(){
+  const wrap = simResultsEl && simResultsEl.querySelector('.sim-sections');
+  if (!wrap || !wrap.offsetWidth) return;   // onzichtbaar tabblad: bij terugkeer opnieuw
+  const W = wrap.clientWidth;
+  const n = Math.max(1, Math.min(3, Math.floor((W + SIM_COL_GAP) / (SIM_COL_MIN_W + SIM_COL_GAP))));
+  if (+wrap.dataset.cols === n) return;
+  const sections = [...wrap.querySelectorAll('details.sim-section')];
+  sections.forEach((d, i) => { if (d.dataset.idx === undefined) d.dataset.idx = i; });
+  sections.sort((a, b) => a.dataset.idx - b.dataset.idx);
+  // kolommen opbouwen; alles eerst in kolom 1 (zelfde breedte als de rest) om te meten
+  const cols = Array.from({ length: n }, () => {
+    const c = document.createElement('div'); c.className = 'sim-col'; return c;
+  });
+  wrap.replaceChildren(...cols);
+  const wasOpen = sections.map(d => d.open);
+  sections.forEach(d => { d.open = true; cols[0].appendChild(d); });
+  const h = sections.map(d => d.offsetHeight + SIM_COL_GAP);
+  sections.forEach((d, i) => { d.open = wasOpen[i]; });
+  // beste opsplitsing in n aaneengesloten stukken (max. 3 kolommen, ~12 kaarten: gewoon alles proberen)
+  const k = sections.length;
+  const pre = [0]; for (const x of h) pre.push(pre[pre.length - 1] + x);
+  const sum = (a, b) => pre[b] - pre[a];
+  let best = { score: Infinity, cuts: [] };
+  if (n === 1) best.cuts = [];
+  else if (n === 2){
+    for (let a = 1; a < k; a++){
+      const s = Math.max(sum(0, a), sum(a, k));
+      if (s < best.score) best = { score: s, cuts: [a] };
+    }
+  } else {
+    for (let a = 1; a < k - 1; a++) for (let b = a + 1; b < k; b++){
+      const s = Math.max(sum(0, a), sum(a, b), sum(b, k));
+      if (s < best.score) best = { score: s, cuts: [a, b] };
+    }
+  }
+  const bounds = [0, ...best.cuts, k];
+  for (let c = 0; c < n; c++){
+    for (let i = bounds[c]; i < bounds[c + 1]; i++) cols[c].appendChild(sections[i]);
+  }
+  wrap.dataset.cols = n;
+}
+{
+  let t = null;
+  window.addEventListener('resize', () => { clearTimeout(t); t = setTimeout(layoutSimSections, 150); });
+}
+
 let simSectionOpened = false;
 function simSectionOpen(title){
   const close = simSectionOpened ? '</div></details>' : '';
@@ -2012,6 +2065,7 @@ function renderSimResults({ n, stuckCount, startWins, startTurnsSum, startRanks,
 
   html += simSectionCloseAll() + `</div>`;
   simResultsEl.innerHTML = html;
+  layoutSimSections();
 
   const expandBtn = document.getElementById('btnSimExpand');
   expandBtn.addEventListener('click', () => {

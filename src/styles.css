@@ -602,11 +602,14 @@
   /* De secties staan als kaarten in kolommen (3 op een breed scherm, 2 op een laptop, 1 op een
      telefoon) i.p.v. elk over de volle breedte — daar stond een label helemaal links en zijn
      getal ±1400px verderop helemaal rechts (gebruikersmelding: "cijfers erg ver uit elkaar").
-     CSS-kolommen i.p.v. een grid: korte en lange kaarten lopen dan als een tegelmuur door,
-     zonder gaten onder de korte. `break-inside:avoid` houdt een kaart heel. */
-  .sim-sections{columns:3 420px; column-gap:14px; margin-top:4px;}
+     Vaste kolommen (.sim-col, verdeeld door layoutSimSections in 95-simulate.js) i.p.v.
+     CSS-kolommen: die verdeelden bij elk in-/uitklappen alles opnieuw, waardoor kaarten van de
+     linker- naar de middelste kolom sprongen (gebruikersmelding). Nu blijft elke kaart in zijn
+     eigen kolom staan; inklappen schuift alleen de kaarten eronder in díe kolom omhoog. */
+  .sim-sections{display:flex; align-items:flex-start; gap:14px; margin-top:4px;}
+  .sim-col{flex:1 1 0; min-width:0;}
   .sim-section{
-    break-inside:avoid; margin:0 0 14px;
+    margin:0 0 14px;
     background:var(--hull); border:1px solid var(--line-dim); border-radius:6px; padding:0 14px;
   }
   /* kaarttitel: groter en dikgedrukt (gebruikerswens: "overzichtelijker") — in de display-letter

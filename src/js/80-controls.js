@@ -303,6 +303,8 @@ function switchTab(name){
     btn.setAttribute('aria-selected', active ? 'true' : 'false');
   }
   for (const key of Object.keys(tabPanels)) tabPanels[key].hidden = key !== panelKey;
+  // simulatie-uitslag die klaarkwam terwijl dit tabblad verborgen was: nu pas in kolommen verdelen
+  if (name === 'simulate' && typeof layoutSimSections === 'function') layoutSimSections();
   tabPanels.walk.classList.toggle('is-multi-tab', name === 'multi');
   const multiModeOn = typeof walkModeMultiBtn !== 'undefined' && walkModeMultiBtn && walkModeMultiBtn.classList.contains('active');
   if (name === 'multi' && !multiModeOn) setWalkMode('multi');
