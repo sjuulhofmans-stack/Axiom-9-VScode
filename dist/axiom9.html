@@ -2820,6 +2820,11 @@
   .mp-room .mp-room-code{margin:0; height:56px; box-sizing:border-box;}
   .mp-seats{display:flex; flex-direction:column; gap:10px;}
   .mp-seats:empty{display:none;}
+  /* plekken rekken mee in de vrije ruimte tot de knoppen (hele kolom gebruiken), tot 120px hoog */
+  .mp-room .mp-seats{flex:1 1 auto; min-height:0;}
+  .mp-room .mp-seats > .mp-seat{flex:1 1 0; height:auto !important; min-height:46px; max-height:120px;}
+  .mp-room .mp-seats > .mp-seat .mp-seat-name{font-size:19px;}
+  .mp-room .mp-seats > .mp-seat.is-empty .mp-seat-name{font-size:16px;}
   /* even groot en dik als het vak met de deelcode */
   .mp-seat{
     display:flex; align-items:center; gap:12px; height:56px; padding:0 16px; box-sizing:border-box;
@@ -2892,10 +2897,15 @@
   /* kamer = 3 kolommen (gebruikerswens): links de plekken (smaller dan eerst), midden de 4
      avatars + chat (gecentreerd), rechts de avatar-editor. De lobbykolom wordt daarvoor breder
      dan de vaste 1160px (de modusknoppen staan in de kamer toch niet in beeld). */
-  .walk-lobby-col:has(#mpChatPanel:not([hidden])){max-width:1480px;}
-  .mp-room-layout:has(#mpChatPanel:not([hidden])){grid-template-columns:320px minmax(0,1fr) minmax(300px,400px);}
-  .mp-mid-col{display:flex; flex-direction:column; gap:14px; min-height:0; min-width:0;
-    width:100%; max-width:620px; justify-self:center;}
+  /* in de kamer de hele kolom gebruiken (gebruikerswens): volle breedte, en de (onzichtbare)
+     ruimte van de modusknoppen, de bovenmarge en de lege startknop-rij weg, zodat alles
+     bovenaan begint en tot onderaan doorloopt */
+  .walk-lobby-col:has(#mpChatPanel:not([hidden])){max-width:none;}
+  #tabWalk.is-multi-tab .walk-lobby-col:has(#mpChatPanel:not([hidden])) .walk-mode-toggle,
+  .walk-lobby-col:has(#mpChatPanel:not([hidden])) > .walk-lobby-start-row{display:none;}
+  .walk-lobby-col:has(#mpChatPanel:not([hidden])) .walk-lobby-body{padding-top:0;}
+  .mp-room-layout:has(#mpChatPanel:not([hidden])){grid-template-columns:340px minmax(0,1fr) minmax(320px,440px);}
+  .mp-mid-col{display:flex; flex-direction:column; gap:14px; min-height:0; min-width:0;}
   .mp-mid-col[hidden]{display:none;}
   .mp-mid-col > .mp-chat-panel{flex:1 1 auto;}
   @media (max-width:1300px){
@@ -2932,13 +2942,15 @@
     box-shadow:0 0 10px rgba(79,184,224,.18);}
   .av-tab.is-locked{opacity:.45; cursor:not-allowed;}
   .av-tab.is-locked::before{content:'🔒 '; font-size:11px;}
-  .av-grid{display:grid; gap:10px; align-content:start;}
-  .av-grid-chars{grid-template-columns:repeat(3, minmax(0,1fr));}
-  .av-grid-items{grid-template-columns:1fr; gap:14px;}
-  .av-row{display:grid; grid-template-columns:repeat(5, minmax(0,1fr)); gap:8px;}
+  /* de keuzevakjes rekken mee tot onderaan de editor (gebruikerswens: hele kolom gebruiken) —
+     karakters 2 per rij, brillen en hoedjes elk een blok van 3 per rij */
+  .av-grid{display:grid; gap:10px; flex:1 1 auto; min-height:0;}
+  .av-grid-chars{grid-template-columns:repeat(2, minmax(0,1fr)); grid-auto-rows:minmax(0,1fr);}
+  .av-grid-items{display:flex; flex-direction:column; gap:14px;}
+  .av-row{display:grid; grid-template-columns:repeat(3, minmax(0,1fr)); grid-auto-rows:minmax(0,1fr); gap:10px; flex:1 1 0; min-height:0;}
   .av-row + .av-row{padding-top:14px; border-top:1px solid var(--line-dim);}
   .av-pick{
-    aspect-ratio:1; padding:6%; border-radius:8px; cursor:pointer;
+    min-height:0; padding:8%; border-radius:8px; cursor:pointer;
     background:var(--hull); border:1px solid var(--line-dim);
     display:flex; align-items:center; justify-content:center;
     transition:border-color .15s, background .15s, transform .15s;
