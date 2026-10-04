@@ -249,12 +249,12 @@
   .map-board-panel{position:relative;}
   /* Rustig in- en uitfaden (0,9 s, = GEN_FADE_MS in 80-controls.js): tijdens het genereren (en
      bij "Vorige indeling", .is-swapping) faadt de kaart uit; het genereer-vakje faadt in. */
-  .map-board-panel > .board-zoom-wrap{transition:opacity .9s ease;}
+  .map-board-panel > .board-zoom-wrap{transition:opacity .9s ease; will-change:opacity;}
   .map-board-panel.is-generating > .board-zoom-wrap,
   .map-board-panel.is-swapping > .board-zoom-wrap{opacity:0; pointer-events:none;}
   .gen-overlay{
     position:absolute; inset:0; display:flex; align-items:center; justify-content:center; z-index:3;
-    pointer-events:none; opacity:0; transition:opacity .9s ease;
+    pointer-events:none; opacity:0; transition:opacity .9s ease; will-change:opacity;
   }
   .map-board-panel.is-generating > .gen-overlay{opacity:1;}
   .gen-box{
@@ -264,14 +264,33 @@
     box-shadow:0 0 40px rgba(79,184,224,.18), inset 0 0 30px rgba(79,184,224,.08);
   }
   .gen-orbit{position:relative; width:150px; height:150px;}
-  /* voortgangsring: vult zich met de voortgang (stroke-dashoffset via setGenRing) */
-  .gen-progress{position:absolute; inset:0; width:100%; height:100%; transform:rotate(-90deg);}
-  .gen-track{fill:none; stroke:rgba(79,184,224,.16); stroke-width:4;}
-  .gen-arc{
-    fill:none; stroke:#4fb8e0; stroke-width:4; stroke-linecap:round;
-    stroke-dasharray:339.29; stroke-dashoffset:339.29;
-    filter:drop-shadow(0 0 4px rgba(79,184,224,.8)); transition:stroke-dashoffset .35s ease;
+  /* voortgangsring (setGenRingTarget in 80-controls.js). Was een SVG met stroke-dashoffset, maar
+     die animatie draait op dezelfde draad als het rekenwerk en hakkelde dus. Nu: twee halve bogen
+     die alleen draaien (transform) — dat doet de browser los van JavaScript, ook als die bezig is.
+     Rechterhelft: een boog die zelf links ligt en 0→180° rechtsom het zicht in draait (0–50%);
+     linkerhelft idem gespiegeld (50–100%). Ring: middellijn 136px, dikte 5px, 7px marge voor de gloed. */
+  .gen-track{position:absolute; inset:7px; border-radius:50%; border:5px solid rgba(79,184,224,.16);}
+  .gen-half{position:absolute; top:0; width:50%; height:100%; overflow:hidden;}
+  .gen-half-r{left:50%;}
+  .gen-half-l{left:0;}
+  .gen-half > i{
+    position:absolute; top:0; width:200%; height:100%; will-change:transform; transform:rotate(0deg);
   }
+  .gen-half-r > i{left:-100%; clip-path:inset(0 50% 0 0);}
+  .gen-half-l > i{left:0; clip-path:inset(0 0 0 50%);}
+  .gen-half > i::before{
+    content:''; position:absolute; inset:7px; border-radius:50%; border:5px solid #4fb8e0;
+    box-shadow:0 0 5px rgba(79,184,224,.7), inset 0 0 5px rgba(79,184,224,.5);
+  }
+  /* ronde kopjes: .gen-cap is het vaste beginpuntje bovenaan, .gen-lead draait in één stuk mee
+     met het voorste uiteinde (0–360°). Bij 0% voortgang is alles onzichtbaar (#genOrbit.on). */
+  .gen-lead{position:absolute; inset:0; will-change:transform; transform:rotate(0deg);}
+  .gen-lead::after, .gen-cap{
+    content:''; position:absolute; top:7px; left:50%; width:5px; height:5px; margin-left:-2.5px;
+    border-radius:50%; background:#4fb8e0; box-shadow:0 0 5px rgba(79,184,224,.7);
+  }
+  .gen-half, .gen-cap, .gen-lead{opacity:0; transition:opacity .25s;}
+  .gen-orbit.on .gen-half, .gen-orbit.on .gen-cap, .gen-orbit.on .gen-lead{opacity:1;}
   .gen-planet{
     position:absolute; inset:46px; border-radius:50%;
     background:radial-gradient(circle at 35% 30%, #9fdcff, #2a6a9a 55%, #0b1d33 100%);

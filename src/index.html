@@ -78,12 +78,15 @@
            laden al aan, zodat je nooit eerst een oude kaart ziet. -->
       <div class="gen-overlay" id="genOverlay">
         <div class="gen-box">
-          <!-- planeet + ring die zich vult met de voortgang (#genArc) + een draaiend maantje -->
-          <div class="gen-orbit" aria-hidden="true">
-            <svg class="gen-progress" viewBox="0 0 120 120">
-              <circle class="gen-track" cx="60" cy="60" r="54"/>
-              <circle class="gen-arc" id="genArc" cx="60" cy="60" r="54"/>
-            </svg>
+          <!-- planeet + ring die zich vult met de voortgang + een draaiend maantje. De ring bestaat
+               uit twee halve bogen die alleen DRAAIEN (transform), zodat de browser hem los van het
+               rekenwerk vloeiend kan animeren — zie setGenRingTarget in 80-controls.js -->
+          <div class="gen-orbit" id="genOrbit" aria-hidden="true">
+            <span class="gen-track"></span>
+            <span class="gen-half gen-half-r"><i id="genArcR"></i></span>
+            <span class="gen-half gen-half-l"><i id="genArcL"></i></span>
+            <span class="gen-cap"></span>
+            <span class="gen-lead" id="genLead"></span>
             <span class="gen-planet"></span>
             <span class="gen-moon"></span>
           </div>

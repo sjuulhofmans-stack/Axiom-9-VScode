@@ -18,14 +18,83 @@ let genRunning = false;
 const GEN_FADE_MS = 900;
 const genOverlayEl = document.getElementById('genOverlay');
 const mapBoardPanelEl = document.querySelector('.map-board-panel');
-const genArcEl = document.getElementById('genArc');
 const genEtaEl = document.getElementById('genEta');
-const GEN_ARC_LEN = 2 * Math.PI * 54;   // omtrek van de ring (r = 54 in het SVG-plaatje)
 let genEtaEnd = null, genEtaTimer = null;
 function genSleep(ms){ return new Promise(r => setTimeout(r, ms)); }
+function genNextFrames(n){
+  return new Promise(r => { const tick = () => (--n <= 0 ? r() : requestAnimationFrame(tick)); requestAnimationFrame(tick); });
+}
+
+// ---------- voortgangsring ----------
+// Vroeger sprong de ring per rekenbrok naar het nieuwe percentage (met een korte CSS-overgang op
+// stroke-dashoffset). Dat hakkelde: de brokken komen onregelmatig, en die overgang draait op
+// dezelfde draad als het rekenwerk, dus elk brok van 30 ms liet hem haperen.
+// Nu: de ring is twee halve bogen + een kopje die alleen DRAAIEN (index.html/styles.css), en die
+// draaiing loopt via element.animate() — dat speelt de browser los van JavaScript af. Bij elke
+// nieuwe schatting start er een nieuw, rechtlijnig stuk animatie vanaf waar de ring NU staat
+// richting GEN_RING_CAP op de geschatte eindtijd; zo verandert alleen de snelheid, nooit de plek
+// (geen sprongen, nooit achteruit). Pas als het echt klaar is gaat hij in 0,35 s naar 100%.
+const genOrbitEl = document.getElementById('genOrbit');
+const genArcREl = document.getElementById('genArcR');
+const genArcLEl = document.getElementById('genArcL');
+const genLeadEl = document.getElementById('genLead');
+const GEN_RING_CAP = 0.96;      // verder dan dit gaat de ring niet zolang er nog gerekend wordt
+let genRingSeg = { p0: 0, p1: 0, dur: 1 };   // huidig animatiestuk (voortgang 0..1)
+let genRingAnims = [];
+let genRingLastStart = 0;
+let genPct = 0;                 // echte voortgang in % (voor de "bijna klaar…"-tekst)
+// waar de ring op dit moment echt staat: uit de lopende animatie zelf (currentTime), niet uit een
+// eigen klok — zo begint een nieuw stuk exact waar het vorige was, zonder millimetersprongetje
+function genRingNow(){
+  const s = genRingSeg, a = genRingAnims[2];
+  if (!a || s.p1 === s.p0) return s.p1;
+  const f = Math.min(1, Math.max(0, (a.currentTime || 0) / s.dur));
+  return s.p0 + (s.p1 - s.p0) * f;
+}
+function genRingKeyframes(p0, p1, angleOf){
+  const rot = p => ({ transform: `rotate(${angleOf(p).toFixed(2)}deg)` });
+  // knik precies op de helft (daar neemt de linkerboog het over van de rechter)
+  if (p0 < 0.5 && p1 > 0.5){
+    const f = (0.5 - p0) / (p1 - p0);
+    return [{ ...rot(p0), offset: 0 }, { ...rot(0.5), offset: f }, { ...rot(p1), offset: 1 }];
+  }
+  return [rot(p0), rot(p1)];
+}
+function setGenRingTarget(p1, dur, easing = 'linear'){
+  const p0 = genRingNow();
+  p1 = Math.max(p0, Math.min(1, p1));
+  dur = Math.max(16, dur);
+  // genRingNow() rekent rechtlijnig; met een andere easing (alleen het volmaken op het eind)
+  // doen we alsof hij al op zijn eindstand staat — daarna komt er toch geen nieuw stuk meer
+  genRingSeg = easing === 'linear' ? { p0, p1, dur } : { p0: p1, p1, dur: 1 };
+  genRingLastStart = performance.now();
+  if (genOrbitEl) genOrbitEl.classList.toggle('on', p1 > 0);
+  const opts = { duration: dur, easing, fill: 'forwards' };
+  const old = genRingAnims;
+  genRingAnims = [];
+  if (genArcREl && genArcREl.animate){
+    genRingAnims.push(
+      genArcREl.animate(genRingKeyframes(p0, p1, p => 360 * Math.min(p, 0.5)), opts),
+      genArcLEl.animate(genRingKeyframes(p0, p1, p => 360 * Math.max(p - 0.5, 0)), opts),
+      genLeadEl.animate([{ transform: `rotate(${(360 * p0).toFixed(2)}deg)` },
+                         { transform: `rotate(${(360 * p1).toFixed(2)}deg)` }], opts),
+    );
+  }
+  for (const a of old) a.cancel();   // pas NA het starten van de nieuwe: geen knipperframe
+}
+function resetGenRing(){
+  for (const a of genRingAnims) a.cancel();
+  genRingAnims = [];
+  genRingSeg = { p0: 0, p1: 0, dur: 1 };
+  if (genOrbitEl) genOrbitEl.classList.remove('on');
+}
+
 function showGenOverlay(){
   if (mapBoardPanelEl) mapBoardPanelEl.classList.add('is-generating');
-  setGenRing(0);
+  resetGenRing();
+  genPct = 0;
+  // nog geen schatting: rustig op gang komen (eerste brok is er binnen ~30 ms)
+  setGenRingTarget(0.08, 1500);
   genEtaEnd = null;
   if (genEtaEl) genEtaEl.textContent = 'even geduld…';
   clearInterval(genEtaTimer);
@@ -45,11 +114,6 @@ function hideGenOverlay(){
   if (mapBoardPanelEl) mapBoardPanelEl.classList.remove('is-generating');
   clearInterval(genEtaTimer); genEtaTimer = null;
 }
-let genPct = 0;
-function setGenRing(pct){
-  genPct = pct;
-  if (genArcEl) genArcEl.style.strokeDashoffset = String(GEN_ARC_LEN * (1 - pct / 100));
-}
 function hideGenProgress(){
   hideGenOverlay();
   genRunning = false;
@@ -57,9 +121,19 @@ function hideGenProgress(){
   if (btnShuffleEl) btnShuffleEl.disabled = false;
 }
 function updateGenProgress(found, target, elapsedMs){
-  const pct = target ? Math.min(100, (found / target) * 100) : 0;
-  setGenRing(pct);
-  if (found > 0) genEtaEnd = performance.now() + (elapsedMs / found) * (target - found);
+  genPct = target ? Math.min(100, (found / target) * 100) : 0;
+  if (found <= 0 || !target) return;
+  const now = performance.now();
+  const left = (elapsedMs / found) * (target - found);
+  genEtaEnd = now + left;
+  if (found >= target) return;   // klaar: applyGeneratedLayout maakt de ring vol
+  // vanaf waar de ring nu staat in één rechte lijn naar GEN_RING_CAP op de geschatte eindtijd.
+  // Hooguit 4x per seconde bijsturen: de schatting schommelt per brok, en dan zou de snelheid
+  // onrustig gaan wiebelen. De eerste schatting wel meteen gebruiken (dan staat er nog het
+  // langzame op-gang-komen-stuk uit showGenOverlay).
+  const firstEstimate = genRingSeg.p1 < GEN_RING_CAP;
+  if (!firstEstimate && now - genRingLastStart < 250) return;
+  if (genRingNow() < GEN_RING_CAP) setGenRingTarget(GEN_RING_CAP, Math.max(200, left));
 }
 
 async function applyGeneratedLayout(seed){
@@ -79,10 +153,13 @@ async function applyGeneratedLayout(seed){
     updateGenProgress(found, target, performance.now() - t0);
   });
   if (runId !== simRunId){ return; } // verouderd: bord is inmiddels iets anders geworden
-  setGenRing(100);
-  // de oude kaart moet helemaal uitgefaded zijn vóórdat de nieuwe erin komt
+  // ring rustig volmaken (afremmend), en de oude kaart moet helemaal uitgefaded zijn vóórdat de
+  // nieuwe erin komt — wachten op wat het langst duurt
+  const GEN_RING_FILL_MS = 350;
+  genPct = 100;
+  setGenRingTarget(1, GEN_RING_FILL_MS, 'cubic-bezier(.3,.7,.4,1)');
   const waited = performance.now() - t0;
-  if (waited < GEN_FADE_MS) await genSleep(GEN_FADE_MS - waited);
+  await genSleep(Math.max(GEN_RING_FILL_MS + 120, GEN_FADE_MS - waited));
   if (runId !== simRunId){ return; }
 
   layout = generated;
@@ -97,6 +174,10 @@ async function applyGeneratedLayout(seed){
     ? ''
     : `<span style="color:var(--danger)">Beste poging: ${conn.brokenCount} doodlopende naad/naden — probeer een nieuwe map.</span>`;
   renderBoard();
+  // eerst het (nog onzichtbare) nieuwe bord laten opbouwen en tekenen, pas dán infaden — anders
+  // valt dat zware eerste tekenwerk precies in de eerste frames van de overgang en hapert die
+  await genNextFrames(2);
+  if (runId !== simRunId){ return; }
   hideGenProgress();   // vakje faadt uit, nieuwe kaart faadt in
 }
 

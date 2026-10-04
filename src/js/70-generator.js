@@ -522,9 +522,19 @@ function questSpacingScore(lay){
 // liggen (zie applyCornerRotations in 10-rules.js), verschilt de juiste rotatie per kandidaat —
 // zonder deze wrapper zou je exact dezelfde rotatie-vervuiling terugkrijgen die eerder al eens
 // de generator om zeep hielp (zie het commentaar bij constrainedShuffle hieronder).
+//
+// Uitkomsten worden per kandidaat onthouden (scoreCache): de .reduce() in finish() vergelijkt de
+// huidige winnaar telkens opnieuw, en zonder cache werden diens scores dus ~60x herberekend. De
+// metingen zijn puur (applyCornerRotations zet ALLE rotaties), dus de uitkomst blijft gelijk.
+const scoreCache = new WeakMap();
 function scored(lay, fn){
+  let perLay = scoreCache.get(lay);
+  if (!perLay){ perLay = new Map(); scoreCache.set(lay, perLay); }
+  if (perLay.has(fn)) return perLay.get(fn);
   applyCornerRotations(lay);
-  return fn(lay);
+  const v = fn(lay);
+  perLay.set(fn, v);
+  return v;
 }
 function compareLayoutQuality(a, b){
   const da = scored(a, deadTileCount), db = scored(b, deadTileCount);
@@ -603,7 +613,13 @@ function constrainedShuffleAsync(seedStr, onProgress){
         const lay = attemptSeamlessLayout(rand, STEP_BUDGET, attempt % 2);
         attempt++;
         if (lay){
-          if (layoutIsConnected(lay)) candidates.push(lay);
+          if (layoutIsConnected(lay)){
+            candidates.push(lay);
+            // de twee zwaarste/altijd nodige metingen meteen in dit brok doen, zodat finish()
+            // niet aan het eind alles in één keer moet scoren (dat bevroor de animatie even)
+            scored(lay, deadTileCount); scored(lay, minTileBetweenness);
+            resetRotations();
+          }
           else if (!best) best = lay;
         }
         if (performance.now() - chunkStart > CHUNK_BUDGET_MS) break;
