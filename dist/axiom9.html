@@ -937,13 +937,30 @@
   }
   .walk-board-col{grid-column:2; min-width:0; max-width:879px;}
   /* zichtbare rand rondom het bord (gebruikerswens: iets duidelijker dat het speelveld het
-     midden van de pagina is, en later: dikker + donkerder) — bewust alleen hier en niet op de
-     generieke .board-outer hierboven, want die wordt ook door het tabblad "Speelbord
-     genereren" gebruikt. 10px padding + 10px rand = 40px extra t.o.v. het kale bord (839px ->
-     879px breed, 671px -> 711px hoog), zie de grid-template-columns/max-height hierboven en
-     hieronder. */
-  .walk-board-col .board-outer{
-    padding:10px; border:10px solid var(--line-dim); border-radius:8px; background:var(--hull);
+     midden van de pagina is, later: dikker + donkerder, en nu: robuuster, als een stalen kader
+     met contouren) — op Spelen én op "Speelbord genereren" (gebruikerswens: dezelfde rand).
+     10px padding + 10px rand = 40px extra t.o.v. het kale bord (839px -> 879px breed, 671px ->
+     711px hoog), zie de grid-template-columns/max-height hierboven en hieronder — alles wat
+     hieronder extra is (contourlijnen, groef, schaduw) is box-shadow/outline en neemt dus GEEN
+     ruimte in.
+       - rand: verloop van licht naar donker staal (border-box-achtergrond onder een
+         doorzichtige border), binnenvlak blijft var(--hull)
+       - outline 5px naar binnen = een dun groefje midden in de rand
+       - box-shadow: lichte contour + donkere rand + schaduw buiten, lichte contour binnen */
+  .walk-board-col .board-outer,
+  .map-board-panel .board-outer{
+    padding:10px; border:10px solid transparent; border-radius:9px;
+    background:
+      linear-gradient(var(--hull), var(--hull)) padding-box,
+      linear-gradient(160deg, #56677d 0%, #2b3747 28%, #1a222d 55%, #2f3c4d 80%, #4a5a6f 100%) border-box;
+    outline:1px solid rgba(8,12,18,.85); outline-offset:-5px;
+    box-shadow:
+      0 0 0 1px rgba(140,185,230,.45),
+      0 0 0 3px #05080d,
+      0 8px 22px rgba(0,0,0,.55),
+      inset 0 0 0 1px rgba(150,200,240,.35),
+      inset 0 0 0 2px rgba(5,8,13,.9),
+      inset 0 0 14px rgba(0,0,0,.45);
   }
   /* nodig als ankerpunt voor .walk-endgame hieronder, die het bord exact moet overlappen. */
   .board-zoom-wrap{position:relative;}
