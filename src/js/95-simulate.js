@@ -294,6 +294,66 @@ function botWantsReorderPeek(graph, player, fromKey){
   return dCur > REORDER_PEEK_THRESHOLD;
 }
 
+// ---------- strategie "Slim": de bot kiest elke beurt zelf ----------
+// Gebruikerswens: niet één vaste energie-actie per bot, maar een bot die nadenkt of hij nu iets
+// uitgeeft of spaart. Aan het begin van elke eigen beurt kiest hij één actie (of geen) en speelt
+// hij die beurt alsof dat zijn strategie is — zo blijft alle bestaande bot-code (botPreRollMove,
+// de Herprioritering- en Stuwstoot-checks in alle modi) gewoon werken via botStrategyNow().
+// Overwegingen, in deze volgorde:
+//  1. Noodtransport als hij 10 energie heeft en zijn opdracht verder dan JUMP_BOT_MIN_DIST weg is.
+//  2. Zwaartekracht-laarzen als een sprint hem flink (≥5 vakjes) dichterbij brengt of op zijn
+//     opdracht zet.
+//  3. Sparen voor die sprong: ver weg (>12) en al 7–9 energie → nu niets uitgeven.
+//  4. Stuwstoot als de opdracht 8–14 stappen weg is (daar maakt een 3e steen het meeste uit).
+//  5. Herprioritering als de opdracht heel ver weg is (>14) — misschien ligt de volgende dichterbij.
+//  6. Bijna vol (≥9): toch iets uitgeven, anders gaat de energiesteen van de volgende beurt verloren.
+// Zit bewust NIET in ENERGY_STRATEGIES (de batch-simulatie meet de vaste strategieën tegen
+// elkaar); te kiezen bij Automatisch → Energie-inzet → "iedereen slim".
+function botStrategyNow(graph, player){
+  if (player.strategy !== 'smart') return player.strategy;
+  const turnKey = `${player.ownTurns || 0}/${player.myTurn || 0}`;
+  if (player._smartKey !== turnKey){
+    player._smartKey = turnKey;
+    player._smartPick = botSmartPick(graph, player);
+  }
+  return player._smartPick;
+}
+function botSmartPick(graph, player){
+  const deck = player.order || player.deck;
+  const label = deck && deck[player.nextIdx];
+  if (!label) return null;
+  const targetKey = graph.questCells[label];
+  const E = player.energy;
+  // let op: simBfsDistances deelt één buffer, dus elke afstand meteen uitlezen
+  const d = simDistLookup(simBfsDistances(graph, targetKey), player.pos);
+  if (d <= 0) return null;
+  if (E >= ENERGY_ACTIONS.jump.cost && d > JUMP_BOT_MIN_DIST) return 'jump';
+  let dashGain = 0;
+  if (E >= ENERGY_ACTIONS.gravity.cost){
+    const targets = [];
+    for (let i = player.nextIdx; i < deck.length; i++) if (deck[i] != null) targets.push(graph.questCells[deck[i]]);
+    const dash = botPickGravityDash(graph, player.pos, new Set(), targets);
+    if (dash){
+      dashGain = dash.bankedCount > 0 ? d
+        : d - simDistLookup(simBfsDistances(graph, targetKey), dash.key);
+    }
+  }
+  if (dashGain >= 5) return 'gravity';
+  const saving = d > 12 && E >= 7 && E < ENERGY_ACTIONS.jump.cost;
+  if (!saving && E >= ENERGY_ACTIONS.boost.cost && d >= 8 && d <= 14) return 'boost';
+  if (!saving && E >= ENERGY_ACTIONS.reorder.cost && d > 14 && deck[player.nextIdx + 1] != null) return 'reorder';
+  if (E >= ENERGY_MAX - 1){
+    if (dashGain >= 2) return 'gravity';
+    if (d > 7) return 'boost';
+  }
+  return null;
+}
+// naam van een (bot-)strategie voor in het log; "smart" staat niet in ENERGY_ACTIONS
+function energyStrategyName(id){
+  if (id === 'smart') return 'Slim (kiest zelf)';
+  return ENERGY_ACTIONS[id] ? ENERGY_ACTIONS[id].name : '—';
+}
+
 // ---------- beloningskaarten ----------
 // Wie een opdracht bereikt trekt een kaart van een gedeelde, gesloten stapel (2 exemplaren
 // van elk type in ACTION_CARDS — nu 18 typen, dus 36 kaarten; zie buildActionDeck) — net als het actiekaartvakje in elke gangtegel, dat
@@ -571,7 +631,7 @@ function botPickGravityDash(graph, fromKey, occupied, targets){
 function botPreRollMove(graph, player, occupied, targets, canEnergy, canCard){
   const targetKey = targets[0];
   if (targetKey === undefined) return null;
-  if (canEnergy && player.strategy === 'jump' && player.energy >= ENERGY_ACTIONS.jump.cost){
+  if (canEnergy && botStrategyNow(graph, player) === 'jump' && player.energy >= ENERGY_ACTIONS.jump.cost){
     const stamp = simBfsDistances(graph, targetKey);
     if (simDistLookup(stamp, player.pos) > JUMP_BOT_MIN_DIST){
       const jump = resolveEnergyJump(graph, player.pos, ENERGY_JUMP_RANGE, targetKey, occupied);
@@ -580,7 +640,7 @@ function botPreRollMove(graph, player, occupied, targets, canEnergy, canCard){
     }
   }
   const card = canCard && player.cards.includes('boots');
-  const energy = canEnergy && player.strategy === 'gravity' && player.energy >= ENERGY_ACTIONS.gravity.cost;
+  const energy = canEnergy && botStrategyNow(graph, player) === 'gravity' && player.energy >= ENERGY_ACTIONS.gravity.cost;
   if (card || energy){
     const dash = botPickGravityDash(graph, player.pos, occupied, targets);
     if (dash) return { kind: card ? 'bootsCard' : 'gravity', path: dash.path, key: dash.key,
@@ -1234,7 +1294,7 @@ function simulateOneGame(graph, rand, heatmap, questStats, extra){
       }
       // Herprioritering: betalen, volgende kaart bekijken, wisselen als die dichterbij ligt.
       // Je betaalt ook als wisselen niets oplevert (zie botWantsReorderPeek).
-      if (!targetSwapped && !energyActionUsed && player.strategy === 'reorder' && player.energy >= ENERGY_ACTIONS.reorder.cost
+      if (!targetSwapped && !energyActionUsed && botStrategyNow(graph, player) === 'reorder' && player.energy >= ENERGY_ACTIONS.reorder.cost
           && botWantsReorderPeek(graph, player, player.pos)){
         player.energy -= ENERGY_ACTIONS.reorder.cost;
         player.actionUses++;
@@ -1307,7 +1367,7 @@ function simulateOneGame(graph, rand, heatmap, questStats, extra){
           roll += simRollD6(rand); dice = 3;
           useActionCard(player, 'boostcell', deck, extra);
           cardActionUsed = true;
-        } else if (!energyActionUsed && player.strategy === 'boost' && player.energy >= ENERGY_ACTIONS.boost.cost){
+        } else if (!energyActionUsed && botStrategyNow(graph, player) === 'boost' && player.energy >= ENERGY_ACTIONS.boost.cost){
           const extraDie = simRollD6(rand);
           roll += extraDie; dice = 3;
           player.energy -= ENERGY_ACTIONS.boost.cost;

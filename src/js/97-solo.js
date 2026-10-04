@@ -2070,7 +2070,7 @@ function soloResolveBotTurn(player){
   // Herprioritering: betalen, volgende kaart bekijken, wisselen als die dichterbij ligt (zie
   // botWantsReorderPeek in 95-simulate.js). De bot vertelt niet WELKE kaart hij zag — die is
   // voor de andere spelers net zo geheim als in het echt.
-  if (!targetSwapped && !energyActionUsed && player.strategy === 'reorder' && player.energy >= ENERGY_ACTIONS.reorder.cost
+  if (!targetSwapped && !energyActionUsed && botStrategyNow(soloGraph, player) === 'reorder' && player.energy >= ENERGY_ACTIONS.reorder.cost
       && botWantsReorderPeek(soloGraph, shim, player.pos)){
     player.energy -= ENERGY_ACTIONS.reorder.cost; player.actionUses++; energyActionUsed = true;
     statsUseEnergy(player, 'reorder');
@@ -2124,7 +2124,7 @@ function soloResolveBotTurn(player){
     roll = d1 + d2;
     if (!cardActionUsed && player.cards.includes('boostcell')){
       d3 = simRollD6(soloRand, player); roll += d3; dice = 3; useActionCard(player, 'boostcell', soloDeck); cardActionUsed = true;
-    } else if (!energyActionUsed && player.strategy === 'boost' && player.energy >= ENERGY_ACTIONS.boost.cost){
+    } else if (!energyActionUsed && botStrategyNow(soloGraph, player) === 'boost' && player.energy >= ENERGY_ACTIONS.boost.cost){
       d3 = simRollD6(soloRand, player); roll += d3; dice = 3; player.energy -= ENERGY_ACTIONS.boost.cost; player.actionUses++; energyActionUsed = true;
       statsUseEnergy(player, 'boost');
     }
@@ -3039,7 +3039,7 @@ function soloLogGameStart(){
   // de rest van je opdrachtenstapel dichtgeslagen (zie renderSoloMeta).
   for (const p of soloPlayers){
     const who = p.isHuman ? (multi ? '(mens)' : '(jij)') : '(bot)';
-    const stratNote = p.isHuman ? '' : ` · energie: <b>${ENERGY_ACTIONS[p.strategy].name}</b>`;
+    const stratNote = p.isHuman ? '' : ` · energie: <b>${energyStrategyName(p.strategy)}</b>`;
     const first = p.deck[0];
     walkLog(`${p.name} ${who} start op <b>${p.startLabel}</b>${stratNote} · eerste opdracht: ${first} — ${QUEST_NAMES[first] || ''}`, null, p);
   }
@@ -3089,8 +3089,12 @@ function stopSoloGame(){
   // opzet-UI komt terug in beeld (zie startSoloGame hieronder, die 'm juist wegstopt zodra er
   // een potje loopt) — scheelt flink wat hoogte boven het bord tijdens het spelen zelf
   // (gebruikerseis: alles moet in 1 pagina passen).
-  if (walkSoloControlsEl) walkSoloControlsEl.hidden = false;
-  if (walkSoloHintEl) walkSoloHintEl.hidden = false;
+  // ALLEEN als Zelf spelen ook echt de gekozen modus is — stopSoloGame() loopt ook bij elke
+  // bordwijziging (clearSimResults, dus ook bij het genereren bij het openen), en zette de
+  // Zelf-spelen-velden dan onder Automatisch erbij (gebruikersmelding: "2x aantal spelers")
+  const soloModeOn = !!walkModeSoloBtn && walkModeSoloBtn.classList.contains('active');
+  if (walkSoloControlsEl && soloModeOn) walkSoloControlsEl.hidden = false;
+  if (walkSoloHintEl && soloModeOn) walkSoloHintEl.hidden = false;
   if (walkStatTilesEl) walkStatTilesEl.innerHTML = '';
   if (walkQuestChecklistEl) walkQuestChecklistEl.innerHTML = '';
   if (walkSoloActionsEl) walkSoloActionsEl.innerHTML = '';

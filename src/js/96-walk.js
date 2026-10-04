@@ -869,7 +869,7 @@ async function runWalkSimulation(){
   walkScoreOrder = turnOrder;
 
   for (const p of players){
-    walkLog(`${p.name} start op <b>${p.startLabel}</b> · energie: <b>${ENERGY_ACTIONS[p.strategy].name}</b> · stapel: ${p.deck.slice(0, SIM_QUESTS_TO_WIN).join(' → ')} …`, null, p);
+    walkLog(`${p.name} start op <b>${p.startLabel}</b> · energie: <b>${energyStrategyName(p.strategy)}</b> · stapel: ${p.deck.slice(0, SIM_QUESTS_TO_WIN).join(' → ')} …`, null, p);
   }
   walkLog(`Elke voltooide opdracht levert een beloningskaart op van een gedeelde stapel — net als het actiekaartvakje in elke gang (zet stopt er niet voor, hooguit 1x per beurt) — max ${ACTION_CARD_HAND_MAX} kaarten in de hand.`);
   if (playerCount > 1){
@@ -1046,7 +1046,7 @@ async function runWalkSimulation(){
       }
       // Herprioritering: betalen, volgende kaart bekijken, wisselen als die dichterbij ligt
       // (zie botWantsReorderPeek in 95-simulate.js) — ook betaald als wisselen niets oplevert
-      if (!targetSwapped && !energyActionUsed && player.strategy === 'reorder' && player.energy >= ENERGY_ACTIONS.reorder.cost
+      if (!targetSwapped && !energyActionUsed && botStrategyNow(graph, player) === 'reorder' && player.energy >= ENERGY_ACTIONS.reorder.cost
           && botWantsReorderPeek(graph, shim, player.pos)){
         player.energy -= ENERGY_ACTIONS.reorder.cost;
         player.actionUses++;
@@ -1179,7 +1179,7 @@ async function runWalkSimulation(){
           d3 = simRollD6(rand, player);
           useActionCard(player, 'boostcell', deck);
           cardActionUsed = true; usedCardId = 'boostcell';
-        } else if (!energyActionUsed && player.strategy === 'boost' && player.energy >= ENERGY_ACTIONS.boost.cost){
+        } else if (!energyActionUsed && botStrategyNow(graph, player) === 'boost' && player.energy >= ENERGY_ACTIONS.boost.cost){
           d3 = simRollD6(rand, player);
           player.energy -= ENERGY_ACTIONS.boost.cost;
           player.actionUses++;

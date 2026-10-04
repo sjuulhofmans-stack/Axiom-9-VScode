@@ -250,6 +250,8 @@
             <label for="walkEnergyMode">Energie-inzet</label>
             <select id="walkEnergyMode">
               <option value="mix" selected>elke speler een andere</option>
+              <!-- elke bot kiest per beurt zelf wat nu het slimst is, of spaart (botStrategyNow, 95-simulate.js) -->
+              <option value="smart">iedereen slim — kiest per beurt zelf</option>
               <!-- naam + prijs worden bij het laden ingevuld vanuit ENERGY_ACTIONS (96-walk.js) -->
               <option value="boost">alleen Stuwstoot</option>
               <option value="reorder">alleen Herprioritering</option>
