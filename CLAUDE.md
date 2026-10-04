@@ -154,7 +154,8 @@ aangeroepen (functiedeclaraties worden gehoist, `const`/`let` niet).
   bovenin `95-simulate.js` — niet opnieuw voorstellen zonder nieuwe meting. De
   bot-keuze vóór de worp zit in **één** gedeelde functie (`botPreRollMove`),
   zodat simulatie, Automatisch en Zelf spelen niet uit elkaar lopen.
-  Extra bot-strategie **Slim** (`'smart'`, Automatisch → Energie-inzet → "iedereen slim"):
+  Extra bot-strategie **Slim** (`'smart'`; standaard voor alle bots in Zelf spelen en
+  Multiplayer, in Automatisch te kiezen via Energie-inzet → "iedereen slim"):
   kiest aan het begin van elke eigen beurt zelf een actie of spaart (`botStrategyNow`/
   `botSmartPick` in 95-simulate.js); alle strategie-checks lopen via `botStrategyNow`. Zit
   bewust niet in `ENERGY_STRATEGIES` (de batch-simulatie meet de vaste strategieën).

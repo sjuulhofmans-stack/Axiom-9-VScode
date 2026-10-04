@@ -190,7 +190,8 @@ function soloRebuildSetup(){
       deck: simShuffle(SIM_QUEST_LABELS, soloSetupRand),
       nextIdx: 0, completed: 0, myTurn: 0, energy: 0, cards: [], rank: 0, doneCells: [], condenserPending: false,
       lockedNextTurn: false, rollPenalty: 0, barrierCell: null, reorderBlocked: false, lastDir: -1,
-      strategy: isHuman ? null : ENERGY_STRATEGIES[i % ENERGY_STRATEGIES.length],
+      // bots denken zelf na welke energie-actie nu slim is, of sparen (botStrategyNow, 95-simulate.js)
+      strategy: isHuman ? null : 'smart',
       // startpositie kiest iedereen pas aan het begin van het potje, in de volgorde van de worp
       // (soloBeginOpening) — in de lobby is nog niet te zien waar je opdracht ligt
       startLabel: null,

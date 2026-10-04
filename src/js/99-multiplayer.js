@@ -648,7 +648,7 @@ function mpOnPeerLeave(peerId, explicit){
     // neem de speler over met de bestaande bot-logica — geen nieuwe spellogica nodig
     p.isHuman = false;
     p.peerId = null;
-    p.strategy = ENERGY_STRATEGIES[p.idx % ENERGY_STRATEGIES.length];
+    p.strategy = 'smart';   // zelfde slimme bot als de andere bots in het potje
     walkLog(`${p.name} heeft de verbinding verloren — wordt vanaf nu automatisch bestuurd.`, null, p);
     // als hij net zelf aan zet was (soloActiveIdx) en op interactie stond te wachten, is er
     // geen halve-beurt-hervatting: gewoon opnieuw door de lus, die ziet 'm nu als bot.
@@ -715,7 +715,8 @@ function mpHostStartGame(){
       nextIdx: 0, completed: 0, myTurn: 0, energy: 0, cards: [], rank: 0, doneCells: [],
       condenserPending: false, lockedNextTurn: false, rollPenalty: 0, barrierCell: null,
       reorderBlocked: false, lastDir: -1,
-      strategy: isHuman ? null : ENERGY_STRATEGIES[i % ENERGY_STRATEGIES.length],
+      // bots denken zelf na welke energie-actie nu slim is, of sparen (botStrategyNow, 95-simulate.js)
+      strategy: isHuman ? null : 'smart',
       // startpositie en beurtvolgorde volgen uit het dobbelen aan het begin (soloBeginOpening);
       // tot je mag kiezen is je opdracht geheim, ook in wat er naar de anderen gaat (mpPublicPlayer)
       startLabel: null, questHidden: true,
