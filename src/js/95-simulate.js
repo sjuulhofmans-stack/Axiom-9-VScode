@@ -1526,9 +1526,30 @@ for (const btn of document.querySelectorAll('.num-step')){
     input.dispatchEvent(new Event('change', { bubbles: true }));
   });
 }
-const simProgressEl = document.getElementById('simProgress');
-const simProgressFillEl = document.getElementById('simProgressFill');
-const simProgressTextEl = document.getElementById('simProgressText');
+// "Aan het simuleren"-vakje: zelfde laadvakje + voortgangsring als map genereren
+// (createProgressLoader in 80-controls.js); vervangt de oude voortgangsbalk (gebruikerswens)
+const simStageEl = document.getElementById('simStage');
+const simLoaderEl = document.getElementById('simLoader');
+const simLoaderCountEl = document.getElementById('simLoaderCount');
+const simLoader = simLoaderEl ? createProgressLoader(simLoaderEl) : null;
+function showSimLoader(){
+  if (!simLoader) return;
+  clearTimeout(simHoldTimer);
+  simStageEl.classList.remove('is-holding');
+  simStageEl.classList.add('is-running');
+  simLoader.start();
+}
+let simHoldTimer = null;
+function hideSimLoader(){
+  if (!simLoader || !simStageEl.classList.contains('is-running')) return;
+  // de ruimte nog even vasthouden tot het vakje helemaal uitgefaded is (anders klapt het vak
+  // dicht terwijl het vakje nog half zichtbaar over de rand hangt, bv. na "Stoppen")
+  simStageEl.classList.add('is-holding');
+  simStageEl.classList.remove('is-running');
+  simLoader.stop();
+  clearTimeout(simHoldTimer);
+  simHoldTimer = setTimeout(() => simStageEl.classList.remove('is-holding'), GEN_FADE_MS);
+}
 let simRunning = false;   // voorkomt twee overlappende potjes-reeksen bij dubbelklikken
 let simRunId = 0;         // verhoogd bij elke nieuwe run/bordwijziging; een verouderde
                            // in-brokken-lopende run herkent hieraan dat hij moet stoppen
@@ -1540,7 +1561,7 @@ function stopSimulation(){
   if (!simRunning) return;
   simRunId++;
   simRunning = false;
-  if (simProgressEl) simProgressEl.hidden = true;
+  hideSimLoader();
   if (btnSimulate) btnSimulate.disabled = false;
   simResultsEl.innerHTML = '';
   simStatusEl.innerHTML = `<span class="sub sim-stopped">Simulatie gestopt na ${simDone.toLocaleString('nl-NL')} van ${simTotal.toLocaleString('nl-NL')} potjes.</span>`;
@@ -1562,7 +1583,7 @@ function clearSimResults(){
   // per se blokkerend af vóórdat de gebruiker iets anders kan aanklikken — een lopende reeks
   // potjes voor de OUDE indeling mag straks niet alsnog deze melding overschrijven
   simRunId++;
-  if (simProgressEl) simProgressEl.hidden = true;
+  hideSimLoader();
   simRunning = false;
   if (btnSimulate) btnSimulate.disabled = false;
   // zelfde verhaal voor een lopende bord-generatie (zie applyGeneratedLayout in 80-controls.js):
@@ -2017,14 +2038,10 @@ function formatSimSeconds(ms){
 }
 
 function updateSimProgress(done, n, elapsedMs){
-  if (!simProgressEl) return;
-  const pct = n ? Math.min(100, (done / n) * 100) : 0;
-  simProgressFillEl.style.width = `${pct.toFixed(1)}%`; // CSS: hier moet de punt blijven staan
-  const perGame = done ? elapsedMs / done : 0;
-  const etaMs = perGame * (n - done);
-  simProgressTextEl.innerHTML =
-    `<span><b>${done}</b> / ${n} potjes (${nl(pct, 0)}%)</span>` +
-    `<span>verstreken ${formatSimSeconds(elapsedMs)} · nog ongeveer ${done > 0 ? formatSimSeconds(etaMs) : '…'}</span>`;
+  if (!simLoader) return;
+  simLoader.progress(done, n, elapsedMs);
+  if (simLoaderCountEl) simLoaderCountEl.textContent =
+    `${done.toLocaleString('nl-NL')} / ${n.toLocaleString('nl-NL')} potjes`;
 }
 
 function runSimulationBatch(){
@@ -2060,13 +2077,12 @@ function runSimulationBatch(){
   btnSimulate.disabled = true;
   simStatusEl.innerHTML = '';
   simResultsEl.innerHTML = '';
-  if (simProgressEl){
-    simProgressEl.hidden = false;
-    updateSimProgress(0, n, 0);
-  }
+  showSimLoader();
+  if (simLoaderCountEl) simLoaderCountEl.textContent = `0 / ${n.toLocaleString('nl-NL')} potjes`;
+  const tShown = performance.now();
 
-  // de voortgangsbalk moet minstens één frame zichtbaar zijn vóórdat het (blokkerende)
-  // rekenwerk per brok begint, anders verschijnt hij nooit echt op 0% voor kleine n
+  // het vakje moet minstens één frame zichtbaar zijn vóórdat het (blokkerende) rekenwerk per
+  // brok begint, anders begint het infaden pas na het eerste brok
   setTimeout(async () => {
     try {
       const graph = buildSimGraph();
@@ -2155,11 +2171,21 @@ function runSimulationBatch(){
       if (runId !== simRunId) return;
 
       const elapsedMs = performance.now() - t0;
-      if (simProgressEl) simProgressEl.hidden = true;
+      // net als bij map genereren: ring rustig volmaken en het vakje minstens helemaal laten
+      // infaden; dan de uitslag (nog onzichtbaar) opbouwen, en pas daarna overfaden
+      simLoader && simLoader.complete();
+      await new Promise(res => setTimeout(res,
+        Math.max(GEN_RING_FILL_MS + 120, GEN_FADE_MS - (performance.now() - tShown))));
+      if (runId !== simRunId) return;
       renderSimResults({ n, stuckCount, startWins, startTurnsSum, startRanks, strategyStats, seatWins, gameLengths, questStats, extra, graph, heatmap, elapsedMs });
+      await genNextFrames(2);
+      if (runId !== simRunId) return;
+      hideSimLoader();   // vakje faadt uit, uitslag faadt in
     } catch (err){
-      if (runId === simRunId) simStatusEl.innerHTML = `<span class="bad">✕ Simulatie mislukt: ${err.message}</span>`;
-      if (simProgressEl) simProgressEl.hidden = true;
+      if (runId === simRunId){
+        simStatusEl.innerHTML = `<span class="bad">✕ Simulatie mislukt: ${err.message}</span>`;
+        hideSimLoader();
+      }
     } finally {
       if (runId === simRunId){
         simRunning = false;

@@ -80,18 +80,18 @@
         <div class="gen-box">
           <!-- planeet + ring die zich vult met de voortgang + een draaiend maantje. De ring bestaat
                uit twee halve bogen die alleen DRAAIEN (transform), zodat de browser hem los van het
-               rekenwerk vloeiend kan animeren — zie setGenRingTarget in 80-controls.js -->
-          <div class="gen-orbit" id="genOrbit" aria-hidden="true">
+               rekenwerk vloeiend kan animeren — zie createProgressLoader in 80-controls.js -->
+          <div class="gen-orbit" aria-hidden="true">
             <span class="gen-track"></span>
-            <span class="gen-half gen-half-r"><i id="genArcR"></i></span>
-            <span class="gen-half gen-half-l"><i id="genArcL"></i></span>
+            <span class="gen-half gen-half-r"><i></i></span>
+            <span class="gen-half gen-half-l"><i></i></span>
             <span class="gen-cap"></span>
-            <span class="gen-lead" id="genLead"></span>
+            <span class="gen-lead"></span>
             <span class="gen-planet"></span>
             <span class="gen-moon"></span>
           </div>
           <b class="gen-title">Aan het genereren<span class="gen-dots"><i>.</i><i>.</i><i>.</i></span></b>
-          <span class="gen-sub" id="genEta">even geduld…</span>
+          <span class="gen-sub gen-eta">even geduld…</span>
         </div>
       </div>
       <div class="board-zoom-wrap">
@@ -203,13 +203,39 @@
             <button id="btnSimulate" class="primary">Draai simulatie</button>
           </div>
         </div>
-        <div id="simProgress" class="sim-progress" hidden>
-          <div class="sim-progress-bar"><div class="sim-progress-fill" id="simProgressFill"></div></div>
-          <div class="sim-progress-text" id="simProgressText"></div>
-          <button type="button" id="btnSimStop" class="ghost sim-stop">Stoppen</button>
-        </div>
         <div id="simStatus" class="reach-status"></div>
-        <div id="simResults"></div>
+        <!-- "Aan het simuleren"-vakje: zelfde laadvakje + voortgangsring als bij map genereren
+             (createProgressLoader in 80-controls.js), maar in het midden een radarscherm met een
+             draaiende scanstraal en vier pionnen. Ligt tijdens het rekenen óver de (lege) uitslag
+             en faadt bij klaar uit terwijl de uitslag infaadt — zie runSimulationBatch. -->
+        <div class="sim-stage" id="simStage">
+          <div class="sim-loader" id="simLoader">
+            <div class="gen-box">
+              <div class="gen-orbit" aria-hidden="true">
+                <span class="gen-track"></span>
+                <span class="gen-half gen-half-r"><i></i></span>
+                <span class="gen-half gen-half-l"><i></i></span>
+                <span class="gen-cap"></span>
+                <span class="gen-lead"></span>
+                <span class="sim-radar">
+                  <span class="sim-radar-grid"></span>
+                  <span class="sim-radar-sweep"></span>
+                  <!-- pionnen in de spelerkleuren (WALK_PLAYER_COLORS); --d = wanneer de straal
+                       er langskomt (hoek/360 × 2,4 s), dan lichten ze op -->
+                  <i class="sim-blip" style="--a:30deg;  --r:15px; --d:.2s;  --c:#ff4fd8"></i>
+                  <i class="sim-blip" style="--a:125deg; --r:22px; --d:.83s; --c:#ffd23d"></i>
+                  <i class="sim-blip" style="--a:215deg; --r:10px; --d:1.43s; --c:#7c5cff"></i>
+                  <i class="sim-blip" style="--a:300deg; --r:20px; --d:2s;   --c:#ff7a45"></i>
+                </span>
+              </div>
+              <b class="gen-title">Aan het simuleren<span class="gen-dots"><i>.</i><i>.</i><i>.</i></span></b>
+              <span class="gen-sub gen-eta">even geduld…</span>
+              <span class="gen-sub sim-loader-count" id="simLoaderCount"></span>
+              <button type="button" id="btnSimStop" class="ghost sim-stop">Stoppen</button>
+            </div>
+          </div>
+          <div id="simResults"></div>
+        </div>
       </div>
     </div>
   </div>

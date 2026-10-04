@@ -264,7 +264,7 @@
     box-shadow:0 0 40px rgba(79,184,224,.18), inset 0 0 30px rgba(79,184,224,.08);
   }
   .gen-orbit{position:relative; width:150px; height:150px;}
-  /* voortgangsring (setGenRingTarget in 80-controls.js). Was een SVG met stroke-dashoffset, maar
+  /* voortgangsring (createProgressLoader in 80-controls.js). Was een SVG met stroke-dashoffset, maar
      die animatie draait op dezelfde draad als het rekenwerk en hakkelde dus. Nu: twee halve bogen
      die alleen draaien (transform) — dat doet de browser los van JavaScript, ook als die bezig is.
      Rechterhelft: een boog die zelf links ligt en 0→180° rechtsom het zicht in draait (0–50%);
@@ -496,25 +496,56 @@
   /* ---------- simulatie ---------- */
   /* korter (gecentreerd, max. 520px) zodat de tekst links en rechts eronder dichter bij elkaar
      staat, en een dikkere balk (gebruikerswens) */
-  .sim-progress{margin:4px auto 10px; display:flex; flex-direction:column; gap:7px; width:min(520px, 100%);}
-  .sim-progress[hidden]{display:none;}
+  /* "Aan het simuleren"-vakje (runSimulationBatch in 95-simulate.js): zelfde .gen-box + ring als
+     bij map genereren. Het ligt óver de uitslag (#simResults), zodat bij klaar het vakje kan
+     uitfaden terwijl de uitslag op dezelfde plek infaadt (0,9 s = GEN_FADE_MS). Tijdens het
+     rekenen houdt .sim-stage ruimte vrij voor het vakje. */
+  .sim-stage{position:relative;}
+  .sim-stage.is-running, .sim-stage.is-holding{min-height:380px;}
+  .sim-loader{
+    position:absolute; top:0; left:0; right:0; display:flex; justify-content:center; padding-top:6px;
+    z-index:3; opacity:0; pointer-events:none; transition:opacity .9s ease; will-change:opacity;
+  }
+  .sim-stage.is-running > .sim-loader{opacity:1; pointer-events:auto;}
+  .sim-stage > #simResults{transition:opacity .9s ease;}
+  .sim-stage.is-running > #simResults{opacity:0;}
+  .sim-loader .gen-box{padding:36px 84px 26px; gap:14px;}
+  .sim-loader-count{font-size:11.5px; font-variant-numeric:tabular-nums; margin-top:-8px; opacity:.75;}
   .sim-stop{align-self:center; margin-top:4px; min-width:140px;}
   /* melding na "Stoppen": gecentreerd onder de knop, net als de rest erboven */
   .sim-stopped{display:block; text-align:center;}
-  .sim-progress-bar{
-    height:14px; border-radius:7px; background:var(--hull); border:1px solid var(--line-dim);
-    overflow:hidden;
+  /* radarscherm in de ring: raster, een draaiende scanstraal en vier pionnen die oplichten als de
+     straal ze raakt (zelfde 2,4 s als de straal; --d per pion). Alles transform/opacity, dus net als
+     de ring vloeiend terwijl er gerekend wordt. */
+  .sim-radar{
+    position:absolute; inset:44px; border-radius:50%; overflow:hidden;
+    background:radial-gradient(circle, rgba(79,184,224,.18), rgba(8,22,38,.95) 70%);
+    box-shadow:0 0 22px rgba(79,184,224,.45), inset 0 0 12px rgba(79,184,224,.35);
   }
-  .sim-progress-fill{
-    height:100%; width:0%; border-radius:7px 0 0 7px;
-    background:linear-gradient(90deg, var(--amber-dim), var(--amber));
-    transition:width .12s linear;
+  .sim-radar-grid{
+    position:absolute; inset:0; border-radius:50%;
+    background:
+      radial-gradient(circle, transparent 0 9px, rgba(79,184,224,.35) 9px 10px, transparent 10px 19px,
+                      rgba(79,184,224,.35) 19px 20px, transparent 20px),
+      linear-gradient(rgba(79,184,224,.3), rgba(79,184,224,.3)) center / 1px 100% no-repeat,
+      linear-gradient(rgba(79,184,224,.3), rgba(79,184,224,.3)) center / 100% 1px no-repeat;
   }
-  .sim-progress-text{
-    font-family:var(--font-mono); font-size:11.5px; color:var(--text-dim);
-    display:flex; justify-content:space-between; gap:10px; flex-wrap:wrap;
+  .sim-radar-sweep{
+    position:absolute; inset:0; border-radius:50%; will-change:transform;
+    background:conic-gradient(from 0deg, transparent 0 72%, rgba(79,184,224,.08) 80%, rgba(159,220,255,.55) 100%);
+    animation:genSpin 2.4s linear infinite;
   }
-  .sim-progress-text b{color:var(--amber); font-variant-numeric:tabular-nums;}
+  .sim-radar-sweep::after{
+    content:''; position:absolute; left:50%; top:0; width:1.5px; height:50%; margin-left:-.75px;
+    background:linear-gradient(#dff4ff, rgba(159,220,255,.2)); box-shadow:0 0 6px #9fdcff;
+  }
+  .sim-blip{
+    position:absolute; left:50%; top:50%; width:7px; height:7px; margin:-3.5px 0 0 -3.5px;
+    border-radius:50%; background:var(--c); box-shadow:0 0 8px var(--c);
+    transform:rotate(var(--a)) translateY(calc(-1 * var(--r)));
+    opacity:.18; animation:simBlip 2.4s linear var(--d) infinite;
+  }
+  @keyframes simBlip{0%{opacity:1;} 55%{opacity:.25;} 100%{opacity:.18;}}
 
   .sim-table{width:100%; border-collapse:collapse; font-family:var(--font-mono); font-size:12px; margin:10px 0;}
   /* Op een telefoon zijn de tabellen met 5-6 kolommen breder dan het scherm. Omdat `body`
