@@ -88,6 +88,9 @@
   /* tijdens een multiplayer-potje (chat als 4e kolom) de hele schermbreedte gebruiken, anders
      past het bord er op een breed scherm niet naast en krijgt het een eigen scrollbalk */
   .wrap:has(#tabWalk:not([hidden]) #mpChatPanelGame:not([hidden])){max-width:none;}
+  /* ...maar de kop (logo, tabbladen, "Verlaat potje") blijft op dezelfde plek als op de rest
+     van de pagina */
+  .wrap:has(#tabWalk:not([hidden]) #mpChatPanelGame:not([hidden])) header{max-width:1600px; margin-left:auto; margin-right:auto;}
 
   /* ---------- header ---------- */
   header{
