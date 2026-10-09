@@ -85,6 +85,9 @@
     padding:14px 18px 24px;
   }
   .wrap{max-width:1600px;margin:0 auto;}
+  /* tijdens een multiplayer-potje (chat als 4e kolom) de hele schermbreedte gebruiken, anders
+     past het bord er op een breed scherm niet naast en krijgt het een eigen scrollbalk */
+  .wrap:has(#tabWalk:not([hidden]) #mpChatPanelGame:not([hidden])){max-width:none;}
 
   /* ---------- header ---------- */
   header{
@@ -1642,9 +1645,11 @@
   /* huidig doel: dezelfde tint als de grote opdrachtkaart ernaast (--qtint, gezet vanuit JS),
      met een iets steviger rand zodat 'm er tussen de rest uit springt — dít is de opdracht die
      Herprioritering daadwerkelijk zou wegruilen. */
+  /* dikkere linkerrand via een schaduw i.p.v. border-left-width, zodat "2.x" en de naam precies
+     onder die van de andere rijen blijven staan */
   .quest-check-row.is-current{
-    border-left-width:5px;
-    box-shadow:0 0 0 1px color-mix(in srgb, var(--qtint, var(--quest)) 45%, transparent);
+    box-shadow:inset 2px 0 0 var(--qtint, var(--quest)),
+      0 0 0 1px color-mix(in srgb, var(--qtint, var(--quest)) 45%, transparent);
   }
   .quest-check-row.is-current .quest-check-name{font-weight:700;}
   /* voltooid: naam/label/kamer doven naar donkerder tekst, maar "Voltooid!" krijgt bewust WEL
@@ -1680,8 +1685,10 @@
     .quest-check-name{font-size:13px;}
     .quest-check-label{font-size:11px;}
     .quest-check-text{flex-direction:row; align-items:baseline; gap:6px;}
-    .quest-check-name{white-space:nowrap;}
-    .quest-check-room{white-space:nowrap; overflow:hidden; text-overflow:ellipsis; min-width:0;}
+    /* vaste breedte voor de naam, zodat de kamernamen netjes onder elkaar staan (net genoeg
+       voor de langste, "Medische voorraad") */
+    .quest-check-name{white-space:nowrap; flex:0 0 8.6em; overflow:hidden; text-overflow:ellipsis;}
+    .quest-check-room{white-space:nowrap; overflow:hidden; text-overflow:ellipsis; min-width:0; flex:1 1 auto;}
   }
   /* de nieuwe stat-tegels + altijd-zichtbare spelersrij boven het bord vervangen wat #walkMeta
      en #walkScoreActive lieten zien (beurt/voltooid resp. de eigen rij) — die blijven in de DOM
