@@ -386,14 +386,14 @@ const ACTION_CARDS = {
   condenser: { name: 'Condensator',           hint: 'je energiesteen telt in je volgende beurt dubbel' },
   reroll:    { name: 'Koerscorrectie',        hint: 'gooi je worp opnieuw' },
   scan:      { name: 'Prioriteitspas',        hint: 'bekijk de volgende opdracht van een tegenstander' },
-  lockdown:  { name: 'Vergrendeling',         hint: 'tegenstander mist energie- én kaartactie' },
+  lockdown:  { name: 'Vergrendeling',         hint: 'tegenstander mist energie- én kristalactie' },
   outage:    { name: 'Stroomonderbreking',    hint: 'tegenstander gooit 2 stappen minder' },
   barrier:   { name: 'Noodbarrière',          hint: 'blokkeert tijdelijk een vakje naast een tegenstander' },
   recoil:    { name: 'Terugtrekbevel',        hint: 'duwt een tegenstander tot 2 vakjes terug' },
   jam:       { name: 'Signaalstoring',        hint: 'saboteert de eerstvolgende doelwissel van een tegenstander' },
-  trade:     { name: 'Kaartenruil',           hint: 'ruil een kaart met de aflegstapel' },
+  trade:     { name: 'Kristalruil',           hint: 'ruil een kristal met de aflegstapel' },
   fastlane:  { name: 'Snelroute',             hint: 'geen-U-turn-regel geldt deze beurt niet voor jou' },
-  peek:      { name: 'Herinnering',           hint: 'bekijk en herschik de bovenste 3 kaarten van de trekstapel' },
+  peek:      { name: 'Vooruitblik',           hint: 'bekijk en herschik de bovenste 3 kristallen van de stapel' },
 };
 const ACTION_CARD_IDS = Object.keys(ACTION_CARDS);
 const ACTION_CARD_HAND_MAX = 3;
@@ -489,7 +489,7 @@ function renderPrintedCardFace(id){
   const act = ACTION_CARDS[id];
   const cat = { amber: 'BEWEGING', start: 'ENERGIE', danger: 'VERSTORING', quest: 'NUT', dim: 'INFORMATIE' };
   return `<span class="card-drawn">
-    <span class="card-drawn-kicker">ACTIEKAART</span>
+    <span class="card-drawn-kicker">KRISTAL</span>
     <span class="card-drawn-title">${act.name}</span>
     <svg class="card-drawn-icon" viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round">${ACTION_CARD_ICONS[id]}</svg>
     <span class="card-drawn-rule"></span>
@@ -2046,10 +2046,10 @@ function renderSimResults({ n, stuckCount, startWins, startTurnsSum, startRanks,
   const actionCellDrawsPerGame = played ? (extra.actionCellDraws / played) : 0;
   const actionCellHandFullPct = extra.actionCellDraws + extra.handFullOnActionCell
     ? (extra.handFullOnActionCell / (extra.actionCellDraws + extra.handFullOnActionCell) * 100) : 0;
-  html += simSectionOpen('Beloningskaarten');
-  html += `<p class="hint">Wie een opdracht bereikt trekt een kaart van een gedeelde stapel van ${ACTION_CARD_IDS.length * 2} (2 van elk van de ${ACTION_CARD_IDS.length} soorten), tenzij zijn hand al vol is (max ${ACTION_CARD_HAND_MAX}). Gemiddeld <b>${nl(drawsPerGame, 1)}</b> kaarten getrokken per potje via opdrachten (alle 4 spelers samen); <b>${nl(handFullPct, 1)}%</b> van die trekkans ging verloren aan een volle hand.</p>`;
-  html += `<p class="hint">Elke gangtegel heeft ook een <b>actiekaartvakje</b>: loop je daar overheen (je beurt stopt er niet voor), dan trek je er net zo een kaart bij — hooguit 1x per beurt, ook als je meerdere van deze vakjes passeert. Gemiddeld <b>${nl(actionCellDrawsPerGame, 1)}</b> kaarten getrokken per potje via actiekaartvakjes; <b>${nl(actionCellHandFullPct, 1)}%</b> van die trekkans ging verloren aan een volle hand.</p>`;
-  html += `<table class="sim-table"><thead><tr><th>Kaart</th><th>Keer gebruikt per potje</th></tr></thead><tbody>${cardRows}</tbody></table>`;
+  html += simSectionOpen('Kristallen');
+  html += `<p class="hint">Wie een opdracht bereikt krijgt een kristal uit een gedeelde stapel van ${ACTION_CARD_IDS.length * 2} (2 van elk van de ${ACTION_CARD_IDS.length} soorten), tenzij de kluis al vol is (max ${ACTION_CARD_HAND_MAX}). Gemiddeld <b>${nl(drawsPerGame, 1)}</b> kristallen gekregen per potje via opdrachten (alle 4 spelers samen); <b>${nl(handFullPct, 1)}%</b> van die kansen ging verloren aan een volle kluis.</p>`;
+  html += `<p class="hint">Elke gangtegel heeft ook een <b>kristalvakje</b>: loop je daar overheen (je beurt stopt er niet voor), dan krijg je er net zo een kristal bij — hooguit 1x per beurt, ook als je meerdere van deze vakjes passeert. Gemiddeld <b>${nl(actionCellDrawsPerGame, 1)}</b> kristallen gekregen per potje via kristalvakjes; <b>${nl(actionCellHandFullPct, 1)}%</b> van die kansen ging verloren aan een volle kluis.</p>`;
+  html += `<table class="sim-table"><thead><tr><th>Kristal</th><th>Keer gebruikt per potje</th></tr></thead><tbody>${cardRows}</tbody></table>`;
   html += `<p class="hint">Prioriteitspas heeft in deze simulatie geen mechanisch effect (het is pure informatie voor een mens aan tafel) en wordt daarom nooit ingezet — 0,00 hierboven is dus verwacht, niet een bug. Een getrokken Prioriteitspas bezet wel een handslot tot het potje afloopt.</p>`;
 
   html += simSectionOpen('Energie');

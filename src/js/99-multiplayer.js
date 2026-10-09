@@ -1290,7 +1290,7 @@ function mpRefreshCardVault(){
   walkCardVaultThumbsEl.innerHTML = cards.map(id => ACTION_CARD_IMAGES[id]
     ? `<img src="${ACTION_CARD_IMAGES[id]}" alt="${ACTION_CARDS[id].name}">`
     : `<span class="walk-card-vault-blank action-card--${ACTION_CARD_TINTS[id]}" title="${ACTION_CARDS[id].name}"></span>`).join('');
-  walkCardVaultCountEl.textContent = cards.length === 1 ? '1 actiekaart' : `${cards.length} actiekaarten`;
+  walkCardVaultCountEl.textContent = cards.length === 1 ? '1 kristal' : `${cards.length} kristallen`;
   // geen "N speelbaar"-telling zoals in solo — soloCardBlockReason() rekent tegen wie NU aan
   // zet is, niet tegen mij; klik gewoon de kluis om te bekijken (soloOpenCardPanel doet de
   // juiste eigenaar-check al, zie de guard daar).

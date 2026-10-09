@@ -3333,7 +3333,7 @@
                positieletter een klein label zoals linksboven op elke tegel -->
           <div class="legend-row" data-key="walk"><span class="swatch" style="background:var(--walk)"></span><span class="legend-text">Loopbaar vakje</span></div>
           <div class="legend-row" data-key="quest"><span class="swatch" style="background:var(--quest)"></span><span class="legend-text">Opdrachtvakje <i>2.x</i></span></div>
-          <div class="legend-row" data-key="actioncell"><span class="swatch" style="background:var(--actioncell)"></span><span class="legend-text">Actiekaartvakje <i>4.x</i></span></div>
+          <div class="legend-row" data-key="actioncell"><span class="swatch" style="background:var(--actioncell)"></span><span class="legend-text">Kristalvakje <i>4.x</i></span></div>
           <div class="legend-row" data-key="start"><span class="swatch" style="background:var(--start)"></span><span class="legend-text">Startpositie <i>3.x</i></span></div>
           <div class="legend-row" data-key="empty"><span class="swatch swatch-empty"></span><span class="legend-text">Leeg vakje <i>niet beloopbaar</i></span></div>
           <div class="legend-row" data-key="seamopen"><span class="swatch swatch-seam" style="--sc:var(--amber)"></span><span class="legend-text">Naad open <i>tegels sluiten aan</i></span></div>
@@ -3823,7 +3823,7 @@
             <button type="button" class="walk-panel-box walk-card-vault" id="walkCardVault" hidden>
               <span class="walk-card-vault-thumbs" id="walkCardVaultThumbs"></span>
               <span class="walk-card-vault-text">
-                <b id="walkCardVaultCount">Actiekaarten</b>
+                <b id="walkCardVaultCount">Kristallen</b>
                 <span class="sub" id="walkCardVaultHint">klik om te bekijken →</span>
               </span>
             </button>
@@ -3866,8 +3866,8 @@
     </div>
 
     <div class="panel">
-      <h2>Actiekaarten</h2>
-      <p class="hint">Alle achttien actiekaarten, gegroepeerd per categorie. Van elke kaart zitten er <b>twee</b> in de gedeelde trekstapel (36 kaarten); je trekt er een zodra je een opdracht voltooit of over het actiekaartvakje van een gang loopt (hooguit 1x per beurt), en houdt er hoogstens drie op hand. Tik of klik een kaart aan om hem groot te bekijken.</p>
+      <h2>Kristallen</h2>
+      <p class="hint">Alle achttien kristallen, gegroepeerd per soort. Van elk kristal zitten er <b>twee</b> in de gedeelde stapel (36 kristallen); je krijgt er een zodra je een opdracht voltooit of over het kristalvakje van een gang loopt (hooguit 1x per beurt), en bewaart er hoogstens drie in je kluis. Tik of klik een kristal aan om het groot te bekijken.</p>
       <div id="cardsActionWrap"></div>
     </div>
   </div>
@@ -3903,13 +3903,13 @@
   <div id="cardOverlay" class="card-overlay" hidden>
     <div class="card-panel" role="dialog" aria-modal="true" aria-labelledby="cardPanelTitle">
       <div class="card-panel-head">
-        <h2 id="cardPanelTitle">Jouw actiekaarten</h2>
+        <h2 id="cardPanelTitle">Jouw kristallen</h2>
         <button id="cardPanelClose" class="small ghost" aria-label="Venster sluiten">Sluiten ✕</button>
       </div>
       <p class="hint" id="cardPanelHint"></p>
       <div class="card-grid" id="cardGrid"></div>
       <div class="card-panel-actions">
-        <button id="btnCardPlay" class="primary" disabled>Speel deze kaart</button>
+        <button id="btnCardPlay" class="primary" disabled>Gebruik kristal</button>
         <button id="btnCardDiscard" class="ghost" disabled>Afleggen</button>
         <button id="btnCardCancel" class="ghost">Sluiten</button>
       </div>
@@ -3933,7 +3933,7 @@
             <div class="tool-list" id="toolList">
               <button class="tool active" data-tool="walk"><span class="swatch" style="background:var(--walk)"></span>Loopbaar vakje</button>
               <button class="tool" id="toolQuest" data-tool="quest"><span class="swatch" style="background:var(--quest)"></span>Opdrachtvakje</button>
-              <button class="tool" id="toolCard" data-tool="card"><span class="swatch" style="background:var(--actioncell)"></span>Actiekaartvakje</button>
+              <button class="tool" id="toolCard" data-tool="card"><span class="swatch" style="background:var(--actioncell)"></span>Kristalvakje</button>
               <button class="tool" data-tool="erase"><span class="swatch" style="background:var(--slot-empty); border:1px solid var(--line);"></span>Wissen</button>
             </div>
           </div>
@@ -4758,7 +4758,7 @@ function hoverTipInfo(tileId, dr, dc){
   if (typeof val !== 'string') return null;
   if (val.startsWith('2.')) return { text: `${QUEST_NAMES[val] || 'Opdracht'} (${val})`, kind: 'quest' };
   if (val.startsWith('3.')) return { text: `Startpositie ${val}`, kind: 'start' };
-  if (val.startsWith('4.')) return { text: `Actiekaartvakje ${val}`, kind: 'actioncell' };
+  if (val.startsWith('4.')) return { text: `Kristalvakje ${val}`, kind: 'actioncell' };
   return null;
 }
 
@@ -6090,19 +6090,19 @@ function tileValidationIssues(tid){
   const actionCells = [...m.entries()].filter(([,v]) => typeof v === 'string' && v.startsWith('4.')).map(([k])=>k);
   if (ROOM_NAMES[tid]){
     if (actionCells.length > 0){
-      issues.push({ category: 'actioncell', cells: actionCells, message: `kamertegels mogen geen actiekaartvakje hebben — dat gereedschap is alleen voor gangen.` });
+      issues.push({ category: 'actioncell', cells: actionCells, message: `kamertegels mogen geen kristalvakje hebben — dat gereedschap is alleen voor gangen.` });
     }
   } else {
     if (actionCells.length < 1){
-      issues.push({ category: 'actioncell', cells: [], message: `gangtegel moet minimaal 1 actiekaartvakje hebben.` });
+      issues.push({ category: 'actioncell', cells: [], message: `gangtegel moet minimaal 1 kristalvakje hebben.` });
     }
     if (actionCells.length > 1){
-      issues.push({ category: 'actioncell', cells: actionCells, message: `maximaal 1 actiekaartvakje per tegel toegestaan (nu ${actionCells.length}).` });
+      issues.push({ category: 'actioncell', cells: actionCells, message: `maximaal 1 kristalvakje per tegel toegestaan (nu ${actionCells.length}).` });
     }
   }
   for (const k of actionCells){
     if (DOOR_KEYS.has(k) || DOOR_INWARD_VALUES.has(k)){
-      issues.push({ category: 'actioncell', cells: [k], message: `actiekaartvakje mag niet op een deurvakje of het vakje direct erachter staan.` });
+      issues.push({ category: 'actioncell', cells: [k], message: `kristalvakje mag niet op een deurvakje of het vakje direct erachter staan.` });
     }
   }
   return issues;
@@ -6116,7 +6116,7 @@ function tileChecklistItems(tid){
     { label: 'Minimaal 2 doorgangen', ok: !has('exits') },
     { label: 'Doorgangen kloppen (geen halve deuren)', ok: !has('doors') },
     { label: 'Alle vakjes met elkaar verbonden', ok: !has('connected') },
-    ...(isRoom ? [{ label: '1 opdrachtvakje', ok: !has('quest') }] : [{ label: '1 actiekaartvakje', ok: !has('actioncell') }]),
+    ...(isRoom ? [{ label: '1 opdrachtvakje', ok: !has('quest') }] : [{ label: '1 kristalvakje', ok: !has('actioncell') }]),
   ];
 }
 // welke 2.x / 3.x labels zijn nog vrij (buiten deze tegel)
@@ -6724,14 +6724,14 @@ const ACTION_CARDS = {
   condenser: { name: 'Condensator',           hint: 'je energiesteen telt in je volgende beurt dubbel' },
   reroll:    { name: 'Koerscorrectie',        hint: 'gooi je worp opnieuw' },
   scan:      { name: 'Prioriteitspas',        hint: 'bekijk de volgende opdracht van een tegenstander' },
-  lockdown:  { name: 'Vergrendeling',         hint: 'tegenstander mist energie- én kaartactie' },
+  lockdown:  { name: 'Vergrendeling',         hint: 'tegenstander mist energie- én kristalactie' },
   outage:    { name: 'Stroomonderbreking',    hint: 'tegenstander gooit 2 stappen minder' },
   barrier:   { name: 'Noodbarrière',          hint: 'blokkeert tijdelijk een vakje naast een tegenstander' },
   recoil:    { name: 'Terugtrekbevel',        hint: 'duwt een tegenstander tot 2 vakjes terug' },
   jam:       { name: 'Signaalstoring',        hint: 'saboteert de eerstvolgende doelwissel van een tegenstander' },
-  trade:     { name: 'Kaartenruil',           hint: 'ruil een kaart met de aflegstapel' },
+  trade:     { name: 'Kristalruil',           hint: 'ruil een kristal met de aflegstapel' },
   fastlane:  { name: 'Snelroute',             hint: 'geen-U-turn-regel geldt deze beurt niet voor jou' },
-  peek:      { name: 'Herinnering',           hint: 'bekijk en herschik de bovenste 3 kaarten van de trekstapel' },
+  peek:      { name: 'Vooruitblik',           hint: 'bekijk en herschik de bovenste 3 kristallen van de stapel' },
 };
 const ACTION_CARD_IDS = Object.keys(ACTION_CARDS);
 const ACTION_CARD_HAND_MAX = 3;
@@ -6827,7 +6827,7 @@ function renderPrintedCardFace(id){
   const act = ACTION_CARDS[id];
   const cat = { amber: 'BEWEGING', start: 'ENERGIE', danger: 'VERSTORING', quest: 'NUT', dim: 'INFORMATIE' };
   return `<span class="card-drawn">
-    <span class="card-drawn-kicker">ACTIEKAART</span>
+    <span class="card-drawn-kicker">KRISTAL</span>
     <span class="card-drawn-title">${act.name}</span>
     <svg class="card-drawn-icon" viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round">${ACTION_CARD_ICONS[id]}</svg>
     <span class="card-drawn-rule"></span>
@@ -8384,10 +8384,10 @@ function renderSimResults({ n, stuckCount, startWins, startTurnsSum, startRanks,
   const actionCellDrawsPerGame = played ? (extra.actionCellDraws / played) : 0;
   const actionCellHandFullPct = extra.actionCellDraws + extra.handFullOnActionCell
     ? (extra.handFullOnActionCell / (extra.actionCellDraws + extra.handFullOnActionCell) * 100) : 0;
-  html += simSectionOpen('Beloningskaarten');
-  html += `<p class="hint">Wie een opdracht bereikt trekt een kaart van een gedeelde stapel van ${ACTION_CARD_IDS.length * 2} (2 van elk van de ${ACTION_CARD_IDS.length} soorten), tenzij zijn hand al vol is (max ${ACTION_CARD_HAND_MAX}). Gemiddeld <b>${nl(drawsPerGame, 1)}</b> kaarten getrokken per potje via opdrachten (alle 4 spelers samen); <b>${nl(handFullPct, 1)}%</b> van die trekkans ging verloren aan een volle hand.</p>`;
-  html += `<p class="hint">Elke gangtegel heeft ook een <b>actiekaartvakje</b>: loop je daar overheen (je beurt stopt er niet voor), dan trek je er net zo een kaart bij — hooguit 1x per beurt, ook als je meerdere van deze vakjes passeert. Gemiddeld <b>${nl(actionCellDrawsPerGame, 1)}</b> kaarten getrokken per potje via actiekaartvakjes; <b>${nl(actionCellHandFullPct, 1)}%</b> van die trekkans ging verloren aan een volle hand.</p>`;
-  html += `<table class="sim-table"><thead><tr><th>Kaart</th><th>Keer gebruikt per potje</th></tr></thead><tbody>${cardRows}</tbody></table>`;
+  html += simSectionOpen('Kristallen');
+  html += `<p class="hint">Wie een opdracht bereikt krijgt een kristal uit een gedeelde stapel van ${ACTION_CARD_IDS.length * 2} (2 van elk van de ${ACTION_CARD_IDS.length} soorten), tenzij de kluis al vol is (max ${ACTION_CARD_HAND_MAX}). Gemiddeld <b>${nl(drawsPerGame, 1)}</b> kristallen gekregen per potje via opdrachten (alle 4 spelers samen); <b>${nl(handFullPct, 1)}%</b> van die kansen ging verloren aan een volle kluis.</p>`;
+  html += `<p class="hint">Elke gangtegel heeft ook een <b>kristalvakje</b>: loop je daar overheen (je beurt stopt er niet voor), dan krijg je er net zo een kristal bij — hooguit 1x per beurt, ook als je meerdere van deze vakjes passeert. Gemiddeld <b>${nl(actionCellDrawsPerGame, 1)}</b> kristallen gekregen per potje via kristalvakjes; <b>${nl(actionCellHandFullPct, 1)}%</b> van die kansen ging verloren aan een volle kluis.</p>`;
+  html += `<table class="sim-table"><thead><tr><th>Kristal</th><th>Keer gebruikt per potje</th></tr></thead><tbody>${cardRows}</tbody></table>`;
   html += `<p class="hint">Prioriteitspas heeft in deze simulatie geen mechanisch effect (het is pure informatie voor een mens aan tafel) en wordt daarom nooit ingezet — 0,00 hierboven is dus verwacht, niet een bug. Een getrokken Prioriteitspas bezet wel een handslot tot het potje afloopt.</p>`;
 
   html += simSectionOpen('Energie');
@@ -8890,7 +8890,7 @@ function renderWalkBoard(){
           const room = ROOM_NAMES[tileId] || ('Gang ' + tileId);
           div.title = `${val} · ${QUEST_NAMES[val] || val} — ${room}`;
         } else if (type === 'actioncell'){
-          div.title = 'Extra actiekaart';
+          div.title = 'Extra kristal';
         }
       } else if (patternSet.has(dr+'_'+dc)){
         div.classList.add('empty-slot');
@@ -9337,7 +9337,7 @@ function renderWalkScore(players, activeIdx){
         // lang label op een breed scherm, kort ("Voltooid") waar het anders niet op één regel past
         stat('<span class="lbl-long">Opdrachten voltooid</span><span class="lbl-short">Voltooid</span>', `${p.completed}/${SIM_QUESTS_TO_WIN}`, ' quests') +
         stat('Energie', `⚡${p.energy}`, p.energy >= ENERGY_MAX ? ' energy full' : ' energy') +
-        stat('Kaarten', p.cards.length) +
+        stat('<span class="lbl-long">Kristallen</span><span class="lbl-short">Kristal</span>', p.cards.length) +
       `</span>` +
     `</div>`;
   }).join('');
@@ -9476,7 +9476,7 @@ async function runWalkSimulation(){
   for (const p of players){
     walkLog(`${p.name} start op <b>${p.startLabel}</b> · energie: <b>${energyStrategyName(p.strategy)}</b> · stapel: ${p.deck.slice(0, SIM_QUESTS_TO_WIN).join(' → ')} …`, null, p);
   }
-  walkLog(`Elke voltooide opdracht levert een beloningskaart op van een gedeelde stapel — net als het actiekaartvakje in elke gang (zet stopt er niet voor, hooguit 1x per beurt) — max ${ACTION_CARD_HAND_MAX} kaarten in de hand.`);
+  walkLog(`Elke voltooide opdracht levert een kristal op uit een gedeelde stapel — net als het kristalvakje in elke gang (zet stopt er niet voor, hooguit 1x per beurt) — max ${ACTION_CARD_HAND_MAX} kristallen in de kluis.`);
   if (playerCount > 1){
     walkLog(`Beurtvolgorde: ${turnOrder.map(i => players[i].name).join(' → ')}.`);
     walkLog(playerCount === 2
@@ -9517,7 +9517,7 @@ async function runWalkSimulation(){
         player.lockedNextTurn = false;
         energyActionUsed = true;
         cardActionUsed = true;
-        walkLog(`${player.name} is <b>vergrendeld</b> en slaat zijn energie- en kaartactie over.`, null, player);
+        walkLog(`${player.name} is <b>vergrendeld</b> en slaat zijn energie- en kristalactie over.`, null, player);
       }
       let usedEnergyAction = null; // id uit ENERGY_ACTIONS, voor de logregel
       let usedCardId = null;       // id uit ACTION_CARDS, voor de logregel
@@ -9707,9 +9707,9 @@ async function runWalkSimulation(){
             actionCellDrawnThisTurn = true;
             const reward = drawActionCellReward(player, deck, rand);
             if (reward.drawn){
-              walkLog(`${player.name} loopt over een actiekaartvakje en trekt een beloningskaart: <b>${ACTION_CARDS[reward.drawn].name}</b> — ${ACTION_CARDS[reward.drawn].hint}.`, null, player);
+              walkLog(`${player.name} loopt over een kristalvakje en raapt een kristal op: <b>${ACTION_CARDS[reward.drawn].name}</b> — ${ACTION_CARDS[reward.drawn].hint}.`, null, player);
             } else if (reward.handFull){
-              walkLog(`${player.name} loopt over een actiekaartvakje, maar de hand is al vol.`, null, player);
+              walkLog(`${player.name} loopt over een kristalvakje, maar de kluis is al vol.`, null, player);
             }
           }
           paintWalkPawns(graph, players, pIdx);
@@ -9751,7 +9751,7 @@ async function runWalkSimulation(){
           walkLog(`${player.name} springt met <b>Noodtransport</b> ${pre.path.length - 1} vakjes${pre.endsTurn ? ', precies op zijn opdracht' : ''}.`, null, player);
         } else {
           const dir = lastStepDirection(graph, pre.path);
-          walkLog(`${player.name} schiet met <b>Zwaartekracht-laarzen</b>${pre.kind === 'bootsCard' ? ' (kaart)' : ''} ${pre.path.length - 1} vakjes rechtdoor naar het ${namen[dir] || ''}.`, null, player);
+          walkLog(`${player.name} schiet met <b>Zwaartekracht-laarzen</b>${pre.kind === 'bootsCard' ? ' (kristal)' : ''} ${pre.path.length - 1} vakjes rechtdoor naar het ${namen[dir] || ''}.`, null, player);
         }
         bank.limit = pre.bankedCount;
         if (!await walkPath(pre.path, true)) return;
@@ -9887,10 +9887,10 @@ async function runWalkSimulation(){
             const drawn = drawActionCard(deck, rand);
             if (drawn){
               player.cards.push(drawn);
-              walkLog(`${player.name} trekt een beloningskaart: <b>${ACTION_CARDS[drawn].name}</b> — ${ACTION_CARDS[drawn].hint}.`, null, player);
+              walkLog(`${player.name} krijgt een kristal: <b>${ACTION_CARDS[drawn].name}</b> — ${ACTION_CARDS[drawn].hint}.`, null, player);
             }
           } else {
-            walkLog(`${player.name} zou een kaart trekken, maar de hand is al vol.`, null, player);
+            walkLog(`${player.name} zou een kristal krijgen, maar de kluis is al vol.`, null, player);
           }
         }
 
@@ -9922,7 +9922,7 @@ async function runWalkSimulation(){
           walkLog(`<b>${group[0].name} is binnen als ${walkRankLabel(group[0].rank)}</b>.`, 'hit', group[0]);
         } else {
           const names = group.map(p => p.name).join(' en ');
-          walkLog(`<b>${names} delen de ${walkRankLabel(group[0].rank)} plaats</b> — gelijke energie (${group[0].energy}) en evenveel actiekaarten in de hand (${group[0].cards.length}).`, 'hit', null);
+          walkLog(`<b>${names} delen de ${walkRankLabel(group[0].rank)} plaats</b> — gelijke energie (${group[0].energy}) en evenveel kristallen in de kluis (${group[0].cards.length}).`, 'hit', null);
         }
       }
       finished += roundFinishers.length;
@@ -9955,7 +9955,7 @@ async function runWalkSimulation(){
     const title = winners.length === 1 ? `${w.name} wint!` : 'Gedeelde winst!';
     const sub = winners.length === 1
       ? ''   // geen startplek/beurten meer, zie soloEndgameTexts (97-solo.js)
-      : `${winners.map(p => p.name).join(' en ')} — gelijke energie en actiekaarten`;
+      : `${winners.map(p => p.name).join(' en ')} — gelijke energie en kristallen`;
     soloShowEndgame('🏆', title, sub, players, notMe);
   } else {
     soloShowEndgame('⏳', 'Afgekapt', `niet iedereen was binnen na ${SIM_MAX_TURNS} beurten`, players, notMe);
@@ -11098,7 +11098,7 @@ function soloCardBlockReason(id){
   const preRollOk = soloPhase === 'choose-action' && SOLO_PRE_ROLL_CARDS.includes(id);
   if (id === 'boots' && soloPhase !== 'choose-action') return 'alleen vóór het dobbelen';
   if (soloPhase !== 'moving' && !preRollOk) return 'kan pas nadat je hebt gedobbeld';
-  if (soloCardActionUsed()) return 'je hebt deze beurt al een kaart gebruikt';
+  if (soloCardActionUsed()) return 'je hebt deze beurt al een kristal gebruikt';
   // één sprint per beurt: de kaart en de energie-actie Zwaartekracht-laarzen sluiten elkaar uit
   if (id === 'boots' && soloUsedBoots) return 'je hebt deze beurt al gesprint';
   if (id === 'boots' && !soloDashOptions().length) return 'in geen enkele richting ruimte';
@@ -11158,7 +11158,7 @@ function soloRefreshCardVault(){
   walkCardVaultThumbsEl.innerHTML = cards.map(id => ACTION_CARD_IMAGES[id]
     ? `<img src="${ACTION_CARD_IMAGES[id]}" alt="${ACTION_CARDS[id].name}">`
     : `<span class="walk-card-vault-blank action-card--${ACTION_CARD_TINTS[id]}" title="${ACTION_CARDS[id].name}"></span>`).join('');
-  walkCardVaultCountEl.textContent = cards.length === 1 ? '1 actiekaart' : `${cards.length} actiekaarten`;
+  walkCardVaultCountEl.textContent = cards.length === 1 ? '1 kristal' : `${cards.length} kristallen`;
   const playable = cards.filter(id => !soloCardBlockReason(id)).length;
   walkCardVaultHintEl.textContent = playable
     ? `${playable} speelbaar — klik om te bekijken →`
@@ -11213,12 +11213,12 @@ function soloRenderCardGrid(){
   btnCardDiscard.disabled = !soloSelectedCard || !soloCanDiscardNow();
   cardPanelHintEl.textContent =
     soloPhase === 'moving' ? (soloCardActionUsed()
-      ? 'Je hebt deze beurt al een kaart gebruikt.'
-      : 'Kies één kaart. Per beurt mag je er hooguit één spelen of afleggen.')
+      ? 'Je hebt deze beurt al een kristal gebruikt.'
+      : 'Kies één kristal. Per beurt mag je er hooguit één gebruiken of afleggen.')
     : soloPhase === 'choose-action' ? (soloCardActionUsed()
-      ? 'Je hebt deze beurt al een kaart gebruikt.'
+      ? 'Je hebt deze beurt al een kristal gebruikt.'
       : 'Vóór het dobbelen kun je alleen Noodrantsoen of Stuwlading spelen — de rest kan pas nadat je hebt gedobbeld. Afleggen kan ook nog niet.')
-    : 'Je kunt pas een kaart spelen of afleggen nadat je hebt gedobbeld.';
+    : 'Je kunt pas een kristal gebruiken of afleggen nadat je hebt gedobbeld.';
 }
 if (cardGridEl){
   cardGridEl.addEventListener('click', (e) => {
@@ -11374,7 +11374,7 @@ function soloResolveTargetCard(cardId, targetIdx){
     soloAfterCardAction();
   } else if (cardId === 'lockdown'){
     victim.lockedNextTurn = true;
-    walkLog(`Je speelt <b>Vergrendeling</b> op ${victim.name}: die mist zijn volgende energie- én kaartactie.`, null, p);
+    walkLog(`Je speelt <b>Vergrendeling</b> op ${victim.name}: die mist zijn volgende energie- én kristalactie.`, null, p);
     soloAfterCardAction();
   } else if (cardId === 'outage'){
     victim.rollPenalty = 2;
@@ -11485,16 +11485,16 @@ function soloPlayCard(id){
     if (other && soloDeck.discard.length){
       const gekregen = soloDeck.discard[soloDeck.discard.length - 1];
       performCardTrade(p, other, soloDeck);
-      walkLog(`Je speelt <b>Kaartenruil</b>: ${ACTION_CARDS[other].name} eruit, <b>${ACTION_CARDS[gekregen].name}</b> erin.`, null, p);
+      walkLog(`Je gebruikt <b>Kristalruil</b>: ${ACTION_CARDS[other].name} eruit, <b>${ACTION_CARDS[gekregen].name}</b> erin.`, null, p);
     } else {
-      walkLog(`Je speelt <b>Kaartenruil</b>, maar er is niets om te ruilen.`, null, p);
+      walkLog(`Je gebruikt <b>Kristalruil</b>, maar er is niets om te ruilen.`, null, p);
     }
     soloAfterCardAction();
   } else if (id === 'peek'){
     performPeekReorder(soloDeck);
     useActionCard(p, 'peek', soloDeck);
     soloUsedCardId = 'peek';
-    walkLog(`Je speelt <b>Herinnering</b>: de bovenste kaarten van de trekstapel zijn herschikt.`, null, p);
+    walkLog(`Je gebruikt <b>Vooruitblik</b>: de bovenste kristallen van de stapel zijn herschikt.`, null, p);
     soloAfterCardAction();
   } else if (id === 'condenser'){
     // een investering voor je VOLGENDE beurt: die energiesteen telt dan dubbel. Je weet dus
@@ -11560,12 +11560,12 @@ function soloGrantActionCellReward(player, isHuman){
   const reward = drawActionCellReward(player, soloDeck, soloRand);
   if (reward.drawn){
     const msg = isHuman
-      ? `Je loopt over een actiekaartvakje en trekt een beloningskaart: <b>${ACTION_CARDS[reward.drawn].name}</b> — ${ACTION_CARDS[reward.drawn].hint}.`
-      : `${player.name} loopt over een actiekaartvakje en trekt een beloningskaart: <b>${ACTION_CARDS[reward.drawn].name}</b> — ${ACTION_CARDS[reward.drawn].hint}.`;
+      ? `Je loopt over een kristalvakje en raapt een kristal op: <b>${ACTION_CARDS[reward.drawn].name}</b> — ${ACTION_CARDS[reward.drawn].hint}.`
+      : `${player.name} loopt over een kristalvakje en raapt een kristal op: <b>${ACTION_CARDS[reward.drawn].name}</b> — ${ACTION_CARDS[reward.drawn].hint}.`;
     walkLog(msg, null, player);
     if (isHuman) soloRefreshCardVault();
   } else if (reward.handFull){
-    walkLog(isHuman ? `Je loopt over een actiekaartvakje, maar je hand is al vol.` : `${player.name} loopt over een actiekaartvakje, maar de hand is al vol.`, null, player);
+    walkLog(isHuman ? `Je loopt over een kristalvakje, maar je kluis is al vol.` : `${player.name} loopt over een kristalvakje, maar de kluis is al vol.`, null, player);
   }
 }
 function soloCheckActionCell(key, player, isHuman){
@@ -11611,7 +11611,7 @@ function soloEnterDashDirection(source){
   btnWalkSoloRoll.hidden = true;
   soloRefreshCardVault();
   soloMarkClickable(soloGraph, options.map(o => o.key));
-  walkLog(`Je zet <b>Zwaartekracht-laarzen</b> in${source === 'card' ? ' (kaart)' : ` (−${ENERGY_ACTIONS.gravity.cost})`} — kies een richting, op het bord of hieronder.`, null, p);
+  walkLog(`Je zet <b>Zwaartekracht-laarzen</b> in${source === 'card' ? ' (kristal)' : ` (−${ENERGY_ACTIONS.gravity.cost})`} — kies een richting, op het bord of hieronder.`, null, p);
   const names = ['Noord', 'Oost', 'Zuid', 'West'];
   walkSoloActionsEl.innerHTML =
     `<p class="hint energy-pick-head">Kies je richting voor <b>Zwaartekracht-laarzen</b>:</p>` +
@@ -12011,11 +12011,11 @@ function soloBankCurrentQuest(){
     const drawn = drawActionCard(soloDeck, soloRand);
     if (drawn){
       p.cards.push(drawn);
-      walkLog(`Je trekt een beloningskaart: <b>${ACTION_CARDS[drawn].name}</b> — ${ACTION_CARDS[drawn].hint}.`, null, p);
+      walkLog(`Je krijgt een kristal: <b>${ACTION_CARDS[drawn].name}</b> — ${ACTION_CARDS[drawn].hint}.`, null, p);
       soloRefreshCardVault();
     }
   } else {
-    walkLog(`Je zou een kaart trekken, maar je hand is al vol.`, null, p);
+    walkLog(`Je zou een kristal krijgen, maar je kluis is al vol.`, null, p);
   }
 
   if (p.completed >= SIM_QUESTS_TO_WIN){
@@ -12119,11 +12119,11 @@ function soloFinishTurn(banked){
       const drawn = drawActionCard(soloDeck, soloRand);
       if (drawn){
         p.cards.push(drawn);
-        walkLog(`Je trekt een beloningskaart: <b>${ACTION_CARDS[drawn].name}</b> — ${ACTION_CARDS[drawn].hint}.`, null, p);
+        walkLog(`Je krijgt een kristal: <b>${ACTION_CARDS[drawn].name}</b> — ${ACTION_CARDS[drawn].hint}.`, null, p);
         soloRefreshCardVault();   // nieuwe kaart meteen in de kluis tonen
       }
     } else {
-      walkLog(`Je zou een kaart trekken, maar je hand is al vol.`, null, p);
+      walkLog(`Je zou een kristal krijgen, maar je kluis is al vol.`, null, p);
     }
 
     if (p.completed >= SIM_QUESTS_TO_WIN){
@@ -12197,7 +12197,7 @@ function soloBeginHumanTurn(pIdx){
     soloLockedThisTurn = true;
     soloUsedEnergyId = 'locked';
     soloUsedCardId = 'locked';
-    walkLog(`Je bent <b>vergrendeld</b>: deze beurt geen energie-actie en geen actiekaart.`, null, p);
+    walkLog(`Je bent <b>vergrendeld</b>: deze beurt geen energie-actie en geen kristal.`, null, p);
   }
 
   soloRefreshTarget();
@@ -12237,7 +12237,7 @@ function soloResolveBotTurn(player){
     player.lockedNextTurn = false;
     energyActionUsed = true;
     cardActionUsed = true;
-    walkLog(`${player.name} is <b>vergrendeld</b> en slaat zijn energie- en kaartactie over.`, null, player);
+    walkLog(`${player.name} is <b>vergrendeld</b> en slaat zijn energie- en kristalactie over.`, null, player);
   }
 
   // energiesteen rolt mee, maar telt pas na de zet bij (zelfde tijdsregels als de mens en
@@ -12390,7 +12390,7 @@ function soloResolveBotTurn(player){
     }
     walkLog(pre.kind === 'jump'
       ? `${player.name} springt met <b>Noodtransport</b> ${pre.path.length - 1} vakjes${pre.endsTurn ? ', precies op zijn opdracht' : ''}.`
-      : `${player.name} schiet met <b>Zwaartekracht-laarzen</b>${pre.kind === 'bootsCard' ? ' (kaart)' : ''} ${pre.path.length - 1} vakjes rechtdoor.`, null, player);
+      : `${player.name} schiet met <b>Zwaartekracht-laarzen</b>${pre.kind === 'bootsCard' ? ' (kristal)' : ''} ${pre.path.length - 1} vakjes rechtdoor.`, null, player);
   }
   const rollFrom = pre ? pre.key : player.pos;
   const rollTargets = pre ? targets.slice(pre.bankedCount) : targets;
@@ -12616,7 +12616,7 @@ function soloFinishRound(){
         walkLog(`<b>${group[0].name} is binnen als ${walkRankLabel(group[0].rank)}</b>.`, 'hit', group[0]);
       } else {
         const names = group.map(p => p.name).join(' en ');
-        walkLog(`<b>${names} delen de ${walkRankLabel(group[0].rank)} plaats</b> — gelijke energie (${group[0].energy}) en evenveel actiekaarten in de hand (${group[0].cards.length}).`, 'hit', null);
+        walkLog(`<b>${names} delen de ${walkRankLabel(group[0].rank)} plaats</b> — gelijke energie (${group[0].energy}) en evenveel kristallen in de kluis (${group[0].cards.length}).`, 'hit', null);
       }
     }
     soloFinished += soloRoundFinishers.length;
@@ -12709,7 +12709,7 @@ const SOLO_STATS_GROUPS = [
   ]},
   { title: 'Energie', rows: [
     { label: 'Gedobbeld (energiesteen)', best: 'max', get: p => p.stats.energyRolled },
-    { label: 'Erbij (ook via kaarten)', best: 'max', get: p => p.stats.energyGained },
+    { label: 'Erbij (ook via kristallen)', best: 'max', get: p => p.stats.energyGained },
     { label: 'Verloren (voorraad vol)', best: 'min', get: p => p.stats.energyWasted },
     { label: 'Over aan het eind', get: p => p.energy },
   ]},
@@ -12718,11 +12718,11 @@ const SOLO_STATS_GROUPS = [
     { label: 'Energie verbruikt', best: 'max', get: p => p.stats.energyGained - p.energy },
     { label: 'Gemiddeld per actie', get: p => perOf(p.stats.energyGained - p.energy, p.actionUses || 0), fmt: v => v ? nl(v, 1) : '—' },
   ]},
-  { title: 'Actiekaarten', rows: [
-    { label: 'Getrokken', best: 'max', get: p => p.stats.cardsPlayed + p.stats.cardsDiscarded + p.cards.length },
-    { label: 'Gespeeld', best: 'max', get: p => p.stats.cardsPlayed },
+  { title: 'Kristallen', rows: [
+    { label: 'Opgeraapt', best: 'max', get: p => p.stats.cardsPlayed + p.stats.cardsDiscarded + p.cards.length },
+    { label: 'Gebruikt', best: 'max', get: p => p.stats.cardsPlayed },
     { label: 'Afgelegd', get: p => p.stats.cardsDiscarded },
-    { label: 'Nog in de hand', get: p => p.cards.length },
+    { label: 'Nog in de kluis', get: p => p.cards.length },
   ]},
 ];
 const walkStatsOverlayEl = document.getElementById('walkStatsOverlay');
@@ -12865,7 +12865,7 @@ function statsMixHtml(players){
     const eu = p.stats.energyUse || {}, cu = p.stats.cardUse || {};
     return `<div class="sc-mix-player" style="--pc:${p.color}"><b>${statsEsc(p.name)}</b>` +
       `<span class="sc-mix-lbl">Energie</span>${bar(Object.keys(STATS_ENERGY_COLORS).map(k => ({ v: eu[k] || 0, c: STATS_ENERGY_COLORS[k], label: ENERGY_ACTIONS[k].name })))}` +
-      `<span class="sc-mix-lbl">Kaarten</span>${bar(usedCards.map(id => ({ v: cu[id] || 0, c: cardColor(id), label: ACTION_CARDS[id].name })))}` +
+      `<span class="sc-mix-lbl">Kristallen</span>${bar(usedCards.map(id => ({ v: cu[id] || 0, c: cardColor(id), label: ACTION_CARDS[id].name })))}` +
       `<span class="sc-mix-lbl">Vakjes</span>${bar([{ v: p.stats.walkSteps, c: '#8fa3b8', label: 'gelopen' }, { v: p.stats.dashSteps, c: '#b98cff', label: 'gesprint' }])}` +
     `</div>`;
   }).join('');
@@ -12884,7 +12884,7 @@ function soloStatsChartsHtml(players){
     `<section class="sc-card"><h3>Energie per beurt</h3>${statsLineChart(statsSeries(players, 1), { yMax: ENERGY_MAX, yLabel: 'energie', step: false })}${legend}</section>` +
     `<section class="sc-card"><h3>Worpen-verdeling <span>(som van 2 loopstenen · gemiddeld 7)</span></h3>${statsDiceChart(players)}` +
       `<div class="sc-legend sc-legend-players">${players.map(p => `<span class="sc-key"><i style="background:${p.color}"></i>${statsEsc(p.name)} · gem. ${avg(p)}</span>`).join('')}</div></section>` +
-    `<section class="sc-card"><h3>Acties, kaarten en verplaatsing</h3>${statsMixHtml(players)}</section>` +
+    `<section class="sc-card"><h3>Acties, kristallen en verplaatsing</h3>${statsMixHtml(players)}</section>` +
   `</div>`;
 }
 // zelf opzoeken i.p.v. walkStatsOverlayEl: soloHideEndgame() roept dit aan en kan al tijdens
@@ -13126,7 +13126,7 @@ function soloEndgameTexts(stuck){
   const title = winners.length === 1 ? (soloIsMe(w) ? 'Jij wint!' : `${w.name} wint!`) : 'Gedeelde winst!';
   const sub = winners.length === 1
     ? ''
-    : `${winners.map(nameOf).join(' en ')} — gelijke energie en actiekaarten`;
+    : `${winners.map(nameOf).join(' en ')} — gelijke energie en kristallen`;
   return { trophy: '🏆', title, sub };
 }
 function soloEndGame(stuck){
@@ -13325,7 +13325,7 @@ function soloLogGameStart(){
     const first = p.deck[0];
     walkLog(`${p.name} ${who} start op <b>${p.startLabel}</b>${stratNote} · eerste opdracht: ${first} — ${QUEST_NAMES[first] || ''}`, null, p);
   }
-  walkLog(`Elke voltooide opdracht levert een beloningskaart op van een gedeelde stapel — net als het actiekaartvakje in elke gang (zet stopt er niet voor, hooguit 1x per beurt) — max ${ACTION_CARD_HAND_MAX} kaarten in de hand.`);
+  walkLog(`Elke voltooide opdracht levert een kristal op uit een gedeelde stapel — net als het kristalvakje in elke gang (zet stopt er niet voor, hooguit 1x per beurt) — max ${ACTION_CARD_HAND_MAX} kristallen in de kluis.`);
   if (soloPlayers.length > 1){
     walkLog(`Beurtvolgorde: ${soloTurnOrder.map(i => soloPlayers[i].name).join(' → ')}.`);
     walkLog(soloPlayers.length === 2
@@ -13620,7 +13620,7 @@ function renderCardsTab(){
     if (!ids.length) continue;
     const head = document.createElement('h3');
     head.className = 'cards-subhead';
-    head.innerHTML = `${CARDS_CATEGORY_LABELS[cat]} <span>${ids.length} ${ids.length === 1 ? 'kaart' : 'kaarten'} · 2× in de stapel</span>`;
+    head.innerHTML = `${CARDS_CATEGORY_LABELS[cat]} <span>${ids.length} ${ids.length === 1 ? 'kristal' : 'kristallen'} · 2× in de stapel</span>`;
     cardsActionWrap.appendChild(head);
     const grid = document.createElement('div');
     grid.className = 'cards-shelf';
@@ -15186,7 +15186,7 @@ function mpRefreshCardVault(){
   walkCardVaultThumbsEl.innerHTML = cards.map(id => ACTION_CARD_IMAGES[id]
     ? `<img src="${ACTION_CARD_IMAGES[id]}" alt="${ACTION_CARDS[id].name}">`
     : `<span class="walk-card-vault-blank action-card--${ACTION_CARD_TINTS[id]}" title="${ACTION_CARDS[id].name}"></span>`).join('');
-  walkCardVaultCountEl.textContent = cards.length === 1 ? '1 actiekaart' : `${cards.length} actiekaarten`;
+  walkCardVaultCountEl.textContent = cards.length === 1 ? '1 kristal' : `${cards.length} kristallen`;
   // geen "N speelbaar"-telling zoals in solo — soloCardBlockReason() rekent tegen wie NU aan
   // zet is, niet tegen mij; klik gewoon de kluis om te bekijken (soloOpenCardPanel doet de
   // juiste eigenaar-check al, zie de guard daar).

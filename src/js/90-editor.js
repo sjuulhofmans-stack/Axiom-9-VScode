@@ -120,19 +120,19 @@ function tileValidationIssues(tid){
   const actionCells = [...m.entries()].filter(([,v]) => typeof v === 'string' && v.startsWith('4.')).map(([k])=>k);
   if (ROOM_NAMES[tid]){
     if (actionCells.length > 0){
-      issues.push({ category: 'actioncell', cells: actionCells, message: `kamertegels mogen geen actiekaartvakje hebben — dat gereedschap is alleen voor gangen.` });
+      issues.push({ category: 'actioncell', cells: actionCells, message: `kamertegels mogen geen kristalvakje hebben — dat gereedschap is alleen voor gangen.` });
     }
   } else {
     if (actionCells.length < 1){
-      issues.push({ category: 'actioncell', cells: [], message: `gangtegel moet minimaal 1 actiekaartvakje hebben.` });
+      issues.push({ category: 'actioncell', cells: [], message: `gangtegel moet minimaal 1 kristalvakje hebben.` });
     }
     if (actionCells.length > 1){
-      issues.push({ category: 'actioncell', cells: actionCells, message: `maximaal 1 actiekaartvakje per tegel toegestaan (nu ${actionCells.length}).` });
+      issues.push({ category: 'actioncell', cells: actionCells, message: `maximaal 1 kristalvakje per tegel toegestaan (nu ${actionCells.length}).` });
     }
   }
   for (const k of actionCells){
     if (DOOR_KEYS.has(k) || DOOR_INWARD_VALUES.has(k)){
-      issues.push({ category: 'actioncell', cells: [k], message: `actiekaartvakje mag niet op een deurvakje of het vakje direct erachter staan.` });
+      issues.push({ category: 'actioncell', cells: [k], message: `kristalvakje mag niet op een deurvakje of het vakje direct erachter staan.` });
     }
   }
   return issues;
@@ -146,7 +146,7 @@ function tileChecklistItems(tid){
     { label: 'Minimaal 2 doorgangen', ok: !has('exits') },
     { label: 'Doorgangen kloppen (geen halve deuren)', ok: !has('doors') },
     { label: 'Alle vakjes met elkaar verbonden', ok: !has('connected') },
-    ...(isRoom ? [{ label: '1 opdrachtvakje', ok: !has('quest') }] : [{ label: '1 actiekaartvakje', ok: !has('actioncell') }]),
+    ...(isRoom ? [{ label: '1 opdrachtvakje', ok: !has('quest') }] : [{ label: '1 kristalvakje', ok: !has('actioncell') }]),
   ];
 }
 // welke 2.x / 3.x labels zijn nog vrij (buiten deze tegel)

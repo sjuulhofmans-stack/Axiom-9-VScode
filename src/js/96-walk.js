@@ -285,7 +285,7 @@ function renderWalkBoard(){
           const room = ROOM_NAMES[tileId] || ('Gang ' + tileId);
           div.title = `${val} · ${QUEST_NAMES[val] || val} — ${room}`;
         } else if (type === 'actioncell'){
-          div.title = 'Extra actiekaart';
+          div.title = 'Extra kristal';
         }
       } else if (patternSet.has(dr+'_'+dc)){
         div.classList.add('empty-slot');
@@ -732,7 +732,7 @@ function renderWalkScore(players, activeIdx){
         // lang label op een breed scherm, kort ("Voltooid") waar het anders niet op één regel past
         stat('<span class="lbl-long">Opdrachten voltooid</span><span class="lbl-short">Voltooid</span>', `${p.completed}/${SIM_QUESTS_TO_WIN}`, ' quests') +
         stat('Energie', `⚡${p.energy}`, p.energy >= ENERGY_MAX ? ' energy full' : ' energy') +
-        stat('Kaarten', p.cards.length) +
+        stat('<span class="lbl-long">Kristallen</span><span class="lbl-short">Kristal</span>', p.cards.length) +
       `</span>` +
     `</div>`;
   }).join('');
@@ -871,7 +871,7 @@ async function runWalkSimulation(){
   for (const p of players){
     walkLog(`${p.name} start op <b>${p.startLabel}</b> · energie: <b>${energyStrategyName(p.strategy)}</b> · stapel: ${p.deck.slice(0, SIM_QUESTS_TO_WIN).join(' → ')} …`, null, p);
   }
-  walkLog(`Elke voltooide opdracht levert een beloningskaart op van een gedeelde stapel — net als het actiekaartvakje in elke gang (zet stopt er niet voor, hooguit 1x per beurt) — max ${ACTION_CARD_HAND_MAX} kaarten in de hand.`);
+  walkLog(`Elke voltooide opdracht levert een kristal op uit een gedeelde stapel — net als het kristalvakje in elke gang (zet stopt er niet voor, hooguit 1x per beurt) — max ${ACTION_CARD_HAND_MAX} kristallen in de kluis.`);
   if (playerCount > 1){
     walkLog(`Beurtvolgorde: ${turnOrder.map(i => players[i].name).join(' → ')}.`);
     walkLog(playerCount === 2
@@ -912,7 +912,7 @@ async function runWalkSimulation(){
         player.lockedNextTurn = false;
         energyActionUsed = true;
         cardActionUsed = true;
-        walkLog(`${player.name} is <b>vergrendeld</b> en slaat zijn energie- en kaartactie over.`, null, player);
+        walkLog(`${player.name} is <b>vergrendeld</b> en slaat zijn energie- en kristalactie over.`, null, player);
       }
       let usedEnergyAction = null; // id uit ENERGY_ACTIONS, voor de logregel
       let usedCardId = null;       // id uit ACTION_CARDS, voor de logregel
@@ -1102,9 +1102,9 @@ async function runWalkSimulation(){
             actionCellDrawnThisTurn = true;
             const reward = drawActionCellReward(player, deck, rand);
             if (reward.drawn){
-              walkLog(`${player.name} loopt over een actiekaartvakje en trekt een beloningskaart: <b>${ACTION_CARDS[reward.drawn].name}</b> — ${ACTION_CARDS[reward.drawn].hint}.`, null, player);
+              walkLog(`${player.name} loopt over een kristalvakje en raapt een kristal op: <b>${ACTION_CARDS[reward.drawn].name}</b> — ${ACTION_CARDS[reward.drawn].hint}.`, null, player);
             } else if (reward.handFull){
-              walkLog(`${player.name} loopt over een actiekaartvakje, maar de hand is al vol.`, null, player);
+              walkLog(`${player.name} loopt over een kristalvakje, maar de kluis is al vol.`, null, player);
             }
           }
           paintWalkPawns(graph, players, pIdx);
@@ -1146,7 +1146,7 @@ async function runWalkSimulation(){
           walkLog(`${player.name} springt met <b>Noodtransport</b> ${pre.path.length - 1} vakjes${pre.endsTurn ? ', precies op zijn opdracht' : ''}.`, null, player);
         } else {
           const dir = lastStepDirection(graph, pre.path);
-          walkLog(`${player.name} schiet met <b>Zwaartekracht-laarzen</b>${pre.kind === 'bootsCard' ? ' (kaart)' : ''} ${pre.path.length - 1} vakjes rechtdoor naar het ${namen[dir] || ''}.`, null, player);
+          walkLog(`${player.name} schiet met <b>Zwaartekracht-laarzen</b>${pre.kind === 'bootsCard' ? ' (kristal)' : ''} ${pre.path.length - 1} vakjes rechtdoor naar het ${namen[dir] || ''}.`, null, player);
         }
         bank.limit = pre.bankedCount;
         if (!await walkPath(pre.path, true)) return;
@@ -1282,10 +1282,10 @@ async function runWalkSimulation(){
             const drawn = drawActionCard(deck, rand);
             if (drawn){
               player.cards.push(drawn);
-              walkLog(`${player.name} trekt een beloningskaart: <b>${ACTION_CARDS[drawn].name}</b> — ${ACTION_CARDS[drawn].hint}.`, null, player);
+              walkLog(`${player.name} krijgt een kristal: <b>${ACTION_CARDS[drawn].name}</b> — ${ACTION_CARDS[drawn].hint}.`, null, player);
             }
           } else {
-            walkLog(`${player.name} zou een kaart trekken, maar de hand is al vol.`, null, player);
+            walkLog(`${player.name} zou een kristal krijgen, maar de kluis is al vol.`, null, player);
           }
         }
 
@@ -1317,7 +1317,7 @@ async function runWalkSimulation(){
           walkLog(`<b>${group[0].name} is binnen als ${walkRankLabel(group[0].rank)}</b>.`, 'hit', group[0]);
         } else {
           const names = group.map(p => p.name).join(' en ');
-          walkLog(`<b>${names} delen de ${walkRankLabel(group[0].rank)} plaats</b> — gelijke energie (${group[0].energy}) en evenveel actiekaarten in de hand (${group[0].cards.length}).`, 'hit', null);
+          walkLog(`<b>${names} delen de ${walkRankLabel(group[0].rank)} plaats</b> — gelijke energie (${group[0].energy}) en evenveel kristallen in de kluis (${group[0].cards.length}).`, 'hit', null);
         }
       }
       finished += roundFinishers.length;
@@ -1350,7 +1350,7 @@ async function runWalkSimulation(){
     const title = winners.length === 1 ? `${w.name} wint!` : 'Gedeelde winst!';
     const sub = winners.length === 1
       ? ''   // geen startplek/beurten meer, zie soloEndgameTexts (97-solo.js)
-      : `${winners.map(p => p.name).join(' en ')} — gelijke energie en actiekaarten`;
+      : `${winners.map(p => p.name).join(' en ')} — gelijke energie en kristallen`;
     soloShowEndgame('🏆', title, sub, players, notMe);
   } else {
     soloShowEndgame('⏳', 'Afgekapt', `niet iedereen was binnen na ${SIM_MAX_TURNS} beurten`, players, notMe);

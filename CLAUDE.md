@@ -124,6 +124,11 @@ aangeroepen (functiedeclaraties worden gehoist, `const`/`let` niet).
   gehaald. Elke speler heeft een eigen geschud stapeltje opdrachten 1–9
   (labels `2.1`–`2.9`); wie als eerste 6 opdrachten voltooit wint. Draait altijd
   op de indeling die op dat moment in de tool staat.
+- **Naam op het scherm: "kristal(len)"**, niet meer "actiekaart" (sinds 2026-10; de speler
+  bewaart ze in zijn "kluis", max 3). In de code heten ze nog `ACTION_CARDS`, `p.cards`,
+  `actionCells` enz. — bewust niet hernoemd. Nieuwe zichtbare tekst dus altijd "kristal".
+  Een volledig nieuw ontwerp (zeshoekige kristallen, vliegend oprapen, open kluis) ligt klaar
+  als voorstel en moet nog gebouwd worden.
 - Elke **gangtegel** heeft precies 1 actiekaartvakje (labels `4.1`–`4.10`,
   analoog aan het opdrachtvakje in een kamer — zie `tileValidationIssues` in
   `90-editor.js`). Loop je er tijdens je beurt overheen, dan trek je een
@@ -204,9 +209,9 @@ Check minimaal:
    Tempo moet je tijdens het lopen kunnen wijzigen (schuif
    rechtsboven naast Pauze/Stoppen); "Stoppen"
    moet de pion echt stilzetten (geen achtergrondlus die doorloopt).
-9. Elke gangtegel heeft één paars actiekaartvakje op het bord (legenda
-   "Actiekaartvakje (4.x)"). Loopt een pion er tijdens "Zelf spelen"
-   overheen, dan verschijnt een logregel "trekt een beloningskaart" en loopt
+9. Elke gangtegel heeft één paars kristalvakje op het bord (legenda
+   "Kristalvakje (4.x)"). Loopt een pion er tijdens "Zelf spelen"
+   overheen, dan verschijnt een logregel "raapt een kristal op" en loopt
    de pion gewoon door — de beurt stopt er niet voor.
 10. Tabblad "Multiplayer" (eigen tabblad naast Spelen; gebruikt hetzelfde vak
     #tabWalk in de modus 'multi', Spelen heeft alleen Automatisch/Zelf spelen).

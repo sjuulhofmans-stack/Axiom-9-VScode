@@ -97,7 +97,7 @@ function renderCardsTab(){
     if (!ids.length) continue;
     const head = document.createElement('h3');
     head.className = 'cards-subhead';
-    head.innerHTML = `${CARDS_CATEGORY_LABELS[cat]} <span>${ids.length} ${ids.length === 1 ? 'kaart' : 'kaarten'} · 2× in de stapel</span>`;
+    head.innerHTML = `${CARDS_CATEGORY_LABELS[cat]} <span>${ids.length} ${ids.length === 1 ? 'kristal' : 'kristallen'} · 2× in de stapel</span>`;
     cardsActionWrap.appendChild(head);
     const grid = document.createElement('div');
     grid.className = 'cards-shelf';

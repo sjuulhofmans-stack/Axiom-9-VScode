@@ -83,7 +83,7 @@ function hoverTipInfo(tileId, dr, dc){
   if (typeof val !== 'string') return null;
   if (val.startsWith('2.')) return { text: `${QUEST_NAMES[val] || 'Opdracht'} (${val})`, kind: 'quest' };
   if (val.startsWith('3.')) return { text: `Startpositie ${val}`, kind: 'start' };
-  if (val.startsWith('4.')) return { text: `Actiekaartvakje ${val}`, kind: 'actioncell' };
+  if (val.startsWith('4.')) return { text: `Kristalvakje ${val}`, kind: 'actioncell' };
   return null;
 }
 
