@@ -2895,9 +2895,10 @@
   .mp-room .mp-room-code{margin:0; height:56px; box-sizing:border-box;}
   .mp-seats{display:flex; flex-direction:column; gap:10px;}
   .mp-seats:empty{display:none;}
-  /* plekken rekken mee in de vrije ruimte tot de knoppen (hele kolom gebruiken), tot 120px hoog */
+  /* plekken rekken mee in de vrije ruimte tot de knoppen (hele kolom gebruiken), tot 84px hoog
+     (was 120px; gebruikerswens: dunner) */
   .mp-room .mp-seats{flex:1 1 auto; min-height:0;}
-  .mp-room .mp-seats > .mp-seat{flex:1 1 0; height:auto !important; min-height:46px; max-height:120px;}
+  .mp-room .mp-seats > .mp-seat{flex:1 1 0; height:auto !important; min-height:46px; max-height:84px;}
   .mp-room .mp-seats > .mp-seat .mp-seat-name{font-size:19px;}
   .mp-room .mp-seats > .mp-seat.is-empty .mp-seat-name{font-size:16px;}
   /* even groot en dik als het vak met de deelcode */
@@ -2979,16 +2980,18 @@
   #tabWalk.is-multi-tab .walk-lobby-col:has(#mpChatPanel:not([hidden])) .walk-mode-toggle,
   .walk-lobby-col:has(#mpChatPanel:not([hidden])) > .walk-lobby-start-row{display:none;}
   .walk-lobby-col:has(#mpChatPanel:not([hidden])) .walk-lobby-body{padding-top:0;}
-  .mp-room-layout:has(#mpChatPanel:not([hidden])){grid-template-columns:340px minmax(0,1fr) minmax(320px,440px);}
+  .mp-room-layout:has(#mpChatPanel:not([hidden])){grid-template-columns:300px minmax(0,1fr) minmax(280px,360px);}
   .mp-mid-col{display:flex; flex-direction:column; gap:14px; min-height:0; min-width:0;}
   .mp-mid-col[hidden]{display:none;}
   .mp-mid-col > .mp-chat-panel{flex:1 1 auto;}
   @media (max-width:1300px){
-    .mp-room-layout:has(#mpChatPanel:not([hidden])){grid-template-columns:280px minmax(0,1fr) 290px;}
+    .mp-room-layout:has(#mpChatPanel:not([hidden])){grid-template-columns:260px minmax(0,1fr) 260px;}
   }
 
   /* ---------- avatars (98b-avatar.js) ---------- */
-  .mp-avatars{display:grid; grid-template-columns:repeat(4, minmax(0,1fr)); gap:12px; flex:0 0 auto;}
+  /* begrensd en gecentreerd, zodat de 4 vakjes niet de hele middenkolom breed worden */
+  .mp-avatars{display:grid; grid-template-columns:repeat(4, minmax(0,1fr)); gap:10px; flex:0 0 auto;
+    width:100%; max-width:600px; margin:0 auto;}
   .mp-avatar{
     position:relative; aspect-ratio:1; border-radius:8px; overflow:hidden;
     border:1px solid var(--line); border-top:3px solid var(--pc);
