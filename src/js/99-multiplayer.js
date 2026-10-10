@@ -1316,7 +1316,7 @@ function mpMe(){ return mp.myIdx >= 0 ? soloPlayers[mp.myIdx] : null; }
 function mpRefreshCardVault(){
   if (!walkCardVaultEl) return;
   const me = mpMe();
-  if (!me || me.rank || soloPhase === 'idle' || soloPhase === 'game-over'){ walkCardVaultEl.hidden = true; return; }
+  if (!me || me.rank || soloPhase === 'idle' || soloPhase === 'game-over'){ walkCardVaultEl.hidden = true; crystalSyncStack(); return; }
   walkCardVaultEl.hidden = false;
   const active = soloPlayers[soloActiveIdx];
   const mine = !!active && active.peerId === mp.myPeerId;

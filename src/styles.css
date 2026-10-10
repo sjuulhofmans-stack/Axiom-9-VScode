@@ -1224,7 +1224,7 @@
     .walk-status-col, .walk-side-stack{max-height:calc(var(--wcell) * 32 + 71px);}
     /* met de kristalkluis erin: de kolom precies zo hoog als het bord, zodat de kluis onderaan
        gelijk staat met de onderrand van het bord en daar blijft staan */
-    .walk-side-stack:has(> #walkCardVault:not([hidden])){height:calc(var(--wcell) * 32 + 71px);}
+    .walk-side-stack.has-vault{height:calc(var(--wcell) * 32 + 71px);}
     /* Multiplayer: de chat als 4e kolom rechts (zie #mpChatPanelGame in index.html). Het bord
        krimpt daarvoor wat mee (±270px minder ruimte in de breedte), en het vak eromheen rekent
        met dezelfde kleinere --wcell. */
@@ -1240,7 +1240,7 @@
     /* op een laptop is het (kleinere) bord lager dan dobbelen + energie samen: dan liever een
        paar px scrollen dan dat de knoppen onderaan wegvallen */
     .walk-board-row:has(> #mpChatPanelGame:not([hidden])) > .walk-side-stack{max-height:none;}
-    .walk-board-row:has(> #mpChatPanelGame:not([hidden])) > .walk-side-stack:has(> #walkCardVault:not([hidden])){height:auto; min-height:calc(var(--wcell) * 32 + 71px);}
+    .walk-board-row:has(> #mpChatPanelGame:not([hidden])) > .walk-side-stack.has-vault{height:auto; min-height:calc(var(--wcell) * 32 + 71px);}
     .walk-chat-col{height:calc(var(--wcell) * 32 + 71px);}
     .walk-side-stack.is-opening{height:calc(var(--wcell) * 32 + 71px);}
     /* Lobby even hoog als het speelscherm (gebruikersmelding: "de kolom van de lobby is niet zo
@@ -1265,7 +1265,7 @@
        kaarten, en de statushub (huidige opdracht + opdrachtenoverzicht) als laatste onderaan. */
     .walk-board-col{order:1; max-width:none;}
     .walk-side-stack{order:2; max-height:none;}
-    .walk-side-stack:has(> #walkCardVault:not([hidden])){height:auto;}
+    .walk-side-stack.has-vault{height:auto;}
     .walk-side-stack.is-opening{height:auto;}
     .walk-status-col{order:3; max-height:none;}
     .walk-chat-col{grid-column:1; grid-row:auto; order:4; height:420px;}
@@ -1403,7 +1403,7 @@
   /* Sinds de kristalkluis: staan er geen knoppen in (na het dobbelen, tijdens andermans beurt),
      dan krimpt het vak tot alleen de energiebalk. Dat "springt" niet meer: de kluis eronder staat
      vast onderaan de kolom (#walkCardVault margin-top:auto) en groeit juist in die vrije ruimte. */
-  .walk-solo-panel:has(#walkSoloActions:empty){height:auto;}
+  .walk-side-stack:not(.vault-compact) .walk-solo-panel{height:auto;}
 
   /* opzetscherm bij "zelf spelen" met meerdere spelers: per menselijke speler een
      startpositie-keuze + voorproefje van de eerste opdracht, zodat je een weloverwogen
@@ -3271,12 +3271,13 @@
   /* Alleen het GEKOZEN kristal in de kluis pulst — zelfde ritme en sterkte als de dobbelknop
      (axPulseBtn: 1,9 s), maar als gloed die de zeshoek volgt. Staat in PULSE_ANIMATIONS
      (97-solo.js), dus loopt in de pas met de andere pulsen. */
-  @keyframes crystalPulse{
-    0%,100%{filter:drop-shadow(0 0 1.5px var(--tint)) drop-shadow(0 0 14px color-mix(in srgb, var(--tint) 60%, transparent));}
-    50%{filter:drop-shadow(0 0 1.5px color-mix(in srgb, var(--tint) 10%, transparent)) drop-shadow(0 0 0 transparent);}
+  @keyframes crystalPulse{0%,100%{opacity:1;} 50%{opacity:.12;}}
+  .crystal-rail .crystal.is-picked::before{
+    content:""; position:absolute; inset:-28% -45%; pointer-events:none; will-change:opacity;
+    background:radial-gradient(closest-side, color-mix(in srgb, var(--tint) 70%, transparent), color-mix(in srgb, var(--tint) 25%, transparent) 55%, transparent);
+    animation:crystalPulse 1.9s ease-in-out infinite;
   }
-  .crystal-rail .crystal.is-picked .crystal-shape{animation:crystalPulse 1.9s ease-in-out infinite;}
-  #tabWalk.walk-is-paused .crystal-rail .crystal.is-picked .crystal-shape{animation-play-state:paused;}
+  #tabWalk.walk-is-paused .crystal-rail .crystal.is-picked::before{animation-play-state:paused;}
 
   /* ---------- de kluis in de zijkolom ---------- */
   /* Liggend, zodat hij in de zijkolom past (die is even hoog als het bord, en het energievak
@@ -3298,20 +3299,20 @@
      keuze van een energie-actie. Anders past de kolom niet (gemeten: dobbelen 162 + energie 286 +
      volle kluis 231 = te hoog voor een Full-HD-scherm). Na het dobbelen, als je je kristallen
      echt gebruikt, is het grote kristal er weer. */
-  .walk-side-stack:has(#walkSoloActions:not(:empty)) .crystal-vault{grid-template-columns:minmax(0,1fr); padding:5px 10px;}
-  .walk-side-stack:has(#walkSoloActions:not(:empty)) .crystal-vault-focus,
-  .walk-side-stack:has(#walkSoloActions:not(:empty)) .crystal-vault-head,
-  .walk-side-stack:has(#walkSoloActions:not(:empty)) #btnCardDiscard{display:none;}
-  .walk-side-stack:has(#walkSoloActions:not(:empty)) .crystal-vault-side{display:grid; grid-template-columns:auto minmax(0,1fr) auto; align-items:center; gap:10px;}
-  .walk-side-stack:has(#walkSoloActions:not(:empty)) .crystal-rail{padding-top:4px; gap:5px;}
-  .walk-side-stack:has(#walkSoloActions:not(:empty)) .crystal-rail .crystal{--w:31px;}
-  .walk-side-stack:has(#walkSoloActions:not(:empty)) .crystal-vault-why{height:calc(2 * 1.35em); -webkit-line-clamp:2; line-clamp:2; font-size:11.5px;}
-  .walk-side-stack:has(#walkSoloActions:not(:empty)) .crystal-vault-sel{display:block; color:#fff; font-family:var(--font-display); text-transform:uppercase; letter-spacing:.03em; font-size:13px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
-  .walk-side-stack:has(#walkSoloActions:not(:empty)) .crystal-vault-why b{display:inline;}
-  .walk-side-stack:has(#walkSoloActions:not(:empty)) .crystal-vault-btns button{width:auto; padding-inline:12px;}
+  .walk-side-stack.vault-compact .crystal-vault{grid-template-columns:minmax(0,1fr); padding:5px 10px;}
+  .walk-side-stack.vault-compact .crystal-vault-focus,
+  .walk-side-stack.vault-compact .crystal-vault-head,
+  .walk-side-stack.vault-compact #btnCardDiscard{display:none;}
+  .walk-side-stack.vault-compact .crystal-vault-side{display:grid; grid-template-columns:auto minmax(0,1fr) auto; align-items:center; gap:10px;}
+  .walk-side-stack.vault-compact .crystal-rail{padding-top:4px; gap:5px;}
+  .walk-side-stack.vault-compact .crystal-rail .crystal{--w:31px;}
+  .walk-side-stack.vault-compact .crystal-vault-why{height:calc(2 * 1.35em); -webkit-line-clamp:2; line-clamp:2; font-size:11.5px;}
+  .walk-side-stack.vault-compact .crystal-vault-sel{display:block; color:#fff; font-family:var(--font-display); text-transform:uppercase; letter-spacing:.03em; font-size:13px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+  .walk-side-stack.vault-compact .crystal-vault-why b{display:inline;}
+  .walk-side-stack.vault-compact .crystal-vault-btns button{width:auto; padding-inline:12px;}
   /* tijdens een vervolgkeuze (doelwit, richting, Blinde Vlek) is het kristal al gebruikt: dan
      staat die keuze op deze plek, anders past de kolom niet meer */
-  .walk-side-stack:has(.walk-card-actions:not(:empty)) .crystal-vault{display:none;}
+  .walk-side-stack.vault-off .crystal-vault{display:none;}
   .crystal-vault-focus .crystal{--w:144px;}
   .crystal-vault-focus .crystal-shape{filter:none;}
   .crystal-vault-focus .crystal-when, .crystal-vault-focus .crystal-cat{font-size:max(7px, 4.4cqw);}
@@ -3348,10 +3349,9 @@
 
   /* ---------- zeshoekjes op de spelerskaartjes ---------- */
   .crystal-pips{display:inline-flex; gap:3px; align-items:center; height:18px; vertical-align:middle;}
-  .crystal-pip{width:11px; display:block; color:var(--line);}
-  .crystal-pip svg{display:block; width:100%; height:auto; fill:none; stroke:currentColor; stroke-width:24;}
-  .crystal-pip.on{color:var(--tint, var(--crystal-anon));}
-  .crystal-pip.on svg{fill:currentColor; fill-opacity:.4;}
+  .crystal-pip{width:10px; height:14px; display:block; background:var(--line); opacity:.55;
+    clip-path:polygon(50% 0,100% 21%,100% 79%,50% 100%,0 79%,0 21%);}
+  .crystal-pip.on{background:var(--tint, var(--crystal-anon)); opacity:1;}
   .crystal-pip.on.anon{--tint:var(--crystal-anon);}
   .crystal-pip.is-landing{animation:crystalPipIn .6s cubic-bezier(.3,1.8,.5,1);}
   @keyframes crystalPipIn{0%{transform:scale(2.4); filter:drop-shadow(0 0 6px #fff);} 100%{transform:none;}}
@@ -3412,6 +3412,6 @@
   .cards-zoom-face.is-crystal .crystal{--w:100%;}
 
   @media (prefers-reduced-motion: reduce){
-    .crystal-rail .crystal.is-picked .crystal-shape, .crystal.is-landing,
+    .crystal-rail .crystal.is-picked::before, .crystal.is-landing,
     .crystal-vault-focus.is-swap .crystal, .crystal-vault.is-full, .crystal-pip.is-landing{animation:none;}
   }

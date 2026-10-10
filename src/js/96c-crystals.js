@@ -126,9 +126,9 @@ function crystalRenderVault(cards, { reason = () => null, canDiscard = false, id
     rail += renderCrystal(id, { size: 'sm', tag: 'button', state: st,
       attrs: `type="button" data-i="${i}" data-slot="${i}" data-id="${id}" role="option" aria-selected="${i === crystalSel}" title="${ACTION_CARDS[id].name}" aria-label="${ACTION_CARDS[id].name}"` });
   }
-  crystalVaultRailEl.innerHTML = rail;
+  crystalSetHtml(crystalVaultRailEl, rail);
   const count = cards.filter((_, i) => shown(i)).length;
-  if (crystalVaultCountEl) crystalVaultCountEl.textContent = `${count} / ${ACTION_CARD_HAND_MAX}`;
+  if (crystalVaultCountEl) crystalSetText(crystalVaultCountEl, `${count} / ${ACTION_CARD_HAND_MAX}`);
 
   const id = crystalSel === null ? null : cards[crystalSel];
   const r = id ? why(id) : null;
@@ -144,14 +144,45 @@ function crystalRenderVault(cards, { reason = () => null, canDiscard = false, id
       crystalVaultFocusEl.classList.add('is-swap');
     }
   }
-  crystalVaultWhyEl.classList.toggle('is-no', !!r);
+  if (crystalVaultWhyEl.classList.contains('is-no') !== !!r) crystalVaultWhyEl.classList.toggle('is-no', !!r);
   // .crystal-vault-sel (de naam) is alleen te zien in de compacte kluis (vóór het dobbelen, als het
   // energievak de ruimte nodig heeft) — in de gewone kluis staat de naam al op het grote kristal
-  crystalVaultWhyEl.innerHTML = !id ? `Je kunt er <b>${ACTION_CARD_HAND_MAX}</b> tegelijk bewaren.`
+  crystalSetHtml(crystalVaultWhyEl, !id ? `Je kunt er <b>${ACTION_CARD_HAND_MAX}</b> tegelijk bewaren.`
     : `<span class="crystal-vault-sel">${ACTION_CARDS[id].name}</span>`
-      + (r ? `<b>Nu niet.</b> ${r.charAt(0).toUpperCase() + r.slice(1)}.` : `<b>Nu te gebruiken</b>`);
-  if (btnCardPlay) btnCardPlay.disabled = !id || !!r;
-  if (btnCardDiscard) btnCardDiscard.disabled = !id || !!idle || !canDiscard;
+      + (r ? `<b>Nu niet.</b> ${r.charAt(0).toUpperCase() + r.slice(1)}.` : `<b>Nu te gebruiken</b>`));
+  if (btnCardPlay && btnCardPlay.disabled !== (!id || !!r)) btnCardPlay.disabled = !id || !!r;
+  const noDiscard = !id || !!idle || !canDiscard;
+  if (btnCardDiscard && btnCardDiscard.disabled !== noDiscard) btnCardDiscard.disabled = noDiscard;
+  crystalSyncStack();
+}
+// HTML/tekst alleen zetten als hij echt anders is: elke wijziging in #tabWalk laat de
+// MutationObserver van de pulsen (97-solo.js) syncAllPulses draaien, en die kost een paar ms
+const crystalHtmlCache = new WeakMap();
+function crystalSetHtml(el, html){
+  if (crystalHtmlCache.get(el) === html) return;
+  crystalHtmlCache.set(el, html);
+  el.innerHTML = html;
+}
+function crystalSetText(el, text){ if (el.textContent !== text) el.textContent = text; }
+
+// ---------- klassen op de zijkolom (i.p.v. CSS :has(), dat bij elke kleine DOM-wijziging de hele
+// kolom liet herberekenen — gemeten: merkbaar hakkelig) ----------
+//   has-vault     de kluis staat er: kolom even hoog als het bord, kluis onderaan
+//   vault-compact het energievak toont knoppen: kluis als één regel, energievak op volle hoogte
+//   vault-off     er staat een vervolgkeuze (doelwit/richting/Blinde Vlek): kluis even weg
+const crystalStackEl = document.getElementById('walkSideStack');
+const crystalSoloActionsEl = document.getElementById('walkSoloActions');
+const crystalCardActionsEl = document.getElementById('walkCardActions');
+function crystalSyncStack(){
+  if (!crystalStackEl) return;
+  const vault = document.getElementById('walkCardVault');
+  const set = (cls, on) => { if (crystalStackEl.classList.contains(cls) !== on) crystalStackEl.classList.toggle(cls, on); };
+  set('has-vault', !!vault && !vault.hidden);
+  set('vault-compact', !!crystalSoloActionsEl && crystalSoloActionsEl.childElementCount > 0);
+  set('vault-off', !!crystalCardActionsEl && crystalCardActionsEl.childElementCount > 0);
+}
+for (const el of [crystalSoloActionsEl, crystalCardActionsEl]){
+  if (el) new MutationObserver(crystalSyncStack).observe(el, { childList: true });
 }
 function crystalSelectedId(cards){ return crystalSel === null ? null : (cards[crystalSel] || null); }
 // nieuw potje: kluis-UI terug naar af
@@ -190,7 +221,7 @@ function crystalPipsHtml(p, isMe){
   for (let i = 0; i < ACTION_CARD_HAND_MAX; i++){
     const on = i < n;
     const cls = !on ? '' : isMe && cards[i] ? ` on crystal--${ACTION_CARD_TINTS[cards[i]]}` : ' on anon';
-    html += `<span class="crystal-pip${cls}" data-pip="${i}"><svg viewBox="0 0 200 290"><polygon points="${crystalPts(CRYSTAL_OUT)}"/></svg></span>`;
+    html += `<span class="crystal-pip${cls}" data-pip="${i}"></span>`;
   }
   return `<span class="crystal-pips" data-pips="${p.idx}" aria-label="${p.cards.length} van ${ACTION_CARD_HAND_MAX} kristallen">${html}</span>`;
 }

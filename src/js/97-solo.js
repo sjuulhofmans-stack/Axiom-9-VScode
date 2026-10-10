@@ -863,6 +863,7 @@ function soloRefreshCardVault(){
   const owner = soloVaultOwner();
   if (!owner || owner.rank || soloPhase === 'idle' || soloPhase === 'game-over'){
     walkCardVaultEl.hidden = true;
+    crystalSyncStack();
     return;
   }
   walkCardVaultEl.hidden = false;
