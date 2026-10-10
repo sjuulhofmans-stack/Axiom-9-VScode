@@ -917,6 +917,7 @@ function mpHostStartGame(){
   soloDeck = buildActionDeck(soloRand);
   crystalResetVault();
   crystalMpReset();
+  diceReset();
   soloActiveIdx = -1;
 
   mp.phase = 'in-game';
@@ -963,6 +964,7 @@ function mpClientOnStart(payload){
   mp.stateVersion = 0;
   crystalResetVault();
   crystalMpReset();
+  diceReset();
   walkLogEl.innerHTML = '';
   mpEnterPlayView();
 }
@@ -1234,6 +1236,8 @@ function mpApplyState(payload){
   // die van een ander gaat anoniem naar diens spelerskaartje
   crystalMpApply(payload.crystalEvents);
 
+  // eigen worp: de energiebalk laten wachten op de bolletjes, vóórdat hij hieronder getekend wordt
+  diceMaybeHold();
   paintWalkPawns(soloGraph, soloPlayers, soloActiveIdx);
   renderWalkScore(soloPlayers, soloActiveIdx);
   renderSoloMeta(soloMove ? soloMove.stepsLeft : undefined);
@@ -1243,7 +1247,8 @@ function mpApplyState(payload){
   if (soloPhase === 'game-over'){
     if (walkDiceEl) walkDiceEl.innerHTML = '';
   } else if (soloMove && soloMove.d1 !== undefined && soloPhase !== 'choose-action' && soloPhase !== 'rolling'){
-    renderWalkDice(soloMove.d1, soloMove.d2, soloEnergyRoll, false, soloMove.d3, soloMove.roll);
+    renderWalkDice(soloMove.d1, soloMove.d2, soloEnergyRoll, false, soloMove.d3, soloMove.roll, { key: diceSoloRollKey(), flow: true });
+    if (soloMove.path) diceSetProgress(soloMove.path.length - 1, soloMove.stepsLeft);
   } else if (soloEnergyRoll !== null && soloPhase === 'rolling'){
     renderSoloDicePending();
   }

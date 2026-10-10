@@ -513,7 +513,8 @@ const ENERGY_CELL_DRAIN_MS = 380;    // = duur van ecellDrain in styles.css
 function soloRenderEnergyOverview(){
   if (!walkEnergyOverviewEl || !walkEnergyCellsEl) return;
   const p = soloViewer();   // in Multiplayer altijd je eigen energie, ook in andermans beurt
-  const energy = p ? Math.max(0, Math.min(ENERGY_MAX, p.energy)) : 0;
+  // diceEnergyCap: na je eigen worp telt de balk pas op als de energiebolletjes aankomen (96d-dice.js)
+  const energy = p ? Math.max(0, Math.min(ENERGY_MAX, diceEnergyCap(p, p.energy))) : 0;
   const samePlayer = !!p && soloEnergyShown.idx === p.idx;
   const prev = samePlayer ? soloEnergyShown.energy : energy;
   walkEnergyOverviewEl.classList.toggle('is-full', energy >= ENERGY_MAX);
@@ -1121,7 +1122,7 @@ function soloPlayCard(id){
     soloMove.stepsLeft += d3;
     useActionCard(p, 'boostcell', soloDeck);
     soloUsedCardId = 'boostcell';
-    renderWalkDice(soloMove.d1, soloMove.d2, soloEnergyRoll, false, soloMove.d3, soloMove.roll);
+    renderWalkDice(soloMove.d1, soloMove.d2, soloEnergyRoll, false, soloMove.d3, soloMove.roll, { key: diceSoloRollKey(), spinMs: DICE_SPIN_SHORT_MS });
     walkLog(`Je speelt <b>Stuwlading</b>: gratis derde loopsteen (${d3}) → ${soloMove.stepsLeft} stappen te gaan.`, null, p);
     soloAfterCardAction();
   } else if (id === 'fastlane'){
@@ -1169,7 +1170,7 @@ function soloPlayCard(id){
     soloUsedCardId = 'reroll';
     // volledig nieuwe zet: het pad begint opnieuw vanaf waar je nu staat
     soloMove = { d1, d2, d3, roll, penalty, stepsLeft: roll, lastDir: -1, path: [p.pos] };
-    renderWalkDice(d1, d2, soloEnergyRoll, false, d3, roll);
+    renderWalkDice(d1, d2, soloEnergyRoll, false, d3, roll, { key: diceSoloRollKey() + '|re' });
     walkLog(`Je speelt <b>Koerscorrectie</b> en gooit opnieuw: <b>${roll}</b> stappen.`, null, p);
     soloAfterCardAction();
   }
@@ -1431,21 +1432,7 @@ function soloHandleJumpClick(key){
 
 // ---------- dobbelen + lopen ----------
 function renderSoloDicePending(){
-  const e = soloEnergyRoll;
-  const energyHtml = e === null
-    ? energyDieHtml(null, false) + `<span class="walk-die-sum energy">energie bij het gooien</span>`
-    : energyDieHtml(e, false) + `<span class="walk-die-sum energy">+${e} energie</span>`;
-  // walk-die-pending: langzame op-en-neer-animatie zolang je nog niet hebt gedobbeld
-  // (gebruikersverzoek) — verdwijnt vanzelf zodra renderWalkDice() straks de echte worp tekent.
-  // Een 3e vraagteken-dobbelsteen zodra Stuwstoot/Stuwlading is ingezet (soloPendingBoost):
-  // die 3e loopsteen is dan al zeker, dus mag je 'm nu al zien staan i.p.v. pas na het
-  // dobbelen (gebruikerswens).
-  const pendingDice = soloPendingBoost
-    ? `<span class="walk-die walk-die-pending">?</span><span class="walk-die walk-die-pending">?</span><span class="walk-die walk-die-pending">?</span>`
-    : `<span class="walk-die walk-die-pending">?</span><span class="walk-die walk-die-pending">?</span>`;
-  walkDiceEl.innerHTML =
-    `<span class="walk-dice-row">${pendingDice}</span>` +
-    `<span class="walk-dice-row">${energyHtml}</span>`;
+  diceRenderPending(soloPendingBoost ? 3 : 2, soloEnergyRoll);
 }
 // `soloCurrentLegalMoves` voedt niet alleen deze teller maar ook de pijltjestoetsen
 // hieronder — bewegen zelf gaat via een klik op een omrand bordvakje (.walk-clickable) of
@@ -1455,6 +1442,7 @@ function soloRenderStepCounter(legal){
   if (walkStepCounterEl) walkStepCounterEl.hidden = false;
   if (walkStepDoneEl) walkStepDoneEl.textContent = soloMove.path.length - 1;
   if (walkStepLeftEl) walkStepLeftEl.textContent = soloMove.stepsLeft;
+  diceSetProgress(soloMove.path.length - 1, soloMove.stepsLeft);   // teller + stappenbalk in het dobbelvak
 }
 // verborgen zolang je nog niet hebt gedobbeld (gebruikerswens) — pas zichtbaar vanaf de eerste
 // soloRenderStepCounter()-aanroep, die precies samenvalt met het moment dat je stappen kunt
@@ -1542,8 +1530,9 @@ function soloRollDice(){
     roll = nieuw;
     p.rollPenalty = 0;
   }
-  renderWalkDice(d1, d2, soloEnergyRoll, false, d3, roll);   // na de straf: toont de echte stappen
   soloMove = { d1, d2, d3, roll, penalty, stepsLeft: roll, lastDir: -1, path: [p.pos] };
+  diceMaybeHold();   // energiebalk wacht tot de bolletjes aankomen (96d-dice.js)
+  renderWalkDice(d1, d2, soloEnergyRoll, false, d3, roll, { key: diceSoloRollKey(), flow: true });   // na de straf: toont de echte stappen
   btnWalkSoloRoll.hidden = true;
   renderWalkScore(soloPlayers, soloActiveIdx);
   soloAdvanceMovePhase();
@@ -2198,6 +2187,7 @@ async function soloAnimateBotTurn(player, replay, logNodes, runId){
       walkAdvanceShownTarget(soloGraph, bank, player.pos, player.color, othersOcc, false);
       paint();
       soloReplayCrystals(replay, player.pos);
+      if (!special) diceProgressStep();
       await walkSleep(sp.stepMs);
       if (!alive()) return false;
     }
@@ -2215,16 +2205,15 @@ async function soloAnimateBotTurn(player, replay, logNodes, runId){
       await walkSleep(90);
       if (!alive()) return false;
     }
-    renderWalkDice(replay.d1, replay.d2, replay.energyRoll, false, replay.d3, replay.roll);
+    renderWalkDice(replay.d1, replay.d2, replay.energyRoll, false, replay.d3, replay.roll, { key: `replay|${soloTurn}|${player.idx}|${replay.d1}${replay.d2}${replay.d3}`, spinMs: DICE_SPIN_SHORT_MS });
   } else {
-    walkDiceEl.innerHTML =
-      `<span class="walk-dice-row"><span class="walk-die-sum">geen worp nodig</span></span>` +
-      `<span class="walk-dice-row">${energyDieHtml(replay.energyRoll, false)}<span class="walk-die-sum energy">+${replay.energyRoll} energie</span></span>`;
+    diceRenderNoRoll(replay.energyRoll);
   }
-  await walkSleep(Math.min(500, sp.rollMs));
+  await walkSleep(Math.min(500, sp.rollMs) + (replay.roll ? DICE_SPIN_SHORT_MS : 0));
   if (!alive()) return false;
   // 3. de worp lopen
   if (replay.rollPath && !await walkSeg(replay.rollPath, false, replay.rollBanked)) return false;
+  if (replay.rollPath) diceProgressDone();
   player.pos = finalPos;
   paint();
   soloReplayCrystals(replay, null);   // wat onderweg niet langskwam alsnog
@@ -3038,6 +3027,7 @@ if (walkOpeningPanelEl){
 function stopSoloGame(){
   soloRunId++;   // breekt ook een lopende soloAnimateBotTurn() af
   crystalResetVault();   // lopende kristal-animaties, "Nieuw"-labels en de gekozen plek weg
+  diceReset();
   soloPhase = 'idle';
   soloBotViewSpeed = null;
   // geen vertraagde soloPeekQuestEnd() laten hangen op een potje dat hierna niet meer bestaat
@@ -3126,6 +3116,7 @@ function startSoloGame(){
   soloTurn = 0;
   soloDeck = buildActionDeck(soloRand);
   crystalResetVault();
+  diceReset();
 
   if (walkSoloPlayersSel) walkSoloPlayersSel.disabled = true;
   if (walkSoloBotsSel) walkSoloBotsSel.disabled = true;

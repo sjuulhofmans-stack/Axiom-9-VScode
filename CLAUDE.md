@@ -45,6 +45,8 @@ src/
     96b-intro.js      startanimatie na "Start spel" (aftellen 3-2-1, hyperjump, zwart gat) + vinkje in de lobby
     96c-crystals.js   kristallen: tekenen (renderCrystal), de kluis, de animaties bij oprapen, zeshoekjes op
                       de spelerskaartjes. Staat bewust vóór 97-solo.js (zie de kop van het bestand)
+    96d-dice.js       dobbelvak: ruimte-stenen (draaien om hun as), energiesteen met bliksems + "+2",
+                      teller Gegooid/Nog te zetten + stappenbalk, energiebolletjes naar de balk
     97-solo.js        tabblad "Spelen": modus Zelf spelen, eigen speler besturen tussen bots, energiekaarten
     98-cards.js       tabblad Speelkaarten: vitrine + zoom voor opdrachtkaarten en kristallen
     98b-avatar.js     avatars in de multiplayer-kamer: 5 karakters, 5 brillen, 5 hoedjes (SVG) + editor
@@ -79,6 +81,7 @@ aangeroepen (functiedeclaraties worden gehoist, `const`/`let` niet).
 | het kristalvakje van een gang verplaatsen | tegel-editor in de tool (of `src/data/tiles.json`, labels `4.1`–`4.10`) |
 | een kristal toevoegen / tekst of moment aanpassen | `95-simulate.js`: `ACTION_CARDS` (name/text/when/hint) + `ACTION_CARD_TINTS` + `ACTION_CARD_ICONS` |
 | hoe een kristal, de kluis of het oprapen eruitziet | `96c-crystals.js` + het kristallen-blok onderaan `styles.css` |
+| de dobbelstenen, de stappenteller of de energiebolletjes | `96d-dice.js` + het dobbelstenen-blok onderaan `styles.css` |
 
 ## Spelregels die in de code zitten
 
@@ -312,6 +315,17 @@ Check minimaal:
     `energyUse`/`cardUse`, gevuld via `statsTurnSnapshot`, `statsRecordRoll` en
     `statsUseEnergy` (95-simulate.js) — nieuwe plek waar gedobbeld of energie
     uitgegeven wordt? Daar ook die aanroep toevoegen.
+
+## Prestatie (gemeten, niet opnieuw invoeren)
+
+- Geen geanimeerde of veel gebruikte CSS-`filter` (drop-shadow) en geen `:has()` in het speelscherm:
+  dat liet de browser het dobbelvak/de zijkolom elk beeldje opnieuw tekenen of herberekenen
+  (gemeten: 20–26 i.p.v. 41–44 beeldjes/s, tot 74 haperingen per minuut). Gloed = een halo-
+  cirkeltje of een laagje dat alleen in `opacity` pulst; zichtbaarheid via een klasse die JS zet.
+- Iets wat bewegen moet: `transform`/`opacity` met `will-change`. Tijdens het draaien wisselen de
+  dobbelsteenkanten via `data-face` (valt buiten de MutationObserver van de pulsen).
+- Niets opnieuw in de DOM zetten als het niet veranderd is (`crystalSetHtml`, `data-key` op
+  #walkDice): elke DOM-wijziging in #tabWalk laat `syncAllPulses` draaien (±5 ms).
 
 ## Nog te doen
 

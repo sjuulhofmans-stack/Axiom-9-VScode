@@ -3444,3 +3444,105 @@
     .crystal-rail .crystal.is-picked::before, .crystal-row.is-picked::before, .crystal.is-landing,
     .crystal-vault-focus.is-swap .crystal, .crystal-vault.is-full, .crystal-pip.is-landing{animation:none;}
   }
+
+  /* ================= dobbelstenen (ruimte-stenen) — zie 96d-dice.js ================= */
+  /* Het dobbelvak: één rij stenen (loopstenen links, energiesteen met "+2" rechts) en ná de worp
+     de teller (Gegooid / Nog te zetten) met een stappenbalk. Die teller staat op de plek van de
+     dobbelknop, die je dan niet meer nodig hebt — zo blijft het vak even hoog. */
+  .walk-dice{width:100%; display:flex; flex-direction:column; gap:10px; min-height:0;}
+  .walk-hud{min-height:140px; align-content:flex-start;}
+  .walk-hud.has-result > .btn-row:not(.walk-mp-leave-row){display:none;}
+  /* de losse "gezet / nog"-vakjes zitten nu in de teller */
+  .walk-step-counter{display:none !important;}
+  .sd-row{display:flex; align-items:center; gap:8px; height:46px; width:100%;}
+  .sd-dice{display:flex; align-items:center; gap:8px;}
+  .sd-none{font:12.5px var(--font-mono); color:var(--text-dim);}
+  .sd-ewrap{display:flex; align-items:center; gap:7px; margin-left:auto;}
+
+  /* loopsteen: donker glas, gloeiende stippen, HUD-hoekjes */
+  .sd-die, .sd-edie{
+    --sd: #8fe0ff;
+    position:relative; flex:none; width:42px; height:42px; border-radius:9px; color:var(--sd);
+    background:radial-gradient(120% 120% at 30% 20%, #2b3c50 0%, #141d28 55%, #0b1118 100%);
+    box-shadow:inset 0 0 0 1px color-mix(in srgb, var(--sd) 45%, transparent), inset 0 -6px 10px rgba(0,0,0,.5),
+               inset 0 4px 8px color-mix(in srgb, var(--sd) 10%, transparent), 0 4px 10px rgba(0,0,0,.45);
+  }
+  .sd-die::before, .sd-die::after, .sd-edie::before, .sd-edie::after{
+    content:""; position:absolute; width:7px; height:7px; border:1.5px solid color-mix(in srgb, var(--sd) 70%, transparent);
+  }
+  .sd-die::before, .sd-edie::before{top:3px; left:3px; border-right:0; border-bottom:0; border-top-left-radius:4px;}
+  .sd-die::after, .sd-edie::after{bottom:3px; right:3px; border-left:0; border-top:0; border-bottom-right-radius:4px;}
+  .sd-die.boost{--sd: var(--amber);}
+  .sd-face{position:absolute; inset:0; width:100%; height:100%; display:none;}
+  .sd-die circle{fill:currentColor;}
+  .sd-die circle.sd-halo{opacity:.22;}
+  .sd-die[data-face="1"] .sd-f1, .sd-die[data-face="2"] .sd-f2, .sd-die[data-face="3"] .sd-f3,
+  .sd-die[data-face="4"] .sd-f4, .sd-die[data-face="5"] .sd-f5, .sd-die[data-face="6"] .sd-f6,
+  .sd-edie[data-face="0"] .sd-f0, .sd-edie[data-face="1"] .sd-f1, .sd-edie[data-face="2"] .sd-f2,
+  .sd-edie[data-face="3"] .sd-f3{display:block;}
+  .sd-q{position:absolute; inset:0; display:grid; place-items:center; font:700 19px/1 var(--font-display); color:color-mix(in srgb, var(--sd) 70%, transparent);}
+  /* will-change: eigen laag, zodat wiebelen/draaien niet het hele vak opnieuw laat tekenen */
+  .sd-die.is-pending, .sd-edie.is-pending{animation:walkDiceBob 2.2s ease-in-out infinite; will-change:transform;}
+  #tabWalk.walk-is-paused .sd-die.is-pending, #tabWalk.walk-is-paused .sd-edie.is-pending{animation-play-state:paused;}
+  #walkPlayArea.mp-not-my-turn .sd-die.is-pending, #walkPlayArea.mp-not-my-turn .sd-edie.is-pending{animation:none;}
+  /* schudden (bot / Automatisch): ronddraaien tot de worp valt */
+  .sd-die.is-tumbling, .sd-edie.is-tumbling{animation:sdTumble .45s linear infinite; will-change:transform;}
+  @keyframes sdTumble{from{transform:rotate(0deg) scale(.94);} to{transform:rotate(360deg) scale(.94);}}
+  #tabWalk.walk-is-paused .sd-die.is-tumbling, #tabWalk.walk-is-paused .sd-edie.is-tumbling{animation-play-state:paused;}
+  .sd-die.is-spinning, .sd-edie.is-spinning{will-change:transform;}
+  .sd-die.is-landed, .sd-edie.is-landed{animation:sdLand .5s cubic-bezier(.2,1.6,.4,1);}
+  @keyframes sdLand{0%{transform:scale(1.16); box-shadow:inset 0 0 0 1px var(--sd), 0 0 20px color-mix(in srgb, var(--sd) 65%, transparent);} 100%{transform:none;}}
+  .sd-die.is-sm{width:26px; height:26px; border-radius:6px;}
+  .sd-die.is-sm::before, .sd-die.is-sm::after{display:none;}
+  .sd-die.is-sm .sd-q{font-size:13px;}
+
+  /* energiesteen: groen glas met bliksems op stip-plekken */
+  .sd-edie{--sd: var(--start);
+    background:radial-gradient(120% 120% at 30% 20%, #1f4a35 0%, #10261b 55%, #08130e 100%);}
+  .sd-edie[data-face="0"]{background:radial-gradient(120% 120% at 30% 20%, #1a2a22 0%, #0e1712 60%, #08100c 100%);}
+  .sd-edie .sd-face svg{position:absolute; width:11px; height:17px; margin:-8.5px 0 0 -5.5px; fill:var(--start-glow);}
+  .sd-edie .sd-empty{position:absolute; left:50%; top:50%; width:14px; height:2px; margin:-1px 0 0 -7px; border-radius:1px; background:color-mix(in srgb, var(--start) 40%, transparent);}
+  /* de opbrengst groot links naast de energiesteen */
+  .sd-gain{
+    font:700 24px/1 var(--font-display); color:var(--start-glow); min-width:30px; text-align:right;
+    text-shadow:0 0 10px color-mix(in srgb, var(--start) 70%, transparent);
+    opacity:0; transform:translateX(6px); transition:opacity .25s, transform .35s cubic-bezier(.2,1.6,.4,1);
+  }
+  .sd-gain.show{opacity:1; transform:none;}
+  .sd-gain.zero{color:var(--text-dim); text-shadow:none;}
+
+  /* teller: gegooid / nog te zetten */
+  .sd-result{display:flex; flex-direction:column; gap:8px; width:100%;}
+  .sd-count{display:grid; grid-template-columns:1fr 1fr; gap:8px; align-items:end;}
+  .sd-cnt{display:flex; flex-direction:column; gap:3px; min-width:0;}
+  .sd-lbl{font:700 9.5px/1 var(--font-mono); letter-spacing:.14em; text-transform:uppercase; color:var(--text-dim);}
+  .sd-val{font:700 32px/.95 var(--font-display); font-variant-numeric:tabular-nums; color:var(--amber); display:flex; align-items:baseline; gap:6px;}
+  .sd-val small{font:600 12.5px/1 var(--font-mono); color:var(--text-dim);}
+  .sd-val small.sd-pen{color:#ff6b6b;}
+  .sd-cnt.sd-left{align-items:flex-end; text-align:right;}
+  .sd-cnt.sd-left .sd-val{color:#fff; justify-content:flex-end;}
+  .sd-cnt.sd-left.is-done .sd-val{color:var(--start);}
+  .sd-val.is-pop{animation:sdPop .35s cubic-bezier(.2,1.8,.4,1);}
+  @keyframes sdPop{0%{transform:scale(1.25);} 100%{transform:none;}}
+  /* stappenbalk: één streepje per stap, de volgende knippert zachtjes, straf doorgestreept */
+  .sd-track{display:flex; gap:3px; height:8px;}
+  .sd-track i{position:relative; flex:1; border-radius:2px; background:var(--line); transition:background .2s, box-shadow .2s;}
+  .sd-track i.is-done{background:var(--amber); box-shadow:0 0 6px color-mix(in srgb, var(--amber) 60%, transparent);}
+  /* de volgende stap knippert via een laagje dat alleen in doorzichtigheid verandert (goedkoop) */
+  .sd-track i.is-next{background:color-mix(in srgb, var(--amber) 30%, var(--line));}
+  .sd-track i.is-next::after{content:""; position:absolute; inset:0; border-radius:2px; background:var(--amber); opacity:.15; will-change:opacity; animation:sdNext 1.2s ease-in-out infinite;}
+  @keyframes sdNext{50%{opacity:.55;}}
+  .sd-track i.is-pen{background:repeating-linear-gradient(45deg, color-mix(in srgb, #ff6b6b 45%, transparent) 0 3px, transparent 3px 6px);}
+
+  /* energiebolletjes onderweg naar de energiebalk */
+  .sd-orb{position:fixed; left:0; top:0; z-index:300; width:12px; height:14px; margin:-7px 0 0 -6px; pointer-events:none; will-change:transform;
+    background:var(--start-glow); clip-path:polygon(50% 0,100% 25%,100% 75%,50% 100%,0 75%,0 25%); filter:drop-shadow(0 0 6px var(--start));}
+  .sd-trail{position:fixed; left:0; top:0; z-index:299; width:6px; height:7px; margin:-3.5px 0 0 -3px; pointer-events:none; background:var(--start);
+    clip-path:polygon(50% 0,100% 25%,100% 75%,50% 100%,0 75%,0 25%); animation:sdTrail .45s ease-out forwards;}
+  @keyframes sdTrail{to{opacity:0; transform:scale(.2);}}
+  .sd-lost{position:fixed; z-index:301; pointer-events:none; font:700 11px/1 var(--font-mono); letter-spacing:.1em; text-transform:uppercase; color:#ff6b6b; animation:sdLost 1s ease-out forwards;}
+  @keyframes sdLost{0%{opacity:0; transform:translate(-50%,0);} 20%{opacity:1;} 100%{opacity:0; transform:translate(-50%,-26px);}}
+
+  @media (prefers-reduced-motion: reduce){
+    .sd-die, .sd-edie, .sd-track i, .sd-track i::after, .sd-val.is-pop{animation:none !important;}
+  }

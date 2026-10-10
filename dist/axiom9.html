@@ -3452,6 +3452,108 @@
     .crystal-vault-focus.is-swap .crystal, .crystal-vault.is-full, .crystal-pip.is-landing{animation:none;}
   }
 
+  /* ================= dobbelstenen (ruimte-stenen) — zie 96d-dice.js ================= */
+  /* Het dobbelvak: één rij stenen (loopstenen links, energiesteen met "+2" rechts) en ná de worp
+     de teller (Gegooid / Nog te zetten) met een stappenbalk. Die teller staat op de plek van de
+     dobbelknop, die je dan niet meer nodig hebt — zo blijft het vak even hoog. */
+  .walk-dice{width:100%; display:flex; flex-direction:column; gap:10px; min-height:0;}
+  .walk-hud{min-height:140px; align-content:flex-start;}
+  .walk-hud.has-result > .btn-row:not(.walk-mp-leave-row){display:none;}
+  /* de losse "gezet / nog"-vakjes zitten nu in de teller */
+  .walk-step-counter{display:none !important;}
+  .sd-row{display:flex; align-items:center; gap:8px; height:46px; width:100%;}
+  .sd-dice{display:flex; align-items:center; gap:8px;}
+  .sd-none{font:12.5px var(--font-mono); color:var(--text-dim);}
+  .sd-ewrap{display:flex; align-items:center; gap:7px; margin-left:auto;}
+
+  /* loopsteen: donker glas, gloeiende stippen, HUD-hoekjes */
+  .sd-die, .sd-edie{
+    --sd: #8fe0ff;
+    position:relative; flex:none; width:42px; height:42px; border-radius:9px; color:var(--sd);
+    background:radial-gradient(120% 120% at 30% 20%, #2b3c50 0%, #141d28 55%, #0b1118 100%);
+    box-shadow:inset 0 0 0 1px color-mix(in srgb, var(--sd) 45%, transparent), inset 0 -6px 10px rgba(0,0,0,.5),
+               inset 0 4px 8px color-mix(in srgb, var(--sd) 10%, transparent), 0 4px 10px rgba(0,0,0,.45);
+  }
+  .sd-die::before, .sd-die::after, .sd-edie::before, .sd-edie::after{
+    content:""; position:absolute; width:7px; height:7px; border:1.5px solid color-mix(in srgb, var(--sd) 70%, transparent);
+  }
+  .sd-die::before, .sd-edie::before{top:3px; left:3px; border-right:0; border-bottom:0; border-top-left-radius:4px;}
+  .sd-die::after, .sd-edie::after{bottom:3px; right:3px; border-left:0; border-top:0; border-bottom-right-radius:4px;}
+  .sd-die.boost{--sd: var(--amber);}
+  .sd-face{position:absolute; inset:0; width:100%; height:100%; display:none;}
+  .sd-die circle{fill:currentColor;}
+  .sd-die circle.sd-halo{opacity:.22;}
+  .sd-die[data-face="1"] .sd-f1, .sd-die[data-face="2"] .sd-f2, .sd-die[data-face="3"] .sd-f3,
+  .sd-die[data-face="4"] .sd-f4, .sd-die[data-face="5"] .sd-f5, .sd-die[data-face="6"] .sd-f6,
+  .sd-edie[data-face="0"] .sd-f0, .sd-edie[data-face="1"] .sd-f1, .sd-edie[data-face="2"] .sd-f2,
+  .sd-edie[data-face="3"] .sd-f3{display:block;}
+  .sd-q{position:absolute; inset:0; display:grid; place-items:center; font:700 19px/1 var(--font-display); color:color-mix(in srgb, var(--sd) 70%, transparent);}
+  /* will-change: eigen laag, zodat wiebelen/draaien niet het hele vak opnieuw laat tekenen */
+  .sd-die.is-pending, .sd-edie.is-pending{animation:walkDiceBob 2.2s ease-in-out infinite; will-change:transform;}
+  #tabWalk.walk-is-paused .sd-die.is-pending, #tabWalk.walk-is-paused .sd-edie.is-pending{animation-play-state:paused;}
+  #walkPlayArea.mp-not-my-turn .sd-die.is-pending, #walkPlayArea.mp-not-my-turn .sd-edie.is-pending{animation:none;}
+  /* schudden (bot / Automatisch): ronddraaien tot de worp valt */
+  .sd-die.is-tumbling, .sd-edie.is-tumbling{animation:sdTumble .45s linear infinite; will-change:transform;}
+  @keyframes sdTumble{from{transform:rotate(0deg) scale(.94);} to{transform:rotate(360deg) scale(.94);}}
+  #tabWalk.walk-is-paused .sd-die.is-tumbling, #tabWalk.walk-is-paused .sd-edie.is-tumbling{animation-play-state:paused;}
+  .sd-die.is-spinning, .sd-edie.is-spinning{will-change:transform;}
+  .sd-die.is-landed, .sd-edie.is-landed{animation:sdLand .5s cubic-bezier(.2,1.6,.4,1);}
+  @keyframes sdLand{0%{transform:scale(1.16); box-shadow:inset 0 0 0 1px var(--sd), 0 0 20px color-mix(in srgb, var(--sd) 65%, transparent);} 100%{transform:none;}}
+  .sd-die.is-sm{width:26px; height:26px; border-radius:6px;}
+  .sd-die.is-sm::before, .sd-die.is-sm::after{display:none;}
+  .sd-die.is-sm .sd-q{font-size:13px;}
+
+  /* energiesteen: groen glas met bliksems op stip-plekken */
+  .sd-edie{--sd: var(--start);
+    background:radial-gradient(120% 120% at 30% 20%, #1f4a35 0%, #10261b 55%, #08130e 100%);}
+  .sd-edie[data-face="0"]{background:radial-gradient(120% 120% at 30% 20%, #1a2a22 0%, #0e1712 60%, #08100c 100%);}
+  .sd-edie .sd-face svg{position:absolute; width:11px; height:17px; margin:-8.5px 0 0 -5.5px; fill:var(--start-glow);}
+  .sd-edie .sd-empty{position:absolute; left:50%; top:50%; width:14px; height:2px; margin:-1px 0 0 -7px; border-radius:1px; background:color-mix(in srgb, var(--start) 40%, transparent);}
+  /* de opbrengst groot links naast de energiesteen */
+  .sd-gain{
+    font:700 24px/1 var(--font-display); color:var(--start-glow); min-width:30px; text-align:right;
+    text-shadow:0 0 10px color-mix(in srgb, var(--start) 70%, transparent);
+    opacity:0; transform:translateX(6px); transition:opacity .25s, transform .35s cubic-bezier(.2,1.6,.4,1);
+  }
+  .sd-gain.show{opacity:1; transform:none;}
+  .sd-gain.zero{color:var(--text-dim); text-shadow:none;}
+
+  /* teller: gegooid / nog te zetten */
+  .sd-result{display:flex; flex-direction:column; gap:8px; width:100%;}
+  .sd-count{display:grid; grid-template-columns:1fr 1fr; gap:8px; align-items:end;}
+  .sd-cnt{display:flex; flex-direction:column; gap:3px; min-width:0;}
+  .sd-lbl{font:700 9.5px/1 var(--font-mono); letter-spacing:.14em; text-transform:uppercase; color:var(--text-dim);}
+  .sd-val{font:700 32px/.95 var(--font-display); font-variant-numeric:tabular-nums; color:var(--amber); display:flex; align-items:baseline; gap:6px;}
+  .sd-val small{font:600 12.5px/1 var(--font-mono); color:var(--text-dim);}
+  .sd-val small.sd-pen{color:#ff6b6b;}
+  .sd-cnt.sd-left{align-items:flex-end; text-align:right;}
+  .sd-cnt.sd-left .sd-val{color:#fff; justify-content:flex-end;}
+  .sd-cnt.sd-left.is-done .sd-val{color:var(--start);}
+  .sd-val.is-pop{animation:sdPop .35s cubic-bezier(.2,1.8,.4,1);}
+  @keyframes sdPop{0%{transform:scale(1.25);} 100%{transform:none;}}
+  /* stappenbalk: één streepje per stap, de volgende knippert zachtjes, straf doorgestreept */
+  .sd-track{display:flex; gap:3px; height:8px;}
+  .sd-track i{position:relative; flex:1; border-radius:2px; background:var(--line); transition:background .2s, box-shadow .2s;}
+  .sd-track i.is-done{background:var(--amber); box-shadow:0 0 6px color-mix(in srgb, var(--amber) 60%, transparent);}
+  /* de volgende stap knippert via een laagje dat alleen in doorzichtigheid verandert (goedkoop) */
+  .sd-track i.is-next{background:color-mix(in srgb, var(--amber) 30%, var(--line));}
+  .sd-track i.is-next::after{content:""; position:absolute; inset:0; border-radius:2px; background:var(--amber); opacity:.15; will-change:opacity; animation:sdNext 1.2s ease-in-out infinite;}
+  @keyframes sdNext{50%{opacity:.55;}}
+  .sd-track i.is-pen{background:repeating-linear-gradient(45deg, color-mix(in srgb, #ff6b6b 45%, transparent) 0 3px, transparent 3px 6px);}
+
+  /* energiebolletjes onderweg naar de energiebalk */
+  .sd-orb{position:fixed; left:0; top:0; z-index:300; width:12px; height:14px; margin:-7px 0 0 -6px; pointer-events:none; will-change:transform;
+    background:var(--start-glow); clip-path:polygon(50% 0,100% 25%,100% 75%,50% 100%,0 75%,0 25%); filter:drop-shadow(0 0 6px var(--start));}
+  .sd-trail{position:fixed; left:0; top:0; z-index:299; width:6px; height:7px; margin:-3.5px 0 0 -3px; pointer-events:none; background:var(--start);
+    clip-path:polygon(50% 0,100% 25%,100% 75%,50% 100%,0 75%,0 25%); animation:sdTrail .45s ease-out forwards;}
+  @keyframes sdTrail{to{opacity:0; transform:scale(.2);}}
+  .sd-lost{position:fixed; z-index:301; pointer-events:none; font:700 11px/1 var(--font-mono); letter-spacing:.1em; text-transform:uppercase; color:#ff6b6b; animation:sdLost 1s ease-out forwards;}
+  @keyframes sdLost{0%{opacity:0; transform:translate(-50%,0);} 20%{opacity:1;} 100%{opacity:0; transform:translate(-50%,-26px);}}
+
+  @media (prefers-reduced-motion: reduce){
+    .sd-die, .sd-edie, .sd-track i, .sd-track i::after, .sd-val.is-pop{animation:none !important;}
+  }
+
 </style>
 </head>
 <body>
@@ -9309,7 +9411,8 @@ function walkOpeningNote(players, buckets){
 // `opts`: { canRoll, canPick (de kijker mag nu zelf), shaking (wie aan de beurt is gooit nu) }
 function renderOpeningPanel(players, op, opts = {}){
   if (!walkOpeningPanelEl || !op) return;
-  const die = (v, rolling, pending) => `<span class="walk-die walk-die--sm${rolling ? ' rolling' : ''}${pending ? ' walk-die-pending' : ''}">${v}</span>`;
+  const die = (v, rolling, pending) => pending ? diceDieHtml('?', 'is-sm')
+    : diceDieHtml(rolling ? 1 + Math.floor(Math.random() * 6) : v, 'is-sm' + (rolling ? ' is-tumbling' : ''));
   const row = (i, placeHtml, right, cls) =>
     `<li class="walk-opening-row${cls}" style="--pc:${players[i].color}">` +
       `<span class="walk-opening-place">${placeHtml}</span>` +
@@ -9473,33 +9576,18 @@ function paintWalkPawns(graph, players, activeIdx){
 // onderscheid met de loopstenen — zeker bij de "0"-kant, die eerder een streepje liet zien en
 // daardoor als "geen steen" las in plaats van "een steen die 0 opleverde". `value` is null
 // zolang er nog niet gegooid is.
-function energyDieHtml(value, rolling){
-  const txt = (value === null || value === undefined) ? '?' : value;
-  return `<span class="walk-die energy${rolling ? ' rolling' : ''}">` +
-    `<svg class="walk-die-bolt" viewBox="0 0 14 24" aria-hidden="true"><path d="M9.4 0.8 L1.6 13.4 h4.3 L4.6 23.2 L12.4 10.2 h-4.5 z"/></svg>` +
-    `<span class="walk-die-num">${txt}</span></span>`;
-}
+// (de energiesteen zelf tekent diceEnergyDieHtml in 96d-dice.js)
 
 // `total` (optioneel): het aantal stappen dat echt gelopen mag worden, als dat afwijkt van de
 // som van de stenen — Stroomonderbreking trekt er 2 vanaf. Zonder dit stond er "= 9 stappen"
 // terwijl je er 7 mocht zetten (alleen het logboek noemde de straf).
-function renderWalkDice(a, b, e, rolling, boost, total){
-  const cls = 'walk-die' + (rolling ? ' rolling' : '');
-  const third = boost ? `<span class="${cls} boost" title="Stuwstoot">${boost}</span>` : '';
-  const diceSum = a + b + (boost || 0);
-  const steps = (total === undefined || total === null) ? diceSum : total;
-  const penalty = steps < diceSum
-    ? ` <span class="walk-die-penalty" title="Stroomonderbreking">(−${diceSum - steps})</span>` : '';
-  const sum = rolling ? '' : `<span class="walk-die-sum">= ${steps} stappen${penalty}</span>`;
-  const energy = rolling ? '' : `<span class="walk-die-sum energy">+${e} energie</span>`;
-  // Twee vaste regels: loopstenen boven, energiesteen eronder. Als één rij die mocht wrappen
-  // sprong de energiesteen naar de tweede regel zodra de Stuwstoot een derde loopsteen
-  // toevoegde, en dat verschoof alles eronder.
-  walkDiceEl.innerHTML =
-    `<span class="walk-dice-row">` +
-      `<span class="${cls}">${a}</span><span class="${cls}">${b}</span>${third}${sum}` +
-    `</span>` +
-    `<span class="walk-dice-row">${energyDieHtml(e, rolling)}${energy}</span>`;
+// Het tekenen zelf (ruimte-stenen, draaien, teller, energiebolletjes) zit in 96d-dice.js.
+// opts.key  maakt de worp uniek: dezelfde worp nog eens tekenen laat hem niet opnieuw draaien
+// opts.spinMs  hoe lang uitdraaien; opts.flow  energiebolletjes naar je balk (eigen worp)
+function renderWalkDice(a, b, e, rolling, boost, total, opts = {}){
+  const d = boost ? [a, b, boost] : [a, b];
+  if (rolling){ diceRenderTumble(d.length); return; }
+  diceRenderRoll(d, e, total, opts.key || `${d.join(',')}|${e}|${total}`, opts);
 }
 
 // Het huidige doel zelf staat al op de opdrachtkaart erboven (renderWalkQuestCard) — hier
@@ -9642,6 +9730,7 @@ function setWalkRunning(on){
 // want een lopende pion hoort niet op een bord dat onder hem vandaan verandert
 function stopWalkSimulation(){
   walkRunId++;
+  diceReset();
   crystalResetVault();    // lopende kristal-animaties en zeshoekjes-tellers weg
   setWalkRunning(false);
   soloHideEndgame();      // winscherm van een uitgespeeld potje (97-solo.js) hoort hier ook weg
@@ -9971,6 +10060,7 @@ async function runWalkSimulation(){
             if (reward.drawn || reward.handFull) crystalFxAnon(player.pos, player, !reward.drawn, walkSpeed().stepMs < 140, graph);
           }
           paintWalkPawns(graph, players, pIdx);
+          if (!special) diceProgressStep();
           renderWalkMeta({ player, turn, stepsLeft: path.length - 1 - i });
           await walkTick(walkSpeed().stepMs);
         }
@@ -10020,9 +10110,7 @@ async function runWalkSimulation(){
         move = { key: pre.key, path: pre.path, stepsUsed: pre.path.length - 1, bankedCount: pre.bankedCount,
                  bankedQuest: pre.bankedCount > 0, wasBlocked: pre.wasBlocked, teleported: pre.kind === 'jump' };
         // geen worp meer: alleen de energiesteen tonen
-        walkDiceEl.innerHTML =
-          `<span class="walk-dice-row"><span class="walk-die-sum">geen worp nodig</span></span>` +
-          `<span class="walk-dice-row">${energyDieHtml(energyRoll, false)}<span class="walk-die-sum energy">+${energyRoll} energie</span></span>`;
+        diceRenderNoRoll(energyRoll);
       } else {
         // fase 4: dobbelen — even laten rollen zodat je het ziet gebeuren. Geteld in stappen en
         // niet op de klok, anders is de worp na een pauze meteen "uitgerold".
@@ -10061,9 +10149,9 @@ async function runWalkSimulation(){
           useActionCard(player, 'fastlane', deck);
           cardActionUsed = true; usedCardId = 'fastlane';
         }
-        renderWalkDice(d1, d2, energyRoll, false, d3, roll);
+        renderWalkDice(d1, d2, energyRoll, false, d3, roll, { key: `auto|${turn}|${pIdx}|${d1}${d2}${d3}`, spinMs: walkSpeed().stepMs < 140 ? 0 : DICE_SPIN_SHORT_MS });
         if (aborted()) return;
-        await walkTick(Math.min(500, walkSpeed().rollMs));
+        await walkTick(Math.min(500, walkSpeed().rollMs) + (walkSpeed().stepMs < 140 ? 0 : DICE_SPIN_SHORT_MS));
         if (aborted()) return;
 
         let rollMove = resolveMove(graph, player.pos, roll, occupiedNow(), rollTargets, rand, undefined, allowUturn);
@@ -10078,9 +10166,9 @@ async function runWalkSimulation(){
           if (rollPenalty) roll = Math.max(1, roll - rollPenalty);
           useActionCard(player, 'reroll', deck);
           cardActionUsed = true; usedCardId = 'reroll';
-          renderWalkDice(d1, d2, energyRoll, false, d3, roll);
+          renderWalkDice(d1, d2, energyRoll, false, d3, roll, { key: `auto|${turn}|${pIdx}|re|${d1}${d2}${d3}`, spinMs: walkSpeed().stepMs < 140 ? 0 : DICE_SPIN_SHORT_MS });
           if (aborted()) return;
-          await walkTick(Math.min(500, walkSpeed().rollMs));
+          await walkTick(Math.min(500, walkSpeed().rollMs) + (walkSpeed().stepMs < 140 ? 0 : DICE_SPIN_SHORT_MS));
           if (aborted()) return;
           rollMove = resolveMove(graph, player.pos, roll, occupiedNow(), rollTargets, rand, undefined, allowUturn);
         }
@@ -10097,6 +10185,7 @@ async function runWalkSimulation(){
         // opgeteld: wat de sprint vóór de worp al pakte is al getoond (bank.shown)
         bank.limit = (pre ? pre.bankedCount : 0) + rollMove.bankedCount;
         if (!await walkPath(rollMove.path, false)) return;
+        diceProgressDone();
         player.stats.walkSteps += rollMove.path.length - 1;
         move = mergePreRollMove(pre, rollMove);
       }
@@ -11132,6 +11221,305 @@ function crystalFxAnon(fromKey, player, full, fast = false, graph = soloGraph){
 }
 
 
+// ===== 96d-dice.js =====
+// ---------- dobbelstenen: ruimte-stenen, energiesteen, teller en energie die naar de balk vliegt ----------
+// Eén tekenfunctie voor het dobbelvak (#walkDice) in alle modi: Zelf spelen, nagespeelde
+// bot-beurten, Automatisch en Multiplayer. renderWalkDice (96-walk.js) en renderSoloDicePending
+// (97-solo.js) roepen dit aan.
+//
+//   loopsteen     donker glas met gloeiende stippen (Stuwstoot-steen in amber)
+//   energiesteen  groen glas met 0-3 bliksems op stip-plekken; ernaast groot "+2"
+//   draaien       een nieuwe worp draait om de eigen as, steeds langzamer, en staat dan rechtop
+//                 stil. Dezelfde worp nog eens tekenen (Multiplayer tekent 5x per seconde) laat
+//                 hem NIET opnieuw draaien: #walkDice onthoudt welke worp er staat (data-key).
+//   teller        "Gegooid" en "Nog te zetten … van …" groot, met een stappenbalk eronder
+//   energie       na het stilvallen vliegen de energiebolletjes van de steen naar je energiebalk;
+//                 de balk telt pas op als een bolletje aankomt (diceEnergyCap, gebruikt door
+//                 soloRenderEnergyOverview). Alleen voor je eigen worp — bij een bot verandert
+//                 jouw balk niet.
+//
+// Prestatie: elke steen bevat alle kanten en toont er één via data-face. Een attribuut-wijziging
+// valt buiten de MutationObserver van de pulsen (97-solo.js: alleen class/hidden), dus het
+// wisselen van kanten tijdens het draaien kost bijna niets.
+//
+// Staat in de bouwvolgorde vóór 97-solo.js (die roept bij het laden al setWalkMode aan, en via
+// stopSoloGame komt dat bij diceReset).
+
+const DICE_PIPS = {
+  1: [[50,50]], 2: [[28,28],[72,72]], 3: [[27,27],[50,50],[73,73]], 4: [[28,28],[72,28],[28,72],[72,72]],
+  5: [[27,27],[73,27],[50,50],[27,73],[73,73]], 6: [[28,24],[72,24],[28,50],[72,50],[28,76],[72,76]],
+};
+const DICE_BOLT_POS = { 1: [[50,50]], 2: [[32,32],[68,68]], 3: [[27,27],[50,50],[73,73]] };
+const DICE_SPIN_MS = 1050;          // eigen worp: lekker uitdraaien
+const DICE_SPIN_SHORT_MS = 500;     // na het schudden van een bot / Automatisch: kort uitdraaien
+const DICE_ORB_STAGGER_MS = 200;    // tussen twee energiebolletjes
+const DICE_ORB_FLIGHT_MS = 620;
+
+// gloed = een zacht, half doorzichtig cirkeltje achter elke stip (geen CSS-filter: dat liet de
+// browser het hele dobbelvak elk beeldje opnieuw tekenen — gemeten: 20 i.p.v. 44 beeldjes/s)
+const diceFaceSvg = n => `<svg class="sd-face sd-f${n}" viewBox="0 0 100 100" aria-hidden="true">${DICE_PIPS[n].map(([x, y]) => `<circle class="sd-halo" cx="${x}" cy="${y}" r="14"/><circle cx="${x}" cy="${y}" r="9"/>`).join('')}</svg>`;
+const DICE_ALL_FACES = [1,2,3,4,5,6].map(diceFaceSvg).join('');
+const diceBoltSvg = (x, y) => `<svg style="left:${x}%;top:${y}%" viewBox="0 0 14 24" aria-hidden="true"><path d="M9.4 .8 1.6 13.4h4.3L4.6 23.2l7.8-13h-4.5z"/></svg>`;
+const DICE_E_FACES = [0,1,2,3].map(v => `<span class="sd-face sd-f${v}">${v === 0 ? '<i class="sd-empty"></i>' : DICE_BOLT_POS[v].map(([x, y]) => diceBoltSvg(x, y)).join('')}</span>`).join('');
+
+// één loopsteen. face: 1-6, of '?' (nog niet gegooid). cls: extra klassen (boost, pending, sm…)
+function diceDieHtml(face, cls = ''){
+  if (face === '?' || face === null || face === undefined) return `<span class="sd-die is-pending ${cls}"><span class="sd-q">?</span></span>`;
+  return `<span class="sd-die ${cls}" data-face="${face}" aria-label="${face}">${DICE_ALL_FACES}</span>`;
+}
+// de energiesteen. face: 0-3 of null (nog niet gegooid)
+function diceEnergyDieHtml(face, cls = ''){
+  if (face === null || face === undefined) return `<span class="sd-edie is-pending ${cls}"><span class="sd-q">?</span></span>`;
+  return `<span class="sd-edie ${cls}" data-face="${face}" aria-label="${face} energie">${DICE_E_FACES}</span>`;
+}
+
+const diceHudEl = document.querySelector('#walkDice') ? document.querySelector('#walkDice').closest('.walk-hud') : null;
+function diceSetHudResult(on){
+  if (diceHudEl && diceHudEl.classList.contains('has-result') !== on) diceHudEl.classList.toggle('has-result', on);
+}
+
+// ---------- tekenen ----------
+// Wacht op de worp: "?"-stenen die zachtjes wiebelen. `energy` is al bekend als de energiesteen
+// eerder viel (na Zwaartekracht-laarzen e.d.), anders null.
+function diceRenderPending(n, energy){
+  if (!walkDiceEl) return;
+  diceProgress = null;
+  const dice = Array.from({ length: n }, (_, i) => diceDieHtml('?', i === 2 ? 'boost' : '')).join('');
+  const known = energy !== null && energy !== undefined;
+  walkDiceEl.dataset.key = '';
+  walkDiceEl.innerHTML = `<div class="sd-row"><span class="sd-dice">${dice}</span>`
+    + `<span class="sd-ewrap"><span class="sd-gain${known ? ' show' : ''}${energy === 0 ? ' zero' : ''}">${known ? '+' + energy : ''}</span>${diceEnergyDieHtml(known ? energy : null)}</span></div>`;
+  diceSetHudResult(false);
+}
+// Schudden (Automatisch / bot naspelen): willekeurige kanten, de stenen draaien rond. Wordt elke
+// 90 ms opnieuw aangeroepen; daarom alleen de kanten bijwerken als de stenen er al staan.
+function diceRenderTumble(n){
+  if (!walkDiceEl) return;
+  const rnd = () => 1 + Math.floor(Math.random() * 6);
+  const rndE = () => ENERGY_DIE_FACES[Math.floor(Math.random() * ENERGY_DIE_FACES.length)];
+  if (walkDiceEl.dataset.key === 'tumble' && walkDiceEl.querySelectorAll('.sd-die').length === n){
+    walkDiceEl.querySelectorAll('.sd-die').forEach(d => { d.dataset.face = rnd(); });
+    const e = walkDiceEl.querySelector('.sd-edie'); if (e) e.dataset.face = rndE();
+    return;
+  }
+  walkDiceEl.dataset.key = 'tumble';
+  const dice = Array.from({ length: n }, (_, i) => diceDieHtml(rnd(), 'is-tumbling' + (i === 2 ? ' boost' : ''))).join('');
+  walkDiceEl.innerHTML = `<div class="sd-row"><span class="sd-dice">${dice}</span>`
+    + `<span class="sd-ewrap"><span class="sd-gain"></span>${diceEnergyDieHtml(rndE(), 'is-tumbling')}</span></div>`;
+  diceSetHudResult(false);
+}
+// De uitgevallen worp. `key` maakt de worp uniek: is hij al getekend, dan alleen de teller
+// bijwerken (geen tweede keer draaien). opts.spinMs: hoe lang uitdraaien (0 = meteen stil),
+// opts.flow: energiebolletjes naar de balk laten vliegen (alleen je eigen worp).
+function diceRenderRoll(d, e, total, key, opts = {}){
+  if (!walkDiceEl) return;
+  if (walkDiceEl.dataset.key === key && walkDiceEl.querySelector('.sd-result')){ diceRenderProgress(); return; }
+  const sum = d.reduce((a, b) => a + b, 0);
+  const steps = (total === undefined || total === null) ? sum : total;
+  const fresh = walkDiceEl.dataset.key !== key;
+  walkDiceEl.dataset.key = key;
+  if (!diceProgress || diceProgress.key !== key) diceProgress = { key, sum, steps, done: 0, left: steps };
+  const spinMs = crystalReduceMotion() ? 0 : (opts.spinMs === undefined ? DICE_SPIN_MS : opts.spinMs);
+  const spinning = fresh && spinMs > 0;
+  const dice = d.map((v, i) => diceDieHtml(v, (spinning ? 'is-spinning' : '') + (i === 2 ? ' boost' : ''))).join('');
+  walkDiceEl.innerHTML = `<div class="sd-row"><span class="sd-dice">${dice}</span>`
+    + `<span class="sd-ewrap"><span class="sd-gain${spinning ? '' : ' show'}${e === 0 ? ' zero' : ''}">+${e}</span>${diceEnergyDieHtml(e, spinning ? 'is-spinning' : '')}</span></div>`
+    + `<div class="sd-result${spinning ? ' is-waiting' : ''}">`
+    +   `<div class="sd-count"><div class="sd-cnt"><span class="sd-lbl">Gegooid</span><span class="sd-val sd-rolled">${spinning ? '…' : sum}${!spinning && steps < sum ? `<small class="sd-pen">−${sum - steps}</small>` : ''}</span></div>`
+    +   `<div class="sd-cnt sd-left"><span class="sd-lbl">Nog te zetten</span><span class="sd-val sd-leftval">…</span></div></div>`
+    +   `<div class="sd-track"></div>`
+    + `</div>`;
+  diceSetHudResult(true);
+  if (!spinning){ diceRenderProgress(); if (fresh && opts.flow) diceFlowEnergy(); return; }
+
+  // draaien om de eigen as: snel beginnen, steeds langzamer, rechtop stoppen (hele rondjes);
+  // de kanten wisselen intussen, ook steeds trager, tot de echte uitkomst
+  const els = [...walkDiceEl.querySelectorAll('.sd-die, .sd-edie')];
+  const finals = [...d, e];
+  let left = els.length;
+  els.forEach((el, i) => {
+    const isE = el.classList.contains('sd-edie');
+    const dur = spinMs + i * Math.round(spinMs / 9);
+    const turns = (isE ? 2 : 3) + (i % 2);
+    const dir = i % 2 ? -1 : 1;
+    el.animate([{ transform: 'rotate(0deg) scale(.9)' }, { transform: `rotate(${dir * 360 * turns * .7}deg) scale(1.06)`, offset: .55 }, { transform: `rotate(${dir * 360 * turns}deg) scale(1)` }],
+               { duration: dur, easing: 'cubic-bezier(.2,.65,.3,1)' });
+    let t = 0, gap = 55;
+    while (t + gap < dur - 120){
+      t += gap; gap *= 1.22;
+      diceLater(() => { el.dataset.face = isE ? ENERGY_DIE_FACES[Math.floor(Math.random() * ENERGY_DIE_FACES.length)] : 1 + Math.floor(Math.random() * 6); }, t);
+    }
+    diceLater(() => {
+      el.dataset.face = finals[i];
+      el.classList.remove('is-spinning'); el.classList.add('is-landed');
+      if (--left === 0) landed();
+    }, dur);
+  });
+  function landed(){
+    if (walkDiceEl.dataset.key !== key) return;   // intussen een andere worp getekend
+    const g = walkDiceEl.querySelector('.sd-gain'); if (g) g.classList.add('show');
+    const r = walkDiceEl.querySelector('.sd-rolled');
+    if (r){ r.innerHTML = `${sum}${steps < sum ? `<small class="sd-pen">−${sum - steps}</small>` : ''}`; r.classList.add('is-pop'); }
+    const res = walkDiceEl.querySelector('.sd-result'); if (res) res.classList.remove('is-waiting');
+    diceRenderProgress();
+    if (opts.flow) diceLater(diceFlowEnergy, 300);
+  }
+}
+
+// Geen worp nodig (een sprong/sprint maakte de beurt al af): alleen de energiesteen.
+function diceRenderNoRoll(e){
+  if (!walkDiceEl) return;
+  diceProgress = null;
+  walkDiceEl.dataset.key = '';
+  walkDiceEl.innerHTML = `<div class="sd-row"><span class="sd-none">geen worp nodig</span>`
+    + `<span class="sd-ewrap"><span class="sd-gain show${e === 0 ? ' zero' : ''}">+${e}</span>${diceEnergyDieHtml(e)}</span></div>`;
+  diceSetHudResult(false);
+}
+
+// ---------- teller + stappenbalk ----------
+let diceProgress = null;   // { key, sum, steps, done, left }
+// absolute stand (Zelf spelen / Multiplayer: uit soloMove)
+function diceSetProgress(done, left){
+  if (!diceProgress) return;
+  diceProgress.done = done;
+  diceProgress.left = left;
+  diceRenderProgress();
+}
+// één stap verder (bot naspelen / Automatisch, die tellen zelf mee)
+function diceProgressStep(){
+  if (!diceProgress) return;
+  diceProgress.done++;
+  diceProgress.left = Math.max(0, diceProgress.left - 1);
+  diceRenderProgress();
+}
+function diceProgressDone(){
+  if (!diceProgress) return;
+  diceProgress.left = 0;
+  diceRenderProgress();
+}
+function diceRenderProgress(){
+  if (!walkDiceEl || !diceProgress) return;
+  const res = walkDiceEl.querySelector('.sd-result');
+  if (!res || res.classList.contains('is-waiting')) return;
+  const { sum, steps, done, left } = diceProgress;
+  const total = Math.max(steps, done + left);
+  const lv = res.querySelector('.sd-leftval');
+  const html = left <= 0 ? 'Klaar' : `${left}<small>van ${total}</small>`;
+  if (lv && lv.innerHTML !== html){
+    lv.innerHTML = html;
+    lv.classList.remove('is-pop'); void lv.offsetWidth; lv.classList.add('is-pop');
+    lv.parentNode.classList.toggle('is-done', left <= 0);
+  }
+  // één streepje per stap; de straf van Stroomonderbreking doorgestreept erachter
+  const pen = Math.max(0, sum - steps);
+  let bar = '';
+  for (let i = 0; i < total; i++) bar += `<i class="${i < done ? 'is-done' : i === done && left > 0 ? 'is-next' : ''}"></i>`;
+  for (let i = 0; i < pen; i++) bar += '<i class="is-pen"></i>';
+  const tr = res.querySelector('.sd-track');
+  if (tr && tr.dataset.bar !== bar){ tr.dataset.bar = bar; tr.innerHTML = bar; }
+}
+
+// ---------- energie naar de balk ----------
+// diceFlow: welke speler, vanaf welke stand, hoeveel er al zijn aangekomen. Zolang hij loopt
+// toont soloRenderEnergyOverview niet meer dan base + aangekomen (diceEnergyCap).
+let diceFlow = { done: true };
+const diceTimers = new Set();
+function diceLater(fn, ms){ const t = setTimeout(() => { diceTimers.delete(t); fn(); }, ms); diceTimers.add(t); return t; }
+// begin de "wacht op de bolletjes"-stand zodra een eigen worp is gevallen (vóór de balk wordt
+// getekend): base = energie vóór deze worp
+function diceHoldEnergy(player, gain){
+  if (!player || !gain) return;
+  const total = (gain.gained || 0) + (gain.wasted || 0);
+  if (!total){ diceFlow = { done: true }; return; }
+  diceFlow = { idx: player.idx, base: player.energy - (gain.gained || 0), gained: gain.gained || 0, total, arrived: 0, started: false, done: false };
+  // vangnet: lukt de animatie niet (vak verborgen, tab op de achtergrond), dan na een tijdje gewoon vrijgeven
+  diceLater(() => { if (!diceFlow.done){ diceFlow.done = true; soloRenderEnergyOverview(); } }, DICE_SPIN_MS + 1500 + total * (DICE_ORB_STAGGER_MS + DICE_ORB_FLIGHT_MS));
+}
+function diceEnergyCap(player, energy){
+  if (diceFlow.done || !player || player.idx !== diceFlow.idx) return energy;
+  return Math.min(energy, diceFlow.base + Math.min(diceFlow.arrived, diceFlow.gained));
+}
+function diceFlowEnergy(){
+  const f = diceFlow;
+  if (f.done || f.started) return;
+  f.started = true;
+  const from = walkDiceEl && walkDiceEl.querySelector('.sd-edie');
+  const cells = walkEnergyCellsEl ? [...walkEnergyCellsEl.children] : [];
+  const visible = from && from.getClientRects().length && cells.length && cells[0].getClientRects().length;
+  if (!visible || crystalReduceMotion()){ f.arrived = f.total; f.done = true; soloRenderEnergyOverview(); return; }
+  const fr = from.getBoundingClientRect(), A = [fr.left + fr.width / 2, fr.top + fr.height / 2];
+  let landed = 0;
+  for (let k = 0; k < f.total; k++){
+    diceLater(() => {
+      if (diceFlow !== f) return;
+      const lost = k >= f.gained;
+      const cell = cells[Math.min(ENERGY_MAX - 1, f.base + k)];
+      const cr = cell.getBoundingClientRect();
+      const C = lost ? [cr.left + cr.width / 2 + 16, cr.top - 30] : [cr.left + cr.width / 2, cr.top + cr.height / 2];
+      const P = [(A[0] + C[0]) / 2 + 30, Math.min(A[1], C[1]) - 50];
+      const orb = document.createElement('div');
+      orb.className = 'sd-fx sd-orb';
+      document.body.appendChild(orb);
+      const t0 = performance.now();
+      let lastTrail = 0;
+      crystalLoop(() => {
+        if (!orb.isConnected) return false;
+        const now = performance.now();
+        const t = Math.min(1, (now - t0) / DICE_ORB_FLIGHT_MS), q = t < .5 ? 2*t*t : 1 - Math.pow(-2*t + 2, 2) / 2;
+        const [x, y] = crystalBez(A, P, C, q);
+        orb.style.transform = `translate(${x}px,${y}px) scale(${1 + .4 * Math.sin(t * Math.PI)})`;
+        if (now - lastTrail > 30){
+          lastTrail = now;
+          const tr = document.createElement('div');
+          tr.className = 'sd-fx sd-trail'; tr.style.left = x + 'px'; tr.style.top = y + 'px';
+          document.body.appendChild(tr); tr.addEventListener('animationend', () => tr.remove());
+        }
+        if (t < 1) return;
+        orb.remove();
+        if (lost){
+          const l = document.createElement('div');
+          l.className = 'sd-fx sd-lost'; l.textContent = 'verloren'; l.style.left = C[0] + 'px'; l.style.top = C[1] + 'px';
+          document.body.appendChild(l); l.addEventListener('animationend', () => l.remove());
+        } else if (diceFlow === f){
+          f.arrived++;
+          soloRenderEnergyOverview();   // precies deze cel laadt nu op
+        }
+        if (++landed === f.total && diceFlow === f){ f.done = true; soloRenderEnergyOverview(); }
+        return false;
+      });
+    }, k * DICE_ORB_STAGGER_MS);
+  }
+}
+// Is de worp die nu in soloMove staat die van mij (de kijker), en nog niet "afgehandeld"?
+// Dan de energiebalk laten wachten op de bolletjes. Gebruikt door de host/Zelf spelen
+// (soloRollDice) én een gast (mpApplyState, vóór de balk getekend wordt).
+let diceFlowKey = null;
+function diceSoloRollKey(){
+  if (!soloMove || soloMove.d1 === undefined || soloMove.d1 === null) return null;
+  return `${soloTurn}|${soloActiveIdx}|${soloMove.d1}|${soloMove.d2}|${soloMove.d3}|${soloEnergyRoll}`;
+}
+function diceMaybeHold(){
+  if (!diceSoloRollKey() || soloEnergyRoll === null || soloEnergyRoll === undefined) return;
+  const key = `${soloTurn}|${soloActiveIdx}`;   // per beurt: een Koerscorrectie geeft geen nieuwe energie
+  if (key === diceFlowKey) return;
+  diceFlowKey = key;
+  const p = soloPlayers[soloActiveIdx];
+  if (p && typeof soloViewer === 'function' && soloViewer() === p && soloEnergyGain) diceHoldEnergy(p, soloEnergyGain);
+  else diceFlow = { done: true };
+}
+// nieuw potje / gestopt
+function diceReset(){
+  for (const t of diceTimers) clearTimeout(t);
+  diceTimers.clear();
+  diceFlow = { done: true };
+  diceFlowKey = null;
+  diceProgress = null;
+  document.querySelectorAll('.sd-fx').forEach(el => el.remove());
+  if (walkDiceEl) walkDiceEl.dataset.key = '';
+  diceSetHudResult(false);
+}
+
+
 // ===== 97-solo.js =====
 // ---------- stap voor stap: zelf spelen (1 t/m 4 spelers, mix van mens/bot) ----------
 // Jij dobbelt zelf, kiest zelf elke stap een aangrenzend vakje, en zet zelf een energie-actie
@@ -11648,7 +12036,8 @@ const ENERGY_CELL_DRAIN_MS = 380;    // = duur van ecellDrain in styles.css
 function soloRenderEnergyOverview(){
   if (!walkEnergyOverviewEl || !walkEnergyCellsEl) return;
   const p = soloViewer();   // in Multiplayer altijd je eigen energie, ook in andermans beurt
-  const energy = p ? Math.max(0, Math.min(ENERGY_MAX, p.energy)) : 0;
+  // diceEnergyCap: na je eigen worp telt de balk pas op als de energiebolletjes aankomen (96d-dice.js)
+  const energy = p ? Math.max(0, Math.min(ENERGY_MAX, diceEnergyCap(p, p.energy))) : 0;
   const samePlayer = !!p && soloEnergyShown.idx === p.idx;
   const prev = samePlayer ? soloEnergyShown.energy : energy;
   walkEnergyOverviewEl.classList.toggle('is-full', energy >= ENERGY_MAX);
@@ -12256,7 +12645,7 @@ function soloPlayCard(id){
     soloMove.stepsLeft += d3;
     useActionCard(p, 'boostcell', soloDeck);
     soloUsedCardId = 'boostcell';
-    renderWalkDice(soloMove.d1, soloMove.d2, soloEnergyRoll, false, soloMove.d3, soloMove.roll);
+    renderWalkDice(soloMove.d1, soloMove.d2, soloEnergyRoll, false, soloMove.d3, soloMove.roll, { key: diceSoloRollKey(), spinMs: DICE_SPIN_SHORT_MS });
     walkLog(`Je speelt <b>Stuwlading</b>: gratis derde loopsteen (${d3}) → ${soloMove.stepsLeft} stappen te gaan.`, null, p);
     soloAfterCardAction();
   } else if (id === 'fastlane'){
@@ -12304,7 +12693,7 @@ function soloPlayCard(id){
     soloUsedCardId = 'reroll';
     // volledig nieuwe zet: het pad begint opnieuw vanaf waar je nu staat
     soloMove = { d1, d2, d3, roll, penalty, stepsLeft: roll, lastDir: -1, path: [p.pos] };
-    renderWalkDice(d1, d2, soloEnergyRoll, false, d3, roll);
+    renderWalkDice(d1, d2, soloEnergyRoll, false, d3, roll, { key: diceSoloRollKey() + '|re' });
     walkLog(`Je speelt <b>Koerscorrectie</b> en gooit opnieuw: <b>${roll}</b> stappen.`, null, p);
     soloAfterCardAction();
   }
@@ -12566,21 +12955,7 @@ function soloHandleJumpClick(key){
 
 // ---------- dobbelen + lopen ----------
 function renderSoloDicePending(){
-  const e = soloEnergyRoll;
-  const energyHtml = e === null
-    ? energyDieHtml(null, false) + `<span class="walk-die-sum energy">energie bij het gooien</span>`
-    : energyDieHtml(e, false) + `<span class="walk-die-sum energy">+${e} energie</span>`;
-  // walk-die-pending: langzame op-en-neer-animatie zolang je nog niet hebt gedobbeld
-  // (gebruikersverzoek) — verdwijnt vanzelf zodra renderWalkDice() straks de echte worp tekent.
-  // Een 3e vraagteken-dobbelsteen zodra Stuwstoot/Stuwlading is ingezet (soloPendingBoost):
-  // die 3e loopsteen is dan al zeker, dus mag je 'm nu al zien staan i.p.v. pas na het
-  // dobbelen (gebruikerswens).
-  const pendingDice = soloPendingBoost
-    ? `<span class="walk-die walk-die-pending">?</span><span class="walk-die walk-die-pending">?</span><span class="walk-die walk-die-pending">?</span>`
-    : `<span class="walk-die walk-die-pending">?</span><span class="walk-die walk-die-pending">?</span>`;
-  walkDiceEl.innerHTML =
-    `<span class="walk-dice-row">${pendingDice}</span>` +
-    `<span class="walk-dice-row">${energyHtml}</span>`;
+  diceRenderPending(soloPendingBoost ? 3 : 2, soloEnergyRoll);
 }
 // `soloCurrentLegalMoves` voedt niet alleen deze teller maar ook de pijltjestoetsen
 // hieronder — bewegen zelf gaat via een klik op een omrand bordvakje (.walk-clickable) of
@@ -12590,6 +12965,7 @@ function soloRenderStepCounter(legal){
   if (walkStepCounterEl) walkStepCounterEl.hidden = false;
   if (walkStepDoneEl) walkStepDoneEl.textContent = soloMove.path.length - 1;
   if (walkStepLeftEl) walkStepLeftEl.textContent = soloMove.stepsLeft;
+  diceSetProgress(soloMove.path.length - 1, soloMove.stepsLeft);   // teller + stappenbalk in het dobbelvak
 }
 // verborgen zolang je nog niet hebt gedobbeld (gebruikerswens) — pas zichtbaar vanaf de eerste
 // soloRenderStepCounter()-aanroep, die precies samenvalt met het moment dat je stappen kunt
@@ -12677,8 +13053,9 @@ function soloRollDice(){
     roll = nieuw;
     p.rollPenalty = 0;
   }
-  renderWalkDice(d1, d2, soloEnergyRoll, false, d3, roll);   // na de straf: toont de echte stappen
   soloMove = { d1, d2, d3, roll, penalty, stepsLeft: roll, lastDir: -1, path: [p.pos] };
+  diceMaybeHold();   // energiebalk wacht tot de bolletjes aankomen (96d-dice.js)
+  renderWalkDice(d1, d2, soloEnergyRoll, false, d3, roll, { key: diceSoloRollKey(), flow: true });   // na de straf: toont de echte stappen
   btnWalkSoloRoll.hidden = true;
   renderWalkScore(soloPlayers, soloActiveIdx);
   soloAdvanceMovePhase();
@@ -13333,6 +13710,7 @@ async function soloAnimateBotTurn(player, replay, logNodes, runId){
       walkAdvanceShownTarget(soloGraph, bank, player.pos, player.color, othersOcc, false);
       paint();
       soloReplayCrystals(replay, player.pos);
+      if (!special) diceProgressStep();
       await walkSleep(sp.stepMs);
       if (!alive()) return false;
     }
@@ -13350,16 +13728,15 @@ async function soloAnimateBotTurn(player, replay, logNodes, runId){
       await walkSleep(90);
       if (!alive()) return false;
     }
-    renderWalkDice(replay.d1, replay.d2, replay.energyRoll, false, replay.d3, replay.roll);
+    renderWalkDice(replay.d1, replay.d2, replay.energyRoll, false, replay.d3, replay.roll, { key: `replay|${soloTurn}|${player.idx}|${replay.d1}${replay.d2}${replay.d3}`, spinMs: DICE_SPIN_SHORT_MS });
   } else {
-    walkDiceEl.innerHTML =
-      `<span class="walk-dice-row"><span class="walk-die-sum">geen worp nodig</span></span>` +
-      `<span class="walk-dice-row">${energyDieHtml(replay.energyRoll, false)}<span class="walk-die-sum energy">+${replay.energyRoll} energie</span></span>`;
+    diceRenderNoRoll(replay.energyRoll);
   }
-  await walkSleep(Math.min(500, sp.rollMs));
+  await walkSleep(Math.min(500, sp.rollMs) + (replay.roll ? DICE_SPIN_SHORT_MS : 0));
   if (!alive()) return false;
   // 3. de worp lopen
   if (replay.rollPath && !await walkSeg(replay.rollPath, false, replay.rollBanked)) return false;
+  if (replay.rollPath) diceProgressDone();
   player.pos = finalPos;
   paint();
   soloReplayCrystals(replay, null);   // wat onderweg niet langskwam alsnog
@@ -14173,6 +14550,7 @@ if (walkOpeningPanelEl){
 function stopSoloGame(){
   soloRunId++;   // breekt ook een lopende soloAnimateBotTurn() af
   crystalResetVault();   // lopende kristal-animaties, "Nieuw"-labels en de gekozen plek weg
+  diceReset();
   soloPhase = 'idle';
   soloBotViewSpeed = null;
   // geen vertraagde soloPeekQuestEnd() laten hangen op een potje dat hierna niet meer bestaat
@@ -14261,6 +14639,7 @@ function startSoloGame(){
   soloTurn = 0;
   soloDeck = buildActionDeck(soloRand);
   crystalResetVault();
+  diceReset();
 
   if (walkSoloPlayersSel) walkSoloPlayersSel.disabled = true;
   if (walkSoloBotsSel) walkSoloBotsSel.disabled = true;
@@ -15640,6 +16019,7 @@ function mpHostStartGame(){
   soloDeck = buildActionDeck(soloRand);
   crystalResetVault();
   crystalMpReset();
+  diceReset();
   soloActiveIdx = -1;
 
   mp.phase = 'in-game';
@@ -15686,6 +16066,7 @@ function mpClientOnStart(payload){
   mp.stateVersion = 0;
   crystalResetVault();
   crystalMpReset();
+  diceReset();
   walkLogEl.innerHTML = '';
   mpEnterPlayView();
 }
@@ -15957,6 +16338,8 @@ function mpApplyState(payload){
   // die van een ander gaat anoniem naar diens spelerskaartje
   crystalMpApply(payload.crystalEvents);
 
+  // eigen worp: de energiebalk laten wachten op de bolletjes, vóórdat hij hieronder getekend wordt
+  diceMaybeHold();
   paintWalkPawns(soloGraph, soloPlayers, soloActiveIdx);
   renderWalkScore(soloPlayers, soloActiveIdx);
   renderSoloMeta(soloMove ? soloMove.stepsLeft : undefined);
@@ -15966,7 +16349,8 @@ function mpApplyState(payload){
   if (soloPhase === 'game-over'){
     if (walkDiceEl) walkDiceEl.innerHTML = '';
   } else if (soloMove && soloMove.d1 !== undefined && soloPhase !== 'choose-action' && soloPhase !== 'rolling'){
-    renderWalkDice(soloMove.d1, soloMove.d2, soloEnergyRoll, false, soloMove.d3, soloMove.roll);
+    renderWalkDice(soloMove.d1, soloMove.d2, soloEnergyRoll, false, soloMove.d3, soloMove.roll, { key: diceSoloRollKey(), flow: true });
+    if (soloMove.path) diceSetProgress(soloMove.path.length - 1, soloMove.stepsLeft);
   } else if (soloEnergyRoll !== null && soloPhase === 'rolling'){
     renderSoloDicePending();
   }

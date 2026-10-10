@@ -454,7 +454,8 @@ function walkOpeningNote(players, buckets){
 // `opts`: { canRoll, canPick (de kijker mag nu zelf), shaking (wie aan de beurt is gooit nu) }
 function renderOpeningPanel(players, op, opts = {}){
   if (!walkOpeningPanelEl || !op) return;
-  const die = (v, rolling, pending) => `<span class="walk-die walk-die--sm${rolling ? ' rolling' : ''}${pending ? ' walk-die-pending' : ''}">${v}</span>`;
+  const die = (v, rolling, pending) => pending ? diceDieHtml('?', 'is-sm')
+    : diceDieHtml(rolling ? 1 + Math.floor(Math.random() * 6) : v, 'is-sm' + (rolling ? ' is-tumbling' : ''));
   const row = (i, placeHtml, right, cls) =>
     `<li class="walk-opening-row${cls}" style="--pc:${players[i].color}">` +
       `<span class="walk-opening-place">${placeHtml}</span>` +
@@ -618,33 +619,18 @@ function paintWalkPawns(graph, players, activeIdx){
 // onderscheid met de loopstenen — zeker bij de "0"-kant, die eerder een streepje liet zien en
 // daardoor als "geen steen" las in plaats van "een steen die 0 opleverde". `value` is null
 // zolang er nog niet gegooid is.
-function energyDieHtml(value, rolling){
-  const txt = (value === null || value === undefined) ? '?' : value;
-  return `<span class="walk-die energy${rolling ? ' rolling' : ''}">` +
-    `<svg class="walk-die-bolt" viewBox="0 0 14 24" aria-hidden="true"><path d="M9.4 0.8 L1.6 13.4 h4.3 L4.6 23.2 L12.4 10.2 h-4.5 z"/></svg>` +
-    `<span class="walk-die-num">${txt}</span></span>`;
-}
+// (de energiesteen zelf tekent diceEnergyDieHtml in 96d-dice.js)
 
 // `total` (optioneel): het aantal stappen dat echt gelopen mag worden, als dat afwijkt van de
 // som van de stenen — Stroomonderbreking trekt er 2 vanaf. Zonder dit stond er "= 9 stappen"
 // terwijl je er 7 mocht zetten (alleen het logboek noemde de straf).
-function renderWalkDice(a, b, e, rolling, boost, total){
-  const cls = 'walk-die' + (rolling ? ' rolling' : '');
-  const third = boost ? `<span class="${cls} boost" title="Stuwstoot">${boost}</span>` : '';
-  const diceSum = a + b + (boost || 0);
-  const steps = (total === undefined || total === null) ? diceSum : total;
-  const penalty = steps < diceSum
-    ? ` <span class="walk-die-penalty" title="Stroomonderbreking">(−${diceSum - steps})</span>` : '';
-  const sum = rolling ? '' : `<span class="walk-die-sum">= ${steps} stappen${penalty}</span>`;
-  const energy = rolling ? '' : `<span class="walk-die-sum energy">+${e} energie</span>`;
-  // Twee vaste regels: loopstenen boven, energiesteen eronder. Als één rij die mocht wrappen
-  // sprong de energiesteen naar de tweede regel zodra de Stuwstoot een derde loopsteen
-  // toevoegde, en dat verschoof alles eronder.
-  walkDiceEl.innerHTML =
-    `<span class="walk-dice-row">` +
-      `<span class="${cls}">${a}</span><span class="${cls}">${b}</span>${third}${sum}` +
-    `</span>` +
-    `<span class="walk-dice-row">${energyDieHtml(e, rolling)}${energy}</span>`;
+// Het tekenen zelf (ruimte-stenen, draaien, teller, energiebolletjes) zit in 96d-dice.js.
+// opts.key  maakt de worp uniek: dezelfde worp nog eens tekenen laat hem niet opnieuw draaien
+// opts.spinMs  hoe lang uitdraaien; opts.flow  energiebolletjes naar je balk (eigen worp)
+function renderWalkDice(a, b, e, rolling, boost, total, opts = {}){
+  const d = boost ? [a, b, boost] : [a, b];
+  if (rolling){ diceRenderTumble(d.length); return; }
+  diceRenderRoll(d, e, total, opts.key || `${d.join(',')}|${e}|${total}`, opts);
 }
 
 // Het huidige doel zelf staat al op de opdrachtkaart erboven (renderWalkQuestCard) — hier
@@ -787,6 +773,7 @@ function setWalkRunning(on){
 // want een lopende pion hoort niet op een bord dat onder hem vandaan verandert
 function stopWalkSimulation(){
   walkRunId++;
+  diceReset();
   crystalResetVault();    // lopende kristal-animaties en zeshoekjes-tellers weg
   setWalkRunning(false);
   soloHideEndgame();      // winscherm van een uitgespeeld potje (97-solo.js) hoort hier ook weg
@@ -1116,6 +1103,7 @@ async function runWalkSimulation(){
             if (reward.drawn || reward.handFull) crystalFxAnon(player.pos, player, !reward.drawn, walkSpeed().stepMs < 140, graph);
           }
           paintWalkPawns(graph, players, pIdx);
+          if (!special) diceProgressStep();
           renderWalkMeta({ player, turn, stepsLeft: path.length - 1 - i });
           await walkTick(walkSpeed().stepMs);
         }
@@ -1165,9 +1153,7 @@ async function runWalkSimulation(){
         move = { key: pre.key, path: pre.path, stepsUsed: pre.path.length - 1, bankedCount: pre.bankedCount,
                  bankedQuest: pre.bankedCount > 0, wasBlocked: pre.wasBlocked, teleported: pre.kind === 'jump' };
         // geen worp meer: alleen de energiesteen tonen
-        walkDiceEl.innerHTML =
-          `<span class="walk-dice-row"><span class="walk-die-sum">geen worp nodig</span></span>` +
-          `<span class="walk-dice-row">${energyDieHtml(energyRoll, false)}<span class="walk-die-sum energy">+${energyRoll} energie</span></span>`;
+        diceRenderNoRoll(energyRoll);
       } else {
         // fase 4: dobbelen — even laten rollen zodat je het ziet gebeuren. Geteld in stappen en
         // niet op de klok, anders is de worp na een pauze meteen "uitgerold".
@@ -1206,9 +1192,9 @@ async function runWalkSimulation(){
           useActionCard(player, 'fastlane', deck);
           cardActionUsed = true; usedCardId = 'fastlane';
         }
-        renderWalkDice(d1, d2, energyRoll, false, d3, roll);
+        renderWalkDice(d1, d2, energyRoll, false, d3, roll, { key: `auto|${turn}|${pIdx}|${d1}${d2}${d3}`, spinMs: walkSpeed().stepMs < 140 ? 0 : DICE_SPIN_SHORT_MS });
         if (aborted()) return;
-        await walkTick(Math.min(500, walkSpeed().rollMs));
+        await walkTick(Math.min(500, walkSpeed().rollMs) + (walkSpeed().stepMs < 140 ? 0 : DICE_SPIN_SHORT_MS));
         if (aborted()) return;
 
         let rollMove = resolveMove(graph, player.pos, roll, occupiedNow(), rollTargets, rand, undefined, allowUturn);
@@ -1223,9 +1209,9 @@ async function runWalkSimulation(){
           if (rollPenalty) roll = Math.max(1, roll - rollPenalty);
           useActionCard(player, 'reroll', deck);
           cardActionUsed = true; usedCardId = 'reroll';
-          renderWalkDice(d1, d2, energyRoll, false, d3, roll);
+          renderWalkDice(d1, d2, energyRoll, false, d3, roll, { key: `auto|${turn}|${pIdx}|re|${d1}${d2}${d3}`, spinMs: walkSpeed().stepMs < 140 ? 0 : DICE_SPIN_SHORT_MS });
           if (aborted()) return;
-          await walkTick(Math.min(500, walkSpeed().rollMs));
+          await walkTick(Math.min(500, walkSpeed().rollMs) + (walkSpeed().stepMs < 140 ? 0 : DICE_SPIN_SHORT_MS));
           if (aborted()) return;
           rollMove = resolveMove(graph, player.pos, roll, occupiedNow(), rollTargets, rand, undefined, allowUturn);
         }
@@ -1242,6 +1228,7 @@ async function runWalkSimulation(){
         // opgeteld: wat de sprint vóór de worp al pakte is al getoond (bank.shown)
         bank.limit = (pre ? pre.bankedCount : 0) + rollMove.bankedCount;
         if (!await walkPath(rollMove.path, false)) return;
+        diceProgressDone();
         player.stats.walkSteps += rollMove.path.length - 1;
         move = mergePreRollMove(pre, rollMove);
       }
