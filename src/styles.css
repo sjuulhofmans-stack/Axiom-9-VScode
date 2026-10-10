@@ -1403,7 +1403,9 @@
   /* Sinds de kristalkluis: staan er geen knoppen in (na het dobbelen, tijdens andermans beurt),
      dan krimpt het vak tot alleen de energiebalk. Dat "springt" niet meer: de kluis eronder staat
      vast onderaan de kolom (#walkCardVault margin-top:auto) en groeit juist in die vrije ruimte. */
-  .walk-solo-panel{height:auto; padding:10px 12px;}   /* zo hoog als wat erin staat; de kluis staat vast onderaan */
+  /* VASTE hoogte (= wat de 2x2-energietegels + de "te weinig energie"-regel nodig hebben), ook
+     na het dobbelen als er alleen nog de energiebalk in staat: zo verschuift er niets (gebruikersmelding) */
+  .walk-solo-panel{height:164px; padding:10px 12px;}
 
   /* opzetscherm bij "zelf spelen" met meerdere spelers: per menselijke speler een
      startpositie-keuze + voorproefje van de eerste opdracht, zodat je een weloverwogen
@@ -3436,7 +3438,9 @@
      de teller (Gegooid / Nog te zetten) met een stappenbalk. Die teller staat op de plek van de
      dobbelknop, die je dan niet meer nodig hebt — zo blijft het vak even hoog. */
   .walk-dice{width:100%; display:flex; flex-direction:column; gap:10px; min-height:0;}
-  .walk-hud{min-height:134px; align-content:flex-start;}
+  /* VASTE hoogte, vóór én na de worp: anders schoof alles eronder bij het dobbelen een paar px
+     (gebruikersmelding). De teller is daarom zo gemaakt dat hij precies in deze hoogte past. */
+  .walk-hud{height:134px; min-height:0; align-content:flex-start; box-sizing:border-box;}
   .walk-hud.has-result > .btn-row:not(.walk-mp-leave-row){display:none;}
   /* de losse "gezet / nog"-vakjes zitten nu in de teller */
   .walk-step-counter{display:none !important;}
@@ -3498,11 +3502,11 @@
   .sd-gain.zero{color:var(--text-dim); text-shadow:none;}
 
   /* teller: gegooid / nog te zetten */
-  .sd-result{display:flex; flex-direction:column; gap:8px; width:100%;}
+  .sd-result{display:flex; flex-direction:column; gap:6px; width:100%;}
   .sd-count{display:grid; grid-template-columns:1fr 1fr; gap:8px; align-items:end;}
   .sd-cnt{display:flex; flex-direction:column; gap:3px; min-width:0;}
   .sd-lbl{font:700 9.5px/1 var(--font-mono); letter-spacing:.14em; text-transform:uppercase; color:var(--text-dim);}
-  .sd-val{font:700 32px/.95 var(--font-display); font-variant-numeric:tabular-nums; color:var(--amber); display:flex; align-items:baseline; gap:6px;}
+  .sd-val{font:700 28px/.95 var(--font-display); font-variant-numeric:tabular-nums; color:var(--amber); display:flex; align-items:baseline; gap:6px;}
   .sd-val small{font:600 12.5px/1 var(--font-mono); color:var(--text-dim);}
   .sd-val small.sd-pen{color:#ff6b6b;}
   .sd-cnt.sd-left{align-items:flex-end; text-align:right;}
@@ -3550,3 +3554,9 @@
   }
   .walk-card-actions .action-card.action-card--lg .action-card-name{margin-top:0 !important; font-size:13px;}
   .walk-card-actions .action-card.action-card--lg .action-card-hint{font-size:9.5px;}
+
+  /* keuze bij Herprioritering (2 volle-breedte-rijen): iets krapper, zodat hij binnen de vaste
+     hoogte van het energievak blijft */
+  .walk-solo-panel .energy-pick-list:not(.is-grid){gap:5px;}
+  .walk-solo-panel .energy-pick-list:not(.is-grid) .energy-pick{padding:3px 10px;}
+  .walk-solo-panel .energy-pick-head{margin:0;}
