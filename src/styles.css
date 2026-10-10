@@ -3295,11 +3295,40 @@
   /* altijd onderaan de zijkolom, zodat hij niet verspringt als het energievak erboven krimpt */
   #walkCardVault{margin-top:auto;}
   .crystal-vault-sel{display:none;}
+  /* compacte kluis (vóór het dobbelen): rijtjes met naam i.p.v. alleen icoontjes */
+  .crystal-list{display:none;}
+  .walk-side-stack.vault-compact .crystal-rail,
+  .walk-side-stack.vault-compact .crystal-vault-why{display:none;}
+  .walk-side-stack.vault-compact .crystal-list{display:flex; flex-direction:column; gap:1px; min-width:0;}
+  .walk-side-stack.vault-compact .crystal-vault-side{grid-template-columns:minmax(0,1fr) auto;}
+  /* geen eigen --tint: die komt van .crystal--<soort> op hetzelfde rijtje (anders won deze) */
+  .crystal-row{
+    position:relative; display:flex; align-items:center; gap:7px; height:16px; min-width:0;
+    padding:0 6px; margin:0; border:0; border-radius:3px; background:none; color:var(--text);
+    font:600 13px/1 var(--font-display); text-transform:uppercase; letter-spacing:.03em; text-align:left; cursor:pointer;
+  }
+  .crystal-row.is-empty{cursor:default; color:var(--text-dim); font-weight:400; opacity:.6;}
+  .crystal-row-hex{flex:none; width:9px; height:12px; background:var(--tint); clip-path:polygon(50% 0,100% 21%,100% 79%,50% 100%,0 79%,0 21%);}
+  .crystal-row.is-empty .crystal-row-hex{background:var(--line);}
+  .crystal-row-name{min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+  .crystal-row.is-locked{opacity:.4;}
+  .crystal-row:hover:not(.is-empty){background:color-mix(in srgb, var(--tint) 12%, transparent);}
+  .crystal-row:focus-visible{outline:2px solid #fff; outline-offset:1px;}
+  /* gekozen: getinte achtergrond die pulst (alleen doorzichtigheid, net als bij de grote kluis) */
+  .crystal-row.is-picked{color:#fff;}
+  .crystal-row.is-picked::before{
+    content:""; position:absolute; inset:0; border-radius:3px; pointer-events:none; will-change:opacity;
+    background:color-mix(in srgb, var(--tint) 28%, transparent); box-shadow:inset 2px 0 0 var(--tint);
+    animation:crystalPulse 1.9s ease-in-out infinite;
+  }
+  .crystal-row.is-new::after{content:"nieuw"; margin-left:auto; flex:none; font:700 8px/1 var(--font-mono); letter-spacing:.08em; text-transform:uppercase; color:var(--tint);}
+  #tabWalk.walk-is-paused .crystal-row.is-picked::before{animation-play-state:paused;}
+
   /* Compact (één regel) zolang het energievak knoppen toont: vóór het dobbelen, of een richting/
      keuze van een energie-actie. Anders past de kolom niet (gemeten: dobbelen 162 + energie 286 +
      volle kluis 231 = te hoog voor een Full-HD-scherm). Na het dobbelen, als je je kristallen
      echt gebruikt, is het grote kristal er weer. */
-  .walk-side-stack.vault-compact .crystal-vault{grid-template-columns:minmax(0,1fr); padding:5px 10px;}
+  .walk-side-stack.vault-compact .crystal-vault{grid-template-columns:minmax(0,1fr); padding:4px 10px;}
   .walk-side-stack.vault-compact .crystal-vault-focus,
   .walk-side-stack.vault-compact .crystal-vault-head,
   .walk-side-stack.vault-compact #btnCardDiscard{display:none;}
@@ -3412,6 +3441,6 @@
   .cards-zoom-face.is-crystal .crystal{--w:100%;}
 
   @media (prefers-reduced-motion: reduce){
-    .crystal-rail .crystal.is-picked::before, .crystal.is-landing,
+    .crystal-rail .crystal.is-picked::before, .crystal-row.is-picked::before, .crystal.is-landing,
     .crystal-vault-focus.is-swap .crystal, .crystal-vault.is-full, .crystal-pip.is-landing{animation:none;}
   }

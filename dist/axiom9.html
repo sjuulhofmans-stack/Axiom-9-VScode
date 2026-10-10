@@ -3302,11 +3302,40 @@
   /* altijd onderaan de zijkolom, zodat hij niet verspringt als het energievak erboven krimpt */
   #walkCardVault{margin-top:auto;}
   .crystal-vault-sel{display:none;}
+  /* compacte kluis (vóór het dobbelen): rijtjes met naam i.p.v. alleen icoontjes */
+  .crystal-list{display:none;}
+  .walk-side-stack.vault-compact .crystal-rail,
+  .walk-side-stack.vault-compact .crystal-vault-why{display:none;}
+  .walk-side-stack.vault-compact .crystal-list{display:flex; flex-direction:column; gap:1px; min-width:0;}
+  .walk-side-stack.vault-compact .crystal-vault-side{grid-template-columns:minmax(0,1fr) auto;}
+  /* geen eigen --tint: die komt van .crystal--<soort> op hetzelfde rijtje (anders won deze) */
+  .crystal-row{
+    position:relative; display:flex; align-items:center; gap:7px; height:16px; min-width:0;
+    padding:0 6px; margin:0; border:0; border-radius:3px; background:none; color:var(--text);
+    font:600 13px/1 var(--font-display); text-transform:uppercase; letter-spacing:.03em; text-align:left; cursor:pointer;
+  }
+  .crystal-row.is-empty{cursor:default; color:var(--text-dim); font-weight:400; opacity:.6;}
+  .crystal-row-hex{flex:none; width:9px; height:12px; background:var(--tint); clip-path:polygon(50% 0,100% 21%,100% 79%,50% 100%,0 79%,0 21%);}
+  .crystal-row.is-empty .crystal-row-hex{background:var(--line);}
+  .crystal-row-name{min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+  .crystal-row.is-locked{opacity:.4;}
+  .crystal-row:hover:not(.is-empty){background:color-mix(in srgb, var(--tint) 12%, transparent);}
+  .crystal-row:focus-visible{outline:2px solid #fff; outline-offset:1px;}
+  /* gekozen: getinte achtergrond die pulst (alleen doorzichtigheid, net als bij de grote kluis) */
+  .crystal-row.is-picked{color:#fff;}
+  .crystal-row.is-picked::before{
+    content:""; position:absolute; inset:0; border-radius:3px; pointer-events:none; will-change:opacity;
+    background:color-mix(in srgb, var(--tint) 28%, transparent); box-shadow:inset 2px 0 0 var(--tint);
+    animation:crystalPulse 1.9s ease-in-out infinite;
+  }
+  .crystal-row.is-new::after{content:"nieuw"; margin-left:auto; flex:none; font:700 8px/1 var(--font-mono); letter-spacing:.08em; text-transform:uppercase; color:var(--tint);}
+  #tabWalk.walk-is-paused .crystal-row.is-picked::before{animation-play-state:paused;}
+
   /* Compact (één regel) zolang het energievak knoppen toont: vóór het dobbelen, of een richting/
      keuze van een energie-actie. Anders past de kolom niet (gemeten: dobbelen 162 + energie 286 +
      volle kluis 231 = te hoog voor een Full-HD-scherm). Na het dobbelen, als je je kristallen
      echt gebruikt, is het grote kristal er weer. */
-  .walk-side-stack.vault-compact .crystal-vault{grid-template-columns:minmax(0,1fr); padding:5px 10px;}
+  .walk-side-stack.vault-compact .crystal-vault{grid-template-columns:minmax(0,1fr); padding:4px 10px;}
   .walk-side-stack.vault-compact .crystal-vault-focus,
   .walk-side-stack.vault-compact .crystal-vault-head,
   .walk-side-stack.vault-compact #btnCardDiscard{display:none;}
@@ -3419,7 +3448,7 @@
   .cards-zoom-face.is-crystal .crystal{--w:100%;}
 
   @media (prefers-reduced-motion: reduce){
-    .crystal-rail .crystal.is-picked::before, .crystal.is-landing,
+    .crystal-rail .crystal.is-picked::before, .crystal-row.is-picked::before, .crystal.is-landing,
     .crystal-vault-focus.is-swap .crystal, .crystal-vault.is-full, .crystal-pip.is-landing{animation:none;}
   }
 
@@ -4067,6 +4096,9 @@
               <div class="crystal-vault-side">
                 <div class="crystal-vault-head"><span>Kristallen</span><b id="walkCardVaultCount">0 / 3</b></div>
                 <div class="crystal-rail" id="crystalRail" role="listbox" aria-label="Jouw kristallen"></div>
+                <!-- dezelfde 3 plekken als rijtjes met naam: alleen in de compacte kluis (vóór het
+                     dobbelen), waar geen ruimte is voor het grote kristal -->
+                <div class="crystal-list" id="crystalList" role="listbox" aria-label="Jouw kristallen"></div>
                 <p class="crystal-vault-why" id="crystalWhy" aria-live="polite"></p>
                 <div class="crystal-vault-btns">
                   <button type="button" id="btnCardPlay" class="primary small" disabled>Gebruik</button>
@@ -9277,7 +9309,7 @@ function walkOpeningNote(players, buckets){
 // `opts`: { canRoll, canPick (de kijker mag nu zelf), shaking (wie aan de beurt is gooit nu) }
 function renderOpeningPanel(players, op, opts = {}){
   if (!walkOpeningPanelEl || !op) return;
-  const die = (v, rolling) => `<span class="walk-die walk-die--sm${rolling ? ' rolling' : ''}">${v}</span>`;
+  const die = (v, rolling, pending) => `<span class="walk-die walk-die--sm${rolling ? ' rolling' : ''}${pending ? ' walk-die-pending' : ''}">${v}</span>`;
   const row = (i, placeHtml, right, cls) =>
     `<li class="walk-opening-row${cls}" style="--pc:${players[i].color}">` +
       `<span class="walk-opening-place">${placeHtml}</span>` +
@@ -9291,8 +9323,11 @@ function renderOpeningPanel(players, op, opts = {}){
       for (const i of b){
         const up = op.rolling === i;
         const r = op.last[i];
+        // aan de beurt: schudden als er gegooid wordt, anders (wachten op de klik) zachtjes
+        // wiebelende "?"-stenen — net als de gewone dobbelstenen (renderSoloDicePending)
         const dice = up && opts.shaking
           ? die('?', true) + die('?', true)
+          : up ? die('?', false, true) + die('?', false, true)
           : r ? die(r[0]) + die(r[1]) + `<span class="walk-opening-sum">${r[0] + r[1]}</span>` : '';
         // "gelijk" pas als de dobbelronde van deze groep klaar is: tijdens de ronde zit iedereen
         // die nog moet gooien ook in dezelfde emmer, dus wie al gooide is dan nog niet gelijk
@@ -9309,7 +9344,7 @@ function renderOpeningPanel(players, op, opts = {}){
     const up = op.rolling !== null && op.rolling !== undefined ? players[op.rolling] : null;
     const action = opts.canRoll
       ? `<p class="walk-opening-turn"><b>${up.name}</b>, jij bent aan de beurt.</p>` +
-        `<button type="button" class="primary walk-opening-btn" data-opening-roll>🎲 Gooi de dobbelstenen</button>`
+        `<button type="button" class="primary walk-opening-btn walk-pulse-affordable" data-opening-roll>🎲 Gooi de dobbelstenen</button>`
       : up ? `<p class="walk-opening-turn"><b>${up.name}</b> gooit…</p>` : '';
     html =
       `<h3 class="walk-opening-title">Wie begint?</h3>` +
@@ -10602,6 +10637,7 @@ const crystalHiddenSlots = new Set();   // plekken waar een kristal nog naartoe 
 const crystalNew = new Map();     // id -> aantal "Nieuw"-labels (tot je erop klikt)
 const crystalVaultFocusEl = document.getElementById('crystalFocus');
 const crystalVaultRailEl = document.getElementById('crystalRail');
+const crystalVaultListEl = document.getElementById('crystalList');
 const crystalVaultWhyEl = document.getElementById('crystalWhy');
 const crystalVaultCountEl = document.getElementById('walkCardVaultCount');
 
@@ -10631,6 +10667,23 @@ function crystalRenderVault(cards, { reason = () => null, canDiscard = false, id
       attrs: `type="button" data-i="${i}" data-slot="${i}" data-id="${id}" role="option" aria-selected="${i === crystalSel}" title="${ACTION_CARDS[id].name}" aria-label="${ACTION_CARDS[id].name}"` });
   }
   crystalSetHtml(crystalVaultRailEl, rail);
+  // compacte kluis: dezelfde plekken als rijtjes met naam, anders weet je vóór het dobbelen niet
+  // welk icoontje welk kristal is (gebruikersmelding). Gedimd = nu niet; de reden staat in de tooltip.
+  if (crystalVaultListEl){
+    const newLeft2 = new Map(crystalNew);
+    let list = '';
+    for (let i = 0; i < ACTION_CARD_HAND_MAX; i++){
+      if (!shown(i)){ list += `<div class="crystal-row is-empty" data-slot="${i}"><span class="crystal-row-hex"></span><span class="crystal-row-name">Lege plek</span></div>`; continue; }
+      const cid = cards[i], why2 = why(cid);
+      const isNew = (newLeft2.get(cid) || 0) > 0;
+      if (isNew) newLeft2.set(cid, newLeft2.get(cid) - 1);
+      const st = (why2 ? ' is-locked' : '') + (i === crystalSel ? ' is-picked' : '') + (isNew ? ' is-new' : '');
+      const tip = `${ACTION_CARDS[cid].name} — ${ACTION_CARDS[cid].text}${why2 ? ` (nu niet: ${why2})` : ''}`;
+      list += `<button type="button" class="crystal-row crystal--${ACTION_CARD_TINTS[cid]}${st}" data-i="${i}" data-slot="${i}" data-id="${cid}" role="option" aria-selected="${i === crystalSel}" title="${tip}">`
+        + `<span class="crystal-row-hex"></span><span class="crystal-row-name">${ACTION_CARDS[cid].name}</span></button>`;
+    }
+    crystalSetHtml(crystalVaultListEl, list);
+  }
   const count = cards.filter((_, i) => shown(i)).length;
   if (crystalVaultCountEl) crystalSetText(crystalVaultCountEl, `${count} / ${ACTION_CARD_HAND_MAX}`);
 
@@ -10700,8 +10753,8 @@ function crystalRefreshVault(){
   if (typeof mp !== 'undefined' && mp.active && mp.phase === 'in-game') mpRefreshCardVault();
   else soloRefreshCardVault();
 }
-if (crystalVaultRailEl){
-  crystalVaultRailEl.addEventListener('click', (e) => {
+for (const crystalPickEl of [crystalVaultRailEl, crystalVaultListEl]) if (crystalPickEl){
+  crystalPickEl.addEventListener('click', (e) => {
     const btn = e.target.closest('button[data-i]');
     if (!btn) return;
     crystalSel = parseInt(btn.dataset.i, 10);
@@ -10709,7 +10762,7 @@ if (crystalVaultRailEl){
     const cardId = btn.dataset.id;
     if (btn.classList.contains('is-new') && crystalNew.get(cardId)) crystalNew.set(cardId, crystalNew.get(cardId) - 1);
     crystalRefreshVault();
-    const again = crystalVaultRailEl.querySelector(`button[data-i="${crystalSel}"]`);
+    const again = crystalPickEl.querySelector(`button[data-i="${crystalSel}"]`);
     if (again) again.focus();
   });
 }
@@ -10875,7 +10928,7 @@ function crystalFxGain(fromKey, slot, owner){
     crystalSel = slot;
     crystalRefreshVault();
     if (owner) crystalRepaintPips(owner);
-    const el = crystalVaultRailEl && crystalVaultRailEl.querySelector(`[data-slot="${slot}"]`);
+    const el = crystalSlotEl(slot);
     if (el) el.classList.add('is-landing');
     const vault = document.getElementById('walkCardVault');
     if (vault){ vault.classList.remove('is-glow'); void vault.offsetWidth; vault.classList.add('is-glow'); crystalLater(() => vault.classList.remove('is-glow'), 900); }
@@ -10911,9 +10964,11 @@ function crystalFxGain(fromKey, slot, owner){
     }
     if (!flying){ flying = true; el.classList.add('is-flying'); label.style.opacity = 0; crystalLater(() => label.remove(), 300); }
     // doel elke frame opnieuw meten: de pagina kan intussen gescrold of verschoven zijn
-    const toEl = crystalVaultRailEl && crystalVaultRailEl.querySelector(`[data-slot="${slot}"]`);
-    if (!toEl || !toEl.getClientRects().length){ el.remove(); land(); return false; }
-    const toR = toEl.getBoundingClientRect(), C = crystalCenter(toR), sEnd = toR.width / CRYSTAL_FLY_W;
+    const toEl = crystalSlotEl(slot);
+    if (!toEl){ el.remove(); land(); return false; }
+    const toR = toEl.getBoundingClientRect(), C = crystalCenter(toR);
+    // in de compacte kluis is het doel een rijtje: krimpen tot de hoogte daarvan
+    const sEnd = toEl.classList.contains('crystal-row') ? toR.height * 1.6 / CRYSTAL_FLY_H : toR.width / CRYSTAL_FLY_W;
     const dist = Math.hypot(C[0] - B[0], C[1] - B[1]);
     const P = [(B[0] + C[0]) / 2, Math.min(B[1], C[1]) - Math.max(80, dist * .35)];
     const k = crystalEaseInOut(Math.min(1, (t - T_GROW - T_HOLD) / T_FLY));
@@ -10926,6 +10981,14 @@ function crystalFxGain(fromKey, slot, owner){
     }
     if (k >= 1){ el.remove(); crystalFxEl('crystal-burst', C[0], C[1], tint); land(); return false; }
   });
+}
+
+// het zichtbare plekje in de kluis (de rail in de gewone kluis, een rijtje in de compacte)
+function crystalSlotEl(slot){
+  for (const el of document.querySelectorAll(`#walkCardVault [data-slot="${slot}"]`)){
+    if (el.getClientRects().length) return el;
+  }
+  return null;
 }
 
 // jouw kluis is vol: een zilver vraagteken-kristal groeit uit het vakje, trilt, en knalt in 12 scherven
@@ -13918,6 +13981,7 @@ function soloEndGame(stuck){
 // soloPhase: 'opening-roll' (soloActiveIdx = wie moet gooien) → 'opening-pick' (= wie kiest).
 let soloOpening = null;   // zie walkNewOpening (96-walk.js) voor de vorm
 const SOLO_OPENING_BOT_ROLL_MS = 1100;   // even de stenen laten rollen voordat een bot gooit
+const SOLO_OPENING_HUMAN_ROLL_MS = 800;  // en na jouw klik ook even laten schudden, dan pas de worp
 const SOLO_OPENING_BOT_PICK_MS = 1500;   // even laten zien welke opdracht een bot heeft
 // mag de kijker op DIT scherm nu zelf gooien/kiezen?
 function soloOpeningIsMine(){
@@ -13937,7 +14001,7 @@ function soloRenderOpening(){
   const mine = soloOpeningIsMine();
   if (op.stage === 'roll'){
     walkClearClass('walk-start-glow');
-    renderOpeningPanel(soloPlayers, op, { canRoll: mine && op.rolling === soloActiveIdx, shaking: !!op.shaking });
+    renderOpeningPanel(soloPlayers, op, { canRoll: mine && op.rolling === soloActiveIdx && !op.shaking, shaking: !!op.shaking });
   } else {
     const free = walkOpeningFreeLabels(soloPlayers);
     const chooser = soloPlayers[op.order[op.pickPos]];
@@ -14004,11 +14068,15 @@ function soloOpeningStep(){
 }
 // knop "Gooi de dobbelstenen" in het paneel (mens; in Multiplayer via de host)
 function soloOpeningRoll(){
-  if (soloPhase !== 'opening-roll' || !soloOpening) return;
+  if (soloPhase !== 'opening-roll' || !soloOpening || soloOpening.shaking) return;
   if (mpIntercept('openingRoll', {})) return;
   const p = soloPlayers[soloActiveIdx];
   if (!p || !p.isHuman) return;
-  soloOpeningDoRoll(soloActiveIdx);
+  // eerst even schudden (zelfde animatie als bij een bot), dan pas de worp
+  const idx = soloActiveIdx;
+  soloOpening.shaking = true;
+  soloRenderOpening();
+  soloOpeningLater(SOLO_OPENING_HUMAN_ROLL_MS, () => soloOpeningDoRoll(idx));
 }
 function soloOpeningDoRoll(idx){
   const op = soloOpening;

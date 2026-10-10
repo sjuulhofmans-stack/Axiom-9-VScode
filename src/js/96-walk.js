@@ -454,7 +454,7 @@ function walkOpeningNote(players, buckets){
 // `opts`: { canRoll, canPick (de kijker mag nu zelf), shaking (wie aan de beurt is gooit nu) }
 function renderOpeningPanel(players, op, opts = {}){
   if (!walkOpeningPanelEl || !op) return;
-  const die = (v, rolling) => `<span class="walk-die walk-die--sm${rolling ? ' rolling' : ''}">${v}</span>`;
+  const die = (v, rolling, pending) => `<span class="walk-die walk-die--sm${rolling ? ' rolling' : ''}${pending ? ' walk-die-pending' : ''}">${v}</span>`;
   const row = (i, placeHtml, right, cls) =>
     `<li class="walk-opening-row${cls}" style="--pc:${players[i].color}">` +
       `<span class="walk-opening-place">${placeHtml}</span>` +
@@ -468,8 +468,11 @@ function renderOpeningPanel(players, op, opts = {}){
       for (const i of b){
         const up = op.rolling === i;
         const r = op.last[i];
+        // aan de beurt: schudden als er gegooid wordt, anders (wachten op de klik) zachtjes
+        // wiebelende "?"-stenen — net als de gewone dobbelstenen (renderSoloDicePending)
         const dice = up && opts.shaking
           ? die('?', true) + die('?', true)
+          : up ? die('?', false, true) + die('?', false, true)
           : r ? die(r[0]) + die(r[1]) + `<span class="walk-opening-sum">${r[0] + r[1]}</span>` : '';
         // "gelijk" pas als de dobbelronde van deze groep klaar is: tijdens de ronde zit iedereen
         // die nog moet gooien ook in dezelfde emmer, dus wie al gooide is dan nog niet gelijk
@@ -486,7 +489,7 @@ function renderOpeningPanel(players, op, opts = {}){
     const up = op.rolling !== null && op.rolling !== undefined ? players[op.rolling] : null;
     const action = opts.canRoll
       ? `<p class="walk-opening-turn"><b>${up.name}</b>, jij bent aan de beurt.</p>` +
-        `<button type="button" class="primary walk-opening-btn" data-opening-roll>🎲 Gooi de dobbelstenen</button>`
+        `<button type="button" class="primary walk-opening-btn walk-pulse-affordable" data-opening-roll>🎲 Gooi de dobbelstenen</button>`
       : up ? `<p class="walk-opening-turn"><b>${up.name}</b> gooit…</p>` : '';
     html =
       `<h3 class="walk-opening-title">Wie begint?</h3>` +

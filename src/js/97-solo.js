@@ -2846,6 +2846,7 @@ function soloEndGame(stuck){
 // soloPhase: 'opening-roll' (soloActiveIdx = wie moet gooien) → 'opening-pick' (= wie kiest).
 let soloOpening = null;   // zie walkNewOpening (96-walk.js) voor de vorm
 const SOLO_OPENING_BOT_ROLL_MS = 1100;   // even de stenen laten rollen voordat een bot gooit
+const SOLO_OPENING_HUMAN_ROLL_MS = 800;  // en na jouw klik ook even laten schudden, dan pas de worp
 const SOLO_OPENING_BOT_PICK_MS = 1500;   // even laten zien welke opdracht een bot heeft
 // mag de kijker op DIT scherm nu zelf gooien/kiezen?
 function soloOpeningIsMine(){
@@ -2865,7 +2866,7 @@ function soloRenderOpening(){
   const mine = soloOpeningIsMine();
   if (op.stage === 'roll'){
     walkClearClass('walk-start-glow');
-    renderOpeningPanel(soloPlayers, op, { canRoll: mine && op.rolling === soloActiveIdx, shaking: !!op.shaking });
+    renderOpeningPanel(soloPlayers, op, { canRoll: mine && op.rolling === soloActiveIdx && !op.shaking, shaking: !!op.shaking });
   } else {
     const free = walkOpeningFreeLabels(soloPlayers);
     const chooser = soloPlayers[op.order[op.pickPos]];
@@ -2932,11 +2933,15 @@ function soloOpeningStep(){
 }
 // knop "Gooi de dobbelstenen" in het paneel (mens; in Multiplayer via de host)
 function soloOpeningRoll(){
-  if (soloPhase !== 'opening-roll' || !soloOpening) return;
+  if (soloPhase !== 'opening-roll' || !soloOpening || soloOpening.shaking) return;
   if (mpIntercept('openingRoll', {})) return;
   const p = soloPlayers[soloActiveIdx];
   if (!p || !p.isHuman) return;
-  soloOpeningDoRoll(soloActiveIdx);
+  // eerst even schudden (zelfde animatie als bij een bot), dan pas de worp
+  const idx = soloActiveIdx;
+  soloOpening.shaking = true;
+  soloRenderOpening();
+  soloOpeningLater(SOLO_OPENING_HUMAN_ROLL_MS, () => soloOpeningDoRoll(idx));
 }
 function soloOpeningDoRoll(idx){
   const op = soloOpening;

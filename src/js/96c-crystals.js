@@ -98,6 +98,7 @@ const crystalHiddenSlots = new Set();   // plekken waar een kristal nog naartoe 
 const crystalNew = new Map();     // id -> aantal "Nieuw"-labels (tot je erop klikt)
 const crystalVaultFocusEl = document.getElementById('crystalFocus');
 const crystalVaultRailEl = document.getElementById('crystalRail');
+const crystalVaultListEl = document.getElementById('crystalList');
 const crystalVaultWhyEl = document.getElementById('crystalWhy');
 const crystalVaultCountEl = document.getElementById('walkCardVaultCount');
 
@@ -127,6 +128,23 @@ function crystalRenderVault(cards, { reason = () => null, canDiscard = false, id
       attrs: `type="button" data-i="${i}" data-slot="${i}" data-id="${id}" role="option" aria-selected="${i === crystalSel}" title="${ACTION_CARDS[id].name}" aria-label="${ACTION_CARDS[id].name}"` });
   }
   crystalSetHtml(crystalVaultRailEl, rail);
+  // compacte kluis: dezelfde plekken als rijtjes met naam, anders weet je vóór het dobbelen niet
+  // welk icoontje welk kristal is (gebruikersmelding). Gedimd = nu niet; de reden staat in de tooltip.
+  if (crystalVaultListEl){
+    const newLeft2 = new Map(crystalNew);
+    let list = '';
+    for (let i = 0; i < ACTION_CARD_HAND_MAX; i++){
+      if (!shown(i)){ list += `<div class="crystal-row is-empty" data-slot="${i}"><span class="crystal-row-hex"></span><span class="crystal-row-name">Lege plek</span></div>`; continue; }
+      const cid = cards[i], why2 = why(cid);
+      const isNew = (newLeft2.get(cid) || 0) > 0;
+      if (isNew) newLeft2.set(cid, newLeft2.get(cid) - 1);
+      const st = (why2 ? ' is-locked' : '') + (i === crystalSel ? ' is-picked' : '') + (isNew ? ' is-new' : '');
+      const tip = `${ACTION_CARDS[cid].name} — ${ACTION_CARDS[cid].text}${why2 ? ` (nu niet: ${why2})` : ''}`;
+      list += `<button type="button" class="crystal-row crystal--${ACTION_CARD_TINTS[cid]}${st}" data-i="${i}" data-slot="${i}" data-id="${cid}" role="option" aria-selected="${i === crystalSel}" title="${tip}">`
+        + `<span class="crystal-row-hex"></span><span class="crystal-row-name">${ACTION_CARDS[cid].name}</span></button>`;
+    }
+    crystalSetHtml(crystalVaultListEl, list);
+  }
   const count = cards.filter((_, i) => shown(i)).length;
   if (crystalVaultCountEl) crystalSetText(crystalVaultCountEl, `${count} / ${ACTION_CARD_HAND_MAX}`);
 
@@ -196,8 +214,8 @@ function crystalRefreshVault(){
   if (typeof mp !== 'undefined' && mp.active && mp.phase === 'in-game') mpRefreshCardVault();
   else soloRefreshCardVault();
 }
-if (crystalVaultRailEl){
-  crystalVaultRailEl.addEventListener('click', (e) => {
+for (const crystalPickEl of [crystalVaultRailEl, crystalVaultListEl]) if (crystalPickEl){
+  crystalPickEl.addEventListener('click', (e) => {
     const btn = e.target.closest('button[data-i]');
     if (!btn) return;
     crystalSel = parseInt(btn.dataset.i, 10);
@@ -205,7 +223,7 @@ if (crystalVaultRailEl){
     const cardId = btn.dataset.id;
     if (btn.classList.contains('is-new') && crystalNew.get(cardId)) crystalNew.set(cardId, crystalNew.get(cardId) - 1);
     crystalRefreshVault();
-    const again = crystalVaultRailEl.querySelector(`button[data-i="${crystalSel}"]`);
+    const again = crystalPickEl.querySelector(`button[data-i="${crystalSel}"]`);
     if (again) again.focus();
   });
 }
@@ -371,7 +389,7 @@ function crystalFxGain(fromKey, slot, owner){
     crystalSel = slot;
     crystalRefreshVault();
     if (owner) crystalRepaintPips(owner);
-    const el = crystalVaultRailEl && crystalVaultRailEl.querySelector(`[data-slot="${slot}"]`);
+    const el = crystalSlotEl(slot);
     if (el) el.classList.add('is-landing');
     const vault = document.getElementById('walkCardVault');
     if (vault){ vault.classList.remove('is-glow'); void vault.offsetWidth; vault.classList.add('is-glow'); crystalLater(() => vault.classList.remove('is-glow'), 900); }
@@ -407,9 +425,11 @@ function crystalFxGain(fromKey, slot, owner){
     }
     if (!flying){ flying = true; el.classList.add('is-flying'); label.style.opacity = 0; crystalLater(() => label.remove(), 300); }
     // doel elke frame opnieuw meten: de pagina kan intussen gescrold of verschoven zijn
-    const toEl = crystalVaultRailEl && crystalVaultRailEl.querySelector(`[data-slot="${slot}"]`);
-    if (!toEl || !toEl.getClientRects().length){ el.remove(); land(); return false; }
-    const toR = toEl.getBoundingClientRect(), C = crystalCenter(toR), sEnd = toR.width / CRYSTAL_FLY_W;
+    const toEl = crystalSlotEl(slot);
+    if (!toEl){ el.remove(); land(); return false; }
+    const toR = toEl.getBoundingClientRect(), C = crystalCenter(toR);
+    // in de compacte kluis is het doel een rijtje: krimpen tot de hoogte daarvan
+    const sEnd = toEl.classList.contains('crystal-row') ? toR.height * 1.6 / CRYSTAL_FLY_H : toR.width / CRYSTAL_FLY_W;
     const dist = Math.hypot(C[0] - B[0], C[1] - B[1]);
     const P = [(B[0] + C[0]) / 2, Math.min(B[1], C[1]) - Math.max(80, dist * .35)];
     const k = crystalEaseInOut(Math.min(1, (t - T_GROW - T_HOLD) / T_FLY));
@@ -422,6 +442,14 @@ function crystalFxGain(fromKey, slot, owner){
     }
     if (k >= 1){ el.remove(); crystalFxEl('crystal-burst', C[0], C[1], tint); land(); return false; }
   });
+}
+
+// het zichtbare plekje in de kluis (de rail in de gewone kluis, een rijtje in de compacte)
+function crystalSlotEl(slot){
+  for (const el of document.querySelectorAll(`#walkCardVault [data-slot="${slot}"]`)){
+    if (el.getClientRects().length) return el;
+  }
+  return null;
 }
 
 // jouw kluis is vol: een zilver vraagteken-kristal groeit uit het vakje, trilt, en knalt in 12 scherven
