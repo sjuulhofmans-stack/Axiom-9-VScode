@@ -477,7 +477,10 @@
   .cell.walk{background:var(--walk); box-shadow:inset 0 0 0 1px rgba(0,0,0,.25);}
   .cell.walk.room-tile{background:var(--walk-room);}
   .cell.quest{background:var(--quest); box-shadow:0 0 6px rgba(79,184,224,.55);}
-  .cell.actioncell{background:var(--actioncell); box-shadow:0 0 6px rgba(181,123,239,.55);}
+  /* kristalvakje: een klein zeshoekje (het kristal zelf) binnen het vierkante vakje — het vakje
+     blijft even groot als de rest, het kristal past zich aan */
+  .cell.actioncell{background-color:transparent; background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 290'%3E%3Cpolygon points='100,4 196,62 196,228 100,286 4,228 4,62' fill='%23b57bef' fill-opacity='.35' stroke='%23d9b3ff' stroke-width='22' stroke-linejoin='round'/%3E%3C/svg%3E");
+    background-repeat:no-repeat; background-position:center; background-size:auto 86%;}
   .cell.start{background:var(--start); box-shadow:0 0 6px rgba(85,214,138,.55);}
   .cell.empty-slot{background:var(--slot-empty); border-radius:1px;}
   .cell.tile-edge-r{box-shadow: inset -1px 0 0 0 rgba(255,181,69,.28);}
@@ -1218,6 +1221,9 @@
     .walk-lobby-col .walk-mode-toggle{margin:var(--lobby-space) 0 0;}
     .walk-board-col{max-width:none;}
     .walk-status-col, .walk-side-stack{max-height:calc(var(--wcell) * 32 + 71px);}
+    /* met de kristalkluis erin: de kolom precies zo hoog als het bord, zodat de kluis onderaan
+       gelijk staat met de onderrand van het bord en daar blijft staan */
+    .walk-side-stack:has(> #walkCardVault:not([hidden])){height:calc(var(--wcell) * 32 + 71px);}
     /* Multiplayer: de chat als 4e kolom rechts (zie #mpChatPanelGame in index.html). Het bord
        krimpt daarvoor wat mee (±270px minder ruimte in de breedte), en het vak eromheen rekent
        met dezelfde kleinere --wcell. */
@@ -1233,6 +1239,7 @@
     /* op een laptop is het (kleinere) bord lager dan dobbelen + energie samen: dan liever een
        paar px scrollen dan dat de knoppen onderaan wegvallen */
     .walk-board-row:has(> #mpChatPanelGame:not([hidden])) > .walk-side-stack{max-height:none;}
+    .walk-board-row:has(> #mpChatPanelGame:not([hidden])) > .walk-side-stack:has(> #walkCardVault:not([hidden])){height:auto; min-height:calc(var(--wcell) * 32 + 71px);}
     .walk-chat-col{height:calc(var(--wcell) * 32 + 71px);}
     .walk-side-stack.is-opening{height:calc(var(--wcell) * 32 + 71px);}
     /* Lobby even hoog als het speelscherm (gebruikersmelding: "de kolom van de lobby is niet zo
@@ -1257,6 +1264,7 @@
        kaarten, en de statushub (huidige opdracht + opdrachtenoverzicht) als laatste onderaan. */
     .walk-board-col{order:1; max-width:none;}
     .walk-side-stack{order:2; max-height:none;}
+    .walk-side-stack:has(> #walkCardVault:not([hidden])){height:auto;}
     .walk-side-stack.is-opening{height:auto;}
     .walk-status-col{order:3; max-height:none;}
     .walk-chat-col{grid-column:1; grid-row:auto; order:4; height:420px;}
@@ -1391,6 +1399,10 @@
     height:286px; overflow:visible;
   }
   .walk-solo-panel[hidden]{display:none;}
+  /* Sinds de kristalkluis: staan er geen knoppen in (na het dobbelen, tijdens andermans beurt),
+     dan krimpt het vak tot alleen de energiebalk. Dat "springt" niet meer: de kluis eronder staat
+     vast onderaan de kolom (#walkCardVault margin-top:auto) en groeit juist in die vrije ruimte. */
+  .walk-solo-panel:has(#walkSoloActions:empty){height:auto;}
 
   /* opzetscherm bij "zelf spelen" met meerdere spelers: per menselijke speler een
      startpositie-keuze + voorproefje van de eerste opdracht, zodat je een weloverwogen
@@ -3185,3 +3197,218 @@
     animation:kaboemPulse .5s ease-in-out infinite;
   }
   .kaboem-canvas{ position:fixed; inset:0; z-index:9999; pointer-events:none; }
+
+  /* ================= kristallen (de vroegere actiekaarten) — zie 96c-crystals.js ================= */
+  /* Eén vorm voor alles: een langgerekte zeshoek (200×290) met de rand in de kleur van de soort.
+     Alle maten binnenin in cqw (het kristal is zijn eigen container), dus één kristal schaalt in
+     z'n geheel mee — van 36px in de kluis tot 300px in de vergrote weergave. */
+  :root{
+    --crystal-amber: var(--amber);
+    --crystal-start: var(--start);
+    --crystal-quest: var(--quest);
+    --crystal-danger: var(--danger);
+    --crystal-dim: #9aabbd;
+    --crystal-anon: #c9d4df;     /* zilver: het kristal van een ander, of "kluis vol" */
+  }
+  .crystal{
+    --tint: var(--actioncell); --w: 180px;
+    position:relative; display:block; width:var(--w); max-width:100%; aspect-ratio:200/290;
+    container-type:inline-size; flex:none; color:var(--text);
+    padding:0; margin:0; border:0; background:none; font:inherit; text-align:center;
+    -webkit-appearance:none; appearance:none;
+  }
+  .crystal--amber{--tint:var(--crystal-amber);}
+  .crystal--start{--tint:var(--crystal-start);}
+  .crystal--quest{--tint:var(--crystal-quest);}
+  .crystal--danger{--tint:var(--crystal-danger);}
+  .crystal--dim{--tint:var(--crystal-dim);}
+  .crystal--mystery{--tint:var(--crystal-anon);}
+  .crystal-shape{
+    position:absolute; inset:0; width:100%; height:100%; color:var(--tint); overflow:visible;
+    filter:drop-shadow(0 0 6px color-mix(in srgb, var(--tint) 45%, transparent));
+  }
+  /* alles stapelt in één kolom — nooit vaste posities, dus een lange naam of zin duwt de rest
+     omlaag i.p.v. eroverheen te schuiven */
+  .crystal-layer{position:absolute; inset:13% 11% 12%; display:flex; flex-direction:column; align-items:center; text-align:center;}
+  /* moment (boven) en soort (onder): hetzelfde labeltje */
+  .crystal-when, .crystal-cat{
+    font:700 4.4cqw/1 var(--font-mono); letter-spacing:.1em; text-transform:uppercase; white-space:nowrap;
+    color:var(--tint); padding:1.6cqw 3cqw;
+    border:1px solid color-mix(in srgb, var(--tint) 55%, transparent);
+    background:color-mix(in srgb, var(--tint) 10%, var(--hull));
+  }
+  .crystal-cat{margin-top:auto;}
+  .crystal-ico{width:30%; margin-top:5.5cqw; color:var(--tint); flex:none;}
+  .crystal-ico svg{width:100%; height:auto; display:block;}
+  .crystal-name{
+    margin-top:6cqw; font:600 9cqw/1 var(--font-display); text-transform:uppercase; letter-spacing:.03em;
+    color:#fff; text-wrap:balance; overflow-wrap:anywhere;
+  }
+  .crystal-rule{width:22%; height:1px; flex:none; margin-top:4cqw; background:color-mix(in srgb, var(--tint) 60%, transparent);}
+  .crystal-txt{margin-top:4cqw; padding-inline:3%; font-size:6.3cqw; font-weight:500; line-height:1.25; color:var(--text); text-wrap:balance;}
+  /* lege plek / lege kluis / "kluis vol": gestippeld of zilver, met uitleg in het midden */
+  .crystal--empty .crystal-shape{filter:none;}
+  .crystal-layer--empty{justify-content:center;}
+  .crystal-layer--empty .crystal-ico{margin-top:0; width:24%; opacity:.75;}
+  .crystal-layer--empty .crystal-name{font-size:8.5cqw; color:var(--text);}
+  .crystal-layer--empty .crystal-txt{color:var(--text-dim);}
+  /* klein (de plekjes in de kluis): alleen het icoon */
+  .crystal--sm .crystal-when, .crystal--sm .crystal-txt, .crystal--sm .crystal-cat,
+  .crystal--sm .crystal-rule, .crystal--sm .crystal-name{display:none;}
+  .crystal--sm .crystal-layer{justify-content:center; inset:14% 12%;}
+  .crystal--sm .crystal-ico{width:58%; margin-top:0;}
+  .crystal--sm .crystal-shape{filter:none;}
+  .crystal.is-locked{opacity:.4; filter:saturate(.3);}
+  /* "Nieuw" tot je erop klikt */
+  .crystal.is-new::after{
+    content:"Nieuw"; position:absolute; top:-8px; left:50%; transform:translateX(-50%); pointer-events:none;
+    font:700 8px/1 var(--font-mono); letter-spacing:.08em; text-transform:uppercase; white-space:nowrap;
+    color:var(--hull); background:var(--tint); padding:2px 4px; box-shadow:0 0 8px var(--tint);
+  }
+  .crystal.is-landing{animation:crystalThump .45s cubic-bezier(.3,1.8,.5,1);}
+  @keyframes crystalThump{0%{transform:scale(1.35);} 100%{transform:none;}}
+  /* Alleen het GEKOZEN kristal in de kluis pulst — zelfde ritme en sterkte als de dobbelknop
+     (axPulseBtn: 1,9 s), maar als gloed die de zeshoek volgt. Staat in PULSE_ANIMATIONS
+     (97-solo.js), dus loopt in de pas met de andere pulsen. */
+  @keyframes crystalPulse{
+    0%,100%{filter:drop-shadow(0 0 1.5px var(--tint)) drop-shadow(0 0 14px color-mix(in srgb, var(--tint) 60%, transparent));}
+    50%{filter:drop-shadow(0 0 1.5px color-mix(in srgb, var(--tint) 10%, transparent)) drop-shadow(0 0 0 transparent);}
+  }
+  .crystal-rail .crystal.is-picked .crystal-shape{animation:crystalPulse 1.9s ease-in-out infinite;}
+  #tabWalk.walk-is-paused .crystal-rail .crystal.is-picked .crystal-shape{animation-play-state:paused;}
+
+  /* ---------- de kluis in de zijkolom ---------- */
+  /* Liggend, zodat hij in de zijkolom past (die is even hoog als het bord, en het energievak
+     neemt al 286px): links het gekozen kristal in z'n geheel, rechts de drie plekken, de reden
+     en de knoppen. De reden heeft een vaste hoogte van 3 regels, zodat de knoppen nooit
+     verspringen. */
+  .crystal-vault{
+    display:grid; grid-template-columns:auto minmax(0,1fr); gap:12px; align-items:center;
+    border:1px solid var(--line-dim); border-radius:6px; padding:10px 12px 10px 10px;
+    transition:box-shadow 1.2s;
+  }
+  .crystal-vault[hidden]{display:none !important;}
+  /* altijd onderaan de zijkolom, zodat hij niet verspringt als het energievak erboven krimpt */
+  #walkCardVault{margin-top:auto;}
+  .crystal-vault-sel{display:none;}
+  /* Compact (één regel) zolang het energievak knoppen toont: vóór het dobbelen, of een richting/
+     keuze van een energie-actie. Anders past de kolom niet (gemeten: dobbelen 162 + energie 286 +
+     volle kluis 231 = te hoog voor een Full-HD-scherm). Na het dobbelen, als je je kristallen
+     echt gebruikt, is het grote kristal er weer. */
+  .walk-side-stack:has(#walkSoloActions:not(:empty)) .crystal-vault{grid-template-columns:minmax(0,1fr); padding:5px 10px;}
+  .walk-side-stack:has(#walkSoloActions:not(:empty)) .crystal-vault-focus,
+  .walk-side-stack:has(#walkSoloActions:not(:empty)) .crystal-vault-head,
+  .walk-side-stack:has(#walkSoloActions:not(:empty)) #btnCardDiscard{display:none;}
+  .walk-side-stack:has(#walkSoloActions:not(:empty)) .crystal-vault-side{display:grid; grid-template-columns:auto minmax(0,1fr) auto; align-items:center; gap:10px;}
+  .walk-side-stack:has(#walkSoloActions:not(:empty)) .crystal-rail{padding-top:4px; gap:5px;}
+  .walk-side-stack:has(#walkSoloActions:not(:empty)) .crystal-rail .crystal{--w:31px;}
+  .walk-side-stack:has(#walkSoloActions:not(:empty)) .crystal-vault-why{height:calc(2 * 1.35em); -webkit-line-clamp:2; line-clamp:2; font-size:11.5px;}
+  .walk-side-stack:has(#walkSoloActions:not(:empty)) .crystal-vault-sel{display:block; color:#fff; font-family:var(--font-display); text-transform:uppercase; letter-spacing:.03em; font-size:13px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+  .walk-side-stack:has(#walkSoloActions:not(:empty)) .crystal-vault-why b{display:inline;}
+  .walk-side-stack:has(#walkSoloActions:not(:empty)) .crystal-vault-btns button{width:auto; padding-inline:12px;}
+  /* tijdens een vervolgkeuze (doelwit, richting, Blinde Vlek) is het kristal al gebruikt: dan
+     staat die keuze op deze plek, anders past de kolom niet meer */
+  .walk-side-stack:has(.walk-card-actions:not(:empty)) .crystal-vault{display:none;}
+  .crystal-vault-focus .crystal{--w:144px;}
+  .crystal-vault-focus .crystal-shape{filter:none;}
+  .crystal-vault-focus .crystal-when, .crystal-vault-focus .crystal-cat{font-size:max(7px, 4.4cqw);}
+  .crystal-vault-focus .crystal-txt{font-size:max(9.5px, 6.3cqw);}
+  .crystal-vault-focus .crystal.is-locked{opacity:.62; filter:saturate(.45);}
+  .crystal-vault-focus.is-swap .crystal{animation:crystalSwap .35s cubic-bezier(.2,1.4,.4,1);}
+  @keyframes crystalSwap{from{transform:scale(.88); opacity:.2;} to{transform:none; opacity:1;}}
+  .crystal-vault-side{display:flex; flex-direction:column; gap:8px; min-width:0; align-self:stretch; justify-content:center;}
+  .crystal-vault-head{
+    display:flex; justify-content:space-between; align-items:baseline; gap:6px;
+    font:700 10px/1 var(--font-mono); letter-spacing:.14em; text-transform:uppercase; color:var(--text-dim);
+  }
+  .crystal-vault-head b{color:var(--actioncell); letter-spacing:.04em; font-variant-numeric:tabular-nums;}
+  .crystal-rail{display:flex; gap:6px; padding-top:6px;}
+  .crystal-rail .crystal{--w:36px; transition:transform .15s;}
+  .crystal-rail button.crystal{cursor:pointer;}
+  .crystal-rail button.crystal:hover{transform:translateY(-2px);}
+  .crystal-rail button.crystal:focus-visible{outline:2px solid #fff; outline-offset:3px;}
+  .crystal-vault-why{
+    margin:0; font-size:12px; line-height:1.35; height:calc(3 * 1.35em); color:var(--text-dim);
+    overflow:hidden; display:-webkit-box; -webkit-box-orient:vertical; -webkit-line-clamp:3; line-clamp:3;
+  }
+  .crystal-vault-why b{color:var(--start);}
+  .crystal-vault-why.is-no b{color:var(--danger);}
+  .crystal-vault-btns{display:flex; flex-direction:column; gap:6px;}
+  .crystal-vault-btns button{width:100%; margin:0;}
+  .crystal-vault.is-glow{box-shadow:0 0 0 1px var(--actioncell), 0 0 24px color-mix(in srgb, var(--actioncell) 40%, transparent); transition:box-shadow .3s;}
+  .crystal-vault.is-full{
+    animation:crystalVaultShake .5s;
+    box-shadow:0 0 0 1px var(--danger), 0 0 24px color-mix(in srgb, var(--danger) 40%, transparent); transition:box-shadow .2s;
+  }
+  .crystal-vault.is-full .crystal-vault-head b{color:var(--danger);}
+  @keyframes crystalVaultShake{15%{translate:-6px 0;} 35%{translate:6px 0;} 55%{translate:-4px 0;} 75%{translate:3px 0;}}
+
+  /* ---------- zeshoekjes op de spelerskaartjes ---------- */
+  .crystal-pips{display:inline-flex; gap:3px; align-items:center; height:18px; vertical-align:middle;}
+  .crystal-pip{width:11px; display:block; color:var(--line);}
+  .crystal-pip svg{display:block; width:100%; height:auto; fill:none; stroke:currentColor; stroke-width:24;}
+  .crystal-pip.on{color:var(--tint, var(--crystal-anon));}
+  .crystal-pip.on svg{fill:currentColor; fill-opacity:.4;}
+  .crystal-pip.on.anon{--tint:var(--crystal-anon);}
+  .crystal-pip.is-landing{animation:crystalPipIn .6s cubic-bezier(.3,1.8,.5,1);}
+  @keyframes crystalPipIn{0%{transform:scale(2.4); filter:drop-shadow(0 0 6px #fff);} 100%{transform:none;}}
+
+  /* ---------- kristalvakje op het bord: een zeshoekje binnen het vierkante vakje ---------- */
+  .swatch-crystal{background:var(--actioncell); clip-path:polygon(50% 1.4%,98% 21.4%,98% 78.6%,50% 98.6%,2% 78.6%,2% 21.4%); width:11px !important; border-radius:0 !important;}
+
+  /* ---------- animaties (vast over de pagina heen) ---------- */
+  .crystal-flyer{position:fixed; left:0; top:0; z-index:300; pointer-events:none; --w:200px; transform-origin:50% 50%; will-change:transform;}
+  .crystal-flyer .crystal-shape{filter:drop-shadow(0 0 14px var(--tint)) drop-shadow(0 0 34px color-mix(in srgb, var(--tint) 55%, transparent));}
+  .crystal-flyer .crystal-layer > *{transition:opacity .25s;}
+  .crystal-flyer.is-flying .crystal-when, .crystal-flyer.is-flying .crystal-txt,
+  .crystal-flyer.is-flying .crystal-cat, .crystal-flyer.is-flying .crystal-rule,
+  .crystal-flyer.is-flying .crystal-name{opacity:0;}
+  .crystal-flyer.is-cracking .crystal-shape{filter:drop-shadow(0 0 10px #fff) drop-shadow(0 0 30px var(--tint));}
+  .crystal-flyer-label{
+    position:fixed; left:0; top:0; z-index:299; pointer-events:none; opacity:0; transition:opacity .25s;
+    font:700 12px/1 var(--font-mono); letter-spacing:.2em; text-transform:uppercase; white-space:nowrap;
+    color:var(--tint); text-shadow:0 0 12px var(--tint);
+  }
+  .crystal-burst{
+    position:fixed; z-index:298; pointer-events:none; width:10px; height:12px; margin:-6px 0 0 -5px;
+    background:var(--tint); clip-path:polygon(50% 0,100% 25%,100% 75%,50% 100%,0 75%,0 25%);
+    animation:crystalBurst .7s ease-out forwards;
+  }
+  .crystal-burst.is-small{width:8px; height:10px; margin:-5px 0 0 -4px; animation:crystalBurstSm .55s ease-out forwards;}
+  @keyframes crystalBurst{from{transform:scale(1); opacity:.6;} to{transform:scale(16); opacity:0;}}
+  @keyframes crystalBurstSm{from{transform:scale(1); opacity:.35;} to{transform:scale(7); opacity:0;}}
+  .crystal-spark{
+    position:fixed; z-index:299; pointer-events:none; width:9px; height:10px; margin:-5px 0 0 -4.5px;
+    background:var(--tint); clip-path:polygon(50% 0,100% 25%,100% 75%,50% 100%,0 75%,0 25%);
+    animation:crystalSpark .6s ease-out forwards;
+  }
+  .crystal-spark.is-small{width:5px; height:6px; margin:-3px 0 0 -2.5px; animation-duration:.45s;}
+  @keyframes crystalSpark{to{transform:translate(var(--dx), var(--dy)) scale(.1) rotate(120deg); opacity:0;}}
+  .crystal-shard{
+    position:fixed; z-index:299; pointer-events:none; width:200px; height:290px;
+    background:linear-gradient(160deg, color-mix(in srgb, var(--tint) 55%, #fff), var(--tint) 45%, color-mix(in srgb, var(--tint) 35%, #0d1218));
+  }
+  /* het anonieme kristal van een ander: zilver, geen icoon, één glinstering */
+  .crystal-anon{position:fixed; left:0; top:0; z-index:300; pointer-events:none; aspect-ratio:200/290; --tint:var(--crystal-anon); will-change:transform;}
+  .crystal-anon .crystal-shape{color:var(--crystal-anon); filter:drop-shadow(0 0 5px color-mix(in srgb, var(--crystal-anon) 60%, transparent));}
+  .crystal-anon::after{
+    content:""; position:absolute; inset:0; opacity:0;
+    clip-path:polygon(50% 1.4%,98% 21.4%,98% 78.6%,50% 98.6%,2% 78.6%,2% 21.4%);
+    background:linear-gradient(115deg, transparent 35%, rgba(255,255,255,.85) 50%, transparent 65%);
+    background-size:300% 100%; background-position:130% 0;
+  }
+  .crystal-anon.is-shine::after{animation:crystalSheen .55s ease-out forwards;}
+  @keyframes crystalSheen{0%{background-position:130% 0; opacity:1;} 100%{background-position:-30% 0; opacity:1;}}
+
+  /* ---------- tabblad Speelkaarten: de kristallen in de vitrine ---------- */
+  .crystal-shelf .card-show-face{display:flex; justify-content:center; border-radius:0;}
+  .crystal-shelf .card-show-face .crystal{--w:100%;}
+  .crystal-shelf .card-show:hover .crystal-shape{filter:drop-shadow(0 0 14px var(--tint));}
+  .crystal-shelf .card-show-cap{min-height:0;}
+  .cards-zoom-face.is-crystal{width:min(300px, 70vw, calc((100vh - 190px) * 200 / 290));}
+  .cards-zoom-face.is-crystal .crystal{--w:100%;}
+
+  @media (prefers-reduced-motion: reduce){
+    .crystal-rail .crystal.is-picked .crystal-shape, .crystal.is-landing,
+    .crystal-vault-focus.is-swap .crystal, .crystal-vault.is-full, .crystal-pip.is-landing{animation:none;}
+  }

@@ -191,6 +191,9 @@ const REORDER_PEEK_THRESHOLD = 12;
 // Vanaf 53% van de loopbare vakjes kun je in de beste richting echt 8 ver; gemiddeld levert een
 // ingezette sprint 4,5 vakjes richting je doel op.
 const GRAVITY_DASH_STEPS = 8;
+// hoe ver Duwstoot een tegenstander wegduwt (zie shoveDestination); staat hier omdat de tekst op
+// het kristal (ACTION_CARDS.shove.text) hem bij het laden al nodig heeft
+const SHOVE_DISTANCE = 4;
 
 // `hint` staat OP het kaartje en moet daarom kort blijven — het kaartje is 108px breed en
 // een langere zin duwde de titel er eerder letterlijk uit. De strategische toelichting hoort
@@ -374,27 +377,47 @@ function energyStrategyName(id){
 // afgaat als je route daadwerkelijk geblokkeerd raakt). Prioriteitspas heeft geen meetbaar effect in
 // deze bot-simulatie (het is pure informatie voor een menselijke speler) en wordt daarom nooit
 // actief gespeeld door bots — een mens kan 'm wel altijd zelf spelen of afleggen.
+// Op het scherm heten deze "kristallen" (zie CLAUDE.md); de code-namen bleven ACTION_CARDS e.d.
+// Per kristal:
+//   name — naam op het kristal en in het log
+//   hint — korte omschrijving voor in logregels ("… — hint.")
+//   text — de zin OP het kristal: hooguit ±8 woorden, met hoofdletter, zonder punt
+//   when — WANNEER je hem mag gebruiken. Dit is de énige bron: het label bovenin het kristal
+//          (CRYSTAL_WHEN) én de spelregel in soloCardBlockReason (97-solo.js) lezen allebei dit
+//          veld, zodat tekst en regel nooit meer uit elkaar lopen (dat gebeurde met de oude
+//          Canva-plaatjes wel: "10 stappen" op de kaart, 8 in het spel).
+//          'pre'   alleen vóór het dobbelen
+//          'any'   vóór het dobbelen of tijdens je zet
+//          'start' na het gooien, zolang je nog geen stap hebt gezet
+//          'post'  tijdens je zet (na het gooien)
+//          'auto'  nooit zelf; wordt aangeboden als het kan (Blinde Vlek)
+// De soort (kleur) staat in ACTION_CARD_TINTS hieronder, het icoon in ACTION_CARD_ICONS.
+// Nieuw kristal? Eén regel hier + een tint + een icoon — vorm, kluis, vitrine en animaties volgen vanzelf.
 const ACTION_CARDS = {
   // gratis versie van de energie-actie Zwaartekracht-laarzen (zelfde paar als Stuwlading/Stuwstoot)
-  boots:     { name: 'Zwaartekracht-laarzen', hint: `gratis: eerst ${GRAVITY_DASH_STEPS} vakjes rechtdoor, dan gooien` },
-  ration:    { name: 'Noodrantsoen',          hint: '+3 energie direct' },
-  short:     { name: 'Kortsluiting',          hint: 'tegenstander mist zijn energiesteen' },
-  blind:     { name: 'Blinde Vlek',           hint: 'loop door tegenstanders heen — eindig er niet op' },
-  recal:     { name: 'Herkalibratie',         hint: 'gratis wissel met de volgende opdracht' },
-  shove:     { name: 'Duwstoot',              hint: 'duw een naastgelegen tegenstander weg' },
-  boostcell: { name: 'Stuwlading',            hint: 'gratis derde loopsteen' },
-  condenser: { name: 'Condensator',           hint: 'je energiesteen telt in je volgende beurt dubbel' },
-  reroll:    { name: 'Koerscorrectie',        hint: 'gooi je worp opnieuw' },
-  scan:      { name: 'Prioriteitspas',        hint: 'bekijk de volgende opdracht van een tegenstander' },
-  lockdown:  { name: 'Vergrendeling',         hint: 'tegenstander mist energie- én kristalactie' },
-  outage:    { name: 'Stroomonderbreking',    hint: 'tegenstander gooit 2 stappen minder' },
-  barrier:   { name: 'Noodbarrière',          hint: 'blokkeert tijdelijk een vakje naast een tegenstander' },
-  recoil:    { name: 'Terugtrekbevel',        hint: 'duwt een tegenstander tot 2 vakjes terug' },
-  jam:       { name: 'Signaalstoring',        hint: 'saboteert de eerstvolgende doelwissel van een tegenstander' },
-  trade:     { name: 'Kristalruil',           hint: 'ruil een kristal met de aflegstapel' },
-  fastlane:  { name: 'Snelroute',             hint: 'geen-U-turn-regel geldt deze beurt niet voor jou' },
-  peek:      { name: 'Vooruitblik',           hint: 'bekijk en herschik de bovenste 3 kristallen van de stapel' },
+  boots:     { name: 'Zwaartekracht-laarzen', when: 'pre',   text: `Sprint ${GRAVITY_DASH_STEPS} vakjes rechtdoor, dan gooi je`, hint: `gratis: eerst ${GRAVITY_DASH_STEPS} vakjes rechtdoor, dan gooien` },
+  ration:    { name: 'Noodrantsoen',          when: 'any',   text: 'Krijg direct 3 energie',                  hint: '+3 energie direct' },
+  short:     { name: 'Kortsluiting',          when: 'post',  text: 'Een tegenstander krijgt geen energie',    hint: 'tegenstander mist zijn energiesteen' },
+  blind:     { name: 'Blinde Vlek',           when: 'auto',  text: 'Loop door spelers heen, maar stop er niet op', hint: 'loop door tegenstanders heen — eindig er niet op' },
+  recal:     { name: 'Herkalibratie',         when: 'post',  text: 'Wissel gratis met je volgende opdracht',  hint: 'gratis wissel met de volgende opdracht' },
+  shove:     { name: 'Duwstoot',              when: 'post',  text: `Duw een speler naast je ${SHOVE_DISTANCE} vakjes weg`, hint: 'duw een naastgelegen tegenstander weg' },
+  boostcell: { name: 'Stuwlading',            when: 'any',   text: 'Gooi deze beurt met 3 loopstenen',        hint: 'gratis derde loopsteen' },
+  condenser: { name: 'Condensator',           when: 'post',  text: 'Volgende beurt telt je energiesteen dubbel', hint: 'je energiesteen telt in je volgende beurt dubbel' },
+  reroll:    { name: 'Koerscorrectie',        when: 'start', text: 'Gooi je worp opnieuw',                    hint: 'gooi je worp opnieuw' },
+  scan:      { name: 'Prioriteitspas',        when: 'post',  text: 'Bekijk de volgende opdracht van een ander', hint: 'bekijk de volgende opdracht van een tegenstander' },
+  lockdown:  { name: 'Vergrendeling',         when: 'post',  text: 'Een tegenstander mag niets inzetten',     hint: 'tegenstander mist energie- én kristalactie' },
+  outage:    { name: 'Stroomonderbreking',    when: 'post',  text: 'Een tegenstander loopt 2 stappen minder', hint: 'tegenstander gooit 2 stappen minder' },
+  barrier:   { name: 'Noodbarrière',          when: 'post',  text: 'Blokkeer een vakje naast een tegenstander', hint: 'blokkeert tijdelijk een vakje naast een tegenstander' },
+  recoil:    { name: 'Terugtrekbevel',        when: 'post',  text: 'Duw een speler naast je 2 vakjes terug',  hint: 'duwt een tegenstander tot 2 vakjes terug' },
+  jam:       { name: 'Signaalstoring',        when: 'post',  text: 'Blokkeer de volgende doelwissel van een ander', hint: 'saboteert de eerstvolgende doelwissel van een tegenstander' },
+  trade:     { name: 'Kristalruil',           when: 'post',  text: 'Ruil een kristal met de aflegstapel',     hint: 'ruil een kristal met de aflegstapel' },
+  fastlane:  { name: 'Snelroute',             when: 'start', text: 'Deze beurt mag je omkeren',               hint: 'geen-U-turn-regel geldt deze beurt niet voor jou' },
+  peek:      { name: 'Vooruitblik',           when: 'post',  text: 'Bekijk en herschik de bovenste 3 kristallen', hint: 'bekijk en herschik de bovenste 3 kristallen van de stapel' },
 };
+// label bovenin het kristal, per `when`
+const CRYSTAL_WHEN = { pre: 'Vóór je gooit', any: 'Vóór of na', start: 'Direct na worp', post: 'Na je worp', auto: 'Vanzelf' };
+// soort onderin het kristal, per ACTION_CARD_TINTS-waarde
+const CRYSTAL_CATS = { amber: 'Beweging', start: 'Energie', quest: 'Nut', danger: 'Verstoring', dim: 'Informatie' };
 const ACTION_CARD_IDS = Object.keys(ACTION_CARDS);
 const ACTION_CARD_HAND_MAX = 3;
 
@@ -461,42 +484,8 @@ const ACTION_CARD_ICONS = {
     <path d="M12 12 Q24 2 36 12 Q24 22 12 12 Z"/><circle cx="24" cy="12" r="3.4"/>`,
 };
 
-// Bouwt één kaart: `size` is 'sm' (badge in de standenbalk) of 'lg' (jouw hand / getrokken-
-// kaart in de solo-modus). `interactive` voegt een button-rol toe voor de solo-modus.
-function renderActionCardFace(id, { size = 'lg', disabled = false, interactive = false, titleOverride = null } = {}){
-  const act = ACTION_CARDS[id];
-  const tint = ACTION_CARD_TINTS[id];
-  const tag = interactive ? 'button' : 'div';
-  const attrs = interactive ? `type="button" data-card="${id}"${disabled ? ' disabled' : ''}` : '';
-  const title = titleOverride || `${act.name} — ${act.hint}`;
-  // beloningskaarten kosten nooit energie — vandaar altijd "gratis", niet af te lezen uit
-  // een costveld (dat hebben ze niet, in tegenstelling tot ENERGY_ACTIONS)
-  return `<${tag} class="action-card action-card--${size} action-card--${tint}${disabled ? ' is-disabled' : ''}" ${attrs} title="${title}">
-    <span class="action-card-cost">gratis</span>
-    <svg class="action-card-icon" viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round">${ACTION_CARD_ICONS[id]}</svg>
-    <span class="action-card-name">${act.name}</span>
-    ${size === 'lg' ? `<span class="action-card-hint">${act.hint}</span>` : ''}
-  </${tag}>`;
-}
-
-// Eén kaart op ware kaartverhouding voor het kaartvenster. Bestaat er een fotokaart uit het
-// Canva-ontwerp (src/assets/cards/<id>.webp), dan wordt die getoond; zo niet, dan tekent deze
-// functie een kaart in dezelfde indeling na met het inline SVG-icoon. Zo blijft het venster
-// werken voor kaarten waarvoor nog geen ontwerp gemaakt is.
-function renderPrintedCardFace(id){
-  const img = ACTION_CARD_IMAGES[id];
-  if (img) return `<img src="${img}" alt="${ACTION_CARDS[id].name}">`;
-  const act = ACTION_CARDS[id];
-  const cat = { amber: 'BEWEGING', start: 'ENERGIE', danger: 'VERSTORING', quest: 'NUT', dim: 'INFORMATIE' };
-  return `<span class="card-drawn">
-    <span class="card-drawn-kicker">KRISTAL</span>
-    <span class="card-drawn-title">${act.name}</span>
-    <svg class="card-drawn-icon" viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round">${ACTION_CARD_ICONS[id]}</svg>
-    <span class="card-drawn-rule"></span>
-    <span class="card-drawn-text">${act.hint}</span>
-    <span class="card-drawn-cat">${cat[ACTION_CARD_TINTS[id]] || ''}</span>
-  </span>`;
-}
+// Het kristal zelf (zeshoek met moment, icoon, naam, uitleg en soort) tekent renderCrystal() in
+// 96c-crystals.js — één tekenfunctie voor de kluis, de vitrine (Speelkaarten) en de animaties.
 
 function buildActionDeck(rand){
   const cards = [];
@@ -528,6 +517,11 @@ function drawActionCellReward(player, deck, rand){
 function pathHasActionCell(graph, path){
   for (let i = 1; i < path.length; i++) if (graph.actionCells.has(path[i])) return true;
   return false;
+}
+// welk kristalvakje werd als eerste betreden (voor de animatie: daar komt het kristal vandaan)
+function pathFirstActionCell(graph, path){
+  for (let i = 1; i < path.length; i++) if (graph.actionCells.has(path[i])) return path[i];
+  return undefined;
 }
 // verwijdert een kaart uit de hand van een speler en legt hem af. `extra` is optioneel —
 // "stap voor stap" telt niets bij, alleen de batch-simulatie.
@@ -746,7 +740,7 @@ function pickShortCircuitTarget(players, selfIdx, rand){
 // Duwstoot duwt een AANGRENZENDE tegenstander SHOVE_DISTANCE vakjes ver in een WILLEKEURIGE
 // richting — eerder stoppend bij een muur of een andere speler. Je kiest dus alleen wie je
 // duwt, niet waarheen: waar hij belandt is een gok.
-const SHOVE_DISTANCE = 4;
+// (SHOVE_DISTANCE staat bovenin, bij GRAVITY_DASH_STEPS: ACTION_CARDS gebruikt hem al bij het laden)
 // Waar komt `target` terecht? Geeft { key, steps, dir } terug, of null als hij in geen enkele
 // richting ook maar één stap kan zetten (helemaal klem).
 // Er wordt geloot onder de richtingen waarin hij DAADWERKELIJK kan bewegen: een richting

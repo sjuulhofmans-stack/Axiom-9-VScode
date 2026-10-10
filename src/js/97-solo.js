@@ -14,12 +14,10 @@
 const WALK_SOLO_NO_OPPONENT_CARDS = ['short', 'blind', 'shove', 'scan',
   'lockdown', 'outage', 'barrier', 'recoil', 'jam'];
 
-// Noodrantsoen (+3 energie) en Stuwlading (gratis 3e loopsteen) mag je OOK al vóór het
-// dobbelen spelen, naast hun bestaande moment tijdens het lopen — net als een energie-actie
-// (gebruikerswens). Zwaartekracht-laarzen (de gratis versie van de energie-actie: eerst
-// rechtdoor, dan gooien) mag je ALLEEN vóór het dobbelen spelen. Alle andere kaarten blijven
-// alleen tijdens 'moving' speelbaar; zie soloCardBlockReason/soloPlayCard hieronder.
-const SOLO_PRE_ROLL_CARDS = ['ration', 'boostcell', 'boots'];
+// Welke kristallen al vóór het dobbelen mogen, volgt uit ACTION_CARDS[id].when (95-simulate.js):
+// 'pre' (alleen vóór het dobbelen: Zwaartekracht-laarzen) en 'any' (vóór het dobbelen óf tijdens
+// je zet: Noodrantsoen, Stuwlading). Al het andere pas na de worp — zie soloCardBlockReason.
+const SOLO_PRE_ROLL_CARDS = ACTION_CARD_IDS.filter(id => ACTION_CARDS[id].when === 'pre' || ACTION_CARDS[id].when === 'any');
 
 const walkModeAutoBtn = document.getElementById('walkModeAuto');
 const walkModeSoloBtn = document.getElementById('walkModeSolo');
@@ -53,18 +51,11 @@ const btnWalkSoloSkip = document.getElementById('btnWalkSoloSkip');
 const walkEnergyOverviewEl = document.getElementById('walkEnergyOverview');
 const walkEnergyValueEl = document.getElementById('walkEnergyValue');
 const walkEnergyCellsEl = document.getElementById('walkEnergyCells');
+// de kristalkluis (zie crystalRenderVault in 96c-crystals.js)
 const walkCardVaultEl = document.getElementById('walkCardVault');
-const walkCardVaultThumbsEl = document.getElementById('walkCardVaultThumbs');
-const walkCardVaultCountEl = document.getElementById('walkCardVaultCount');
-const walkCardVaultHintEl = document.getElementById('walkCardVaultHint');
 const walkCardActionsEl = document.getElementById('walkCardActions');
-const cardOverlayEl = document.getElementById('cardOverlay');
-const cardGridEl = document.getElementById('cardGrid');
-const cardPanelHintEl = document.getElementById('cardPanelHint');
-const cardPanelClose = document.getElementById('cardPanelClose');
 const btnCardPlay = document.getElementById('btnCardPlay');
 const btnCardDiscard = document.getElementById('btnCardDiscard');
-const btnCardCancel = document.getElementById('btnCardCancel');
 const walkStepCounterEl = document.getElementById('walkStepCounter');
 const walkStepDoneEl = document.getElementById('walkStepDone');
 const walkStepLeftEl = document.getElementById('walkStepLeft');
@@ -92,7 +83,8 @@ const btnWalkEndgameShowResult = document.getElementById('btnWalkEndgameShowResu
 const PULSE_DURATION_MS = 1900;   // moet gelijk blijven aan axPulse/walkRoomPulse in styles.css
 // ecellSpend: het knipperen van de energiecellen die een actie gaat kosten — ook op één ritme,
 // anders knipperen net bijgekomen cellen uit de pas met de rest
-const PULSE_ANIMATIONS = new Set(['axPulse', 'axPulseBtn', 'walkRoomPulse', 'ecellSpend']);
+// crystalPulse: het gekozen kristal in de kluis (zeshoek-versie van axPulseBtn)
+const PULSE_ANIMATIONS = new Set(['axPulse', 'axPulseBtn', 'walkRoomPulse', 'ecellSpend', 'crystalPulse']);
 let pulseSyncQueued = false;
 function syncAllPulses(){
   pulseSyncQueued = false;
@@ -814,18 +806,21 @@ function soloDiscardCard(id){
 function soloCardBlockReason(id){
   const p = solo();
   if (!p) return 'geen actieve speler';
-  // Noodrantsoen/Stuwlading mogen ook al vóór het dobbelen (choose-action) — net als een
-  // energie-actie. Alle andere kaarten blijven alleen tijdens het lopen speelbaar.
-  const preRollOk = soloPhase === 'choose-action' && SOLO_PRE_ROLL_CARDS.includes(id);
-  if (id === 'boots' && soloPhase !== 'choose-action') return 'alleen vóór het dobbelen';
-  if (soloPhase !== 'moving' && !preRollOk) return 'kan pas nadat je hebt gedobbeld';
+  // Het moment komt uit ACTION_CARDS[id].when — dezelfde bron als het label bovenin het kristal
+  // (CRYSTAL_WHEN), zodat wat erop staat en wat het spel toestaat nooit uit elkaar lopen.
+  const when = ACTION_CARDS[id].when;
+  // Blinde Vlek is puur reactief: die krijg je vanzelf aangeboden op het moment dat je zet
+  // daadwerkelijk op een tegenstander stukloopt (zie soloOfferBlindSpot)
+  if (when === 'auto') return 'wordt vanzelf aangeboden zodra je route geblokkeerd raakt';
+  if (when === 'pre' && soloPhase !== 'choose-action') return 'alleen vóór het dobbelen';
+  if (when !== 'pre' && soloPhase !== 'moving' && !(when === 'any' && soloPhase === 'choose-action')) return 'kan pas nadat je hebt gedobbeld';
+  // 'start': na het gooien, maar alleen zolang je nog geen stap hebt gezet (Koerscorrectie
+  // gooit je worp opnieuw, Snelroute grijpt op je eigen worp in)
+  if (when === 'start' && soloMove && soloMove.stepsLeft !== soloMove.roll) return 'je bent al begonnen met lopen';
   if (soloCardActionUsed()) return 'je hebt deze beurt al een kristal gebruikt';
   // één sprint per beurt: de kaart en de energie-actie Zwaartekracht-laarzen sluiten elkaar uit
   if (id === 'boots' && soloUsedBoots) return 'je hebt deze beurt al gesprint';
   if (id === 'boots' && !soloDashOptions().length) return 'in geen enkele richting ruimte';
-  // Blinde Vlek is puur reactief: die krijg je vanzelf aangeboden op het moment dat je zet
-  // daadwerkelijk op een tegenstander stukloopt (zie soloOfferBlindSpot)
-  if (id === 'blind') return 'wordt vanzelf aangeboden zodra je route geblokkeerd raakt';
   if (soloPlayers.length === 1 && WALK_SOLO_NO_OPPONENT_CARDS.includes(id)) return 'geen tegenstanders in dit potje';
   if (id === 'shove' && !soloShoveTargets().length) return 'geen tegenstander naast je om weg te duwen';
   if ((id === 'scan' || id === 'short') && !soloOthers().length) return 'geen tegenstanders meer over';
@@ -836,8 +831,6 @@ function soloCardBlockReason(id){
   // (zelfde regel als in 95-simulate.js/96-walk.js)
   if (id === 'boostcell' && soloUsedEnergyId === 'boost') return 'je hebt deze beurt al Stuwstoot ingezet';
   if (id === 'condenser' && p.condenserPending) return 'er staat al een Condensator klaar';
-  // "Gooi je worp opnieuw" kan alleen zolang je nog geen stap hebt gezet
-  if (id === 'reroll' && soloMove && soloMove.stepsLeft !== soloMove.roll) return 'je bent al begonnen met lopen';
   // de nieuwe hinder-kaarten hebben allemaal een geldig doelwit nodig
   if (SOLO_TARGET_PICKER_LABELS[id] && !soloTargetPickerTargets(id).length){
     if (id === 'recoil') return 'geen tegenstander naast je die net gelopen heeft';
@@ -849,127 +842,66 @@ function soloCardBlockReason(id){
   if (id === 'jam' && soloOthers().every(q => q.reorderBlocked)) return 'iedereen is al gestoord';
   if (id === 'trade' && !soloDeck.discard.length) return 'de aflegstapel is leeg';
   if (id === 'peek' && !soloDeck.draw.length) return 'de trekstapel is leeg';
-  // Snelroute grijpt op je eigen worp in, dus alleen zolang je nog niet gelopen hebt
-  if (id === 'fastlane' && soloMove && soloMove.stepsLeft !== soloMove.roll) return 'je bent al begonnen met lopen';
   return null;
 }
 // afleggen mag met ELKE kaart in de hand (het kaart-slot is het enige dat telt, niet of de
 // kaart nu nuttig is) — maar wel pas ná de worp, net als spelen
 function soloCanDiscardNow(){ return soloPhase === 'moving' && !soloCardActionUsed(); }
 
-// ---------- de kaartkluis onder de dobbelstenen ----------
+// ---------- de kristalkluis (zijkolom) ----------
+// Altijd open zolang er een potje loopt en je meedoet — ook leeg (gestippeld, met uitleg waar je
+// een kristal haalt), en ook tijdens de beurt van een ander (dan gedimd). Het tekenen doet
+// crystalRenderVault (96c-crystals.js); hier alleen: wiens kluis het is en waarom een kristal nu
+// (niet) kan. In multiplayer neemt mpRefreshCardVault (99-multiplayer.js) dit over: daar is "mijn"
+// kluis niet per se die van wie aan zet is.
 function soloRefreshCardVault(){
-  // de kaarten wonen nu in het venster; deze strook is alleen nog voor energie-acties.
-  // walkCardActionsEl (vervolgkeuze van een gespeelde kaart) is een apart vakje bij de
-  // kaartkluis hieronder, maar deelt dezelfde opruim-voorwaarde als vangnet voor het geval een
-  // aanroeper 'm zelf niet al expliciet leegde.
   if (soloPhase === 'moving' || soloPhase === 'rolling'){
     if (walkSoloActionsEl) walkSoloActionsEl.innerHTML = '';
     soloClearCardActionsPanel();
   }
   if (!walkCardVaultEl) return;
-  const p = solo();
-  const cards = p && !p.rank ? p.cards : [];
-  if (!cards.length || soloPhase === 'idle' || soloPhase === 'game-over'){
+  const owner = soloVaultOwner();
+  if (!owner || owner.rank || soloPhase === 'idle' || soloPhase === 'game-over'){
     walkCardVaultEl.hidden = true;
-    if (cardOverlayEl && !cardOverlayEl.hidden) soloCloseCardPanel();
     return;
   }
   walkCardVaultEl.hidden = false;
-  walkCardVaultThumbsEl.innerHTML = cards.map(id => ACTION_CARD_IMAGES[id]
-    ? `<img src="${ACTION_CARD_IMAGES[id]}" alt="${ACTION_CARDS[id].name}">`
-    : `<span class="walk-card-vault-blank action-card--${ACTION_CARD_TINTS[id]}" title="${ACTION_CARDS[id].name}"></span>`).join('');
-  walkCardVaultCountEl.textContent = cards.length === 1 ? '1 kristal' : `${cards.length} kristallen`;
-  const playable = cards.filter(id => !soloCardBlockReason(id)).length;
-  walkCardVaultHintEl.textContent = playable
-    ? `${playable} speelbaar — klik om te bekijken →`
-    : 'geen speelbaar op dit moment — klik om te bekijken →';
-  walkCardVaultEl.classList.toggle('walk-pulse-affordable', playable > 0);
-  if (playable > 0) syncPulse(walkCardVaultEl);
-  if (cardOverlayEl && !cardOverlayEl.hidden) soloRenderCardGrid();
-}
-
-// ---------- het kaartvenster ----------
-let soloSelectedCard = null;
-
-function soloOpenCardPanel(){
-  // solo() ("wie is aan zet") is in multiplayer niet per se "ik" — dit paneel speelt/legt af
-  // via solo(), dus buiten je eigen beurt zou het hier andermans hand tonen. Alleen openen als
-  // het echt mijn beurt is (dan is solo() toch al gelijk aan mezelf, dus de rest hieronder
-  // blijft ongewijzigd bruikbaar); de kaartkluis zelf (mpRefreshCardVault) toont je hand sowieso
-  // altijd, ook buiten je beurt — alleen dit interactieve spelen/afleggen-paneel niet.
-  if (mp.active && mp.phase === 'in-game'){
-    const owner = soloPlayers[soloActiveIdx];
-    if (!owner || owner.peerId !== mp.myPeerId) return;
-  }
-  const p = solo();
-  if (!p || !p.cards.length || !cardOverlayEl) return;
-  soloSelectedCard = null;
-  cardOverlayEl.hidden = false;
-  soloRenderCardGrid();
-}
-function soloCloseCardPanel(){
-  if (!cardOverlayEl) return;
-  cardOverlayEl.hidden = true;
-  soloSelectedCard = null;
-}
-function soloRenderCardGrid(){
-  const p = solo();
-  if (!p || !p.cards.length){ soloCloseCardPanel(); return; }
-  if (soloSelectedCard && !p.cards.includes(soloSelectedCard)) soloSelectedCard = null;
-
-  cardGridEl.innerHTML = p.cards.map(id => {
-    const reason = soloCardBlockReason(id);
-    const cls = `card-pick action-card--${ACTION_CARD_TINTS[id]}`
-      + (soloSelectedCard === id ? ' is-selected' : '')
-      + (reason ? ' is-locked' : '');
-    return `<button type="button" class="${cls}" data-pick="${id}" title="${ACTION_CARDS[id].name} — ${ACTION_CARDS[id].hint}">
-      ${renderPrintedCardFace(id)}
-      ${reason ? `<span class="card-pick-reason">${reason}</span>` : ''}
-    </button>`;
-  }).join('');
-
-  const blocked = soloSelectedCard ? soloCardBlockReason(soloSelectedCard) : 'niets geselecteerd';
-  btnCardPlay.disabled = !!blocked;
-  btnCardDiscard.disabled = !soloSelectedCard || !soloCanDiscardNow();
-  cardPanelHintEl.textContent =
-    soloPhase === 'moving' ? (soloCardActionUsed()
-      ? 'Je hebt deze beurt al een kristal gebruikt.'
-      : 'Kies één kristal. Per beurt mag je er hooguit één gebruiken of afleggen.')
-    : soloPhase === 'choose-action' ? (soloCardActionUsed()
-      ? 'Je hebt deze beurt al een kristal gebruikt.'
-      : 'Vóór het dobbelen kun je alleen Noodrantsoen of Stuwlading spelen — de rest kan pas nadat je hebt gedobbeld. Afleggen kan ook nog niet.')
-    : 'Je kunt pas een kristal gebruiken of afleggen nadat je hebt gedobbeld.';
-}
-if (cardGridEl){
-  cardGridEl.addEventListener('click', (e) => {
-    const btn = e.target.closest('button[data-pick]');
-    if (!btn) return;
-    // ook een niet-speelbare kaart mag je selecteren — afleggen kan namelijk altijd
-    soloSelectedCard = soloSelectedCard === btn.dataset.pick ? null : btn.dataset.pick;
-    soloRenderCardGrid();
+  const mine = owner === solo();
+  crystalRenderVault(owner.cards, {
+    reason: soloCardBlockReason,
+    canDiscard: mine && soloCanDiscardNow(),
+    idle: mine ? null : 'wacht op je beurt',
   });
 }
+// Wiens kluis staat er? Wie aan zet is als dat een mens is; anders (bots aan zet) de enige mens
+// aan dit scherm, zodat je eigen kluis gewoon blijft staan. Met meerdere mensen aan één scherm
+// en een bot aan zet: niemand (geen idee wiens kluis je dan wilt zien).
+function soloVaultOwner(){
+  const p = solo();
+  if (p && p.isHuman) return p;
+  const humans = soloPlayers.filter(q => q.isHuman);
+  return humans.length === 1 ? humans[0] : null;
+}
+function soloVaultCards(){
+  if (mp.active && mp.phase === 'in-game'){ const me = mpMe(); return me ? me.cards : []; }
+  const o = soloVaultOwner();
+  return o ? o.cards : [];
+}
+function soloVaultIsMyTurn(){
+  const p = solo();
+  if (!p) return false;
+  if (mp.active && mp.phase === 'in-game') return p.peerId === mp.myPeerId;
+  return !!p.isHuman;
+}
 if (btnCardPlay) btnCardPlay.addEventListener('click', () => {
-  const id = soloSelectedCard;
-  if (!id || soloCardBlockReason(id)) return;
-  soloCloseCardPanel();          // eerst sluiten: sommige kaarten openen zelf een keuzepaneel
+  const id = crystalSelectedId(soloVaultCards());
+  if (!id || !soloVaultIsMyTurn() || soloCardBlockReason(id)) return;
   soloPlayCard(id);
 });
 if (btnCardDiscard) btnCardDiscard.addEventListener('click', () => {
-  const id = soloSelectedCard;
-  if (!id || !soloCanDiscardNow()) return;
-  soloCloseCardPanel();
+  const id = crystalSelectedId(soloVaultCards());
+  if (!id || !soloVaultIsMyTurn() || !soloCanDiscardNow()) return;
   soloDiscardCard(id);
-});
-if (btnCardCancel) btnCardCancel.addEventListener('click', soloCloseCardPanel);
-if (cardPanelClose) cardPanelClose.addEventListener('click', soloCloseCardPanel);
-if (walkCardVaultEl) walkCardVaultEl.addEventListener('click', soloOpenCardPanel);
-if (cardOverlayEl) cardOverlayEl.addEventListener('click', (e) => {
-  if (e.target === cardOverlayEl) soloCloseCardPanel();   // klik naast het venster sluit het
-});
-document.addEventListener('keydown', (e) => {
-  if (e.key === 'Escape' && cardOverlayEl && !cardOverlayEl.hidden) soloCloseCardPanel();
 });
 
 // ---------- doelwit kiezen: alle kaarten die een tegenstander aanwijzen ----------
@@ -1033,7 +965,6 @@ function soloEnterTargetPicker(cardId){
   // (gebruikersmelding). soloResolveTargetCard verbruikt hem daarom niet nog eens.
   useActionCard(solo(), cardId, soloDeck);
   soloUsedCardId = cardId;
-  if (cardOverlayEl && !cardOverlayEl.hidden) soloCloseCardPanel();
   soloPhase = 'target-pick';
   soloHideStepCounter();
   // deze picker kan nu ook MIDDENIN het lopen geopend worden (kaarten spelen kan tijdens je
@@ -1275,23 +1206,32 @@ function soloUseEnergyAction(id){
 // passeert. `soloGrantActionCellReward` gaat er blind van uit dat de aanroeper al vastgesteld
 // heeft dat er een actiekaartvakje geraakt is — alleen het "al gehad deze beurt"-slot wordt hier
 // nog getoetst. `soloCheckActionCell` is de per-stap variant (mens): checkt zelf één cel.
-function soloGrantActionCellReward(player, isHuman){
+// `key` = het kristalvakje zelf: daar komt het kristal in de animatie vandaan (crystalEvent).
+function soloGrantActionCellReward(player, isHuman, key){
   if (soloActionCellDrawnThisTurn) return;
   soloActionCellDrawnThisTurn = true;
   const reward = drawActionCellReward(player, soloDeck, soloRand);
   if (reward.drawn){
-    const msg = isHuman
-      ? `Je loopt over een kristalvakje en raapt een kristal op: <b>${ACTION_CARDS[reward.drawn].name}</b> — ${ACTION_CARDS[reward.drawn].hint}.`
-      : `${player.name} loopt over een kristalvakje en raapt een kristal op: <b>${ACTION_CARDS[reward.drawn].name}</b> — ${ACTION_CARDS[reward.drawn].hint}.`;
-    walkLog(msg, null, player);
+    const name = soloCrystalSecret(player) ? '' : `: <b>${ACTION_CARDS[reward.drawn].name}</b> — ${ACTION_CARDS[reward.drawn].hint}`;
+    walkLog(isHuman && !mp.active
+      ? `Je loopt over een kristalvakje en raapt een kristal op${name}.`
+      : `${player.name} loopt over een kristalvakje en raapt een kristal op${name}.`, null, player);
+    crystalEvent(player, key, 'gain');
     if (isHuman) soloRefreshCardVault();
   } else if (reward.handFull){
-    walkLog(isHuman ? `Je loopt over een kristalvakje, maar je kluis is al vol.` : `${player.name} loopt over een kristalvakje, maar de kluis is al vol.`, null, player);
+    walkLog(isHuman && !mp.active ? `Je loopt over een kristalvakje, maar je kluis is al vol.` : `${player.name} loopt over een kristalvakje, maar de kluis is al vol.`, null, player);
+    crystalEvent(player, key, 'full');
   }
 }
 function soloCheckActionCell(key, player, isHuman){
   if (soloActionCellDrawnThisTurn || !soloGraph.actionCells.has(key)) return;
-  soloGrantActionCellReward(player, isHuman);
+  soloGrantActionCellReward(player, isHuman, key);
+}
+// Mag de naam van een opgeraapt kristal in het log? Niet bij een bot (je tegenstander) en niet in
+// multiplayer: het log gaat daar naar iedereen, ook "Je ..."-regels van een andere speler. Wat je
+// zelf opraapt zie je toch al groot binnenvliegen in je kluis.
+function soloCrystalSecret(player){
+  return !player.isHuman || mp.active;
 }
 
 // ---------- Zwaartekracht-laarzen: eerst rechtdoor, dan gooien ----------
@@ -1732,11 +1672,13 @@ function soloBankCurrentQuest(){
     const drawn = drawActionCard(soloDeck, soloRand);
     if (drawn){
       p.cards.push(drawn);
-      walkLog(`Je krijgt een kristal: <b>${ACTION_CARDS[drawn].name}</b> — ${ACTION_CARDS[drawn].hint}.`, null, p);
+      walkLog(soloCrystalSecret(p) ? `${p.name} krijgt een kristal.` : `Je krijgt een kristal: <b>${ACTION_CARDS[drawn].name}</b> — ${ACTION_CARDS[drawn].hint}.`, null, p);
+      crystalEvent(p, key, 'gain');
       soloRefreshCardVault();
     }
   } else {
-    walkLog(`Je zou een kristal krijgen, maar je kluis is al vol.`, null, p);
+    walkLog(mp.active ? `${p.name} zou een kristal krijgen, maar de kluis is al vol.` : `Je zou een kristal krijgen, maar je kluis is al vol.`, null, p);
+    crystalEvent(p, key, 'full');
   }
 
   if (p.completed >= SIM_QUESTS_TO_WIN){
@@ -1840,11 +1782,13 @@ function soloFinishTurn(banked){
       const drawn = drawActionCard(soloDeck, soloRand);
       if (drawn){
         p.cards.push(drawn);
-        walkLog(`Je krijgt een kristal: <b>${ACTION_CARDS[drawn].name}</b> — ${ACTION_CARDS[drawn].hint}.`, null, p);
-        soloRefreshCardVault();   // nieuwe kaart meteen in de kluis tonen
+        walkLog(soloCrystalSecret(p) ? `${p.name} krijgt een kristal.` : `Je krijgt een kristal: <b>${ACTION_CARDS[drawn].name}</b> — ${ACTION_CARDS[drawn].hint}.`, null, p);
+        crystalEvent(p, soloTargetKey, 'gain');
+        soloRefreshCardVault();   // nieuw kristal meteen in de kluis tonen
       }
     } else {
-      walkLog(`Je zou een kristal krijgen, maar je kluis is al vol.`, null, p);
+      walkLog(mp.active ? `${p.name} zou een kristal krijgen, maar de kluis is al vol.` : `Je zou een kristal krijgen, maar je kluis is al vol.`, null, p);
+      crystalEvent(p, soloTargetKey, 'full');
     }
 
     if (p.completed >= SIM_QUESTS_TO_WIN){
@@ -2161,7 +2105,7 @@ function soloResolveBotTurn(player){
 
   player.pos = move.key;
   paintWalkPawns(soloGraph, soloPlayers, pIdx);
-  if (pathHasActionCell(soloGraph, move.path)) soloGrantActionCellReward(player, false);
+  if (pathHasActionCell(soloGraph, move.path)) soloGrantActionCellReward(player, false, pathFirstActionCell(soloGraph, move.path));
   // de energiesteen van deze beurt telt nu pas bij: volgende beurt uit te geven
   if (pendingEnergy) simGainEnergy(player, pendingEnergy);
   // voor soloAnimateBotTurn: welke opdrachten deze zet pakt, zodat het naspelen het doel al
@@ -2179,7 +2123,9 @@ function soloResolveBotTurn(player){
     player.nextIdx += bankedLabels.length;
     if (player.cards.length < ACTION_CARD_HAND_MAX){
       const drawn = drawActionCard(soloDeck, soloRand);
-      if (drawn) player.cards.push(drawn);
+      if (drawn){ player.cards.push(drawn); crystalEvent(player, targetKey, 'gain'); }
+    } else {
+      crystalEvent(player, targetKey, 'full');
     }
     const chainNote = bankedLabels.length > 1
       ? ` en meteen ook <span class="hit">${bankedLabels.slice(1).map(l => `${l} ${QUEST_NAMES[l] || ''}`).join(', ')}</span>`
@@ -2250,6 +2196,7 @@ async function soloAnimateBotTurn(player, replay, logNodes, runId){
       player.pos = path[i];
       walkAdvanceShownTarget(soloGraph, bank, player.pos, player.color, othersOcc, false);
       paint();
+      soloReplayCrystals(replay, player.pos);
       await walkSleep(sp.stepMs);
       if (!alive()) return false;
     }
@@ -2279,12 +2226,23 @@ async function soloAnimateBotTurn(player, replay, logNodes, runId){
   if (replay.rollPath && !await walkSeg(replay.rollPath, false, replay.rollBanked)) return false;
   player.pos = finalPos;
   paint();
+  soloReplayCrystals(replay, null);   // wat onderweg niet langskwam alsnog
   for (const n of logNodes) walkLogEl.appendChild(n);
   walkLogEl.scrollTop = walkLogEl.scrollHeight;
   renderWalkScore(soloPlayers, pIdx);
   // even blijven staan zodat je ziet waar hij eindigde, dan pas de volgende speler
   await walkSleep(sp.rollMs);
   return alive();
+}
+
+// kristal-gebeurtenissen van een nagespeelde bot-beurt afspelen zodra de pion op dat vakje staat
+// (`key` null = alles wat er nog over is). Altijd anoniem: het is nooit jouw pion.
+function soloReplayCrystals(replay, key){
+  if (!replay.crystals || !replay.crystals.length) return;
+  const now = replay.crystals.filter(ev => key === null || ev.key === key);
+  if (!now.length) return;
+  replay.crystals = replay.crystals.filter(ev => !now.includes(ev));
+  for (const ev of now) crystalPlay(ev);
 }
 
 // ---------- de ronde-lus: bots meteen (of zichtbaar, zie soloBotViewSpeed), mensen interactief ----------
@@ -2309,7 +2267,13 @@ function soloAdvanceLoop(){
       // nog niet vooruitloopt op wat de pion pas bij aankomst haalt. Zelfde indexen als
       // soloPlayers, want renderWalkScore zoekt via walkScoreOrder op index.
       replayScoreBefore = soloPlayers.map(q => ({ ...q, cards: q.cards.slice() }));
-      const replay = soloResolveBotTurn(player);
+      // kristallen die deze bot opraapt pas tonen als de pion er in het naspelen langskomt
+      // (try/finally: gaat er iets mis, dan mag dit niet alle latere kristallen blijven vasthouden)
+      crystalDeferred = [];
+      let replay, deferred;
+      try { replay = soloResolveBotTurn(player); }
+      finally { deferred = crystalDeferred; crystalDeferred = null; }
+      replay.crystals = deferred;
       const logNodes = [...walkLogEl.children].slice(logStart);
       for (const n of logNodes) n.remove();
       // multiplayer-host: dezelfde beurt naar de gasten, die 'm zelf naspelen (99-multiplayer.js)
@@ -3067,6 +3031,7 @@ if (walkOpeningPanelEl){
 // ---------- potje starten/stoppen ----------
 function stopSoloGame(){
   soloRunId++;   // breekt ook een lopende soloAnimateBotTurn() af
+  crystalResetVault();   // lopende kristal-animaties, "Nieuw"-labels en de gekozen plek weg
   soloPhase = 'idle';
   soloBotViewSpeed = null;
   // geen vertraagde soloPeekQuestEnd() laten hangen op een potje dat hierna niet meer bestaat
@@ -3154,6 +3119,7 @@ function startSoloGame(){
   soloRoundPos = 0;
   soloTurn = 0;
   soloDeck = buildActionDeck(soloRand);
+  crystalResetVault();
 
   if (walkSoloPlayersSel) walkSoloPlayersSel.disabled = true;
   if (walkSoloBotsSel) walkSoloBotsSel.disabled = true;
@@ -3202,7 +3168,7 @@ function walkResetConfirmedReset(){
 // tabbladenbalk, vlak boven de rest van de pagina, en een misklik (bv. net naast de dobbelknop
 // op een telefoon) gooide zonder dit een lopend potje weg zonder enige kans om terug te
 // krabbelen (gebruikersmelding). Klik naast het paneel of Escape = annuleren, net als de
-// andere overlays (zie cardOverlayEl/editorOverlay elders in dit bestand resp. 90-editor.js).
+// andere overlays (zie editorOverlay in 90-editor.js).
 if (btnWalkSoloReset) btnWalkSoloReset.addEventListener('click', () => {
   if (walkResetConfirmEl) walkResetConfirmEl.hidden = false;
 });

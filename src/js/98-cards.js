@@ -1,11 +1,10 @@
 // ---------- tabblad "Speelkaarten" ----------
 // Toont het hele kaartspel op één plek: de negen opdrachtkaarten (2.1-2.9) en alle
-// achttien actiekaarten. Puur een overzicht — je kunt hier niets spelen, het is bedoeld
+// achttien kristallen (de vroegere actiekaarten). Puur een overzicht — je kunt hier niets spelen, het is bedoeld
 // om naast het bord te leggen en om te controleren of code en drukwerk hetzelfde zeggen.
 //
-// Actiekaarten gebruiken renderPrintedCardFace() uit 95-simulate.js, dus die tonen hier
-// exact dezelfde kaart als in het kaartvenster van de solo-modus: de Canva-foto als die
-// er is, anders de nagetekende versie.
+// Kristallen gebruiken renderCrystal() uit 96c-crystals.js, dus die zien er hier precies zo uit
+// als in de kluis tijdens het spelen.
 //
 // Opdrachtkaarten worden hier nagetekend. Reden: de Canva-export van de opdrachtkaarten
 // is vanuit deze omgeving niet te downloaden, en een nagetekende kaart heeft bovendien
@@ -45,9 +44,7 @@ function renderQuestCardFace(label){
 
 // ---------- opbouw van het tabblad ----------
 const CARDS_CATEGORY_ORDER = ['amber', 'start', 'quest', 'danger', 'dim'];
-const CARDS_CATEGORY_LABELS = {
-  amber: 'Beweging', start: 'Energie', quest: 'Nut', danger: 'Verstoring', dim: 'Informatie',
-};
+const CARDS_CATEGORY_LABELS = CRYSTAL_CATS;   // Beweging, Energie, Nut, Verstoring, Informatie
 const cardsQuestGrid  = document.getElementById('cardsQuestGrid');
 const cardsActionWrap = document.getElementById('cardsActionWrap');
 const cardsZoom       = document.getElementById('cardsZoom');
@@ -98,13 +95,15 @@ function renderCardsTab(){
     const head = document.createElement('h3');
     head.className = 'cards-subhead';
     head.innerHTML = `${CARDS_CATEGORY_LABELS[cat]} <span>${ids.length} ${ids.length === 1 ? 'kristal' : 'kristallen'} · 2× in de stapel</span>`;
+    head.style.setProperty('--card-tint', `var(--crystal-${cat})`);
     cardsActionWrap.appendChild(head);
     const grid = document.createElement('div');
-    grid.className = 'cards-shelf';
+    grid.className = 'cards-shelf crystal-shelf';
     for (const id of ids){
+      // naam en uitleg staan al op het kristal zelf; het bijschrift zegt wannéér hij mag
       grid.appendChild(cardsShelfItem(
-        renderPrintedCardFace(id), 'action-card--' + cat, '',
-        ACTION_CARDS[id].name, ACTION_CARDS[id].hint,
+        renderCrystal(id), 'is-crystal', '',
+        ACTION_CARDS[id].name, CRYSTAL_WHEN[ACTION_CARDS[id].when],
       ));
     }
     cardsActionWrap.appendChild(grid);

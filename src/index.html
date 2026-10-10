@@ -156,7 +156,7 @@
                positieletter een klein label zoals linksboven op elke tegel -->
           <div class="legend-row" data-key="walk"><span class="swatch" style="background:var(--walk)"></span><span class="legend-text">Loopbaar vakje</span></div>
           <div class="legend-row" data-key="quest"><span class="swatch" style="background:var(--quest)"></span><span class="legend-text">Opdrachtvakje <i>2.x</i></span></div>
-          <div class="legend-row" data-key="actioncell"><span class="swatch" style="background:var(--actioncell)"></span><span class="legend-text">Kristalvakje <i>4.x</i></span></div>
+          <div class="legend-row" data-key="actioncell"><span class="swatch swatch-crystal"></span><span class="legend-text">Kristalvakje <i>4.x</i></span></div>
           <div class="legend-row" data-key="start"><span class="swatch" style="background:var(--start)"></span><span class="legend-text">Startpositie <i>3.x</i></span></div>
           <div class="legend-row" data-key="empty"><span class="swatch swatch-empty"></span><span class="legend-text">Leeg vakje <i>niet beloopbaar</i></span></div>
           <div class="legend-row" data-key="seamopen"><span class="swatch swatch-seam" style="--sc:var(--amber)"></span><span class="legend-text">Naad open <i>tegels sluiten aan</i></span></div>
@@ -641,15 +641,22 @@
                  lopen is geen alternatief vóór het dobbelen, dus geen "of" op dat moment. -->
             <p class="walk-or-sep" id="walkOrSep2" hidden>of</p>
 
-            <!-- kaartkluis: alleen zichtbaar zodra je daadwerkelijk een actiekaart in handen
-                 hebt. Klikken opent het kaartvenster. -->
-            <button type="button" class="walk-panel-box walk-card-vault" id="walkCardVault" hidden>
-              <span class="walk-card-vault-thumbs" id="walkCardVaultThumbs"></span>
-              <span class="walk-card-vault-text">
-                <b id="walkCardVaultCount">Kristallen</b>
-                <span class="sub" id="walkCardVaultHint">klik om te bekijken →</span>
-              </span>
-            </button>
+            <!-- kristalkluis: altijd open zolang je meespeelt, ook leeg. Links het gekozen
+                 kristal in z'n geheel, rechts je drie plekken, waarom het nu (niet) kan en
+                 Gebruik/Afleggen (vaste plek, verspringt niet). Gevuld door crystalRenderVault
+                 in 96c-crystals.js. -->
+            <div class="walk-panel-box crystal-vault" id="walkCardVault" hidden>
+              <div class="crystal-vault-focus" id="crystalFocus"></div>
+              <div class="crystal-vault-side">
+                <div class="crystal-vault-head"><span>Kristallen</span><b id="walkCardVaultCount">0 / 3</b></div>
+                <div class="crystal-rail" id="crystalRail" role="listbox" aria-label="Jouw kristallen"></div>
+                <p class="crystal-vault-why" id="crystalWhy" aria-live="polite"></p>
+                <div class="crystal-vault-btns">
+                  <button type="button" id="btnCardPlay" class="primary small" disabled>Gebruik</button>
+                  <button type="button" id="btnCardDiscard" class="ghost small" disabled>Afleggen</button>
+                </div>
+              </div>
+            </div>
 
             <!-- vervolgkeuze ná het spelen van een actiekaart (doelwit kiezen, richting voor
                  Zwaartekracht-laarzen, het Blinde-Vlek-aanbod) — hoort bij de kaart die je net
@@ -709,8 +716,6 @@
     </div>
   </div>
 
-  <!-- kaartvenster: toont de actiekaarten die je op dit moment in handen hebt, op ware
-       kaartverhouding. Eén kaart tegelijk selecteerbaar; onderin gecentreerd de keuze. -->
   <!-- statistieken na afloop: groot venster over het hele scherm, geopend via de knop
        "Statistieken" op het winscherm — zie soloOpenStats in 97-solo.js -->
   <div id="walkStatsOverlay" class="card-overlay walk-stats-overlay" hidden>
@@ -720,22 +725,6 @@
         <button type="button" id="walkStatsClose" class="small ghost" aria-label="Venster sluiten">Sluiten ✕</button>
       </div>
       <div id="walkStatsBody"></div>
-    </div>
-  </div>
-
-  <div id="cardOverlay" class="card-overlay" hidden>
-    <div class="card-panel" role="dialog" aria-modal="true" aria-labelledby="cardPanelTitle">
-      <div class="card-panel-head">
-        <h2 id="cardPanelTitle">Jouw kristallen</h2>
-        <button id="cardPanelClose" class="small ghost" aria-label="Venster sluiten">Sluiten ✕</button>
-      </div>
-      <p class="hint" id="cardPanelHint"></p>
-      <div class="card-grid" id="cardGrid"></div>
-      <div class="card-panel-actions">
-        <button id="btnCardPlay" class="primary" disabled>Gebruik kristal</button>
-        <button id="btnCardDiscard" class="ghost" disabled>Afleggen</button>
-        <button id="btnCardCancel" class="ghost">Sluiten</button>
-      </div>
     </div>
   </div>
 
@@ -756,7 +745,7 @@
             <div class="tool-list" id="toolList">
               <button class="tool active" data-tool="walk"><span class="swatch" style="background:var(--walk)"></span>Loopbaar vakje</button>
               <button class="tool" id="toolQuest" data-tool="quest"><span class="swatch" style="background:var(--quest)"></span>Opdrachtvakje</button>
-              <button class="tool" id="toolCard" data-tool="card"><span class="swatch" style="background:var(--actioncell)"></span>Kristalvakje</button>
+              <button class="tool" id="toolCard" data-tool="card"><span class="swatch swatch-crystal"></span>Kristalvakje</button>
               <button class="tool" data-tool="erase"><span class="swatch" style="background:var(--slot-empty); border:1px solid var(--line);"></span>Wissen</button>
             </div>
           </div>

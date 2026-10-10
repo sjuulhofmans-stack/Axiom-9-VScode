@@ -29,7 +29,7 @@ src/
   data/tiles.json     de 20 tegels + de vorm van een tegel (pattern)
   js/
     00-data.js        laadt tiles.json, bouwt tileLookup, globale state (layout, selectedSlot)
-    05-card-art.js    illustraties/vector-art voor de opdracht- en actiekaarten
+    05-card-art.js    kleur + icoon per opdrachtkaart (de oude Canva-plaatjes van de actiekaarten zijn weg)
     10-rules.js       plaatsingsregels, rotatie, kamer-/opdrachtnamen, welke tegel mag waar
     20-connectivity.js naden tussen tegels + bereikbaarheid op vakjesniveau
     30-random.js      seeded random (mulberry32) — zelfde seed = zelfde bord
@@ -43,8 +43,10 @@ src/
     95-simulate.js    batch-spelsimulatie (2xD6, geen U-turn, bezette vakjes blokkeren)
     96-walk.js        tabblad "Spelen": modus Automatisch, automatische simulatie van 1-4 spelers
     96b-intro.js      startanimatie na "Start spel" (aftellen 3-2-1, hyperjump, zwart gat) + vinkje in de lobby
+    96c-crystals.js   kristallen: tekenen (renderCrystal), de kluis, de animaties bij oprapen, zeshoekjes op
+                      de spelerskaartjes. Staat bewust vóór 97-solo.js (zie de kop van het bestand)
     97-solo.js        tabblad "Spelen": modus Zelf spelen, eigen speler besturen tussen bots, energiekaarten
-    98-cards.js       kaartvenster/zoom voor opdracht- en actiekaarten
+    98-cards.js       tabblad Speelkaarten: vitrine + zoom voor opdrachtkaarten en kristallen
     98b-avatar.js     avatars in de multiplayer-kamer: 5 karakters, 5 brillen, 5 hoedjes (SVG) + editor
     99-multiplayer.js tabblad "Multiplayer": lobby + peer-to-peer spelen met vrienden (WebRTC)
 build.py              plakt alles tot dist/axiom9.html
@@ -74,7 +76,9 @@ aangeroepen (functiedeclaraties worden gehoist, `const`/`let` niet).
 | de modus-schakelaar zelf (Automatisch/Zelf spelen) | `97-solo.js` (`setWalkMode`) |
 | het tabblad Multiplayer (deelt #tabWalk met Spelen) | `80-controls.js` (`switchTab`, tab `multi`) |
 | de namen van de bots (alle modi)             | `96-walk.js` (`BOT_NAMES`, `pickBotNames`) |
-| het actiekaartvakje van een gang verplaatsen | tegel-editor in de tool (of `src/data/tiles.json`, labels `4.1`–`4.10`) |
+| het kristalvakje van een gang verplaatsen | tegel-editor in de tool (of `src/data/tiles.json`, labels `4.1`–`4.10`) |
+| een kristal toevoegen / tekst of moment aanpassen | `95-simulate.js`: `ACTION_CARDS` (name/text/when/hint) + `ACTION_CARD_TINTS` + `ACTION_CARD_ICONS` |
+| hoe een kristal, de kluis of het oprapen eruitziet | `96c-crystals.js` + het kristallen-blok onderaan `styles.css` |
 
 ## Spelregels die in de code zitten
 
@@ -127,8 +131,26 @@ aangeroepen (functiedeclaraties worden gehoist, `const`/`let` niet).
 - **Naam op het scherm: "kristal(len)"**, niet meer "actiekaart" (sinds 2026-10; de speler
   bewaart ze in zijn "kluis", max 3). In de code heten ze nog `ACTION_CARDS`, `p.cards`,
   `actionCells` enz. — bewust niet hernoemd. Nieuwe zichtbare tekst dus altijd "kristal".
-  Een volledig nieuw ontwerp (zeshoekige kristallen, vliegend oprapen, open kluis) ligt klaar
-  als voorstel en moet nog gebouwd worden.
+  **Ontwerp** (`96c-crystals.js`): een langgerekte zeshoek, rand in de kleur van de soort
+  (`ACTION_CARD_TINTS`), bovenin het moment, icoon, naam, één zin (`text`), onderin de soort.
+  Getekend uit de gegevens, geen plaatjes meer. **`when` is de enige bron** voor wanneer een
+  kristal mag: zowel het label op het kristal (`CRYSTAL_WHEN`) als de regel in
+  `soloCardBlockReason` lezen het ('pre' vóór de worp, 'any' vóór of na, 'start' na de worp
+  maar vóór je eerste stap, 'post' tijdens je zet, 'auto' vanzelf aangeboden).
+  **Kluis**: altijd open in de zijkolom, onderaan gelijk met het bord. Groot het gekozen
+  kristal, ernaast de 3 plekken, de reden waarom het nu (niet) kan, Gebruik/Afleggen. Alleen
+  het gekozen plekje pulst (`crystalPulse`, zelfde ritme als de dobbelknop). Zolang het
+  energievak knoppen toont (vóór het dobbelen, een richting/keuze) is de kluis één compacte
+  regel — anders past de kolom niet op een Full-HD-scherm.
+  **Oprapen** (`crystalEvent`, op elke plek waar iemand een kristal krijgt of een volle kluis
+  heeft): eigen kristal groeit uit het vakje en vliegt in een boog naar je kluis ("Nieuw" tot je
+  erop klikt); kluis vol = zilver vraagteken-kristal dat uit elkaar knalt (bewust niet het
+  kristal dat je had gekregen: dat blijft op de stapel en zou de volgende trekking verklappen);
+  een ander = anoniem zilver kristalletje naar diens spelerskaartje, nooit kleur of naam.
+  Nagespeelde bot-beurten spelen het af als de pion er langskomt (`replay.crystals`).
+  **Geheim in multiplayer**: de host stuurt de stand per gast apart (`mpSendPerGuest`); in
+  `mpPublicPlayer` ziet elke gast alleen zijn eigen kristallen, van anderen alleen het aantal.
+  Logregels noemen in multiplayer en bij bots nooit welk kristal er werd opgeraapt.
 - Elke **gangtegel** heeft precies 1 actiekaartvakje (labels `4.1`–`4.10`,
   analoog aan het opdrachtvakje in een kamer — zie `tileValidationIssues` in
   `90-editor.js`). Loop je er tijdens je beurt overheen, dan trek je een
@@ -209,10 +231,14 @@ Check minimaal:
    Tempo moet je tijdens het lopen kunnen wijzigen (schuif
    rechtsboven naast Pauze/Stoppen); "Stoppen"
    moet de pion echt stilzetten (geen achtergrondlus die doorloopt).
-9. Elke gangtegel heeft één paars kristalvakje op het bord (legenda
-   "Kristalvakje (4.x)"). Loopt een pion er tijdens "Zelf spelen"
-   overheen, dan verschijnt een logregel "raapt een kristal op" en loopt
-   de pion gewoon door — de beurt stopt er niet voor.
+9. Elke gangtegel heeft één paars kristalvakje (een zeshoekje binnen het vierkante
+   vakje; legenda "Kristalvakje (4.x)"). Loopt jouw pion er tijdens "Zelf spelen"
+   overheen, dan groeit het kristal uit het vakje en vliegt het naar je kluis, en
+   loopt de pion gewoon door — de beurt stopt er niet voor. Kluis vol: zilver
+   kristal knalt uit elkaar en de kluis schudt rood. Een bot die opraapt: klein
+   zilver kristalletje naar zijn spelerskaartje, en in het log geen naam.
+   De kluis staat altijd in de zijkolom (ook leeg, gestippeld) en mag nooit onder
+   het bord uitsteken; de knoppen Gebruik/Afleggen verspringen niet.
 10. Tabblad "Multiplayer" (eigen tabblad naast Spelen; gebruikt hetzelfde vak
     #tabWalk in de modus 'multi', Spelen heeft alleen Automatisch/Zelf spelen).
     Lobby: grote knop "Spel hosten", lijn "of", daaronder meteen naam + spelcode

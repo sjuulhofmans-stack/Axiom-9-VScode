@@ -41,6 +41,7 @@ JS_ORDER = [
     "95-simulate.js",
     "96-walk.js",
     "96b-intro.js",
+    "96c-crystals.js",
     "97-solo.js",
     "98-cards.js",
     "98b-avatar.js",

@@ -915,6 +915,8 @@ function mpHostStartGame(){
   soloRoundPos = 0;
   soloTurn = 0;
   soloDeck = buildActionDeck(soloRand);
+  crystalResetVault();
+  crystalMpReset();
   soloActiveIdx = -1;
 
   mp.phase = 'in-game';
@@ -959,6 +961,8 @@ function mpClientOnStart(payload){
   mp.phase = 'in-game';
   mp.myIdx = soloPlayers.findIndex(p => p.peerId === mp.myPeerId);
   mp.stateVersion = 0;
+  crystalResetVault();
+  crystalMpReset();
   walkLogEl.innerHTML = '';
   mpEnterPlayView();
 }
@@ -1005,14 +1009,29 @@ function mpSyncTurnOwner(){
 // doel van elke speler. De rest van ieders stapel (nog te komen opdrachten) wordt hier
 // vervangen door null — de array-lengte en -index blijven kloppen, dus bestaande render-code
 // (renderWalkScore, de doel-marker op het bord) hoeft niet aangepast te worden.
-function mpPublicPlayer(p){
+// Kristallen: alleen `forPeerId` krijgt zijn eigen kristallen te zien; van alle anderen gaat
+// alleen het AANTAL mee (een rij nulls van dezelfde lengte), zodat niemand — ook niet via de
+// ontwikkelaarstools — kan aflezen welke kristallen een ander in zijn kluis heeft. Daarom
+// stuurt de host de stand per gast apart (mpSendPerGuest) i.p.v. één bericht aan iedereen.
+function mpPublicPlayer(p, forPeerId){
   const deck = new Array(p.deck.length).fill(null);
   // questHidden: tijdens het dobbelen aan het begin is zelfs je huidige doel nog geheim
   // (soloBeginOpening in 97-solo.js) — dan gaat er helemaal niets van je stapel mee
   if (p.nextIdx < p.deck.length && !p.questHidden) deck[p.nextIdx] = p.deck[p.nextIdx];
-  return { ...p, deck };
+  const cards = p.peerId && p.peerId === forPeerId ? p.cards.slice() : p.cards.map(() => null);
+  return { ...p, deck, cards };
 }
-function mpPublicPlayers(players){ return players.map(mpPublicPlayer); }
+function mpPublicPlayers(players, forPeerId){ return players.map(p => mpPublicPlayer(p, forPeerId)); }
+// de gasten die nu meespelen (host zelf niet; wie wegviel heeft peerId null en is een bot)
+function mpGuestPeerIds(){
+  return soloPlayers.filter(p => p.peerId && p.peerId !== mp.myPeerId).map(p => p.peerId);
+}
+// één bericht per gast, elk met alleen zijn eigen kristallen zichtbaar (zie mpPublicPlayer)
+function mpSendPerGuest(action, build){
+  for (const peerId of mpGuestPeerIds()){
+    try { action.send(build(peerId), peerId); } catch (e){ /* gast net weg: volgende tick opnieuw */ }
+  }
+}
 // soloDeck.draw/.discard zijn de trekstapel/aflegstapel-VOLGORDE — client-code heeft daar
 // nooit meer dan de lengte van nodig (zie soloCardBlockReason: 'de trekstapel is leeg' etc.),
 // dus die volgorde/inhoud wordt hier nooit meegestuurd.
@@ -1046,13 +1065,16 @@ function mpOnBotReplay(player, replay, logNodes){
     const keep = (replay.preBanked || 0) + (replay.rollBanked || 0) + 1;
     r = { ...replay, bank: { ...replay.bank, seq: replay.bank.seq.slice(0, keep) } };
   }
-  mp.actions.botturn.send({
+  const common = {
     idx: player.idx, replay: r, speed: soloBotViewSpeed, turn: soloTurn,
-    before: mpPublicPlayers(replayScoreBefore || soloPlayers),
-    after: mpPublicPlayers(soloPlayers),
     logsBefore: pending.map(el => ({ html: el.innerHTML, cls: el.className })),
     logs: logNodes.map(el => ({ html: el.innerHTML, cls: el.className })),
-  });
+  };
+  mpSendPerGuest(mp.actions.botturn, peerId => ({
+    ...common,
+    before: mpPublicPlayers(replayScoreBefore || soloPlayers, peerId),
+    after: mpPublicPlayers(soloPlayers, peerId),
+  }));
 }
 function mpClientOnBotTurn(data){
   mpGuestFinishReplay();   // vorige nog bezig (kleine vertraging)? die meteen afronden
@@ -1108,7 +1130,9 @@ function mpBroadcastState(){
     .filter(el => !el.dataset.mpSent)
     .map(el => ({ html: el.innerHTML, cls: el.className }));
   const core = {
-    soloPlayers: mpPublicPlayers(soloPlayers), soloActiveIdx, soloPhase, soloTurn, soloTargetKey, soloMove,
+    // soloPlayers gaat hieronder per gast gemaskeerd mee (mpSendPerGuest); hier de volledige
+    // stand, alleen voor de vingerafdruk (zo telt ook een geruild kristal als wijziging)
+    soloPlayers, soloActiveIdx, soloPhase, soloTurn, soloTargetKey, soloMove,
     soloBootsOptions, soloCurrentLegalMoves, soloRoundPos, soloTurnOrder,
     soloBankCountThisTurn, soloAllowUturn, soloPendingBoost, soloUsedBoots, soloUsedJump,
     soloTargetSwapped, soloUsedEnergyId, soloUsedCardId, soloDiscardedCardId,
@@ -1116,6 +1140,9 @@ function mpBroadcastState(){
     soloActionCellDrawnThisTurn, walkScoreOrder, soloDeck: mpPublicDeck(soloDeck),
     soloFinished, soloFinishTarget, soloRoundFinishers,
     soloOpening,   // dobbelen wie begint/startposities kiezen — puur publieke info (worpen, keuzes)
+    // wie raapte waar een kristal op (of had een volle kluis) — nooit wélk kristal; elke gast
+    // speelt de animatie zelf af (crystalMpApply in 96c-crystals.js)
+    crystalEvents: crystalMpLog,
     ownerUi: {
       rollHidden: btnWalkSoloRoll ? btnWalkSoloRoll.hidden : true,
       skipHidden: btnWalkSoloSkip ? btnWalkSoloSkip.hidden : true,
@@ -1146,7 +1173,8 @@ function mpBroadcastState(){
     mp.lastFingerprint = fingerprint;
   }
   mp.lastLogCount = walkLogEl.children.length;
-  mp.actions.state.send({ stateVersion: mp.stateVersion, ...core, newLogLines: newLines });
+  const base = { stateVersion: mp.stateVersion, ...core, newLogLines: newLines };
+  mpSendPerGuest(mp.actions.state, peerId => ({ ...base, soloPlayers: mpPublicPlayers(soloPlayers, peerId) }));
   if (soloPhase === 'game-over') mpOnGameOver();
 }
 
@@ -1202,6 +1230,9 @@ function mpApplyState(payload){
   // jouw eigen doel + opdrachtkaart, en dat van wie aan zet is er gestippeld bij (soloShowTargets
   // in 97-solo.js); geheime opdrachten (dobbelen wie begint) tonen ze vanzelf nog niet
   soloShowTargets();
+  // kristallen die sinds de vorige uitzending zijn opgeraapt: je eigen vliegt naar je kluis,
+  // die van een ander gaat anoniem naar diens spelerskaartje
+  crystalMpApply(payload.crystalEvents);
 
   paintWalkPawns(soloGraph, soloPlayers, soloActiveIdx);
   renderWalkScore(soloPlayers, soloActiveIdx);
@@ -1275,26 +1306,25 @@ function mpOnGameOver(){
   mp.phase = mp.isHost ? 'hosting' : 'joining';
 }
 
-// ---------- eigen hand (kaartkluis/kaartvenster) — "wie ben ik", niet "wie is aan zet" ----------
-// solo()/soloRefreshCardVault() tonen solo().cards, oftewel de hand van wie NU aan zet is — in
-// multiplayer is dat niet meer per se je eigen hand. Deze varianten lezen daarom altijd van
-// soloPlayers[mp.myIdx], en vervangen soloRefreshCardVault/soloRenderCardGrid zolang een
-// MP-potje loopt.
+// ---------- eigen kluis — "wie ben ik", niet "wie is aan zet" ----------
+// solo()/soloRefreshCardVault() kijken naar wie NU aan zet is — in multiplayer is dat niet per se
+// jij. Deze variant leest daarom altijd van soloPlayers[mp.myIdx] en vervangt
+// soloRefreshCardVault zolang een MP-potje loopt. Buiten je beurt staat je kluis er gewoon,
+// gedimd ("Nu niet. Wacht op je beurt."); soloCardBlockReason rekent alleen tijdens je eigen beurt mee
+// (dan is solo() ook echt jij).
 function mpMe(){ return mp.myIdx >= 0 ? soloPlayers[mp.myIdx] : null; }
 function mpRefreshCardVault(){
   if (!walkCardVaultEl) return;
   const me = mpMe();
-  const cards = me && !me.rank ? me.cards : [];
-  if (!cards.length){ walkCardVaultEl.hidden = true; return; }
+  if (!me || me.rank || soloPhase === 'idle' || soloPhase === 'game-over'){ walkCardVaultEl.hidden = true; return; }
   walkCardVaultEl.hidden = false;
-  walkCardVaultThumbsEl.innerHTML = cards.map(id => ACTION_CARD_IMAGES[id]
-    ? `<img src="${ACTION_CARD_IMAGES[id]}" alt="${ACTION_CARDS[id].name}">`
-    : `<span class="walk-card-vault-blank action-card--${ACTION_CARD_TINTS[id]}" title="${ACTION_CARDS[id].name}"></span>`).join('');
-  walkCardVaultCountEl.textContent = cards.length === 1 ? '1 kristal' : `${cards.length} kristallen`;
-  // geen "N speelbaar"-telling zoals in solo — soloCardBlockReason() rekent tegen wie NU aan
-  // zet is, niet tegen mij; klik gewoon de kluis om te bekijken (soloOpenCardPanel doet de
-  // juiste eigenaar-check al, zie de guard daar).
-  walkCardVaultHintEl.textContent = 'klik om te bekijken →';
+  const active = soloPlayers[soloActiveIdx];
+  const mine = !!active && active.peerId === mp.myPeerId;
+  crystalRenderVault(me.cards, {
+    reason: soloCardBlockReason,
+    canDiscard: mine && soloCanDiscardNow(),
+    idle: mine ? null : 'wacht op je beurt',
+  });
 }
 
 // ---------- intercept: eigenaar-acties uit 97-solo.js routeren ----------

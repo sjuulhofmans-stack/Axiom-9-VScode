@@ -684,7 +684,7 @@ function walkActionNote(id){
 // (soloUsedCardId), vandaar dezelfde guard.
 function walkCardNote(id){
   if (!id || !ACTION_CARDS[id]) return '';
-  return ` <span class="action">🃏 ${ACTION_CARDS[id].name}</span>`;
+  return ` <span class="action">💎 ${ACTION_CARDS[id].name}</span>`;
 }
 function walkEnergyNote(roll, gain, player){
   if (roll === 0) return ` <span class="energy">⚡0</span>`;
@@ -732,7 +732,9 @@ function renderWalkScore(players, activeIdx){
         // lang label op een breed scherm, kort ("Voltooid") waar het anders niet op één regel past
         stat('<span class="lbl-long">Opdrachten voltooid</span><span class="lbl-short">Voltooid</span>', `${p.completed}/${SIM_QUESTS_TO_WIN}`, ' quests') +
         stat('Energie', `⚡${p.energy}`, p.energy >= ENERGY_MAX ? ' energy full' : ' energy') +
-        stat('<span class="lbl-long">Kristallen</span><span class="lbl-short">Kristal</span>', p.cards.length) +
+        // drie zeshoekjes i.p.v. een getal: bij jezelf in de kleur van de soort, bij een ander
+        // zilver (je ziet dát iemand kristallen heeft, niet wélke) — crystalPipsHtml, 96c-crystals.js
+        stat('<span class="lbl-long">Kristallen</span><span class="lbl-short">Kristal</span>', crystalPipsHtml(p, crystalIsMe(p)), ' crystals') +
       `</span>` +
     `</div>`;
   }).join('');
@@ -782,6 +784,7 @@ function setWalkRunning(on){
 // want een lopende pion hoort niet op een bord dat onder hem vandaan verandert
 function stopWalkSimulation(){
   walkRunId++;
+  crystalResetVault();    // lopende kristal-animaties en zeshoekjes-tellers weg
   setWalkRunning(false);
   soloHideEndgame();      // winscherm van een uitgespeeld potje (97-solo.js) hoort hier ook weg
   clearWalkTarget();      // anders blijft "Nu op zoek naar …" staan bij een stilgezet potje
@@ -803,6 +806,7 @@ async function runWalkSimulation(){
   setWalkRunning(true);
   setWalkPaused(false);        // een nieuwe run begint nooit gepauzeerd
   soloHideEndgame();           // winscherm van het vorige potje weg
+  crystalResetVault();
   walkLogEl.innerHTML = '';
   walkStatusEl.innerHTML = '';
 
@@ -1106,6 +1110,7 @@ async function runWalkSimulation(){
             } else if (reward.handFull){
               walkLog(`${player.name} loopt over een kristalvakje, maar de kluis is al vol.`, null, player);
             }
+            if (reward.drawn || reward.handFull) crystalFxAnon(player.pos, player, !reward.drawn, walkSpeed().stepMs < 140, graph);
           }
           paintWalkPawns(graph, players, pIdx);
           renderWalkMeta({ player, turn, stepsLeft: path.length - 1 - i });
@@ -1283,9 +1288,11 @@ async function runWalkSimulation(){
             if (drawn){
               player.cards.push(drawn);
               walkLog(`${player.name} krijgt een kristal: <b>${ACTION_CARDS[drawn].name}</b> — ${ACTION_CARDS[drawn].hint}.`, null, player);
+              crystalFxAnon(player.pos, player, false, walkSpeed().stepMs < 140, graph);
             }
           } else {
             walkLog(`${player.name} zou een kristal krijgen, maar de kluis is al vol.`, null, player);
+            crystalFxAnon(player.pos, player, true, walkSpeed().stepMs < 140, graph);
           }
         }
 
