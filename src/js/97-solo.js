@@ -738,7 +738,9 @@ function soloRenderActionPanel(){
   const note = allLocked
     ? `<p class="hint energy-pick-none">Te weinig energie voor een actie — gooi gewoon.</p>`
     : '';
-  walkSoloActionsEl.innerHTML = `<div class="energy-pick-list">${energyBtns}</div>${note}`;
+  // 2x2-tegels (prijs + naam; uitleg in de tooltip), zodat de kristallenkluis eronder altijd
+  // groot kan staan (gebruikerswens)
+  walkSoloActionsEl.innerHTML = `<div class="energy-pick-list is-grid is-short">${energyBtns}</div>${note}`;
   // net aangemaakte knoppen beginnen anders allemaal weer bij 0 — zie PULSE_EPOCH hierboven.
   for (const el of walkSoloActionsEl.querySelectorAll('.walk-pulse-affordable')) syncPulse(el);
   // 2e "of": alleen zichtbaar zolang je vóór het dobbelen zit én Noodrantsoen/Stuwlading nu
@@ -810,6 +812,9 @@ function soloCardBlockReason(id){
   // Het moment komt uit ACTION_CARDS[id].when — dezelfde bron als het label bovenin het kristal
   // (CRYSTAL_WHEN), zodat wat erop staat en wat het spel toestaat nooit uit elkaar lopen.
   const when = ACTION_CARDS[id].when;
+  // midden in een keuze (richting, doelwit, opdracht, Blinde Vlek, sprongdoel): eerst die afmaken —
+  // de kluis staat er nu altijd bij, dus anders stond hier misleidend "pas na het dobbelen"
+  if (['boots-direction', 'target-pick', 'reorder-peek', 'blind-offer', 'jump-target'].includes(soloPhase)) return 'maak eerst je keuze af';
   // Blinde Vlek is puur reactief: die krijg je vanzelf aangeboden op het moment dat je zet
   // daadwerkelijk op een tegenstander stukloopt (zie soloOfferBlindSpot)
   if (when === 'auto') return 'wordt vanzelf aangeboden zodra je route geblokkeerd raakt';
@@ -1278,7 +1283,7 @@ function soloEnterDashDirection(source){
   const names = ['Noord', 'Oost', 'Zuid', 'West'];
   walkSoloActionsEl.innerHTML =
     `<p class="hint energy-pick-head">Kies je richting voor <b>Zwaartekracht-laarzen</b>:</p>` +
-    `<div class="energy-pick-list">` + options.map(o =>
+    `<div class="energy-pick-list is-grid">` + options.map(o =>
       `<button type="button" class="energy-pick walk-pulse-affordable" data-dash-dir="${o.dir}">
         <span class="energy-pick-cost">${o.path.length - 1}</span>
         <span class="energy-pick-text"><b>${names[o.dir]}</b><span>${o.path.length - 1} vakjes${o.wasBlocked ? ' tot een pion' : ''}${o.bankedCount ? ' — pakt je opdracht!' : ''}</span></span>

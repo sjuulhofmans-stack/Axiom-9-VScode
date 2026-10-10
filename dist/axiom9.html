@@ -1410,7 +1410,7 @@
   /* Sinds de kristalkluis: staan er geen knoppen in (na het dobbelen, tijdens andermans beurt),
      dan krimpt het vak tot alleen de energiebalk. Dat "springt" niet meer: de kluis eronder staat
      vast onderaan de kolom (#walkCardVault margin-top:auto) en groeit juist in die vrije ruimte. */
-  .walk-side-stack:not(.vault-compact) .walk-solo-panel{height:auto;}
+  .walk-solo-panel{height:auto; padding:10px 12px;}   /* zo hoog als wat erin staat; de kluis staat vast onderaan */
 
   /* opzetscherm bij "zelf spelen" met meerdere spelers: per menselijke speler een
      startpositie-keuze + voorproefje van de eerste opdracht, zodat je een weloverwogen
@@ -3302,13 +3302,7 @@
   /* altijd onderaan de zijkolom, zodat hij niet verspringt als het energievak erboven krimpt */
   #walkCardVault{margin-top:auto;}
   .crystal-vault-sel{display:none;}
-  /* compacte kluis (vóór het dobbelen): rijtjes met naam i.p.v. alleen icoontjes */
   .crystal-list{display:none;}
-  .walk-side-stack.vault-compact .crystal-rail,
-  .walk-side-stack.vault-compact .crystal-vault-why{display:none;}
-  .walk-side-stack.vault-compact .crystal-list{display:flex; flex-direction:column; gap:1px; min-width:0;}
-  .walk-side-stack.vault-compact .crystal-vault-side{grid-template-columns:minmax(0,1fr) auto;}
-  /* geen eigen --tint: die komt van .crystal--<soort> op hetzelfde rijtje (anders won deze) */
   .crystal-row{
     position:relative; display:flex; align-items:center; gap:7px; height:16px; min-width:0;
     padding:0 6px; margin:0; border:0; border-radius:3px; background:none; color:var(--text);
@@ -3331,25 +3325,8 @@
   .crystal-row.is-new::after{content:"nieuw"; margin-left:auto; flex:none; font:700 8px/1 var(--font-mono); letter-spacing:.08em; text-transform:uppercase; color:var(--tint);}
   #tabWalk.walk-is-paused .crystal-row.is-picked::before{animation-play-state:paused;}
 
-  /* Compact (één regel) zolang het energievak knoppen toont: vóór het dobbelen, of een richting/
-     keuze van een energie-actie. Anders past de kolom niet (gemeten: dobbelen 162 + energie 286 +
-     volle kluis 231 = te hoog voor een Full-HD-scherm). Na het dobbelen, als je je kristallen
-     echt gebruikt, is het grote kristal er weer. */
-  .walk-side-stack.vault-compact .crystal-vault{grid-template-columns:minmax(0,1fr); padding:4px 10px;}
-  .walk-side-stack.vault-compact .crystal-vault-focus,
-  .walk-side-stack.vault-compact .crystal-vault-head,
-  .walk-side-stack.vault-compact #btnCardDiscard{display:none;}
-  .walk-side-stack.vault-compact .crystal-vault-side{display:grid; grid-template-columns:auto minmax(0,1fr) auto; align-items:center; gap:10px;}
-  .walk-side-stack.vault-compact .crystal-rail{padding-top:4px; gap:5px;}
-  .walk-side-stack.vault-compact .crystal-rail .crystal{--w:31px;}
-  .walk-side-stack.vault-compact .crystal-vault-why{height:calc(2 * 1.35em); -webkit-line-clamp:2; line-clamp:2; font-size:11.5px;}
-  .walk-side-stack.vault-compact .crystal-vault-sel{display:block; color:#fff; font-family:var(--font-display); text-transform:uppercase; letter-spacing:.03em; font-size:13px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
-  .walk-side-stack.vault-compact .crystal-vault-why b{display:inline;}
-  .walk-side-stack.vault-compact .crystal-vault-btns button{width:auto; padding-inline:12px;}
-  /* tijdens een vervolgkeuze (doelwit, richting, Blinde Vlek) is het kristal al gebruikt: dan
-     staat die keuze op deze plek, anders past de kolom niet meer */
-  .walk-side-stack.vault-off .crystal-vault{display:none;}
-  .crystal-vault-focus .crystal{--w:144px;}
+  /* schaalt mee met de schermhoogte (--wcell, zie .walk-board-row): op een laptop iets kleiner */
+  .crystal-vault-focus .crystal{--w:clamp(112px, calc(var(--wcell, 20px) * 7.2), 144px);}
   .crystal-vault-focus .crystal-shape{filter:none;}
   .crystal-vault-focus .crystal-when, .crystal-vault-focus .crystal-cat{font-size:max(7px, 4.4cqw);}
   .crystal-vault-focus .crystal-txt{font-size:max(9.5px, 6.3cqw);}
@@ -3357,6 +3334,15 @@
   .crystal-vault-focus.is-swap .crystal{animation:crystalSwap .35s cubic-bezier(.2,1.4,.4,1);}
   @keyframes crystalSwap{from{transform:scale(.88); opacity:.2;} to{transform:none; opacity:1;}}
   .crystal-vault-side{display:flex; flex-direction:column; gap:8px; min-width:0; align-self:stretch; justify-content:center;}
+  /* is de rechterkant breed genoeg (laptop: het kristal is daar kleiner), dan de knoppen naast
+     elkaar en de uitleg op 2 regels — zo is de kluis lager en past de kolom (gemeten op 1440×780) */
+  .crystal-vault-side{container:vside / inline-size;}
+  @container vside (min-width: 140px){
+    /* .crystal-vault ervoor: moet winnen van de gewone regels verderop in dit bestand */
+    .crystal-vault .crystal-vault-btns{flex-direction:row;}
+    .crystal-vault .crystal-vault-btns button{flex:1 1 0; min-width:0; padding-inline:4px;}
+    .crystal-vault .crystal-vault-why{height:calc(2 * 1.35em); -webkit-line-clamp:2; line-clamp:2;}
+  }
   .crystal-vault-head{
     display:flex; justify-content:space-between; align-items:baseline; gap:6px;
     font:700 10px/1 var(--font-mono); letter-spacing:.14em; text-transform:uppercase; color:var(--text-dim);
@@ -3457,7 +3443,7 @@
      de teller (Gegooid / Nog te zetten) met een stappenbalk. Die teller staat op de plek van de
      dobbelknop, die je dan niet meer nodig hebt — zo blijft het vak even hoog. */
   .walk-dice{width:100%; display:flex; flex-direction:column; gap:10px; min-height:0;}
-  .walk-hud{min-height:140px; align-content:flex-start;}
+  .walk-hud{min-height:134px; align-content:flex-start;}
   .walk-hud.has-result > .btn-row:not(.walk-mp-leave-row){display:none;}
   /* de losse "gezet / nog"-vakjes zitten nu in de teller */
   .walk-step-counter{display:none !important;}
@@ -3553,6 +3539,24 @@
   @media (prefers-reduced-motion: reduce){
     .sd-die, .sd-edie, .sd-track i, .sd-track i::after, .sd-val.is-pop{animation:none !important;}
   }
+
+  /* ---------- energie-acties en laarzen-richtingen als 2x2-tegels ---------- */
+  .energy-pick-list.is-grid{display:grid; grid-template-columns:1fr 1fr; gap:5px;}
+  .energy-pick-list.is-grid .energy-pick{gap:7px; padding:4px 7px; min-height:36px; min-width:0;}
+  .energy-pick-list.is-grid .energy-pick-cost{min-width:24px; height:22px; padding:0 5px; font-size:11px;}
+  .energy-pick-list.is-grid .energy-pick-text b{font-size:12px; line-height:1.05; overflow-wrap:anywhere;}
+  .energy-pick-list.is-grid .energy-pick-text span{font-size:9px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+  /* energie-acties: alleen prijs + naam, de uitleg staat in de tooltip (title) */
+  .energy-pick-list.is-short .energy-pick-text span{display:none;}
+
+  /* ---------- doelwit kiezen (Duwstoot e.d.): kleine knopjes, zodat de kluis kan blijven staan ---------- */
+  .walk-card-actions .action-card-row{gap:6px;}
+  .walk-card-actions .action-card.action-card--lg{
+    flex:1 1 calc(50% - 6px); width:auto; min-width:0; height:auto; min-height:0; aspect-ratio:auto;
+    padding:6px 9px; display:flex; flex-direction:column; align-items:flex-start; gap:2px;
+  }
+  .walk-card-actions .action-card.action-card--lg .action-card-name{margin-top:0 !important; font-size:13px;}
+  .walk-card-actions .action-card.action-card--lg .action-card-hint{font-size:9.5px;}
 
 </style>
 </head>
@@ -10814,8 +10818,6 @@ function crystalSetText(el, text){ if (el.textContent !== text) el.textContent =
 // ---------- klassen op de zijkolom (i.p.v. CSS :has(), dat bij elke kleine DOM-wijziging de hele
 // kolom liet herberekenen — gemeten: merkbaar hakkelig) ----------
 //   has-vault     de kluis staat er: kolom even hoog als het bord, kluis onderaan
-//   vault-compact het energievak toont knoppen: kluis als één regel, energievak op volle hoogte
-//   vault-off     er staat een vervolgkeuze (doelwit/richting/Blinde Vlek): kluis even weg
 const crystalStackEl = document.getElementById('walkSideStack');
 const crystalSoloActionsEl = document.getElementById('walkSoloActions');
 const crystalCardActionsEl = document.getElementById('walkCardActions');
@@ -10824,8 +10826,8 @@ function crystalSyncStack(){
   const vault = document.getElementById('walkCardVault');
   const set = (cls, on) => { if (crystalStackEl.classList.contains(cls) !== on) crystalStackEl.classList.toggle(cls, on); };
   set('has-vault', !!vault && !vault.hidden);
-  set('vault-compact', !!crystalSoloActionsEl && crystalSoloActionsEl.childElementCount > 0);
-  set('vault-off', !!crystalCardActionsEl && crystalCardActionsEl.childElementCount > 0);
+  // (vroeger: 'vault-compact' vóór het dobbelen en 'vault-off' tijdens een vervolgkeuze — sinds
+  // de energie-acties 2x2-tegels zijn staat de kluis altijd groot, gebruikerswens)
 }
 for (const el of [crystalSoloActionsEl, crystalCardActionsEl]){
   if (el) new MutationObserver(crystalSyncStack).observe(el, { childList: true });
@@ -12261,7 +12263,9 @@ function soloRenderActionPanel(){
   const note = allLocked
     ? `<p class="hint energy-pick-none">Te weinig energie voor een actie — gooi gewoon.</p>`
     : '';
-  walkSoloActionsEl.innerHTML = `<div class="energy-pick-list">${energyBtns}</div>${note}`;
+  // 2x2-tegels (prijs + naam; uitleg in de tooltip), zodat de kristallenkluis eronder altijd
+  // groot kan staan (gebruikerswens)
+  walkSoloActionsEl.innerHTML = `<div class="energy-pick-list is-grid is-short">${energyBtns}</div>${note}`;
   // net aangemaakte knoppen beginnen anders allemaal weer bij 0 — zie PULSE_EPOCH hierboven.
   for (const el of walkSoloActionsEl.querySelectorAll('.walk-pulse-affordable')) syncPulse(el);
   // 2e "of": alleen zichtbaar zolang je vóór het dobbelen zit én Noodrantsoen/Stuwlading nu
@@ -12333,6 +12337,9 @@ function soloCardBlockReason(id){
   // Het moment komt uit ACTION_CARDS[id].when — dezelfde bron als het label bovenin het kristal
   // (CRYSTAL_WHEN), zodat wat erop staat en wat het spel toestaat nooit uit elkaar lopen.
   const when = ACTION_CARDS[id].when;
+  // midden in een keuze (richting, doelwit, opdracht, Blinde Vlek, sprongdoel): eerst die afmaken —
+  // de kluis staat er nu altijd bij, dus anders stond hier misleidend "pas na het dobbelen"
+  if (['boots-direction', 'target-pick', 'reorder-peek', 'blind-offer', 'jump-target'].includes(soloPhase)) return 'maak eerst je keuze af';
   // Blinde Vlek is puur reactief: die krijg je vanzelf aangeboden op het moment dat je zet
   // daadwerkelijk op een tegenstander stukloopt (zie soloOfferBlindSpot)
   if (when === 'auto') return 'wordt vanzelf aangeboden zodra je route geblokkeerd raakt';
@@ -12801,7 +12808,7 @@ function soloEnterDashDirection(source){
   const names = ['Noord', 'Oost', 'Zuid', 'West'];
   walkSoloActionsEl.innerHTML =
     `<p class="hint energy-pick-head">Kies je richting voor <b>Zwaartekracht-laarzen</b>:</p>` +
-    `<div class="energy-pick-list">` + options.map(o =>
+    `<div class="energy-pick-list is-grid">` + options.map(o =>
       `<button type="button" class="energy-pick walk-pulse-affordable" data-dash-dir="${o.dir}">
         <span class="energy-pick-cost">${o.path.length - 1}</span>
         <span class="energy-pick-text"><b>${names[o.dir]}</b><span>${o.path.length - 1} vakjes${o.wasBlocked ? ' tot een pion' : ''}${o.bankedCount ? ' — pakt je opdracht!' : ''}</span></span>

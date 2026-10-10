@@ -142,9 +142,11 @@ aangeroepen (functiedeclaraties worden gehoist, `const`/`let` niet).
   maar vóór je eerste stap, 'post' tijdens je zet, 'auto' vanzelf aangeboden).
   **Kluis**: altijd open in de zijkolom, onderaan gelijk met het bord. Groot het gekozen
   kristal, ernaast de 3 plekken, de reden waarom het nu (niet) kan, Gebruik/Afleggen. Alleen
-  het gekozen plekje pulst (`crystalPulse`, zelfde ritme als de dobbelknop). Zolang het
-  energievak knoppen toont (vóór het dobbelen, een richting/keuze) is de kluis één compacte
-  regel — anders past de kolom niet op een Full-HD-scherm.
+  het gekozen plekje pulst (`crystalPulse`, zelfde ritme als de dobbelknop). De kluis staat
+  ALTIJD groot (gebruikerswens), ook vóór het dobbelen en tijdens een doelwit-/richtingkeuze.
+  Daarvoor zijn de energie-acties en laarzen-richtingen 2x2-tegels (uitleg in de tooltip), is het
+  energievak zo hoog als zijn inhoud, en schaalt het grote kristal met `--wcell`. Gemeten: past
+  op 1440×780 zichtbaar én Full HD, ook met het tweede "of". Iets toevoegen in de zijkolom? Opnieuw meten.
   **Oprapen** (`crystalEvent`, op elke plek waar iemand een kristal krijgt of een volle kluis
   heeft): eigen kristal groeit uit het vakje en vliegt in een boog naar je kluis ("Nieuw" tot je
   erop klikt); kluis vol = zilver vraagteken-kristal dat uit elkaar knalt (bewust niet het

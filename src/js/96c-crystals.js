@@ -186,8 +186,6 @@ function crystalSetText(el, text){ if (el.textContent !== text) el.textContent =
 // ---------- klassen op de zijkolom (i.p.v. CSS :has(), dat bij elke kleine DOM-wijziging de hele
 // kolom liet herberekenen — gemeten: merkbaar hakkelig) ----------
 //   has-vault     de kluis staat er: kolom even hoog als het bord, kluis onderaan
-//   vault-compact het energievak toont knoppen: kluis als één regel, energievak op volle hoogte
-//   vault-off     er staat een vervolgkeuze (doelwit/richting/Blinde Vlek): kluis even weg
 const crystalStackEl = document.getElementById('walkSideStack');
 const crystalSoloActionsEl = document.getElementById('walkSoloActions');
 const crystalCardActionsEl = document.getElementById('walkCardActions');
@@ -196,8 +194,8 @@ function crystalSyncStack(){
   const vault = document.getElementById('walkCardVault');
   const set = (cls, on) => { if (crystalStackEl.classList.contains(cls) !== on) crystalStackEl.classList.toggle(cls, on); };
   set('has-vault', !!vault && !vault.hidden);
-  set('vault-compact', !!crystalSoloActionsEl && crystalSoloActionsEl.childElementCount > 0);
-  set('vault-off', !!crystalCardActionsEl && crystalCardActionsEl.childElementCount > 0);
+  // (vroeger: 'vault-compact' vóór het dobbelen en 'vault-off' tijdens een vervolgkeuze — sinds
+  // de energie-acties 2x2-tegels zijn staat de kluis altijd groot, gebruikerswens)
 }
 for (const el of [crystalSoloActionsEl, crystalCardActionsEl]){
   if (el) new MutationObserver(crystalSyncStack).observe(el, { childList: true });
