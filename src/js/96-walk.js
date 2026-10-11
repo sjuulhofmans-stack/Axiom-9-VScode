@@ -94,6 +94,12 @@ function walkPauseStopSyncVisibility(){
   if (btnWalkStop) btnWalkStop.hidden = !show;
   const tempo = document.getElementById('walkSpeedPlayWrap');
   if (tempo) tempo.hidden = !show;
+  // speelweergave over het hele scherm (alle modi): kop wordt een smalle balk, tabbladen in het
+  // uitschuifmenu, bord zo groot als past — zie body.is-playing in styles.css
+  const inGame = onWalkTab && playing;
+  document.body.classList.toggle('is-playing', inGame);
+  document.body.classList.toggle('is-mp-game', inGame && !!window.mpGameActive);
+  if (!inGame) playMenuSetOpen(false);
   // "Nieuw potje" (Zelf spelen) hangt van dezelfde momenten af (alleen tijdens het speelscherm)
   walkSoloResetSyncVisibility();
 }

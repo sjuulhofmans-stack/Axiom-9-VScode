@@ -17,11 +17,18 @@
        tijdens een potje knoppen rechts bij komen. -->
   <header>
     <div class="title-block">
+      <!-- Speelweergave (body.is-playing, zie walkPauseStopSyncVisibility in 96-walk.js): tijdens
+           een potje is deze kop alleen een smalle balk (☰ + logo links, spelknoppen rechts) en
+           schuiven de tabbladen links uit als menu over het spel heen (playMenuSetOpen in
+           80-controls.js). Buiten een potje is deze knop onzichtbaar. -->
+      <button type="button" class="ghost play-menu-btn" id="btnPlayMenu" aria-expanded="false" aria-controls="mainTabBar" title="Menu">☰ Menu</button>
       <img class="logo" id="logoReload" src="{{LOGO}}" alt="Axiom-9 logo" title="Pagina vernieuwen" role="button" tabindex="0">
       <h1 class="spaced-title">MAP GENERATOR</h1>
     </div>
 
-  <div class="tab-bar" role="tablist">
+  <div class="tab-bar" id="mainTabBar" role="tablist">
+    <!-- alleen zichtbaar als uitschuifmenu tijdens een potje (body.is-playing) -->
+    <div class="play-menu-head"><span>Menu</span><button type="button" class="ghost small play-menu-close" id="btnPlayMenuClose" aria-label="Menu sluiten">✕</button></div>
     <button class="tab-btn active" id="tabBtnMap" data-tab="map" role="tab" aria-selected="true">Speelbord genereren</button>
     <button class="tab-btn" id="tabBtnSimulate" data-tab="simulate" role="tab" aria-selected="false">Simulatie</button>
     <button class="tab-btn" id="tabBtnWalk" data-tab="walk" role="tab" aria-selected="false">Spelen</button>
@@ -43,7 +50,9 @@
     <!-- Pauze/Stoppen (Automatisch) staan hier om dezelfde reden rechtsboven, niet meer in een
          eigen rij boven de spelers (gebruikerswens). Zichtbaar alleen tijdens het speelscherm
          van Automatisch — walkPauseStopSyncVisibility() in 96-walk.js. -->
+    <div class="play-menu-seed">Seed: <b id="playMenuSeed">…</b></div>
   </div>
+  <div class="play-menu-backdrop" id="playMenuBackdrop"></div>
     <!-- Rechterkolom van de kop: spelknoppen + status. Niet meer ín .tab-bar, anders zouden ze
          het centreren van de tabbladen scheef trekken. -->
     <div class="header-right">

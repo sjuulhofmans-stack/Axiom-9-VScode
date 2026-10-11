@@ -335,6 +335,27 @@ function switchTab(name){
 }
 tabButtons.forEach(btn => btn.addEventListener('click', () => switchTab(btn.dataset.tab)));
 
+// ---------- speelmenu: tabbladen als uitschuifmenu tijdens een potje ----------
+// Alleen in de speelweergave (body.is-playing, gezet door walkPauseStopSyncVisibility in
+// 96-walk.js): dan staat er links in de smalle kop een knop "☰ Menu" en schuiven de tabbladen
+// over het spel heen. Het spel loopt eronder gewoon door. Dicht via ✕, Escape, klik ernaast of
+// door een tabblad te kiezen.
+function playMenuSetOpen(open){
+  document.body.classList.toggle('play-menu-open', !!open);
+  const btn = document.getElementById('btnPlayMenu');
+  if (btn) btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+  const seed = document.getElementById('playMenuSeed');
+  if (open && seed) seed.textContent = statSeed.textContent;
+}
+{
+  const isOpen = () => document.body.classList.contains('play-menu-open');
+  document.getElementById('btnPlayMenu').addEventListener('click', () => playMenuSetOpen(!isOpen()));
+  document.getElementById('btnPlayMenuClose').addEventListener('click', () => playMenuSetOpen(false));
+  document.getElementById('playMenuBackdrop').addEventListener('click', () => playMenuSetOpen(false));
+  tabButtons.forEach(btn => btn.addEventListener('click', () => playMenuSetOpen(false)));
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && isOpen()) playMenuSetOpen(false); });
+}
+
 // ---------- bord vergroten op een telefoon ----------
 // Alleen zichtbaar onder 640px (zie .board-tools in styles.css). "Vergroten" zet de cellen op
 // een leesbare 20px; het bord past dan niet meer en schuift binnen .board-outer.

@@ -82,6 +82,7 @@ aangeroepen (functiedeclaraties worden gehoist, `const`/`let` niet).
 | een kristal toevoegen / tekst of moment aanpassen | `95-simulate.js`: `ACTION_CARDS` (name/text/when/hint) + `ACTION_CARD_TINTS` + `ACTION_CARD_ICONS` |
 | hoe een kristal, de kluis of het oprapen eruitziet | `96c-crystals.js` + het kristallen-blok onderaan `styles.css` |
 | de dobbelstenen, de stappenteller of de energiebolletjes | `96d-dice.js` + het dobbelstenen-blok onderaan `styles.css` |
+| de speelweergave (smalle balk, ☰-menu, bordgrootte tijdens een potje) | `body.is-playing` in `styles.css` + `playMenuSetOpen` (80-controls.js) + `walkPauseStopSyncVisibility` (96-walk.js) |
 
 ## Spelregels die in de code zitten
 
@@ -275,7 +276,17 @@ Check minimaal:
     karakter (tab Accessoires zit tot dan op slot), daarna bril/hoedje — staat meteen op je vakje
     en bij de anderen (gast → 'avatar'-bericht → host zet `seat.avatar` en stuurt de lijst rond).
     Nog een keer klikken op een item = weer af. Wordt per browser onthouden (localStorage).
-11. Speelscherm op ±1400px breed (laptop/half scherm): alles in beeld, niets
+11. **Speelweergave** (alle drie de modi, zolang er een potje in beeld is): `body.is-playing`
+    (gezet in `walkPauseStopSyncVisibility`, 96-walk.js; in Multiplayer ook `is-mp-game`).
+    De grote kop is dan een smalle balk: links "☰ Menu" + klein logo, rechts de spelknoppen
+    (Tempo/Pauze/Stoppen, Nieuw potje, Verlaat potje). De tabbladen schuiven links uit over het
+    spel heen (`playMenuSetOpen` in 80-controls.js; dicht met ✕, Escape, klik ernaast of een
+    tabblad kiezen). Pagina op volle breedte, bord tot 34px per vakje ("altijd zo groot
+    mogelijk"); hoogte boven/onder het bord = `--play-chrome` (224px, gemeten). Kolomminima:
+    links 280px, zijkolom 370px (smaller breken opdrachtnaam/energietegels af); Multiplayer
+    270 / 370 / chat 230px. Gemeten: Full HD ±21px, 1440×780 ±15px, Multiplayer op Full HD even
+    groot als de rest. Buiten een potje blijft de gewone kop.
+    Speelscherm op ±1400px breed (laptop/half scherm): alles in beeld, niets
     afgeknipt — het bord krimpt daar mee (zie `--wcell` in `styles.css`),
     onder 1360px staat alles onder elkaar. `--wcell` schaalt óók met de
     schermhoogte: vanaf ±780px zichtbare hoogte (o.a. Full HD met
@@ -284,7 +295,7 @@ Check minimaal:
     onderrand van het bord), niet meer onder het bord; het opdrachtenoverzicht
     staat naast het bord altijd compact (naam + kamer op één regel). Minimum is
     13px per vakje; daaronder scrolt het nog. De tabbladen staan in de kop naast
-    logo + titel (op een smal scherm op een eigen regel eronder). De
+    logo + titel (op een smal scherm op een eigen regel eronder; tijdens een potje in het ☰-menu). De
     spelerskaarten boven het bord zijn één regel: naam groot (nooit afgekapt),
     rechts Voltooid / Energie / Kaarten; "aan zet" en de eindplaats als tabje op
     de rand. Verandert de hoogte boven/onder het bord, pas dan de 300px in
