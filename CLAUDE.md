@@ -304,7 +304,12 @@ Check minimaal:
     browserbalken, 1440×780) moet het hele speelscherm zonder scrollen passen.
     "Toon legenda"/"Toon log" staan onderaan de linkerkolom (gelijk met de
     onderrand van het bord), niet meer onder het bord; het opdrachtenoverzicht
-    staat naast het bord altijd compact (naam + kamer op één regel). Minimum is
+    is een **afvinklijst met kleurstroken** (gekozen uit 4 ontwerpen; `soloRenderQuestChecklist`):
+    geen 2.x-nummers meer (de opdrachtkaarten krijgen later alleen naam + opdracht), streep +
+    rondje in de opdrachtkleur, groen vinkje = voltooid, kloppende stip + "actief" = huidig doel,
+    zes lampjes bovenin; hover = spieken (rand in jouw kleur + oogje). Alle rijen even brede
+    rand/streep, zodat rondjes en namen exact onder elkaar staan (gemeten). Onder 865px hoogte of
+    1630px breedte naam + kamer op één regel; nooit scrollen (gemeten 1920×900 en 1440×780). Minimum is
     13px per vakje; daaronder scrolt het nog. De tabbladen staan in de kop naast
     logo + titel (op een smal scherm op een eigen regel eronder; tijdens een potje in het ☰-menu). De
     spelerskaarten boven het bord zijn één regel: naam groot (nooit afgekapt),

@@ -1738,96 +1738,98 @@
     display:none;
   }
 
-  /* opdrachtenoverzicht: alle 9 opdrachten (2.1-2.9) met voltooid/nog-open-status, zodat je bij
-     Herprioritering (ruilt je huidige doel blind met je volgende opdracht) kunt inschatten of
-     je 'm liever houdt — zie soloRenderQuestChecklist in 97-solo.js. Vult de ruimte die
-     .walk-info-panel hierboven overlaat (flex:1 1 auto); is leeg (en dus onzichtbaar via
-     :empty hieronder) vóór er een potje loopt of tijdens Automatisch-modus, precies zoals
-     .walk-info-panel dat zelf ook al deed vóór er iets te tonen viel. */
+  /* Opdrachtenoverzicht als AFVINKLIJST met kleurstroken (gebruikerswens, gekozen uit 4
+     ontwerpen): alle 9 opdrachten in een vaste volgorde (de geheime volgorde van je stapel blijft
+     geheim, zie soloRenderQuestChecklist in 97-solo.js), zonder 2.x-nummer: alleen naam + kamer.
+       streep links  de kleur van de opdracht (--qtint), als inset-schaduw: neemt geen ruimte in
+       rondje        leeg in de opdrachtkleur = nog te doen; groen met vinkje = voltooid;
+                     kloppende stip = actief doel (+ label "actief" en gekleurde achtergrond)
+       bovenin       zes lampjes (zoals de energiebalk) = hoeveel van de 6 je al hebt
+     ALLE rijen hebben dezelfde rand (1px, bij voltooid onzichtbaar) en dezelfde streepbreedte,
+     zodat de rondjes en teksten in elke toestand precies onder elkaar staan (gebruikerswens).
+     Hoveren over een open opdracht = spieken op het bord (soloPeekQuest): rand in jouw kleur
+     (--pc op de lijst) met een oogje. Vult de ruimte die .walk-info-panel overlaat; leeg (en dus
+     onzichtbaar) vóór er een potje loopt of tijdens Automatisch-modus. */
   .walk-quest-checklist{
-    display:flex; flex-direction:column; gap:6px; flex:1 1 auto; min-height:0;
-    border:1px solid var(--line-dim); border-radius:6px; padding:14px;
-    overflow-y:auto; scrollbar-gutter:stable;
+    display:flex; flex-direction:column; gap:4px; flex:1 1 auto; min-height:0;
+    border:1px solid var(--line-dim); border-radius:6px; padding:10px;
+    overflow-y:auto;
   }
   .walk-quest-checklist:empty{display:none;}
   @media (max-width: 1360px){ .walk-quest-checklist{flex:none; max-height:none;} }
+  .quest-check-head{
+    flex:none; display:flex; align-items:center; justify-content:space-between; gap:8px;
+    padding:2px 4px 8px; margin-bottom:2px; border-bottom:1px solid var(--line-dim);
+  }
+  .quest-check-title{font-family:var(--font-mono); font-size:11px; letter-spacing:.16em; text-transform:uppercase; color:var(--text-dim);}
+  .quest-check-score{display:flex; align-items:center; gap:8px; font-family:var(--font-mono); font-size:12px; color:var(--text-dim); white-space:nowrap;}
+  .quest-check-score b{color:var(--start); font-size:14px;}
+  .quest-check-lamps{display:flex; gap:4px;}
+  .quest-check-lamps i{width:10px; height:10px; border-radius:50%; box-shadow:inset 0 0 0 2px #33424f;}
+  .quest-check-lamps i.is-on{background:var(--start-glow); box-shadow:0 0 6px rgba(85,214,138,.8);}
   .quest-check-row{
-    display:flex; align-items:center; flex-wrap:wrap; gap:4px 7px;
-    padding:6px 9px; border-radius:5px;
-    background:var(--hull); border:1px solid var(--line-dim); border-left:3px solid var(--qtint, var(--quest));
-    transition:background-color .15s, border-color .15s;
+    flex:1 1 auto; min-height:40px; max-height:52px; box-sizing:border-box;
+    display:flex; align-items:center; gap:10px; padding:0 10px 0 14px; border-radius:7px;
+    background:#0d1319; border:1px solid var(--line-dim);
+    box-shadow:inset 4px 0 0 var(--qtint, var(--quest));
+    transition:background-color .12s, border-color .12s;
   }
-  /* nog niet voltooide opdrachten zijn hover-baar: even eroverheen bewegen zet de markering op
-     het bord naar DIE opdracht toe (soloPeekQuest in 97-solo.js) — zo kun je spieken waar de rest
-     van je stapel ligt tegenover je huidige positie, om je route/tactiek te plannen
-     (gebruikerswens). Voltooide opdrachten hebben niets meer te spieken. */
+  .quest-check-dot{
+    position:relative; flex:none; width:20px; height:20px; border-radius:50%;
+    box-shadow:inset 0 0 0 2px var(--qtint, var(--quest));
+    display:flex; align-items:center; justify-content:center;
+  }
+  .quest-check-dot svg{width:12px; height:12px; fill:none; stroke:#b8ffd6; stroke-width:3; stroke-linecap:round; stroke-linejoin:round;}
+  .quest-check-text{display:flex; flex-direction:column; flex:1 1 auto; min-width:0;}
+  .quest-check-name{font-family:var(--font-display); font-size:15px; line-height:1.2; color:var(--text); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+  .quest-check-room{font-family:var(--font-mono); font-size:10.5px; line-height:1.3; color:var(--text-dim); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+  .quest-check-eye{flex:none; width:18px; height:18px; display:none; fill:none; stroke:var(--pc, #e85ad8); stroke-width:2;}
+  .quest-check-eye circle{fill:var(--pc, #e85ad8); stroke:none;}
+  /* nog te doen: hover = spieken */
   .quest-check-row:not(.is-done){cursor:pointer;}
-  .quest-check-row:not(.is-done):hover{
-    background:color-mix(in srgb, var(--qtint, var(--quest)) 14%, var(--hull));
-    border-color:color-mix(in srgb, var(--qtint, var(--quest)) 55%, var(--line-dim));
+  .quest-check-row:not(.is-done):not(.is-current):hover{
+    border-color:var(--pc, #e85ad8); background:color-mix(in srgb, var(--pc, #e85ad8) 12%, #0d1319);
   }
-  .quest-check-label{
-    font-family:var(--font-mono); font-size:10.5px; font-weight:700; color:var(--qtint, var(--quest));
-    flex:none;
-  }
-  /* naam + kamer gestapeld (gebruikerswens: ook de kamer erbij) — zelfde opzet als
-     .energy-pick-text verderop in dit bestand. */
-  .quest-check-text{
-    display:flex; flex-direction:column; gap:0; flex:1 1 auto; min-width:0;
-  }
-  .quest-check-name{
-    font-family:var(--font-display); font-size:12px; color:var(--text); line-height:1.3;
-  }
-  .quest-check-room{
-    font-family:var(--font-mono); font-size:9.5px; color:var(--text-dim); line-height:1.3;
-  }
-  /* huidig doel: dezelfde tint als de grote opdrachtkaart ernaast (--qtint, gezet vanuit JS),
-     met een iets steviger rand zodat 'm er tussen de rest uit springt — dít is de opdracht die
-     Herprioritering daadwerkelijk zou wegruilen. */
-  /* dikkere linkerrand via een schaduw i.p.v. border-left-width, zodat "2.x" en de naam precies
-     onder die van de andere rijen blijven staan */
+  .quest-check-row:not(.is-done):not(.is-current):hover .quest-check-eye{display:block;}
+  /* actief doel: zelfde maten als de rest, alleen kleur en een kloppende stip */
   .quest-check-row.is-current{
-    box-shadow:inset 2px 0 0 var(--qtint, var(--quest)),
-      0 0 0 1px color-mix(in srgb, var(--qtint, var(--quest)) 45%, transparent);
+    border-color:var(--qtint, var(--quest));
+    background:color-mix(in srgb, var(--qtint, var(--quest)) 15%, #0d1319);
   }
-  .quest-check-row.is-current .quest-check-name{font-weight:700;}
-  /* voltooid: naam/label/kamer doven naar donkerder tekst, maar "Voltooid!" krijgt bewust WEL
-     de succeskleur (zelfde groen als een "hit"-logregel) — zo blijft in één oogopslag
-     zichtbaar wélke opdrachten al klaar zijn, zonder dat de hele rij even fel blijft als een
-     open opdracht (gebruikerswens: tekst donkerder, "Voltooid!" erachter). */
-  .quest-check-row.is-done{
-    background:transparent; border-left-color:var(--line-dim);
-  }
-  .quest-check-row.is-done .quest-check-label,
-  .quest-check-row.is-done .quest-check-name,
-  .quest-check-row.is-done .quest-check-room{color:var(--text-dim);}
-  .quest-check-done{
-    font-family:var(--font-mono); font-size:10px; font-weight:700; color:var(--start);
-    flex:none;
-  }
-  /* "Actief" bij je huidige doel — zelfde badge-stijl als "Voltooid!" hierboven, maar in de
-     kleur van de opdracht zelf (--qtint) i.p.v. het vaste succesgroen (gebruikerswens). */
+  .quest-check-row.is-current .quest-check-name{font-weight:700; color:#eef3f8;}
+  .quest-check-row.is-current .quest-check-room{color:var(--text);}
+  .quest-check-dot i{position:absolute; inset:5px; border-radius:50%; background:var(--qtint, var(--quest)); animation:walkRoomPulse 1.9s ease-in-out infinite; will-change:opacity;}
+  #tabWalk.walk-is-paused .quest-check-dot i{animation-play-state:paused;}
   .quest-check-active{
-    font-family:var(--font-mono); font-size:10px; font-weight:700;
-    color:var(--qtint, var(--quest)); flex:none;
+    flex:none; padding:2px 6px; border-radius:4px; border:1px solid var(--qtint, var(--quest));
+    font-family:var(--font-mono); font-size:9.5px; letter-spacing:.08em; text-transform:uppercase;
+    color:var(--qtint, var(--quest));
   }
-  /* naast het bord (vanaf 1361px breed): naam + kamer op één regel. Het bord schaalt mee met
-     de schermhoogte (--wcell) en de legenda/log-knoppen staan onderaan deze kolom, dus 9 rijen
-     van 2 regels pasten er niet meer in (kreeg een eigen scrollbalk). Moet ná de gewone
-     .quest-check-*-regels hierboven staan, anders winnen die. */
-  /* De rijen rekken mee tot het vak gevuld is (flex-grow), tot hoogstens 50px: op een groot
-     scherm dus ruime rijen, op een laptop vallen ze terug op hun eigen (compacte) hoogte — zo
-     krijgt het vak nooit een eigen scrollbalk. */
-  @media (min-width: 1361px){
-    .walk-quest-checklist{gap:5px; padding:10px;}
-    .quest-check-row{padding:2px 10px; flex:1 1 auto; max-height:50px;}
-    .quest-check-name{font-size:13px;}
-    .quest-check-label{font-size:11px;}
+  /* voltooid: groen vinkje, doorgestreept en vager; rand onzichtbaar (maar even breed) */
+  .quest-check-row.is-done{
+    background:transparent; border-color:transparent;
+    box-shadow:inset 4px 0 0 color-mix(in srgb, var(--qtint, var(--quest)) 45%, transparent);
+  }
+  .quest-check-row.is-done .quest-check-dot{background:#2f7a52; box-shadow:none;}
+  .quest-check-row.is-done .quest-check-text{opacity:.55;}
+  .quest-check-row.is-done .quest-check-name{color:var(--text-dim); text-decoration:line-through;}
+  /* Weinig hoogte (laptop: het bord en dus deze kolom is dan maar ±560px hoog): naam en kamer op
+     één regel, kleinere rondjes; de rijen verdelen de hoogte, zodat alle 9 zonder scrollen
+     passen. Zelfde grens als het compacte energievak. */
+  @media (min-width: 1361px) and (max-height: 865px), (min-width: 1361px) and (max-width: 1630px){
+    .walk-quest-checklist{gap:3px; padding:8px;}
+    .quest-check-head{padding:0 4px 6px;}
+    .quest-check-lamps i{width:8px; height:8px;}
+    .quest-check-row{min-height:0; max-height:40px; gap:8px; padding:0 8px 0 11px; box-shadow:inset 3px 0 0 var(--qtint, var(--quest));}
+    .quest-check-row.is-done{box-shadow:inset 3px 0 0 color-mix(in srgb, var(--qtint, var(--quest)) 45%, transparent);}
+    .quest-check-dot{width:15px; height:15px;}
+    .quest-check-dot i{inset:4px;}
+    .quest-check-dot svg{width:9px; height:9px; stroke-width:3.5;}
     .quest-check-text{flex-direction:row; align-items:baseline; gap:6px;}
-    /* vaste breedte voor de naam, zodat de kamernamen netjes onder elkaar staan (net genoeg
-       voor de langste, "Medische voorraad") */
-    .quest-check-name{white-space:nowrap; flex:0 0 8.6em; overflow:hidden; text-overflow:ellipsis;}
-    .quest-check-room{white-space:nowrap; overflow:hidden; text-overflow:ellipsis; min-width:0; flex:1 1 auto;}
+    .quest-check-name{font-size:14px; flex:1 1 auto; min-width:0;}
+    .quest-check-room{font-size:9.5px; flex:none; max-width:45%;}
+    .quest-check-active{padding:1px 5px; font-size:8.5px;}
+    .quest-check-eye{width:15px; height:15px;}
   }
   /* de nieuwe stat-tegels + altijd-zichtbare spelersrij boven het bord vervangen wat #walkMeta
      en #walkScoreActive lieten zien (beurt/voltooid resp. de eigen rij) — die blijven in de DOM

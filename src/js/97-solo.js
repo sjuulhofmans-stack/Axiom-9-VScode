@@ -476,24 +476,33 @@ function soloRenderQuestChecklist(){
   if (!p){ walkQuestChecklistEl.innerHTML = ''; return; }
   const done = new Set(p.deck.slice(0, p.nextIdx));
   const current = p.rank ? null : p.deck[p.nextIdx];
-  walkQuestChecklistEl.innerHTML = Object.keys(QUEST_NAMES).map(label => {
+  // afvinklijst met kleurstroken (gebruikerswens): geen 2.x-nummer meer, alleen naam + kamer —
+  // de opdrachtkaarten krijgen later alleen nog een naam en een opdracht. Opmaak: zie het
+  // CSS-blok bij .walk-quest-checklist. --pc = jouw kleur, voor de hover-rand (spieken).
+  walkQuestChecklistEl.style.setProperty('--pc', p.color);
+  const nDone = Math.min(SIM_QUESTS_TO_WIN, p.completed);
+  const lamps = Array.from({ length: SIM_QUESTS_TO_WIN }, (_, i) => `<i${i < nDone ? ' class="is-on"' : ''}></i>`).join('');
+  const head = `<div class="quest-check-head"><span class="quest-check-title">Opdrachten</span>` +
+    `<span class="quest-check-score"><span class="quest-check-lamps">${lamps}</span><span><b>${nDone}</b>/${SIM_QUESTS_TO_WIN}</span></span></div>`;
+  walkQuestChecklistEl.innerHTML = head + Object.keys(QUEST_NAMES).map(label => {
     const isDone = done.has(label);
     const isCurrent = label === current;
     const cls = 'quest-check-row' + (isDone ? ' is-done' : '') + (isCurrent ? ' is-current' : '');
-    const style = isCurrent ? ` style="--qtint:${questTint(label)}"` : '';
     // kamernaam erbij (gebruikerswens) — zelfde opzoekmethode als de grote opdrachtkaart
     // ernaast (renderWalkQuestCard in 96-walk.js): via findLabelTile/ROOM_NAMES, verandert dus
     // automatisch mee als de indeling ooit wijzigt.
     const tid = findLabelTile(label);
     const room = tid !== null ? (ROOM_NAMES[tid] || ('Gang ' + tid)) : '—';
-    return `<div class="${cls}"${style} data-label="${label}">` +
-      `<span class="quest-check-label">${label}</span>` +
+    const dot = isDone ? '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12l5 5 9-10"></path></svg>'
+      : isCurrent ? '<i></i>' : '';
+    return `<div class="${cls}" style="--qtint:${questTint(label)}" data-label="${label}">` +
+      `<span class="quest-check-dot">${dot}</span>` +
       `<span class="quest-check-text">` +
         `<span class="quest-check-name">${QUEST_NAMES[label]}</span>` +
         `<span class="quest-check-room">${room}</span>` +
       `</span>` +
-      (isDone ? `<span class="quest-check-done">✓ Voltooid!</span>` : '') +
-      (isCurrent ? `<span class="quest-check-active">Actief</span>` : '') +
+      (isCurrent ? `<span class="quest-check-active">actief</span>` : '') +
+      (!isDone && !isCurrent ? '<svg class="quest-check-eye" viewBox="0 0 24 24" aria-hidden="true"><path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12z"></path><circle cx="12" cy="12" r="3"></circle></svg>' : '') +
     `</div>`;
   }).join('');
 }
