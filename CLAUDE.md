@@ -324,6 +324,9 @@ Check minimaal:
     vanuit die hoek door en rollen ze met dezelfde vaart uit tot ze rechtop op de worp liggen
     (`openingDiceSet` in 96d-dice.js, per speler, omdat het paneel bij elke stap opnieuw wordt
     opgebouwd). Ook de gewone stenen wiebelen om hun as (`sdWiggle`), niet meer op en neer.
+    Na een dobbelronde schuiven de rijen langs elkaar naar de nieuwe volgorde (`openingShuffle`,
+    1,3 s, pas als de stenen stilliggen); het potje wacht daarop (`openingBusyMs`). Bij het
+    kiezen blijven dezelfde rijen staan, mét de worp; "kiest nu"/"start 3.x" zijn tabjes.
 14. Winscherm → knop "Statistieken" opent een grote pop-up over het scherm
     (Escape/klik ernaast/Sluiten = dicht): bovenaan elke speler een eigen
     kolom, daaronder 6 categorieën (Algemeen, Dobbelstenen, Verplaatsing,

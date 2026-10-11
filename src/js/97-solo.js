@@ -2953,7 +2953,9 @@ function soloOpeningDoRoll(idx){
     op.note = walkOpeningNote(soloPlayers, op.buckets);
     walkLog(op.note);
     soloRenderOpening();
-    soloOpeningLater(1100, soloOpeningStep);   // even laten zien wie er bovenaan staat
+    // even laten zien wie er bovenaan staat: wachten tot de stenen stilliggen en de rijen naar
+    // hun nieuwe plek geschoven zijn (openingBusyMs, 96-walk.js)
+    soloOpeningLater(Math.max(1100, openingBusyMs() + 600), soloOpeningStep);
   } else {
     soloRenderOpening();
     soloOpeningLater(500, soloOpeningStep);

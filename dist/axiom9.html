@@ -1220,8 +1220,6 @@
     align-items:center; column-gap:10px; min-height:calc(var(--od) + 20px); padding:8px 12px;
     border:1px solid var(--line); border-left:4px solid var(--pc); border-radius:8px; background:var(--panel);
   }
-  /* startposities kiezen: geen stenen, dus compacter (ruimte voor de keuzeknoppen eronder) */
-  .walk-opening-list.is-pick .walk-opening-row{min-height:46px;}
   .walk-opening-row.is-up{border-color:var(--pc); box-shadow:0 0 0 1px var(--pc);}
   .walk-opening-place{font-family:var(--font-mono); font-size:14px; font-weight:700; color:var(--text-dim);}
   .walk-opening-dot{width:12px; height:12px; border-radius:50%; background:var(--pc);}
@@ -1246,14 +1244,15 @@
   }
   .walk-opening-chip.up{color:var(--pc); border-color:var(--pc);}
   .walk-opening-chip.tie{color:var(--amber); border-color:var(--amber);}
-  .walk-opening-start{font-family:var(--font-mono); font-size:calc(var(--od) * .4); font-weight:700; color:var(--start);}
+  .walk-opening-chip.start{color:var(--start); border-color:var(--start);}
   .walk-opening-note{margin:0; font-size:12.5px; line-height:1.45; color:var(--text);}
   .walk-opening-turn{margin:0; font-size:13px; line-height:1.45; color:var(--text);}
   .walk-opening-turn b, .walk-opening-note b{color:var(--text);}
   /* knoppen onderaan het paneel, zodat ze altijd op dezelfde plek staan */
   .walk-opening-action{margin-top:auto; display:flex; flex-direction:column; gap:10px;}
   .walk-opening-btn{width:100%; padding:13px; font-size:15px; animation:axPulse 1.9s ease-in-out infinite;}
-  .walk-opening-picks{display:grid; grid-template-columns:repeat(2, 1fr); gap:8px;}
+  /* de vrije startvakjes naast elkaar op één regel: het paneel houdt dezelfde rijen als bij het dobbelen */
+  .walk-opening-picks{display:grid; grid-template-columns:repeat(auto-fit, minmax(56px, 1fr)); gap:8px;}
   .walk-opening-pick{padding:10px; font-family:var(--font-mono); font-size:15px; font-weight:700; color:var(--start); border-color:var(--start);}
   #tabWalk.walk-is-paused .walk-opening-btn,
   #tabWalk.walk-is-paused .cell.walk-start-glow::after{animation-play-state:paused;}
@@ -9562,11 +9561,24 @@ function renderOpeningPanel(players, op, opts = {}){
   // daarvoor in een eigen omhulsel met data-od="speler-steen".
   const die = (i, k, face, cls = '') => `<span class="walk-opening-die" data-od="${i}-${k}">${diceDieHtml(face, 'is-op' + cls)}</span>`;
   const spin = [];   // [speler, toestand, worp] — pas toepassen als het paneel getekend is
+  // data-pi: welke speler, zodat openingShuffle de rijen kan volgen als de volgorde verandert
   const row = (i, placeHtml, right, cls) =>
-    `<li class="walk-opening-row${cls}" style="--pc:${players[i].color}">` +
+    `<li class="walk-opening-row${cls}" data-pi="${i}" style="--pc:${players[i].color}">` +
       `<span class="walk-opening-place">${placeHtml}</span>` +
       `<span class="walk-opening-dot"></span>` +
       `<span class="walk-opening-name">${players[i].name}</span>${right}</li>`;
+  // de stenen + som van één speler. Aan de beurt: rollen als er gegooid wordt, anders (wachten op
+  // de klik) "?"-stenen die zachtjes om hun as wiebelen; gegooid: de worp (blijft ook tijdens het
+  // kiezen staan, gebruikerswens); nog niet aan de beurt: vage "?"-stenen op hun plek
+  const diceHtml = (i, up, shaking) => {
+    const r = op.last[i];
+    let dice, sum = '';
+    if (up && shaking){ dice = die(i, 0, 1) + die(i, 1, 1); spin.push([i, 'spin']); }
+    else if (up){ dice = die(i, 0, '?') + die(i, 1, '?'); spin.push([i, 'wiggle']); }
+    else if (r){ dice = die(i, 0, r[0]) + die(i, 1, r[1]); sum = r[0] + r[1]; spin.push([i, 'result', r]); }
+    else { dice = die(i, 0, '?', ' is-idle') + die(i, 1, '?', ' is-idle'); spin.push([i, 'rest']); }
+    return `<span class="walk-opening-dice">${dice}<span class="walk-opening-sum">${sum}</span></span>`;
+  };
   let html;
   if (op.stage === 'roll'){
     let place = 1;
@@ -9575,14 +9587,7 @@ function renderOpeningPanel(players, op, opts = {}){
       for (const i of b){
         const up = op.rolling === i;
         const r = op.last[i];
-        // aan de beurt: rollen als er gegooid wordt, anders (wachten op de klik) "?"-stenen die
-        // zachtjes om hun as wiebelen; nog niet aan de beurt: vage "?"-stenen op hun plek
-        let dice, sum = '';
-        if (up && opts.shaking){ dice = die(i, 0, 1) + die(i, 1, 1); spin.push([i, 'spin']); }
-        else if (up){ dice = die(i, 0, '?') + die(i, 1, '?'); spin.push([i, 'wiggle']); }
-        else if (r){ dice = die(i, 0, r[0]) + die(i, 1, r[1]); sum = r[0] + r[1]; spin.push([i, 'result', r]); }
-        else { dice = die(i, 0, '?', ' is-idle') + die(i, 1, '?', ' is-idle'); spin.push([i, 'rest']); }
-        dice += `<span class="walk-opening-sum">${sum}</span>`;
+        const dice = diceHtml(i, up, opts.shaking);
         // "gelijk" pas als de dobbelronde van deze groep klaar is: tijdens de ronde zit iedereen
         // die nog moet gooien ook in dezelfde emmer, dus wie al gooide is dan nog niet gelijk
         // (gebruikersmelding: de eerste gooier kreeg meteen "gelijk"). Via includes i.p.v.
@@ -9591,7 +9596,7 @@ function renderOpeningPanel(players, op, opts = {}){
         const chip = up ? `<span class="walk-opening-chip up">gooit</span>`
           : b.length > 1 && r && !rolledThisRound ? `<span class="walk-opening-chip tie">gelijk</span>`
           : '';
-        rows.push(row(i, b.length === 1 && r ? `${place}e` : '–', `<span class="walk-opening-dice">${dice}</span>${chip}`, up ? ' is-up' : ''));
+        rows.push(row(i, b.length === 1 && r ? `${place}e` : '–', dice + chip, up ? ' is-up' : ''));
       }
       place += b.length;
     }
@@ -9607,12 +9612,15 @@ function renderOpeningPanel(players, op, opts = {}){
       (op.note ? `<p class="walk-opening-note">${op.note}</p>` : '') +
       `<div class="walk-opening-action">${action}</div>`;
   } else {
+    // zelfde rijen als bij het dobbelen (zelfde volgorde, zelfde maat, de worp blijft staan),
+    // zodat het paneel niet ineens verandert (gebruikersmelding); alleen het tabje op de rand
+    // wordt "kiest nu" of het gekozen startvakje
     const rows = op.order.map((i, k) => {
       const picked = op.picks[i];
       const now = k === op.pickPos && !picked;
-      const right = picked ? `<span class="walk-opening-start">${picked}</span>`
+      const chip = picked ? `<span class="walk-opening-chip start">start ${picked}</span>`
         : now ? `<span class="walk-opening-chip up">kiest nu</span>` : '';
-      return row(i, `${k + 1}e`, right, now ? ' is-up' : '');
+      return row(i, `${k + 1}e`, diceHtml(i, false, false) + chip, now ? ' is-up' : '');
     });
     const chooser = players[op.order[op.pickPos]];
     const free = opts.freeLabels || [];
@@ -9625,17 +9633,61 @@ function renderOpeningPanel(players, op, opts = {}){
         : `<p class="walk-opening-turn"><b>${chooser.name}</b> kiest een startpositie…</p>`;
     html =
       `<h3 class="walk-opening-title">Startpositie kiezen</h3>` +
-      `<p class="walk-opening-sub">In volgorde van de worp kiest iedereen een startvakje — dit is meteen ook de beurtvolgorde. Wie aan de beurt is ziet pas nu zijn eerste opdracht; de gloeiende vakjes zijn nog vrij.</p>` +
-      `<ol class="walk-opening-list is-pick">${rows.join('')}</ol>` +
+      `<p class="walk-opening-sub">In deze volgorde kiest iedereen een startvakje — dit is meteen ook de beurtvolgorde. Wie kiest ziet pas nu zijn eerste opdracht; de gloeiende vakjes zijn nog vrij.</p>` +
+      `<ol class="walk-opening-list">${rows.join('')}</ol>` +
       `<div class="walk-opening-action">${action}</div>`;
   }
   // alleen vervangen als er echt iets veranderd is: in Multiplayer komt dezelfde stand vaak
   // opnieuw binnen, en een knop die tussen indrukken en loslaten vervangen wordt slikt de klik in
   if (walkOpeningPanelEl.dataset.html !== html){
+    // waar staat elke rij nu (mét een eventuele lopende schuif-animatie)? Zie openingShuffle.
+    const before = new Map([...walkOpeningPanelEl.querySelectorAll('.walk-opening-row[data-pi]')]
+      .map(li => [li.dataset.pi, li.getBoundingClientRect().top]));
     walkOpeningPanelEl.dataset.html = html;
     walkOpeningPanelEl.innerHTML = html;
+    for (const [i, mode, r] of spin) openingDiceSet(i, mode, r);
+    openingShuffle(before);
+    return;
   }
   for (const [i, mode, r] of spin) openingDiceSet(i, mode, r);
+}
+
+// Verandert de volgorde (na een dobbelronde: hoogste worp bovenaan), dan schuiven de rijen langs
+// elkaar heen naar hun nieuwe plek i.p.v. te verspringen (gebruikerswens). Eerst wachten tot de
+// stenen stilliggen (je ziet de worp eerst op de oude plek), dan rustig schuiven: wie omhoog gaat
+// wijkt naar rechts uit en ligt bovenop, wie zakt naar links, zodat ze elkaar zichtbaar passeren.
+// Alleen transform (FLIP: de rij staat al op zijn nieuwe plek en start verschoven naar de oude).
+const OPENING_SHUFFLE_MS = 1300, OPENING_SHUFFLE_PAUSE_MS = 450;
+let openingShuffleEnd = 0;   // document.timeline-tijd waarop het schuiven klaar is
+function openingShuffle(before){
+  if (!before.size || crystalReduceMotion()) return;
+  const now = document.timeline.currentTime;
+  let moved = false;
+  const rows = [...walkOpeningPanelEl.querySelectorAll('.walk-opening-row[data-pi]')];
+  const moves = rows.map(li => {
+    const prev = before.get(li.dataset.pi);
+    return prev === undefined ? 0 : prev - li.getBoundingClientRect().top;
+  });
+  if (moves.every(dy => Math.abs(dy) < 1)) return;
+  const delay = openingDiceBusyMs() + OPENING_SHUFFLE_PAUSE_MS;
+  rows.forEach((li, k) => {
+    const dy = moves[k];
+    if (Math.abs(dy) < 1) return;
+    moved = true;
+    const up = dy > 0, side = up ? 22 : -22;
+    li.style.zIndex = up ? 3 : 2;
+    li.animate([
+      { transform: `translateY(${dy}px)` },
+      { transform: `translate(${side}px, ${dy * .5}px) scale(${up ? 1.03 : .98})`, offset: .45 },
+      { transform: 'none' },
+    ], { duration: OPENING_SHUFFLE_MS, delay, easing: 'ease-in-out', fill: 'backwards' });
+  });
+  if (moved) openingShuffleEnd = now + delay + OPENING_SHUFFLE_MS;
+}
+// hoe lang (ms) zijn de stenen en het schuiven nog bezig? Het potje wacht daarop voordat het
+// verder gaat (soloOpeningDoRoll in 97-solo.js, walkRunOpening hieronder)
+function openingBusyMs(){
+  return Math.max(0, openingDiceBusyMs(), openingShuffleEnd - document.timeline.currentTime);
 }
 
 // Automatisch: dezelfde fase, maar alles bots en zichtbaar in het ingestelde tempo. Geeft de
@@ -9672,7 +9724,8 @@ async function walkRunOpening(graph, players, rand, aborted){
       op.note = walkOpeningNote(players, op.buckets);
       walkLog(op.note);
       renderOpeningPanel(players, op);
-      await pause(1);
+      // wachten tot de rijen naar hun nieuwe plek geschoven zijn (openingShuffle)
+      await walkTick(Math.max(walkSpeed().rollMs, openingBusyMs() + 400));
       if (aborted()) return null;
     }
   }
@@ -11703,6 +11756,13 @@ function odAngle(s, now){
     : s.a0 + OD_ACCEL_DEG + OD_SPIN_DPS * (t - OD_ACCEL_MS) / 1000;
   if (s.mode === 'land'){ const u = Math.min(1, t / s.dur); return s.a0 + (s.a1 - s.a0) * (1 - (1 - u) ** 2); }
   return 0;
+}
+// hoe lang (ms) rollen er nog stenen uit? (openingShuffle in 96-walk.js wacht daarop)
+function openingDiceBusyMs(){
+  const now = odNow();
+  let ms = 0;
+  for (const s of odState.values()) if (s.mode === 'land') ms = Math.max(ms, s.t0 + s.dur - now);
+  return ms;
 }
 function odClearTimers(s){ for (const t of s.timers) clearTimeout(t); s.timers = []; }
 function odLater(s, fn, ms){ s.timers.push(setTimeout(fn, ms)); }
@@ -14747,7 +14807,9 @@ function soloOpeningDoRoll(idx){
     op.note = walkOpeningNote(soloPlayers, op.buckets);
     walkLog(op.note);
     soloRenderOpening();
-    soloOpeningLater(1100, soloOpeningStep);   // even laten zien wie er bovenaan staat
+    // even laten zien wie er bovenaan staat: wachten tot de stenen stilliggen en de rijen naar
+    // hun nieuwe plek geschoven zijn (openingBusyMs, 96-walk.js)
+    soloOpeningLater(Math.max(1100, openingBusyMs() + 600), soloOpeningStep);
   } else {
     soloRenderOpening();
     soloOpeningLater(500, soloOpeningStep);

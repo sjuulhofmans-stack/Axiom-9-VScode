@@ -329,6 +329,13 @@ function odAngle(s, now){
   if (s.mode === 'land'){ const u = Math.min(1, t / s.dur); return s.a0 + (s.a1 - s.a0) * (1 - (1 - u) ** 2); }
   return 0;
 }
+// hoe lang (ms) rollen er nog stenen uit? (openingShuffle in 96-walk.js wacht daarop)
+function openingDiceBusyMs(){
+  const now = odNow();
+  let ms = 0;
+  for (const s of odState.values()) if (s.mode === 'land') ms = Math.max(ms, s.t0 + s.dur - now);
+  return ms;
+}
 function odClearTimers(s){ for (const t of s.timers) clearTimeout(t); s.timers = []; }
 function odLater(s, fn, ms){ s.timers.push(setTimeout(fn, ms)); }
 const odEls = idx => document.querySelectorAll(`[data-od^="${idx}-"]`);

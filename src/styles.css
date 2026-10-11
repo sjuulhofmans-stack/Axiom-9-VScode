@@ -1213,8 +1213,6 @@
     align-items:center; column-gap:10px; min-height:calc(var(--od) + 20px); padding:8px 12px;
     border:1px solid var(--line); border-left:4px solid var(--pc); border-radius:8px; background:var(--panel);
   }
-  /* startposities kiezen: geen stenen, dus compacter (ruimte voor de keuzeknoppen eronder) */
-  .walk-opening-list.is-pick .walk-opening-row{min-height:46px;}
   .walk-opening-row.is-up{border-color:var(--pc); box-shadow:0 0 0 1px var(--pc);}
   .walk-opening-place{font-family:var(--font-mono); font-size:14px; font-weight:700; color:var(--text-dim);}
   .walk-opening-dot{width:12px; height:12px; border-radius:50%; background:var(--pc);}
@@ -1239,14 +1237,15 @@
   }
   .walk-opening-chip.up{color:var(--pc); border-color:var(--pc);}
   .walk-opening-chip.tie{color:var(--amber); border-color:var(--amber);}
-  .walk-opening-start{font-family:var(--font-mono); font-size:calc(var(--od) * .4); font-weight:700; color:var(--start);}
+  .walk-opening-chip.start{color:var(--start); border-color:var(--start);}
   .walk-opening-note{margin:0; font-size:12.5px; line-height:1.45; color:var(--text);}
   .walk-opening-turn{margin:0; font-size:13px; line-height:1.45; color:var(--text);}
   .walk-opening-turn b, .walk-opening-note b{color:var(--text);}
   /* knoppen onderaan het paneel, zodat ze altijd op dezelfde plek staan */
   .walk-opening-action{margin-top:auto; display:flex; flex-direction:column; gap:10px;}
   .walk-opening-btn{width:100%; padding:13px; font-size:15px; animation:axPulse 1.9s ease-in-out infinite;}
-  .walk-opening-picks{display:grid; grid-template-columns:repeat(2, 1fr); gap:8px;}
+  /* de vrije startvakjes naast elkaar op één regel: het paneel houdt dezelfde rijen als bij het dobbelen */
+  .walk-opening-picks{display:grid; grid-template-columns:repeat(auto-fit, minmax(56px, 1fr)); gap:8px;}
   .walk-opening-pick{padding:10px; font-family:var(--font-mono); font-size:15px; font-weight:700; color:var(--start); border-color:var(--start);}
   #tabWalk.walk-is-paused .walk-opening-btn,
   #tabWalk.walk-is-paused .cell.walk-start-glow::after{animation-play-state:paused;}
