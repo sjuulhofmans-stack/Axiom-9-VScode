@@ -1482,9 +1482,24 @@
   /* Sinds de kristalkluis: staan er geen knoppen in (na het dobbelen, tijdens andermans beurt),
      dan krimpt het vak tot alleen de energiebalk. Dat "springt" niet meer: de kluis eronder staat
      vast onderaan de kolom (#walkCardVault margin-top:auto) en groeit juist in die vrije ruimte. */
-  /* VASTE hoogte (= wat de 2x2-energietegels + de "te weinig energie"-regel nodig hebben), ook
-     na het dobbelen als er alleen nog de energiebalk in staat: zo verschuift er niets (gebruikersmelding) */
-  .walk-solo-panel{height:164px; padding:10px 12px;}
+  /* VASTE hoogte, ook na het dobbelen als er alleen nog de energiebalk in staat: zo verschuift er
+     niets (gebruikersmelding). 270px = de 4 acties onder elkaar mét uitleg + de "te weinig
+     energie"-regel (gemeten 266px op Full HD). De 2x2-tegels van eerst zijn terug naar een lijst
+     (gebruikerswens: ze stonden scheef en de tekst liep door het vak). Laptop: zie hieronder. */
+  .walk-solo-panel{height:270px; padding:10px 12px;}
+  /* Laptop (1440×780 e.d.): het bord en dus de kolom is daar maar ±560px hoog. Dan de acties
+     compacter (zonder uitlegregel, die staat in de tooltip) in 196px, anders past de kluis er niet
+     meer onder. Grens: daaronder is --wcell kleiner dan ±18,6px (hoogte 830px of breedte 1580px). */
+  @media (max-height: 830px), (max-width: 1580px){
+    .walk-solo-panel{height:196px; padding:8px 12px; gap:5px;}
+    /* alleen de lijst met energie-acties (.is-actions), niet de Herprioritering-keuze; #walkSoloPanel
+       zodat dit wint van de regels onderaan dit bestand */
+    #walkSoloPanel .energy-pick-list.is-actions{gap:3px;}
+    #walkSoloPanel .energy-pick-list.is-actions .energy-pick{min-height:28px; padding:2px 10px;}
+    #walkSoloPanel .energy-pick-list.is-actions .energy-pick-cost{height:22px; min-width:24px; font-size:11px;}
+    #walkSoloPanel .energy-pick-list.is-actions .energy-pick-text span{display:none;}
+    #walkSoloPanel .energy-pick-none{margin:0;}
+  }
 
   /* opzetscherm bij "zelf spelen" met meerdere spelers: per menselijke speler een
      startpositie-keuze + voorproefje van de eerste opdracht, zodat je een weloverwogen

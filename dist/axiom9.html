@@ -1489,9 +1489,24 @@
   /* Sinds de kristalkluis: staan er geen knoppen in (na het dobbelen, tijdens andermans beurt),
      dan krimpt het vak tot alleen de energiebalk. Dat "springt" niet meer: de kluis eronder staat
      vast onderaan de kolom (#walkCardVault margin-top:auto) en groeit juist in die vrije ruimte. */
-  /* VASTE hoogte (= wat de 2x2-energietegels + de "te weinig energie"-regel nodig hebben), ook
-     na het dobbelen als er alleen nog de energiebalk in staat: zo verschuift er niets (gebruikersmelding) */
-  .walk-solo-panel{height:164px; padding:10px 12px;}
+  /* VASTE hoogte, ook na het dobbelen als er alleen nog de energiebalk in staat: zo verschuift er
+     niets (gebruikersmelding). 270px = de 4 acties onder elkaar mét uitleg + de "te weinig
+     energie"-regel (gemeten 266px op Full HD). De 2x2-tegels van eerst zijn terug naar een lijst
+     (gebruikerswens: ze stonden scheef en de tekst liep door het vak). Laptop: zie hieronder. */
+  .walk-solo-panel{height:270px; padding:10px 12px;}
+  /* Laptop (1440×780 e.d.): het bord en dus de kolom is daar maar ±560px hoog. Dan de acties
+     compacter (zonder uitlegregel, die staat in de tooltip) in 196px, anders past de kluis er niet
+     meer onder. Grens: daaronder is --wcell kleiner dan ±18,6px (hoogte 830px of breedte 1580px). */
+  @media (max-height: 830px), (max-width: 1580px){
+    .walk-solo-panel{height:196px; padding:8px 12px; gap:5px;}
+    /* alleen de lijst met energie-acties (.is-actions), niet de Herprioritering-keuze; #walkSoloPanel
+       zodat dit wint van de regels onderaan dit bestand */
+    #walkSoloPanel .energy-pick-list.is-actions{gap:3px;}
+    #walkSoloPanel .energy-pick-list.is-actions .energy-pick{min-height:28px; padding:2px 10px;}
+    #walkSoloPanel .energy-pick-list.is-actions .energy-pick-cost{height:22px; min-width:24px; font-size:11px;}
+    #walkSoloPanel .energy-pick-list.is-actions .energy-pick-text span{display:none;}
+    #walkSoloPanel .energy-pick-none{margin:0;}
+  }
 
   /* opzetscherm bij "zelf spelen" met meerdere spelers: per menselijke speler een
      startpositie-keuze + voorproefje van de eerste opdracht, zodat je een weloverwogen
@@ -11657,94 +11672,116 @@ function diceMaybeHold(){
 }
 // ---------- "Wie begint?": wiebelen, doorrollen en uitrollen ----------
 // renderOpeningPanel (96-walk.js) bouwt het paneel bij elke stap opnieuw op. De draaiing zit
-// daarom niet in de stenen zelf maar hier, per speler: elk beeldje zoekt de stenen van die
-// speler op (data-od="speler-steen") en zet alleen hun transform. Zo loopt een draai gewoon door
-// over een nieuwe opbouw heen, en gaat het wiebelen bij de klik naadloos over in rollen.
+// daarom niet in de stenen zelf maar hier, per speler: welke beweging, sinds wanneer, vanaf welke
+// hoek. Elke (nieuwe) steen van die speler (data-od="speler-steen") krijgt dezelfde animatie met
+// dezelfde starttijd, dus een draai loopt gewoon door over een nieuwe opbouw heen.
+// Het draaien zelf doet de browser (Web Animations, alleen transform): dat loopt los van
+// JavaScript en hapert dus niet als de pagina even druk is (gebruikersmelding: de eerste versie,
+// die elk beeldje zelf de hoek zette, was hakkelig). Bij elke overgang rekenen we de huidige
+// hoek en snelheid uit (odAngle), zodat de volgende beweging precies daar verder gaat:
 //   wiggle  wacht op de worp: zachtjes heen en weer om de eigen as (gebruikerswens: niet meer
 //           op en neer)
-//   spin    gooien: vanuit het wiebelen optrekken tot 4 rondjes per seconde, kanten flitsen voorbij
-//   land    de worp is bekend: met dezelfde vaart uitrollen en precies rechtop stilvallen op de
-//           uitkomst (een Hermite-kromme: begint met de huidige snelheid, eindigt op 0)
-// De twee stenen draaien tegen elkaar in. Alleen transform op een eigen laag (zie Prestatie in
-// CLAUDE.md); de kanten wisselen via data-face.
-const OD_WIGGLE_DEG = 11, OD_WIGGLE_MS = 1400, OD_SPIN_DPS = 1440, OD_LAND_MS = 1000;
-const odState = new Map();   // speler-idx -> { mode, angle, vel, t, flick, flickNow, finals, a0, a1, v0, landed }
-let odRaf = 0, odLast = 0;
-// mode: 'wiggle' | 'spin' | 'result' (finals = de worp) | 'rest'
+//   spin    gooien: vanuit het wiebelen kwadratisch optrekken tot 2,5 rondje per seconde (sneller
+//           oogt flikkerig), de kanten flitsen voorbij
+//   land    de worp is bekend: met die vaart uitrollen (kwadratisch afremmen) en precies rechtop
+//           stilvallen op de uitkomst; de som verschijnt pas dan
+// De twee stenen draaien tegen elkaar in. De kanten wisselen via data-face.
+const OD_WIGGLE_DEG = 11, OD_WIGGLE_MS = 1400, OD_SPIN_DPS = 900, OD_ACCEL_MS = 350;
+const OD_ACCEL_DEG = OD_SPIN_DPS * OD_ACCEL_MS / 2000;   // eindigt precies op de draaisnelheid
+const OD_EASE_IN = 'cubic-bezier(.333,0,.667,.333)';    // = u²
+const OD_EASE_OUT = 'cubic-bezier(.333,.667,.667,1)';   // = 1 − (1 − u)²
+// het wiebelen als sinus, in stukjes (lineair ertussen), zodat odAngle het precies kan volgen
+const OD_WIGGLE_FRAMES = Array.from({ length: 25 }, (_, i) => OD_WIGGLE_DEG * Math.sin(2 * Math.PI * i / 24));
+const odState = new Map();   // speler-idx -> { mode, t0, a0, a1, dur, finals, v, timers }
+const odNow = () => document.timeline.currentTime;
+// hoek (graden) van steen 0 van deze speler op tijdstip `now`; steen 1 draait gespiegeld
+function odAngle(s, now){
+  const t = Math.max(0, now - s.t0);
+  if (s.mode === 'wiggle') return OD_WIGGLE_DEG * Math.sin(2 * Math.PI * t / OD_WIGGLE_MS);
+  if (s.mode === 'spin') return t < OD_ACCEL_MS
+    ? s.a0 + OD_ACCEL_DEG * (t / OD_ACCEL_MS) ** 2
+    : s.a0 + OD_ACCEL_DEG + OD_SPIN_DPS * (t - OD_ACCEL_MS) / 1000;
+  if (s.mode === 'land'){ const u = Math.min(1, t / s.dur); return s.a0 + (s.a1 - s.a0) * (1 - (1 - u) ** 2); }
+  return 0;
+}
+function odClearTimers(s){ for (const t of s.timers) clearTimeout(t); s.timers = []; }
+function odLater(s, fn, ms){ s.timers.push(setTimeout(fn, ms)); }
+const odEls = idx => document.querySelectorAll(`[data-od^="${idx}-"]`);
+const odFlip = idx => odEls(idx).forEach(el => { const d = el.firstElementChild; if (d && d.dataset.face) d.dataset.face = 1 + Math.floor(Math.random() * 6); });
+// de animatie van deze toestand op één steen zetten (opnieuw, met de gedeelde starttijd)
+function odApply(el, s){
+  el.getAnimations().forEach(a => a.cancel());
+  el.dataset.odv = s.v;
+  if (s.mode === 'rest') return;
+  const sg = el.dataset.od.endsWith('-1') ? -1 : 1;
+  const rot = a => ({ transform: `rotate(${(sg * a).toFixed(2)}deg)` });
+  const anims = [];
+  if (s.mode === 'wiggle'){
+    anims.push(el.animate(OD_WIGGLE_FRAMES.map(rot), { duration: OD_WIGGLE_MS, iterations: Infinity }));
+  } else if (s.mode === 'spin'){
+    const b = s.a0 + OD_ACCEL_DEG;
+    anims.push(el.animate([rot(s.a0), rot(b)], { duration: OD_ACCEL_MS, easing: OD_EASE_IN }));
+    anims.push(el.animate([rot(b), rot(b + 360)], { duration: 360 / OD_SPIN_DPS * 1000, delay: OD_ACCEL_MS, iterations: Infinity }));
+  } else if (s.mode === 'land'){
+    anims.push(el.animate([rot(s.a0), rot(s.a1)], { duration: s.dur, easing: OD_EASE_OUT }));
+  }
+  for (const a of anims) a.startTime = s.t0;
+}
+function odSetSumHidden(idx, on){
+  odEls(idx).forEach(el => {
+    const sum = el.closest('.walk-opening-row')?.querySelector('.walk-opening-sum');
+    if (sum) sum.classList.toggle('is-hidden', on);
+  });
+}
+// mode: 'wiggle' | 'spin' | 'result' (finals = de worp) | 'rest'. Aangeroepen na elke opbouw.
 function openingDiceSet(idx, mode, finals){
   let s = odState.get(idx);
-  if (!s){ s = { mode: 'rest', angle: 0, vel: 0, t: 0, flick: 0 }; odState.set(idx, s); }
-  // tabblad op de achtergrond: de browser tekent dan geen beeldjes, dus niet beginnen (anders
-  // blijven de stenen half gedraaid en de som verborgen tot je terugkomt)
-  if (crystalReduceMotion() || (document.hidden && mode !== 'wiggle')) mode = 'rest';
-  if (mode === 'result'){
-    if (s.mode === 'land') return;
-    if (s.mode !== 'spin' && s.mode !== 'wiggle'){ s.mode = 'rest'; return; }
-    // uitrollen: minstens een derde van de huidige vaart × duur aan draai (anders draait de
-    // kromme even terug), en eindigen op een heel rondje = rechtop
-    const v0 = Math.max(0, s.vel), turn = Math.max(v0 * OD_LAND_MS / 3000, 360);
-    Object.assign(s, { mode: 'land', t: 0, a0: s.angle, v0, a1: Math.ceil((s.angle + turn) / 360) * 360, finals });
-  } else if (mode !== s.mode){
-    if (mode === 'wiggle') s.t = 0;
-    if (mode === 'rest'){ s.angle = 0; s.vel = 0; }
-    s.mode = mode;
-  }
-  if (s.mode !== 'rest' && !odRaf){ odLast = performance.now(); odRaf = requestAnimationFrame(odFrame); }
-}
-function odStep(s, dt){
-  const ms = dt * 1000;
-  if (s.mode === 'wiggle'){
-    s.t += ms;
-    const w = 2 * Math.PI * s.t / OD_WIGGLE_MS;
-    s.angle = OD_WIGGLE_DEG * Math.sin(w);
-    s.vel = OD_WIGGLE_DEG * Math.cos(w) * 2 * Math.PI / (OD_WIGGLE_MS / 1000);
-  } else if (s.mode === 'spin'){
-    s.vel += (OD_SPIN_DPS - s.vel) * Math.min(1, dt * 4);
-    s.angle += s.vel * dt;
-    s.flick += ms;
-    if (s.flick >= 70){ s.flick = 0; s.flickNow = true; }
-  } else if (s.mode === 'land'){
-    s.t += ms;
-    const u = Math.min(1, s.t / OD_LAND_MS), D = OD_LAND_MS / 1000;
-    s.angle = s.a0 + s.v0 * D * (u - 2*u*u + u*u*u) + (s.a1 - s.a0) * (3*u*u - 2*u*u*u);
-    s.flick += ms;
-    if (u < .8 && s.flick >= 70 * (1 + 6 * u * u)){ s.flick = 0; s.flickNow = true; }
-    if (u >= 1){ s.mode = 'rest'; s.angle = 0; s.vel = 0; s.landed = true; }
-  }
-}
-function odFrame(now){
-  const dt = Math.min(.05, (now - odLast) / 1000);
-  odLast = now;
-  const els = document.querySelectorAll('[data-od]');
-  if (!els.length){ odState.clear(); odRaf = 0; return; }
-  const paused = !!walkPanelEl && walkPanelEl.classList.contains('walk-is-paused');
-  if (!paused) for (const s of odState.values()) odStep(s, dt);
-  for (const el of els){
-    const [idx, k] = el.dataset.od.split('-').map(Number);
-    const s = odState.get(idx);
-    if (!s) continue;
-    const a = s.angle * (k ? -1 : 1);
-    const tf = a ? `rotate(${a.toFixed(2)}deg)` : '';
-    if (el.style.transform !== tf) el.style.transform = tf;
-    const die = el.firstElementChild;
-    if (die && die.dataset.face){
-      if (s.mode === 'land' && s.t >= OD_LAND_MS * .8) die.dataset.face = s.finals[k];
-      else if (s.flickNow) die.dataset.face = 1 + Math.floor(Math.random() * 6);
-      if (s.landed){ die.dataset.face = s.finals[k]; die.classList.add('is-landed'); }
+  if (!s){ s = { mode: 'rest', t0: 0, a0: 0, v: 0, timers: [] }; odState.set(idx, s); }
+  if (crystalReduceMotion()) mode = 'rest';
+  const now = odNow();
+  let next = mode;
+  if (mode === 'result') next = s.mode === 'spin' || s.mode === 'wiggle' ? 'land' : s.mode === 'land' ? 'land' : 'rest';
+  if (next !== s.mode){
+    const a = odAngle(s, now);
+    odClearTimers(s);
+    if (next === 'spin'){
+      Object.assign(s, { mode: 'spin', t0: now, a0: a });
+      const tick = () => { odFlip(idx); odLater(s, tick, 80); };
+      odLater(s, tick, 80);
+    } else if (next === 'land'){
+      // snelheid op dit moment (graden/s): na het optrekken de draaisnelheid; kwam de worp nog
+      // tijdens het wiebelen binnen (Multiplayer kan de schudstand overslaan), dan toch vlot
+      const t = now - s.t0;
+      const v = s.mode === 'spin' && t < OD_ACCEL_MS ? Math.max(300, 2 * OD_ACCEL_DEG * t / OD_ACCEL_MS ** 2 * 1000) : OD_SPIN_DPS;
+      const a1 = Math.ceil((a + 270) / 360) * 360;
+      // kwadratisch afremmen begint met snelheid 2·afstand/duur: duur zo kiezen dat dat klopt
+      const dur = Math.min(1800, Math.max(500, 2 * (a1 - a) / v * 1000));
+      Object.assign(s, { mode: 'land', t0: now, a0: a, a1, dur, finals });
+      // kanten flitsen steeds trager voorbij, het laatste kwart staat de echte uitkomst er
+      let at = 0, gap = 80;
+      while (at + gap < dur * .75){ at += gap; gap *= 1.25; odLater(s, () => odFlip(idx), at); }
+      odLater(s, () => odEls(idx).forEach(el => { const d = el.firstElementChild; if (d && d.dataset.face) d.dataset.face = s.finals[+el.dataset.od.split('-')[1]]; }), dur * .75);
+      odLater(s, () => {
+        s.mode = 'rest'; s.v++;
+        odEls(idx).forEach(el => { el.dataset.odv = s.v; el.firstElementChild?.classList.add('is-landed'); });
+        odSetSumHidden(idx, false);
+      }, dur);
+    } else {
+      Object.assign(s, { mode: next, t0: now, a0: 0 });
     }
-    // de som pas tonen als de stenen stilliggen
-    const sum = el.closest('.walk-opening-row')?.querySelector('.walk-opening-sum');
-    if (sum) sum.classList.toggle('is-hidden', s.mode === 'land');
+    s.v++;
   }
-  let busy = false;
-  for (const s of odState.values()){ s.flickNow = false; s.landed = false; if (s.mode !== 'rest') busy = true; }
-  odRaf = busy ? requestAnimationFrame(odFrame) : 0;
+  // nieuwe of verouderde stenen van deze speler de juiste animatie geven
+  odEls(idx).forEach(el => { if (el.dataset.odv !== String(s.v)) odApply(el, s); });
+  odSetSumHidden(idx, s.mode === 'land');
 }
 
 // nieuw potje / gestopt
 function diceReset(){
   for (const t of diceTimers) clearTimeout(t);
   diceTimers.clear();
+  for (const s of odState.values()) odClearTimers(s);
+  odState.clear();
   diceFlow = { done: true };
   diceFlowKey = null;
   diceProgress = null;
@@ -12495,9 +12532,9 @@ function soloRenderActionPanel(){
   const note = allLocked
     ? `<p class="hint energy-pick-none">Te weinig energie voor een actie — gooi gewoon.</p>`
     : '';
-  // 2x2-tegels (prijs + naam; uitleg in de tooltip), zodat de kristallenkluis eronder altijd
-  // groot kan staan (gebruikerswens)
-  walkSoloActionsEl.innerHTML = `<div class="energy-pick-list is-grid is-short">${energyBtns}</div>${note}`;
+  // onder elkaar, met de uitleg eronder (gebruikerswens: de 2x2-tegels stonden scheef en de
+  // tekst liep door het vak heen; nu het bord en dus de kolom hoger is, past de lijst weer)
+  walkSoloActionsEl.innerHTML = `<div class="energy-pick-list is-actions">${energyBtns}</div>${note}`;
   // net aangemaakte knoppen beginnen anders allemaal weer bij 0 — zie PULSE_EPOCH hierboven.
   for (const el of walkSoloActionsEl.querySelectorAll('.walk-pulse-affordable')) syncPulse(el);
   // 2e "of": alleen zichtbaar zolang je vóór het dobbelen zit én Noodrantsoen/Stuwlading nu

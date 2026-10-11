@@ -738,9 +738,9 @@ function soloRenderActionPanel(){
   const note = allLocked
     ? `<p class="hint energy-pick-none">Te weinig energie voor een actie — gooi gewoon.</p>`
     : '';
-  // 2x2-tegels (prijs + naam; uitleg in de tooltip), zodat de kristallenkluis eronder altijd
-  // groot kan staan (gebruikerswens)
-  walkSoloActionsEl.innerHTML = `<div class="energy-pick-list is-grid is-short">${energyBtns}</div>${note}`;
+  // onder elkaar, met de uitleg eronder (gebruikerswens: de 2x2-tegels stonden scheef en de
+  // tekst liep door het vak heen; nu het bord en dus de kolom hoger is, past de lijst weer)
+  walkSoloActionsEl.innerHTML = `<div class="energy-pick-list is-actions">${energyBtns}</div>${note}`;
   // net aangemaakte knoppen beginnen anders allemaal weer bij 0 — zie PULSE_EPOCH hierboven.
   for (const el of walkSoloActionsEl.querySelectorAll('.walk-pulse-affordable')) syncPulse(el);
   // 2e "of": alleen zichtbaar zolang je vóór het dobbelen zit én Noodrantsoen/Stuwlading nu
