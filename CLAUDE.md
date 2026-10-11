@@ -351,6 +351,19 @@ Check minimaal:
   dobbelsteenkanten via `data-face` (valt buiten de MutationObserver van de pulsen).
 - Niets opnieuw in de DOM zetten als het niet veranderd is (`crystalSetHtml`, `data-key` op
   #walkDice): elke DOM-wijziging in #tabWalk laat `syncAllPulses` draaien (±5 ms).
+- **Geen animatie op iets anders dan `transform`/`opacity`** in het speelscherm, ook niet
+  "even": `top` (de glans in de energiecellen deed dat oneindig → elk beeldje de opmaak opnieuw),
+  `box-shadow` (de pulsen; nu een vaste gloed op `::after` die alleen in opacity pulst) en
+  `filter`. Gemeten in een potje: dat was de oorzaak van haperende dobbelstenen en energie,
+  terwijl "Wie begint?" (waar het energievak verborgen is) wel vloeiend liep. Controle: in de
+  console alle `document.getAnimations()` langslopen en de keyframe-eigenschappen bekijken.
+- **Geen `void el.offsetWidth` / `getComputedStyle` / `getBoundingClientRect` midden in een
+  beurt**: één gedwongen herberekening van de opmaak kost hier ±7 ms. Een animatie opnieuw
+  starten = `el.animate(...)` of `anim.currentTime = 0`; posities vooraf in één keer opmeten.
+- Bewegingen van de dobbelstenen en energiebolletjes zijn **Web Animations** (`el.animate`) met
+  een bekende starttijd (`diceMotion`, `odState` in 96d-dice.js): de hoek wordt uitgerekend, niet
+  opgevraagd, en elke beweging gaat naadloos over in de volgende (wiebelen → rollen, tollen →
+  uitrollen). Niet terug naar CSS-animaties of JS die elk beeldje een positie zet.
 
 ## Nog te doen
 

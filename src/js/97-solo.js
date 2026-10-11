@@ -533,28 +533,35 @@ function soloRenderEnergyOverview(){
     const charging = on && i >= prev;
     const draining = !on && i < prev;
     cell.classList.toggle('is-on', on);
-    cell.classList.remove('is-charging', 'is-draining', 'will-spend');
-    if (charging || draining){
-      void cell.offsetWidth;   // animatie opnieuw laten starten, ook als de klasse er net al op zat
-      // strikt na elkaar (gebruikerswens): opladen van links naar rechts, de volgende cel pas als
-      // de vorige vol is; uitgeven in omgekeerde volgorde, de laatste cel eerst. Duur gelijk aan
-      // ecellCharge/ecellDrain in styles.css.
-      cell.style.animationDelay = charging
-        ? `${(i - prev) * ENERGY_CELL_CHARGE_MS}ms`
-        : `${(prev - 1 - i) * ENERGY_CELL_DRAIN_MS}ms`;
-      cell.classList.add(charging ? 'is-charging' : 'is-draining');
-    }
+    cell.classList.remove('will-spend');
+    // Alleen de cellen die nu veranderen aanraken. Eerst werd bij elke aanroep ook de animatie van
+    // de vorige cel weggehaald — en die komt aan als de energiebolletjes één voor één binnenvliegen,
+    // dus het opladen van de vorige cel werd telkens halverwege afgebroken (hakkelig).
+    if (!charging && !draining) return;
+    const cls = charging ? 'is-charging' : 'is-draining';
+    const had = cell.classList.contains(cls);
+    cell.classList.remove(charging ? 'is-draining' : 'is-charging');
+    // strikt na elkaar (gebruikerswens): opladen van links naar rechts, de volgende cel pas als
+    // de vorige vol is; uitgeven in omgekeerde volgorde, de laatste cel eerst. Duur gelijk aan
+    // ecellCharge/ecellDrain in styles.css.
+    cell.style.animationDelay = charging
+      ? `${(i - prev) * ENERGY_CELL_CHARGE_MS}ms`
+      : `${(prev - 1 - i) * ENERGY_CELL_DRAIN_MS}ms`;
+    cell.classList.add(cls);
+    // stond de klasse er al op, dan de animatie opnieuw laten beginnen — zonder de gedwongen
+    // herberekening van de opmaak (void offsetWidth) die dat eerst deed, ±8 ms per keer (gemeten)
+    if (had) for (const a of cell.getAnimations({ subtree: true })) if (a.animationName !== 'ecellShine') a.currentTime = 0;
   });
 }
 // Animatieklassen weg zodra de animatie klaar is. Anders bleef bv. .is-charging op de laatst
 // opgeladen cel staan, en startte het opladen opnieuw zodra de kostenpreview (.will-spend, die
 // tijdelijk een andere animatie op dezelfde cel zet) weer verdween (gebruikersmelding: "het
-// laatste blokje gaat ineens opnieuw aan"). ecellFlash is de langste van de oplaadanimaties.
+// laatste blokje gaat ineens opnieuw aan"). ecellGlint is de langste van de oplaadanimaties.
 if (walkEnergyCellsEl){
   walkEnergyCellsEl.addEventListener('animationend', (e) => {
     const cell = e.target.closest('.ecell');
     if (!cell) return;
-    if (e.animationName === 'ecellFlash') cell.classList.remove('is-charging');
+    if (e.animationName === 'ecellGlint') cell.classList.remove('is-charging');
     if (e.animationName === 'ecellDrain') cell.classList.remove('is-draining');
   });
 }

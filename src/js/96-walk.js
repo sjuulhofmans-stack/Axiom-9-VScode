@@ -215,6 +215,7 @@ function setWalkPaused(on){
   if (walkPausedFlagEl) walkPausedFlagEl.hidden = !walkPaused;
   // CSS-animaties (rollende dobbelsteen, kloppend doelvakje) horen ook stil te staan
   if (walkPanelEl) walkPanelEl.classList.toggle('walk-is-paused', walkPaused);
+  dicePause(walkPaused);   // de dobbelstenen zijn browser-animaties, die pauzeren apart (96d-dice.js)
 }
 
 function walkPlayerCount(){

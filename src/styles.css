@@ -1243,11 +1243,10 @@
   .walk-opening-turn b, .walk-opening-note b{color:var(--text);}
   /* knoppen onderaan het paneel, zodat ze altijd op dezelfde plek staan */
   .walk-opening-action{margin-top:auto; display:flex; flex-direction:column; gap:10px;}
-  .walk-opening-btn{width:100%; padding:13px; font-size:15px; animation:axPulse 1.9s ease-in-out infinite;}
+  .walk-opening-btn{width:100%; padding:13px; font-size:15px;}
   /* de vrije startvakjes naast elkaar op één regel: het paneel houdt dezelfde rijen als bij het dobbelen */
   .walk-opening-picks{display:grid; grid-template-columns:repeat(auto-fit, minmax(56px, 1fr)); gap:8px;}
   .walk-opening-pick{padding:10px; font-family:var(--font-mono); font-size:15px; font-weight:700; color:var(--start); border-color:var(--start);}
-  #tabWalk.walk-is-paused .walk-opening-btn,
   #tabWalk.walk-is-paused .cell.walk-start-glow::after{animation-play-state:paused;}
   /* Tussengebied (laptop / half scherm): de drie kolommen op volle maat (280 + 879 + 300px +
      tussenruimte) zijn samen ±1525px breed, en tot de omschakeling naar één kolom hieronder
@@ -1390,11 +1389,16 @@
      --glow is de kleur; standaard de kleur van wie aan zet is (--pc). Duur gelijk houden aan
      PULSE_DURATION_MS in 97-solo.js — syncAllPulses() daar zet alle lopende pulsen op
      hetzelfde ritme, ook elementen die later worden aangemaakt. */
-  @keyframes axPulse{
-    0%,100%{box-shadow:0 0 0 2px var(--glow, var(--pc, var(--amber))),
-                       0 0 14px color-mix(in srgb, var(--glow, var(--pc, var(--amber))) 60%, transparent);}
-    50%{box-shadow:0 0 0 2px color-mix(in srgb, var(--glow, var(--pc, var(--amber))) 50%, transparent),
-                   0 0 14px color-mix(in srgb, var(--glow, var(--pc, var(--amber))) 30%, transparent);}
+  /* Prestatie (gemeten, zie CLAUDE.md): de gloed staat VAST op een eigen laagje en alleen de
+     doorzichtigheid daarvan pulst. Eerst pulste de box-shadow zelf, en dan moest de browser die
+     gloed elk beeldje opnieuw tekenen — samen met de andere pulsen haperden daardoor de
+     dobbelstenen en de energiebolletjes tijdens een potje (gebruikersmelding). 50% doorzichtig =
+     precies de oude 50%-stand (rand 50%, gloed 30% i.p.v. 60%). */
+  @keyframes axPulse{0%,100%{opacity:1;} 50%{opacity:.5;}}
+  .cell.walk-start-glow::after, .cell.walk-target::after{
+    box-shadow:0 0 0 2px var(--glow, var(--pc, var(--amber))),
+               0 0 14px color-mix(in srgb, var(--glow, var(--pc, var(--amber))) 60%, transparent);
+    will-change:opacity;
   }
   /* #btnWalkSoloSkip ("Dobbelen") pulst hier ook mee: het is zelf ook gewoon een keuze naast
      de energieacties (net zo geldig als "geen actie"), dus verdient dezelfde nadruk i.p.v.
@@ -1405,21 +1409,22 @@
      zijn tegelijk met de rest op hun helderst. */
   /* --pulse-ring / --pulse-glow / --pulse-glow-a: hoe fel het felste punt is; per element te
      temperen (zie .energy-pick hieronder) zonder dat het ritme verandert */
-  @keyframes axPulseBtn{
-    0%,100%{box-shadow:0 0 0 2px color-mix(in srgb, var(--glow, var(--pc, var(--amber))) var(--pulse-ring, 100%), transparent),
-                       0 0 var(--pulse-glow, 14px) color-mix(in srgb, var(--glow, var(--pc, var(--amber))) var(--pulse-glow-a, 60%), transparent);}
-    50%{box-shadow:0 0 0 2px color-mix(in srgb, var(--glow, var(--pc, var(--amber))) 10%, transparent),
-                   0 0 0 transparent;}
-  }
-  .walk-pulse-affordable, #btnWalkSoloRoll:not([hidden]), #btnWalkSoloSkip:not([hidden]){
-    animation:axPulseBtn 1.9s ease-in-out infinite;
+  /* zelfde aanpak: vaste gloed op ::after (inset −1px = over de rand van de knop, waar de oude
+     box-shadow ook begon), alleen de doorzichtigheid pulst van vol naar bijna niets */
+  @keyframes axPulseBtn{0%,100%{opacity:1;} 50%{opacity:.1;}}
+  .walk-pulse-affordable, #btnWalkSoloRoll:not([hidden]), #btnWalkSoloSkip:not([hidden]){position:relative;}
+  .walk-pulse-affordable::after, #btnWalkSoloRoll:not([hidden])::after, #btnWalkSoloSkip:not([hidden])::after{
+    content:''; position:absolute; inset:-1px; border-radius:inherit; pointer-events:none;
+    box-shadow:0 0 0 2px color-mix(in srgb, var(--glow, var(--pc, var(--amber))) var(--pulse-ring, 100%), transparent),
+               0 0 var(--pulse-glow, 14px) color-mix(in srgb, var(--glow, var(--pc, var(--amber))) var(--pulse-glow-a, 60%), transparent);
+    animation:axPulseBtn 1.9s ease-in-out infinite; will-change:opacity;
   }
   /* de energie-acties staan met z'n vieren onder elkaar, dus hun gloed telt op — op het felste
      punt zachter dan bij de andere knoppen (gebruikerswens: "eindglow behoorlijk fel") */
   .energy-pick.walk-pulse-affordable{--pulse-ring:65%; --pulse-glow:9px; --pulse-glow-a:32%;}
-  #tabWalk.walk-is-paused .walk-pulse-affordable,
-  #tabWalk.walk-is-paused #btnWalkSoloRoll,
-  #tabWalk.walk-is-paused #btnWalkSoloSkip{animation-play-state:paused;}
+  #tabWalk.walk-is-paused .walk-pulse-affordable::after,
+  #tabWalk.walk-is-paused #btnWalkSoloRoll::after,
+  #tabWalk.walk-is-paused #btnWalkSoloSkip::after{animation-play-state:paused;}
 
   /* dobbelstenen bewegen heel langzaam op en neer zolang je nog niet hebt gegooid (zie
      renderSoloDicePending in 97-solo.js) — stopt vanzelf zodra renderWalkDice() de echte
@@ -1616,7 +1621,7 @@
     background:linear-gradient(180deg, #0b1118, #121b25);
     border:1px solid var(--line);
     box-shadow:inset 0 0 4px rgba(0,0,0,.7);
-    transition:border-color .2s, box-shadow .2s;
+    transition:border-color .2s;
   }
   .ecell i{
     position:absolute; inset:0; opacity:0; transform-origin:50% 100%;
@@ -1624,12 +1629,17 @@
     box-shadow:inset 0 1px 0 rgba(255,255,255,.55);
   }
   /* glanslicht dat traag door de gevulde cellen omhoog loopt — de cel "leeft" */
+  /* Via transform i.p.v. top, en alleen in gevulde cellen: een animatie op 	op liet de browser
+     elk beeldje de opmaak van de pagina opnieuw berekenen, de hele tijd door (gemeten, de grootste
+     oorzaak van haperende dobbelstenen tijdens een potje). 244% / −111% van de eigen hoogte (45%
+     van de cel) = de oude 110% / −50% van de cel. */
   .ecell i::after{
-    content:''; position:absolute; left:0; right:0; height:45%; top:100%;
+    content:''; position:absolute; left:0; right:0; height:45%; top:0;
     background:linear-gradient(180deg, transparent, rgba(255,255,255,.45), transparent);
-    animation:ecellShine 2.6s ease-in-out infinite;
+    transform:translateY(244%);
   }
-  @keyframes ecellShine{0%{top:110%;} 60%,100%{top:-50%;}}
+  .ecell.is-on i::after{animation:ecellShine 2.6s ease-in-out infinite; will-change:transform;}
+  @keyframes ecellShine{0%{transform:translateY(244%);} 60%,100%{transform:translateY(-111%);}}
   .ecell.is-on{
     border-color:color-mix(in srgb, var(--ec) 75%, transparent);
     box-shadow:0 0 7px color-mix(in srgb, var(--ec) 45%, transparent);
@@ -1638,22 +1648,16 @@
   /* opladen: cel vult zich van onder naar boven, met een witte flits erbij */
   /* duren gelijk houden aan ENERGY_CELL_CHARGE_MS / ENERGY_CELL_DRAIN_MS in 97-solo.js: de
      cellen gaan strikt één voor één (de volgende start pas als de vorige klaar is) */
-  .ecell.is-charging{animation:ecellFlash .8s ease-out both; animation-delay:inherit;}
+  /* Alleen transform/opacity (geen filter/box-shadow meer in de animatie, zie de prestatie-regels
+     in CLAUDE.md): de cel vult zich (scaleY) en een wit laagje (::before) dooft daarbij uit. */
   .ecell.is-charging i{animation:ecellCharge .52s ease-in-out both; animation-delay:inherit;}
-  @keyframes ecellCharge{
-    0%{transform:scaleY(0); filter:brightness(2.6);}
-    70%{transform:scaleY(1); filter:brightness(1.9);}
-    100%{transform:scaleY(1); filter:brightness(1);}
-  }
-  @keyframes ecellFlash{
-    0%{box-shadow:0 0 0 transparent;}
-    45%{box-shadow:0 0 14px 3px color-mix(in srgb, var(--ec-hi) 85%, transparent);}
-    100%{box-shadow:0 0 7px color-mix(in srgb, var(--ec) 45%, transparent);}
-  }
+  .ecell.is-charging i::before{content:''; position:absolute; inset:0; background:#fff; animation:ecellGlint .8s ease-out both; animation-delay:inherit;}
+  @keyframes ecellCharge{0%{transform:scaleY(0);} 70%,100%{transform:scaleY(1);}}
+  @keyframes ecellGlint{0%,40%{opacity:.75;} 100%{opacity:0;}}
   /* uitgeven: de cel flitst nog even op en loopt dan leeg */
   .ecell.is-draining i{animation:ecellDrain .38s ease-in both; animation-delay:inherit;}
   @keyframes ecellDrain{
-    0%{opacity:1; transform:scaleY(1); filter:brightness(1.8);}
+    0%{opacity:1; transform:scaleY(1);}
     100%{opacity:0; transform:scaleY(0);}
   }
   /* hover over een energie-actie: de cellen die het kost knipperen rood-oranje */
@@ -3564,21 +3568,16 @@
   .sd-edie[data-face="0"] .sd-f0, .sd-edie[data-face="1"] .sd-f1, .sd-edie[data-face="2"] .sd-f2,
   .sd-edie[data-face="3"] .sd-f3{display:block;}
   .sd-q{position:absolute; inset:0; display:grid; place-items:center; font:700 19px/1 var(--font-display); color:color-mix(in srgb, var(--sd) 70%, transparent);}
-  /* will-change: eigen laag, zodat wiebelen/draaien niet het hele vak opnieuw laat tekenen */
-  /* wachten op de worp: zachtjes heen en weer om de eigen as (gebruikerswens: niet meer op en
-     neer). Bij de klik rolt diceRenderRoll vanaf deze hoek verder (diceAngleOf, 96d-dice.js). */
-  .sd-die.is-pending, .sd-edie.is-pending{animation:sdWiggle 1.4s ease-in-out infinite; will-change:transform;}
-  .sd-dice .sd-die.is-pending:nth-child(even){animation-direction:reverse;}
-  @keyframes sdWiggle{0%,100%{transform:rotate(-11deg);} 50%{transform:rotate(11deg);}}
-  #tabWalk.walk-is-paused .sd-die.is-pending, #tabWalk.walk-is-paused .sd-edie.is-pending{animation-play-state:paused;}
-  #walkPlayArea.mp-not-my-turn .sd-die.is-pending, #walkPlayArea.mp-not-my-turn .sd-edie.is-pending{animation:none;}
-  /* schudden (bot / Automatisch): ronddraaien tot de worp valt */
-  .sd-die.is-tumbling, .sd-edie.is-tumbling{animation:sdTumble .45s linear infinite; will-change:transform;}
-  @keyframes sdTumble{from{transform:rotate(0deg) scale(.94);} to{transform:rotate(360deg) scale(.94);}}
-  #tabWalk.walk-is-paused .sd-die.is-tumbling, #tabWalk.walk-is-paused .sd-edie.is-tumbling{animation-play-state:paused;}
+  /* will-change: eigen laag, zodat wiebelen/draaien niet het hele vak opnieuw laat tekenen.
+     Het wiebelen (wachten op de worp), tollen (bot / Automatisch) en uitrollen zelf zijn browser-
+     animaties uit 96d-dice.js (diceStartMotion / diceRenderRoll), geen CSS-animaties meer: zo weet
+     de code op elk moment de hoek en loopt elke beweging naadloos in de volgende over. */
+  .sd-die.is-pending, .sd-edie.is-pending,
+  .sd-die.is-tumbling, .sd-edie.is-tumbling,
   .sd-die.is-spinning, .sd-edie.is-spinning{will-change:transform;}
   .sd-die.is-landed, .sd-edie.is-landed{animation:sdLand .5s cubic-bezier(.2,1.6,.4,1);}
-  @keyframes sdLand{0%{transform:scale(1.16); box-shadow:inset 0 0 0 1px var(--sd), 0 0 20px color-mix(in srgb, var(--sd) 65%, transparent);} 100%{transform:none;}}
+  /* alleen transform (een box-shadow in deze keyframes moest elk beeldje opnieuw getekend worden) */
+  @keyframes sdLand{0%{transform:scale(1.16);} 100%{transform:none;}}
 
   /* energiesteen: groen glas met bliksems op stip-plekken */
   .sd-edie{--sd: var(--start);
@@ -3619,11 +3618,16 @@
   .sd-track i.is-pen{background:repeating-linear-gradient(45deg, color-mix(in srgb, #ff6b6b 45%, transparent) 0 3px, transparent 3px 6px);}
 
   /* energiebolletjes onderweg naar de energiebalk */
-  .sd-orb{position:fixed; left:0; top:0; z-index:300; width:12px; height:14px; margin:-7px 0 0 -6px; pointer-events:none; will-change:transform;
-    background:var(--start-glow); clip-path:polygon(50% 0,100% 25%,100% 75%,50% 100%,0 75%,0 25%); filter:drop-shadow(0 0 6px var(--start));}
-  .sd-trail{position:fixed; left:0; top:0; z-index:299; width:6px; height:7px; margin:-3.5px 0 0 -3px; pointer-events:none; background:var(--start);
-    clip-path:polygon(50% 0,100% 25%,100% 75%,50% 100%,0 75%,0 25%); animation:sdTrail .45s ease-out forwards;}
-  @keyframes sdTrail{to{opacity:0; transform:scale(.2);}}
+  /* Vliegen = browser-animatie op transform/opacity (diceOrbFly, 96d-dice.js). Geen filter: de
+     gloed is een vaste zachte vlek (radial-gradient) rond het zeshoekje (::before). opacity:0 als
+     basis, zodat een bolletje vóór/na zijn vlucht nooit linksboven in beeld staat. */
+  .sd-orb, .sd-trail{position:fixed; left:0; top:0; pointer-events:none; opacity:0; will-change:transform, opacity;}
+  .sd-orb{z-index:300; width:30px; height:30px; margin:-15px 0 0 -15px; border-radius:50%;
+    background:radial-gradient(circle, color-mix(in srgb, var(--start) 55%, transparent) 0 25%, color-mix(in srgb, var(--start) 22%, transparent) 45%, transparent 70%);}
+  .sd-orb::before{content:''; position:absolute; left:9px; top:8px; width:12px; height:14px; background:var(--start-glow);
+    clip-path:polygon(50% 0,100% 25%,100% 75%,50% 100%,0 75%,0 25%);}
+  .sd-trail{z-index:299; width:14px; height:14px; margin:-7px 0 0 -7px; border-radius:50%;
+    background:radial-gradient(circle, var(--start-glow) 0 22%, color-mix(in srgb, var(--start) 45%, transparent) 40%, transparent 70%);}
   .sd-lost{position:fixed; z-index:301; pointer-events:none; font:700 11px/1 var(--font-mono); letter-spacing:.1em; text-transform:uppercase; color:#ff6b6b; animation:sdLost 1s ease-out forwards;}
   @keyframes sdLost{0%{opacity:0; transform:translate(-50%,0);} 20%{opacity:1;} 100%{opacity:0; transform:translate(-50%,-26px);}}
 

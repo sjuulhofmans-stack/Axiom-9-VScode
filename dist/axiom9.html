@@ -1250,11 +1250,10 @@
   .walk-opening-turn b, .walk-opening-note b{color:var(--text);}
   /* knoppen onderaan het paneel, zodat ze altijd op dezelfde plek staan */
   .walk-opening-action{margin-top:auto; display:flex; flex-direction:column; gap:10px;}
-  .walk-opening-btn{width:100%; padding:13px; font-size:15px; animation:axPulse 1.9s ease-in-out infinite;}
+  .walk-opening-btn{width:100%; padding:13px; font-size:15px;}
   /* de vrije startvakjes naast elkaar op één regel: het paneel houdt dezelfde rijen als bij het dobbelen */
   .walk-opening-picks{display:grid; grid-template-columns:repeat(auto-fit, minmax(56px, 1fr)); gap:8px;}
   .walk-opening-pick{padding:10px; font-family:var(--font-mono); font-size:15px; font-weight:700; color:var(--start); border-color:var(--start);}
-  #tabWalk.walk-is-paused .walk-opening-btn,
   #tabWalk.walk-is-paused .cell.walk-start-glow::after{animation-play-state:paused;}
   /* Tussengebied (laptop / half scherm): de drie kolommen op volle maat (280 + 879 + 300px +
      tussenruimte) zijn samen ±1525px breed, en tot de omschakeling naar één kolom hieronder
@@ -1397,11 +1396,16 @@
      --glow is de kleur; standaard de kleur van wie aan zet is (--pc). Duur gelijk houden aan
      PULSE_DURATION_MS in 97-solo.js — syncAllPulses() daar zet alle lopende pulsen op
      hetzelfde ritme, ook elementen die later worden aangemaakt. */
-  @keyframes axPulse{
-    0%,100%{box-shadow:0 0 0 2px var(--glow, var(--pc, var(--amber))),
-                       0 0 14px color-mix(in srgb, var(--glow, var(--pc, var(--amber))) 60%, transparent);}
-    50%{box-shadow:0 0 0 2px color-mix(in srgb, var(--glow, var(--pc, var(--amber))) 50%, transparent),
-                   0 0 14px color-mix(in srgb, var(--glow, var(--pc, var(--amber))) 30%, transparent);}
+  /* Prestatie (gemeten, zie CLAUDE.md): de gloed staat VAST op een eigen laagje en alleen de
+     doorzichtigheid daarvan pulst. Eerst pulste de box-shadow zelf, en dan moest de browser die
+     gloed elk beeldje opnieuw tekenen — samen met de andere pulsen haperden daardoor de
+     dobbelstenen en de energiebolletjes tijdens een potje (gebruikersmelding). 50% doorzichtig =
+     precies de oude 50%-stand (rand 50%, gloed 30% i.p.v. 60%). */
+  @keyframes axPulse{0%,100%{opacity:1;} 50%{opacity:.5;}}
+  .cell.walk-start-glow::after, .cell.walk-target::after{
+    box-shadow:0 0 0 2px var(--glow, var(--pc, var(--amber))),
+               0 0 14px color-mix(in srgb, var(--glow, var(--pc, var(--amber))) 60%, transparent);
+    will-change:opacity;
   }
   /* #btnWalkSoloSkip ("Dobbelen") pulst hier ook mee: het is zelf ook gewoon een keuze naast
      de energieacties (net zo geldig als "geen actie"), dus verdient dezelfde nadruk i.p.v.
@@ -1412,21 +1416,22 @@
      zijn tegelijk met de rest op hun helderst. */
   /* --pulse-ring / --pulse-glow / --pulse-glow-a: hoe fel het felste punt is; per element te
      temperen (zie .energy-pick hieronder) zonder dat het ritme verandert */
-  @keyframes axPulseBtn{
-    0%,100%{box-shadow:0 0 0 2px color-mix(in srgb, var(--glow, var(--pc, var(--amber))) var(--pulse-ring, 100%), transparent),
-                       0 0 var(--pulse-glow, 14px) color-mix(in srgb, var(--glow, var(--pc, var(--amber))) var(--pulse-glow-a, 60%), transparent);}
-    50%{box-shadow:0 0 0 2px color-mix(in srgb, var(--glow, var(--pc, var(--amber))) 10%, transparent),
-                   0 0 0 transparent;}
-  }
-  .walk-pulse-affordable, #btnWalkSoloRoll:not([hidden]), #btnWalkSoloSkip:not([hidden]){
-    animation:axPulseBtn 1.9s ease-in-out infinite;
+  /* zelfde aanpak: vaste gloed op ::after (inset −1px = over de rand van de knop, waar de oude
+     box-shadow ook begon), alleen de doorzichtigheid pulst van vol naar bijna niets */
+  @keyframes axPulseBtn{0%,100%{opacity:1;} 50%{opacity:.1;}}
+  .walk-pulse-affordable, #btnWalkSoloRoll:not([hidden]), #btnWalkSoloSkip:not([hidden]){position:relative;}
+  .walk-pulse-affordable::after, #btnWalkSoloRoll:not([hidden])::after, #btnWalkSoloSkip:not([hidden])::after{
+    content:''; position:absolute; inset:-1px; border-radius:inherit; pointer-events:none;
+    box-shadow:0 0 0 2px color-mix(in srgb, var(--glow, var(--pc, var(--amber))) var(--pulse-ring, 100%), transparent),
+               0 0 var(--pulse-glow, 14px) color-mix(in srgb, var(--glow, var(--pc, var(--amber))) var(--pulse-glow-a, 60%), transparent);
+    animation:axPulseBtn 1.9s ease-in-out infinite; will-change:opacity;
   }
   /* de energie-acties staan met z'n vieren onder elkaar, dus hun gloed telt op — op het felste
      punt zachter dan bij de andere knoppen (gebruikerswens: "eindglow behoorlijk fel") */
   .energy-pick.walk-pulse-affordable{--pulse-ring:65%; --pulse-glow:9px; --pulse-glow-a:32%;}
-  #tabWalk.walk-is-paused .walk-pulse-affordable,
-  #tabWalk.walk-is-paused #btnWalkSoloRoll,
-  #tabWalk.walk-is-paused #btnWalkSoloSkip{animation-play-state:paused;}
+  #tabWalk.walk-is-paused .walk-pulse-affordable::after,
+  #tabWalk.walk-is-paused #btnWalkSoloRoll::after,
+  #tabWalk.walk-is-paused #btnWalkSoloSkip::after{animation-play-state:paused;}
 
   /* dobbelstenen bewegen heel langzaam op en neer zolang je nog niet hebt gegooid (zie
      renderSoloDicePending in 97-solo.js) — stopt vanzelf zodra renderWalkDice() de echte
@@ -1623,7 +1628,7 @@
     background:linear-gradient(180deg, #0b1118, #121b25);
     border:1px solid var(--line);
     box-shadow:inset 0 0 4px rgba(0,0,0,.7);
-    transition:border-color .2s, box-shadow .2s;
+    transition:border-color .2s;
   }
   .ecell i{
     position:absolute; inset:0; opacity:0; transform-origin:50% 100%;
@@ -1631,12 +1636,17 @@
     box-shadow:inset 0 1px 0 rgba(255,255,255,.55);
   }
   /* glanslicht dat traag door de gevulde cellen omhoog loopt — de cel "leeft" */
+  /* Via transform i.p.v. top, en alleen in gevulde cellen: een animatie op 	op liet de browser
+     elk beeldje de opmaak van de pagina opnieuw berekenen, de hele tijd door (gemeten, de grootste
+     oorzaak van haperende dobbelstenen tijdens een potje). 244% / −111% van de eigen hoogte (45%
+     van de cel) = de oude 110% / −50% van de cel. */
   .ecell i::after{
-    content:''; position:absolute; left:0; right:0; height:45%; top:100%;
+    content:''; position:absolute; left:0; right:0; height:45%; top:0;
     background:linear-gradient(180deg, transparent, rgba(255,255,255,.45), transparent);
-    animation:ecellShine 2.6s ease-in-out infinite;
+    transform:translateY(244%);
   }
-  @keyframes ecellShine{0%{top:110%;} 60%,100%{top:-50%;}}
+  .ecell.is-on i::after{animation:ecellShine 2.6s ease-in-out infinite; will-change:transform;}
+  @keyframes ecellShine{0%{transform:translateY(244%);} 60%,100%{transform:translateY(-111%);}}
   .ecell.is-on{
     border-color:color-mix(in srgb, var(--ec) 75%, transparent);
     box-shadow:0 0 7px color-mix(in srgb, var(--ec) 45%, transparent);
@@ -1645,22 +1655,16 @@
   /* opladen: cel vult zich van onder naar boven, met een witte flits erbij */
   /* duren gelijk houden aan ENERGY_CELL_CHARGE_MS / ENERGY_CELL_DRAIN_MS in 97-solo.js: de
      cellen gaan strikt één voor één (de volgende start pas als de vorige klaar is) */
-  .ecell.is-charging{animation:ecellFlash .8s ease-out both; animation-delay:inherit;}
+  /* Alleen transform/opacity (geen filter/box-shadow meer in de animatie, zie de prestatie-regels
+     in CLAUDE.md): de cel vult zich (scaleY) en een wit laagje (::before) dooft daarbij uit. */
   .ecell.is-charging i{animation:ecellCharge .52s ease-in-out both; animation-delay:inherit;}
-  @keyframes ecellCharge{
-    0%{transform:scaleY(0); filter:brightness(2.6);}
-    70%{transform:scaleY(1); filter:brightness(1.9);}
-    100%{transform:scaleY(1); filter:brightness(1);}
-  }
-  @keyframes ecellFlash{
-    0%{box-shadow:0 0 0 transparent;}
-    45%{box-shadow:0 0 14px 3px color-mix(in srgb, var(--ec-hi) 85%, transparent);}
-    100%{box-shadow:0 0 7px color-mix(in srgb, var(--ec) 45%, transparent);}
-  }
+  .ecell.is-charging i::before{content:''; position:absolute; inset:0; background:#fff; animation:ecellGlint .8s ease-out both; animation-delay:inherit;}
+  @keyframes ecellCharge{0%{transform:scaleY(0);} 70%,100%{transform:scaleY(1);}}
+  @keyframes ecellGlint{0%,40%{opacity:.75;} 100%{opacity:0;}}
   /* uitgeven: de cel flitst nog even op en loopt dan leeg */
   .ecell.is-draining i{animation:ecellDrain .38s ease-in both; animation-delay:inherit;}
   @keyframes ecellDrain{
-    0%{opacity:1; transform:scaleY(1); filter:brightness(1.8);}
+    0%{opacity:1; transform:scaleY(1);}
     100%{opacity:0; transform:scaleY(0);}
   }
   /* hover over een energie-actie: de cellen die het kost knipperen rood-oranje */
@@ -3571,21 +3575,16 @@
   .sd-edie[data-face="0"] .sd-f0, .sd-edie[data-face="1"] .sd-f1, .sd-edie[data-face="2"] .sd-f2,
   .sd-edie[data-face="3"] .sd-f3{display:block;}
   .sd-q{position:absolute; inset:0; display:grid; place-items:center; font:700 19px/1 var(--font-display); color:color-mix(in srgb, var(--sd) 70%, transparent);}
-  /* will-change: eigen laag, zodat wiebelen/draaien niet het hele vak opnieuw laat tekenen */
-  /* wachten op de worp: zachtjes heen en weer om de eigen as (gebruikerswens: niet meer op en
-     neer). Bij de klik rolt diceRenderRoll vanaf deze hoek verder (diceAngleOf, 96d-dice.js). */
-  .sd-die.is-pending, .sd-edie.is-pending{animation:sdWiggle 1.4s ease-in-out infinite; will-change:transform;}
-  .sd-dice .sd-die.is-pending:nth-child(even){animation-direction:reverse;}
-  @keyframes sdWiggle{0%,100%{transform:rotate(-11deg);} 50%{transform:rotate(11deg);}}
-  #tabWalk.walk-is-paused .sd-die.is-pending, #tabWalk.walk-is-paused .sd-edie.is-pending{animation-play-state:paused;}
-  #walkPlayArea.mp-not-my-turn .sd-die.is-pending, #walkPlayArea.mp-not-my-turn .sd-edie.is-pending{animation:none;}
-  /* schudden (bot / Automatisch): ronddraaien tot de worp valt */
-  .sd-die.is-tumbling, .sd-edie.is-tumbling{animation:sdTumble .45s linear infinite; will-change:transform;}
-  @keyframes sdTumble{from{transform:rotate(0deg) scale(.94);} to{transform:rotate(360deg) scale(.94);}}
-  #tabWalk.walk-is-paused .sd-die.is-tumbling, #tabWalk.walk-is-paused .sd-edie.is-tumbling{animation-play-state:paused;}
+  /* will-change: eigen laag, zodat wiebelen/draaien niet het hele vak opnieuw laat tekenen.
+     Het wiebelen (wachten op de worp), tollen (bot / Automatisch) en uitrollen zelf zijn browser-
+     animaties uit 96d-dice.js (diceStartMotion / diceRenderRoll), geen CSS-animaties meer: zo weet
+     de code op elk moment de hoek en loopt elke beweging naadloos in de volgende over. */
+  .sd-die.is-pending, .sd-edie.is-pending,
+  .sd-die.is-tumbling, .sd-edie.is-tumbling,
   .sd-die.is-spinning, .sd-edie.is-spinning{will-change:transform;}
   .sd-die.is-landed, .sd-edie.is-landed{animation:sdLand .5s cubic-bezier(.2,1.6,.4,1);}
-  @keyframes sdLand{0%{transform:scale(1.16); box-shadow:inset 0 0 0 1px var(--sd), 0 0 20px color-mix(in srgb, var(--sd) 65%, transparent);} 100%{transform:none;}}
+  /* alleen transform (een box-shadow in deze keyframes moest elk beeldje opnieuw getekend worden) */
+  @keyframes sdLand{0%{transform:scale(1.16);} 100%{transform:none;}}
 
   /* energiesteen: groen glas met bliksems op stip-plekken */
   .sd-edie{--sd: var(--start);
@@ -3626,11 +3625,16 @@
   .sd-track i.is-pen{background:repeating-linear-gradient(45deg, color-mix(in srgb, #ff6b6b 45%, transparent) 0 3px, transparent 3px 6px);}
 
   /* energiebolletjes onderweg naar de energiebalk */
-  .sd-orb{position:fixed; left:0; top:0; z-index:300; width:12px; height:14px; margin:-7px 0 0 -6px; pointer-events:none; will-change:transform;
-    background:var(--start-glow); clip-path:polygon(50% 0,100% 25%,100% 75%,50% 100%,0 75%,0 25%); filter:drop-shadow(0 0 6px var(--start));}
-  .sd-trail{position:fixed; left:0; top:0; z-index:299; width:6px; height:7px; margin:-3.5px 0 0 -3px; pointer-events:none; background:var(--start);
-    clip-path:polygon(50% 0,100% 25%,100% 75%,50% 100%,0 75%,0 25%); animation:sdTrail .45s ease-out forwards;}
-  @keyframes sdTrail{to{opacity:0; transform:scale(.2);}}
+  /* Vliegen = browser-animatie op transform/opacity (diceOrbFly, 96d-dice.js). Geen filter: de
+     gloed is een vaste zachte vlek (radial-gradient) rond het zeshoekje (::before). opacity:0 als
+     basis, zodat een bolletje vóór/na zijn vlucht nooit linksboven in beeld staat. */
+  .sd-orb, .sd-trail{position:fixed; left:0; top:0; pointer-events:none; opacity:0; will-change:transform, opacity;}
+  .sd-orb{z-index:300; width:30px; height:30px; margin:-15px 0 0 -15px; border-radius:50%;
+    background:radial-gradient(circle, color-mix(in srgb, var(--start) 55%, transparent) 0 25%, color-mix(in srgb, var(--start) 22%, transparent) 45%, transparent 70%);}
+  .sd-orb::before{content:''; position:absolute; left:9px; top:8px; width:12px; height:14px; background:var(--start-glow);
+    clip-path:polygon(50% 0,100% 25%,100% 75%,50% 100%,0 75%,0 25%);}
+  .sd-trail{z-index:299; width:14px; height:14px; margin:-7px 0 0 -7px; border-radius:50%;
+    background:radial-gradient(circle, var(--start-glow) 0 22%, color-mix(in srgb, var(--start) 45%, transparent) 40%, transparent 70%);}
   .sd-lost{position:fixed; z-index:301; pointer-events:none; font:700 11px/1 var(--font-mono); letter-spacing:.1em; text-transform:uppercase; color:#ff6b6b; animation:sdLost 1s ease-out forwards;}
   @keyframes sdLost{0%{opacity:0; transform:translate(-50%,0);} 20%{opacity:1;} 100%{opacity:0; transform:translate(-50%,-26px);}}
 
@@ -9310,6 +9314,7 @@ function setWalkPaused(on){
   if (walkPausedFlagEl) walkPausedFlagEl.hidden = !walkPaused;
   // CSS-animaties (rollende dobbelsteen, kloppend doelvakje) horen ook stil te staan
   if (walkPanelEl) walkPanelEl.classList.toggle('walk-is-paused', walkPaused);
+  dicePause(walkPaused);   // de dobbelstenen zijn browser-animaties, die pauzeren apart (96d-dice.js)
 }
 
 function walkPlayerCount(){
@@ -11483,19 +11488,66 @@ function diceSetHudResult(on){
 }
 
 // ---------- tekenen ----------
-// Wacht op de worp: "?"-stenen die zachtjes wiebelen. `energy` is al bekend als de energiesteen
-// eerder viel (na Zwaartekracht-laarzen e.d.), anders null.
+// Beweging (zelfde aanpak als "Wie begint?", zie openingDiceSet onderaan): browser-animaties op
+// alleen transform, met een gedeelde, bekende starttijd (diceMotion). Daardoor kan elke volgende
+// beweging precies verder vanaf de hoek waar de steen nu staat, zonder die hoek bij de browser op
+// te vragen (getComputedStyle dwong midden in de klik een herberekening van de opmaak af, ±7 ms,
+// gemeten). Eerst draaiden wiebelen en tollen via CSS, en begon de worp altijd vanaf 0°: bij een
+// bot of in Automatisch sprong de steen dan bij de overgang tollen → uitrollen (gebruikersmelding:
+// "hakkelig"). De twee loopstenen en de energiesteen draaien om en om de andere kant op.
+const DICE_TUMBLE_MS = 450;   // één rondje tijdens het tollen (= 800°/s)
+let diceMotion = { mode: 'none', t0: 0, pausedAt: null };
+const diceSign = i => i % 2 ? -1 : 1;
+// hoek (graden) van steen i in de huidige beweging
+function diceMotionAngle(i, now){
+  const t = (diceMotion.pausedAt ?? now) - diceMotion.t0;
+  if (diceMotion.mode === 'wiggle') return diceSign(i) * OD_WIGGLE_DEG * Math.sin(2 * Math.PI * t / OD_WIGGLE_MS);
+  if (diceMotion.mode === 'tumble') return diceSign(i) * 360 * t / DICE_TUMBLE_MS;
+  return 0;
+}
+// wiebelen of tollen starten op alle stenen in #walkDice (met de gedeelde starttijd)
+function diceStartMotion(mode){
+  diceMotion = { mode, t0: odNow(), pausedAt: null };
+  if (crystalReduceMotion()) return;
+  walkDiceEl.querySelectorAll('.sd-die, .sd-edie').forEach((el, i) => {
+    const s = diceSign(i);
+    const anim = mode === 'wiggle'
+      ? el.animate(OD_WIGGLE_FRAMES.map(a => ({ transform: `rotate(${(s * a).toFixed(2)}deg)` })), { duration: OD_WIGGLE_MS, iterations: Infinity })
+      : el.animate([{ transform: 'rotate(0deg) scale(.94)' }, { transform: `rotate(${s * 360}deg) scale(.94)` }], { duration: DICE_TUMBLE_MS, iterations: Infinity });
+    anim.startTime = diceMotion.t0;
+  });
+  if (walkPanelEl && walkPanelEl.classList.contains('walk-is-paused')) dicePause(true);
+}
+// Pauze in Automatisch: de stenen staan dan ook stil (setWalkPaused, 96-walk.js)
+function dicePause(on){
+  if (!walkDiceEl || diceMotion.mode === 'none') return;
+  const now = odNow();
+  if (on && diceMotion.pausedAt === null) diceMotion.pausedAt = now;
+  else if (!on && diceMotion.pausedAt !== null){ diceMotion.t0 += now - diceMotion.pausedAt; diceMotion.pausedAt = null; }
+  else return;
+  walkDiceEl.querySelectorAll('.sd-die, .sd-edie').forEach(el => el.getAnimations().forEach(a => on ? a.pause() : a.play()));
+}
+
+// Wacht op de worp: "?"-stenen die zachtjes om hun as wiebelen. `energy` is al bekend als de
+// energiesteen eerder viel (na Zwaartekracht-laarzen e.d.), anders null. Staat precies dit al in
+// beeld, dan niets doen: in Multiplayer komt de stand 5x per seconde binnen, en opnieuw tekenen liet
+// het wiebelen elke keer opnieuw beginnen (hakkelig bij de gasten).
 function diceRenderPending(n, energy){
   if (!walkDiceEl) return;
+  const key = `pending|${n}|${energy}`;
+  if (walkDiceEl.dataset.key === key && walkDiceEl.firstElementChild) return;
   diceProgress = null;
   const dice = Array.from({ length: n }, (_, i) => diceDieHtml('?', i === 2 ? 'boost' : '')).join('');
   const known = energy !== null && energy !== undefined;
-  walkDiceEl.dataset.key = '';
+  walkDiceEl.dataset.key = key;
   walkDiceEl.innerHTML = `<div class="sd-row"><span class="sd-dice">${dice}</span>`
     + `<span class="sd-ewrap"><span class="sd-gain${known ? ' show' : ''}${energy === 0 ? ' zero' : ''}">${known ? '+' + energy : ''}</span>${diceEnergyDieHtml(known ? energy : null)}</span></div>`;
   diceSetHudResult(false);
+  // in Multiplayer tijdens andermans beurt niet wiebelen: daar hoef jij niets te doen
+  if (!(walkPlayAreaEl && walkPlayAreaEl.classList.contains('mp-not-my-turn'))) diceStartMotion('wiggle');
+  else diceMotion = { mode: 'none', t0: 0, pausedAt: null };
 }
-// Schudden (Automatisch / bot naspelen): willekeurige kanten, de stenen draaien rond. Wordt elke
+// Schudden (Automatisch / bot naspelen): willekeurige kanten, de stenen tollen rond. Wordt elke
 // 90 ms opnieuw aangeroepen; daarom alleen de kanten bijwerken als de stenen er al staan.
 function diceRenderTumble(n){
   if (!walkDiceEl) return;
@@ -11511,6 +11563,7 @@ function diceRenderTumble(n){
   walkDiceEl.innerHTML = `<div class="sd-row"><span class="sd-dice">${dice}</span>`
     + `<span class="sd-ewrap"><span class="sd-gain"></span>${diceEnergyDieHtml(rndE(), 'is-tumbling')}</span></div>`;
   diceSetHudResult(false);
+  diceStartMotion('tumble');
 }
 // De uitgevallen worp. `key` maakt de worp uniek: is hij al getekend, dan alleen de teller
 // bijwerken (geen tweede keer draaien). opts.spinMs: hoe lang uitdraaien (0 = meteen stil),
@@ -11525,9 +11578,10 @@ function diceRenderRoll(d, e, total, key, opts = {}){
   if (!diceProgress || diceProgress.key !== key) diceProgress = { key, sum, steps, done: 0, left: steps };
   const spinMs = crystalReduceMotion() ? 0 : (opts.spinMs === undefined ? DICE_SPIN_MS : opts.spinMs);
   const spinning = fresh && spinMs > 0;
-  // de wachtende stenen wiebelen om hun as (sdWiggle): het rollen begint vanaf de hoek waar ze
-  // nu staan, anders springen ze bij de klik eerst even terug naar recht
-  const fromAngles = spinning ? [...walkDiceEl.querySelectorAll('.sd-die.is-pending, .sd-edie.is-pending')].map(diceAngleOf) : [];
+  // waar stonden de stenen (wiebelen of tollen)? Daar gaat de worp verder
+  const now = odNow(), from = diceMotion.mode;
+  const fromAngles = Array.from({ length: d.length + 1 }, (_, i) => diceMotionAngle(i, now));
+  diceMotion = { mode: 'none', t0: 0, pausedAt: null };
   const dice = d.map((v, i) => diceDieHtml(v, (spinning ? 'is-spinning' : '') + (i === 2 ? ' boost' : ''))).join('');
   walkDiceEl.innerHTML = `<div class="sd-row"><span class="sd-dice">${dice}</span>`
     + `<span class="sd-ewrap"><span class="sd-gain${spinning ? '' : ' show'}${e === 0 ? ' zero' : ''}">+${e}</span>${diceEnergyDieHtml(e, spinning ? 'is-spinning' : '')}</span></div>`
@@ -11539,19 +11593,31 @@ function diceRenderRoll(d, e, total, key, opts = {}){
   diceSetHudResult(true);
   if (!spinning){ diceRenderProgress(); if (fresh && opts.flow) diceFlowEnergy(); return; }
 
-  // draaien om de eigen as: snel beginnen, steeds langzamer, rechtop stoppen (hele rondjes);
-  // de kanten wisselen intussen, ook steeds trager, tot de echte uitkomst
+  // draaien om de eigen as en rechtop stoppen (hele rondjes); de kanten wisselen intussen, ook
+  // steeds trager, tot de echte uitkomst
   const els = [...walkDiceEl.querySelectorAll('.sd-die, .sd-edie')];
   const finals = [...d, e];
   let left = els.length;
   els.forEach((el, i) => {
     const isE = el.classList.contains('sd-edie');
-    const dur = spinMs + i * Math.round(spinMs / 9);
-    const turns = (isE ? 2 : 3) + (i % 2);
-    const dir = i % 2 ? -1 : 1;
-    const a0 = fromAngles[i] || 0;
-    el.animate([{ transform: `rotate(${a0}deg) scale(.96)` }, { transform: `rotate(${dir * 360 * turns * .7}deg) scale(1.06)`, offset: .55 }, { transform: `rotate(${dir * 360 * turns}deg) scale(1)` }],
-               { duration: dur, easing: 'cubic-bezier(.2,.65,.3,1)' });
+    const s = diceSign(i), a0 = fromAngles[i] || 0;
+    let dur, anim;
+    if (from === 'tumble'){
+      // tollen (bot / Automatisch): met dezelfde vaart (800°/s) verder en kwadratisch afremmen tot
+      // het volgende hele rondje; kwadratisch afremmen begint met snelheid 2·afstand/duur
+      const v = 360 / DICE_TUMBLE_MS;   // graden per ms
+      const a1 = s * Math.ceil((s * a0 + v * spinMs / 2) / 360) * 360;
+      dur = Math.round(2 * Math.abs(a1 - a0) / v) + i * 40;
+      anim = el.animate([{ transform: `rotate(${a0.toFixed(2)}deg) scale(.94)` }, { transform: `rotate(${a1}deg) scale(1)` }],
+                        { duration: dur, easing: OD_EASE_OUT });
+    } else {
+      // eigen worp (vanuit het wiebelen): een flinke zwiep, steeds langzamer, rechtop stoppen
+      dur = spinMs + i * Math.round(spinMs / 9);
+      const turns = (isE ? 2 : 3) + (i % 2);
+      anim = el.animate([{ transform: `rotate(${a0.toFixed(2)}deg) scale(.96)` }, { transform: `rotate(${s * 360 * turns * .7}deg) scale(1.06)`, offset: .55 }, { transform: `rotate(${s * 360 * turns}deg) scale(1)` }],
+                        { duration: dur, easing: 'cubic-bezier(.2,.65,.3,1)' });
+    }
+    anim.startTime = now;   // zelfde moment als waarop de hoek hierboven berekend is
     let t = 0, gap = 55;
     while (t + gap < dur - 120){
       t += gap; gap *= 1.22;
@@ -11574,18 +11640,11 @@ function diceRenderRoll(d, e, total, key, opts = {}){
   }
 }
 
-// huidige draaihoek van een steen (uit de berekende transform), in graden
-function diceAngleOf(el){
-  const m = getComputedStyle(el).transform;
-  if (!m || m === 'none') return 0;
-  const v = m.slice(m.indexOf('(') + 1, -1).split(',').map(Number);
-  return Math.atan2(v[1], v[0]) * 180 / Math.PI;
-}
-
 // Geen worp nodig (een sprong/sprint maakte de beurt al af): alleen de energiesteen.
 function diceRenderNoRoll(e){
   if (!walkDiceEl) return;
   diceProgress = null;
+  diceMotion = { mode: 'none', t0: 0, pausedAt: null };
   walkDiceEl.dataset.key = '';
   walkDiceEl.innerHTML = `<div class="sd-row"><span class="sd-none">geen worp nodig</span>`
     + `<span class="sd-ewrap"><span class="sd-gain show${e === 0 ? ' zero' : ''}">+${e}</span>${diceEnergyDieHtml(e)}</span></div>`;
@@ -11623,7 +11682,9 @@ function diceRenderProgress(){
   const html = left <= 0 ? 'Klaar' : `${left}<small>van ${total}</small>`;
   if (lv && lv.innerHTML !== html){
     lv.innerHTML = html;
-    lv.classList.remove('is-pop'); void lv.offsetWidth; lv.classList.add('is-pop');
+    // "plop" via een losse animatie i.p.v. klasse eraf/erop met een gedwongen herberekening van de
+    // opmaak ertussen: dat kostte bij elke stap ±8 ms en liet de rest haperen (gemeten)
+    if (!crystalReduceMotion()) lv.animate([{ transform: 'scale(1.25)' }, { transform: 'none' }], { duration: 350, easing: 'cubic-bezier(.2,1.8,.4,1)' });
     lv.parentNode.classList.toggle('is-done', left <= 0);
   }
   // één streepje per stap; de straf van Stroomonderbreking doorgestreept erachter
@@ -11663,48 +11724,60 @@ function diceFlowEnergy(){
   const cells = walkEnergyCellsEl ? [...walkEnergyCellsEl.children] : [];
   const visible = from && from.getClientRects().length && cells.length && cells[0].getClientRects().length;
   if (!visible || crystalReduceMotion()){ f.arrived = f.total; f.done = true; soloRenderEnergyOverview(); return; }
+  // Alle posities één keer vooraf opmeten (elke meting midden in het spel dwingt de browser de
+  // opmaak opnieuw te berekenen, ±8 ms). Het vliegen zelf is een browser-animatie (alleen
+  // transform/opacity): die loopt los van JavaScript, dus hapert niet als er tegelijk een pion
+  // loopt of de zijkolom opnieuw getekend wordt (gebruikersmelding: "enorm hakkelig"). Eerst werd
+  // elk beeldje de positie in JavaScript gezet, met een drop-shadow-filter, en kwam er elke 30 ms
+  // een nieuw spoorelementje bij. Nu: een vaste gloed (geen filter) en 4 volgers als staart.
   const fr = from.getBoundingClientRect(), A = [fr.left + fr.width / 2, fr.top + fr.height / 2];
+  const targets = Array.from({ length: f.total }, (_, k) => {
+    const cr = cells[Math.min(ENERGY_MAX - 1, f.base + k)].getBoundingClientRect();
+    return k >= f.gained ? [cr.left + cr.width / 2 + 16, cr.top - 30] : [cr.left + cr.width / 2, cr.top + cr.height / 2];
+  });
   let landed = 0;
   for (let k = 0; k < f.total; k++){
     diceLater(() => {
       if (diceFlow !== f) return;
-      const lost = k >= f.gained;
-      const cell = cells[Math.min(ENERGY_MAX - 1, f.base + k)];
-      const cr = cell.getBoundingClientRect();
-      const C = lost ? [cr.left + cr.width / 2 + 16, cr.top - 30] : [cr.left + cr.width / 2, cr.top + cr.height / 2];
+      const lost = k >= f.gained, C = targets[k];
       const P = [(A[0] + C[0]) / 2 + 30, Math.min(A[1], C[1]) - 50];
-      const orb = document.createElement('div');
-      orb.className = 'sd-fx sd-orb';
-      document.body.appendChild(orb);
-      const t0 = performance.now();
-      let lastTrail = 0;
-      crystalLoop(() => {
-        if (!orb.isConnected) return false;
-        const now = performance.now();
-        const t = Math.min(1, (now - t0) / DICE_ORB_FLIGHT_MS), q = t < .5 ? 2*t*t : 1 - Math.pow(-2*t + 2, 2) / 2;
-        const [x, y] = crystalBez(A, P, C, q);
-        orb.style.transform = `translate(${x}px,${y}px) scale(${1 + .4 * Math.sin(t * Math.PI)})`;
-        if (now - lastTrail > 30){
-          lastTrail = now;
-          const tr = document.createElement('div');
-          tr.className = 'sd-fx sd-trail'; tr.style.left = x + 'px'; tr.style.top = y + 'px';
-          document.body.appendChild(tr); tr.addEventListener('animationend', () => tr.remove());
-        }
-        if (t < 1) return;
-        orb.remove();
+      const orb = diceOrbFly('sd-orb', A, P, C, 1, 1, 0);
+      for (const t of DICE_ORB_TRAIL) diceOrbFly('sd-trail', A, P, C, t.scale, t.alpha, t.delay);
+      orb.finished.then(() => {
+        orb.effect.target.remove();
+        if (diceFlow !== f) return;   // intussen nieuw potje / gestopt
         if (lost){
           const l = document.createElement('div');
           l.className = 'sd-fx sd-lost'; l.textContent = 'verloren'; l.style.left = C[0] + 'px'; l.style.top = C[1] + 'px';
           document.body.appendChild(l); l.addEventListener('animationend', () => l.remove());
-        } else if (diceFlow === f){
+        } else {
           f.arrived++;
           soloRenderEnergyOverview();   // precies deze cel laadt nu op
         }
-        if (++landed === f.total && diceFlow === f){ f.done = true; soloRenderEnergyOverview(); }
-        return false;
-      });
+        if (++landed === f.total){ f.done = true; soloRenderEnergyOverview(); }
+      }, () => {});   // afgebroken (nieuw potje): niets doen
     }, k * DICE_ORB_STAGGER_MS);
   }
+}
+// de staart: kleinere, vagere kopieën die hetzelfde pad iets later afleggen
+const DICE_ORB_TRAIL = [
+  { delay: 40, scale: .75, alpha: .6 }, { delay: 80, scale: .58, alpha: .42 },
+  { delay: 120, scale: .44, alpha: .28 }, { delay: 160, scale: .32, alpha: .16 },
+];
+// één bolletje (of staartstuk) langs de boog A → (P) → C laten vliegen; geeft de Animation terug
+function diceOrbFly(cls, A, P, C, scale, alpha, delay){
+  const el = document.createElement('div');
+  el.className = 'sd-fx ' + cls;
+  document.body.appendChild(el);
+  const N = 24, frames = [];
+  for (let i = 0; i <= N; i++){
+    const t = i / N, q = t < .5 ? 2*t*t : 1 - Math.pow(-2*t + 2, 2) / 2;
+    const [x, y] = crystalBez(A, P, C, q);
+    frames.push({ transform: `translate(${x.toFixed(1)}px,${y.toFixed(1)}px) scale(${(scale * (1 + .4 * Math.sin(t * Math.PI))).toFixed(3)})`, opacity: alpha });
+  }
+  const anim = el.animate(frames, { duration: DICE_ORB_FLIGHT_MS, delay });
+  if (cls !== 'sd-orb') anim.finished.then(() => el.remove(), () => el.remove());
+  return anim;
 }
 // Is de worp die nu in soloMove staat die van mij (de kijker), en nog niet "afgehandeld"?
 // Dan de energiebalk laten wachten op de bolletjes. Gebruikt door de host/Zelf spelen
@@ -11842,6 +11915,7 @@ function diceReset(){
   diceTimers.clear();
   for (const s of odState.values()) odClearTimers(s);
   odState.clear();
+  diceMotion = { mode: 'none', t0: 0, pausedAt: null };
   diceFlow = { done: true };
   diceFlowKey = null;
   diceProgress = null;
@@ -12387,28 +12461,35 @@ function soloRenderEnergyOverview(){
     const charging = on && i >= prev;
     const draining = !on && i < prev;
     cell.classList.toggle('is-on', on);
-    cell.classList.remove('is-charging', 'is-draining', 'will-spend');
-    if (charging || draining){
-      void cell.offsetWidth;   // animatie opnieuw laten starten, ook als de klasse er net al op zat
-      // strikt na elkaar (gebruikerswens): opladen van links naar rechts, de volgende cel pas als
-      // de vorige vol is; uitgeven in omgekeerde volgorde, de laatste cel eerst. Duur gelijk aan
-      // ecellCharge/ecellDrain in styles.css.
-      cell.style.animationDelay = charging
-        ? `${(i - prev) * ENERGY_CELL_CHARGE_MS}ms`
-        : `${(prev - 1 - i) * ENERGY_CELL_DRAIN_MS}ms`;
-      cell.classList.add(charging ? 'is-charging' : 'is-draining');
-    }
+    cell.classList.remove('will-spend');
+    // Alleen de cellen die nu veranderen aanraken. Eerst werd bij elke aanroep ook de animatie van
+    // de vorige cel weggehaald — en die komt aan als de energiebolletjes één voor één binnenvliegen,
+    // dus het opladen van de vorige cel werd telkens halverwege afgebroken (hakkelig).
+    if (!charging && !draining) return;
+    const cls = charging ? 'is-charging' : 'is-draining';
+    const had = cell.classList.contains(cls);
+    cell.classList.remove(charging ? 'is-draining' : 'is-charging');
+    // strikt na elkaar (gebruikerswens): opladen van links naar rechts, de volgende cel pas als
+    // de vorige vol is; uitgeven in omgekeerde volgorde, de laatste cel eerst. Duur gelijk aan
+    // ecellCharge/ecellDrain in styles.css.
+    cell.style.animationDelay = charging
+      ? `${(i - prev) * ENERGY_CELL_CHARGE_MS}ms`
+      : `${(prev - 1 - i) * ENERGY_CELL_DRAIN_MS}ms`;
+    cell.classList.add(cls);
+    // stond de klasse er al op, dan de animatie opnieuw laten beginnen — zonder de gedwongen
+    // herberekening van de opmaak (void offsetWidth) die dat eerst deed, ±8 ms per keer (gemeten)
+    if (had) for (const a of cell.getAnimations({ subtree: true })) if (a.animationName !== 'ecellShine') a.currentTime = 0;
   });
 }
 // Animatieklassen weg zodra de animatie klaar is. Anders bleef bv. .is-charging op de laatst
 // opgeladen cel staan, en startte het opladen opnieuw zodra de kostenpreview (.will-spend, die
 // tijdelijk een andere animatie op dezelfde cel zet) weer verdween (gebruikersmelding: "het
-// laatste blokje gaat ineens opnieuw aan"). ecellFlash is de langste van de oplaadanimaties.
+// laatste blokje gaat ineens opnieuw aan"). ecellGlint is de langste van de oplaadanimaties.
 if (walkEnergyCellsEl){
   walkEnergyCellsEl.addEventListener('animationend', (e) => {
     const cell = e.target.closest('.ecell');
     if (!cell) return;
-    if (e.animationName === 'ecellFlash') cell.classList.remove('is-charging');
+    if (e.animationName === 'ecellGlint') cell.classList.remove('is-charging');
     if (e.animationName === 'ecellDrain') cell.classList.remove('is-draining');
   });
 }

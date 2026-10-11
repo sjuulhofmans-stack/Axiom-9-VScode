@@ -55,19 +55,66 @@ function diceSetHudResult(on){
 }
 
 // ---------- tekenen ----------
-// Wacht op de worp: "?"-stenen die zachtjes wiebelen. `energy` is al bekend als de energiesteen
-// eerder viel (na Zwaartekracht-laarzen e.d.), anders null.
+// Beweging (zelfde aanpak als "Wie begint?", zie openingDiceSet onderaan): browser-animaties op
+// alleen transform, met een gedeelde, bekende starttijd (diceMotion). Daardoor kan elke volgende
+// beweging precies verder vanaf de hoek waar de steen nu staat, zonder die hoek bij de browser op
+// te vragen (getComputedStyle dwong midden in de klik een herberekening van de opmaak af, ±7 ms,
+// gemeten). Eerst draaiden wiebelen en tollen via CSS, en begon de worp altijd vanaf 0°: bij een
+// bot of in Automatisch sprong de steen dan bij de overgang tollen → uitrollen (gebruikersmelding:
+// "hakkelig"). De twee loopstenen en de energiesteen draaien om en om de andere kant op.
+const DICE_TUMBLE_MS = 450;   // één rondje tijdens het tollen (= 800°/s)
+let diceMotion = { mode: 'none', t0: 0, pausedAt: null };
+const diceSign = i => i % 2 ? -1 : 1;
+// hoek (graden) van steen i in de huidige beweging
+function diceMotionAngle(i, now){
+  const t = (diceMotion.pausedAt ?? now) - diceMotion.t0;
+  if (diceMotion.mode === 'wiggle') return diceSign(i) * OD_WIGGLE_DEG * Math.sin(2 * Math.PI * t / OD_WIGGLE_MS);
+  if (diceMotion.mode === 'tumble') return diceSign(i) * 360 * t / DICE_TUMBLE_MS;
+  return 0;
+}
+// wiebelen of tollen starten op alle stenen in #walkDice (met de gedeelde starttijd)
+function diceStartMotion(mode){
+  diceMotion = { mode, t0: odNow(), pausedAt: null };
+  if (crystalReduceMotion()) return;
+  walkDiceEl.querySelectorAll('.sd-die, .sd-edie').forEach((el, i) => {
+    const s = diceSign(i);
+    const anim = mode === 'wiggle'
+      ? el.animate(OD_WIGGLE_FRAMES.map(a => ({ transform: `rotate(${(s * a).toFixed(2)}deg)` })), { duration: OD_WIGGLE_MS, iterations: Infinity })
+      : el.animate([{ transform: 'rotate(0deg) scale(.94)' }, { transform: `rotate(${s * 360}deg) scale(.94)` }], { duration: DICE_TUMBLE_MS, iterations: Infinity });
+    anim.startTime = diceMotion.t0;
+  });
+  if (walkPanelEl && walkPanelEl.classList.contains('walk-is-paused')) dicePause(true);
+}
+// Pauze in Automatisch: de stenen staan dan ook stil (setWalkPaused, 96-walk.js)
+function dicePause(on){
+  if (!walkDiceEl || diceMotion.mode === 'none') return;
+  const now = odNow();
+  if (on && diceMotion.pausedAt === null) diceMotion.pausedAt = now;
+  else if (!on && diceMotion.pausedAt !== null){ diceMotion.t0 += now - diceMotion.pausedAt; diceMotion.pausedAt = null; }
+  else return;
+  walkDiceEl.querySelectorAll('.sd-die, .sd-edie').forEach(el => el.getAnimations().forEach(a => on ? a.pause() : a.play()));
+}
+
+// Wacht op de worp: "?"-stenen die zachtjes om hun as wiebelen. `energy` is al bekend als de
+// energiesteen eerder viel (na Zwaartekracht-laarzen e.d.), anders null. Staat precies dit al in
+// beeld, dan niets doen: in Multiplayer komt de stand 5x per seconde binnen, en opnieuw tekenen liet
+// het wiebelen elke keer opnieuw beginnen (hakkelig bij de gasten).
 function diceRenderPending(n, energy){
   if (!walkDiceEl) return;
+  const key = `pending|${n}|${energy}`;
+  if (walkDiceEl.dataset.key === key && walkDiceEl.firstElementChild) return;
   diceProgress = null;
   const dice = Array.from({ length: n }, (_, i) => diceDieHtml('?', i === 2 ? 'boost' : '')).join('');
   const known = energy !== null && energy !== undefined;
-  walkDiceEl.dataset.key = '';
+  walkDiceEl.dataset.key = key;
   walkDiceEl.innerHTML = `<div class="sd-row"><span class="sd-dice">${dice}</span>`
     + `<span class="sd-ewrap"><span class="sd-gain${known ? ' show' : ''}${energy === 0 ? ' zero' : ''}">${known ? '+' + energy : ''}</span>${diceEnergyDieHtml(known ? energy : null)}</span></div>`;
   diceSetHudResult(false);
+  // in Multiplayer tijdens andermans beurt niet wiebelen: daar hoef jij niets te doen
+  if (!(walkPlayAreaEl && walkPlayAreaEl.classList.contains('mp-not-my-turn'))) diceStartMotion('wiggle');
+  else diceMotion = { mode: 'none', t0: 0, pausedAt: null };
 }
-// Schudden (Automatisch / bot naspelen): willekeurige kanten, de stenen draaien rond. Wordt elke
+// Schudden (Automatisch / bot naspelen): willekeurige kanten, de stenen tollen rond. Wordt elke
 // 90 ms opnieuw aangeroepen; daarom alleen de kanten bijwerken als de stenen er al staan.
 function diceRenderTumble(n){
   if (!walkDiceEl) return;
@@ -83,6 +130,7 @@ function diceRenderTumble(n){
   walkDiceEl.innerHTML = `<div class="sd-row"><span class="sd-dice">${dice}</span>`
     + `<span class="sd-ewrap"><span class="sd-gain"></span>${diceEnergyDieHtml(rndE(), 'is-tumbling')}</span></div>`;
   diceSetHudResult(false);
+  diceStartMotion('tumble');
 }
 // De uitgevallen worp. `key` maakt de worp uniek: is hij al getekend, dan alleen de teller
 // bijwerken (geen tweede keer draaien). opts.spinMs: hoe lang uitdraaien (0 = meteen stil),
@@ -97,9 +145,10 @@ function diceRenderRoll(d, e, total, key, opts = {}){
   if (!diceProgress || diceProgress.key !== key) diceProgress = { key, sum, steps, done: 0, left: steps };
   const spinMs = crystalReduceMotion() ? 0 : (opts.spinMs === undefined ? DICE_SPIN_MS : opts.spinMs);
   const spinning = fresh && spinMs > 0;
-  // de wachtende stenen wiebelen om hun as (sdWiggle): het rollen begint vanaf de hoek waar ze
-  // nu staan, anders springen ze bij de klik eerst even terug naar recht
-  const fromAngles = spinning ? [...walkDiceEl.querySelectorAll('.sd-die.is-pending, .sd-edie.is-pending')].map(diceAngleOf) : [];
+  // waar stonden de stenen (wiebelen of tollen)? Daar gaat de worp verder
+  const now = odNow(), from = diceMotion.mode;
+  const fromAngles = Array.from({ length: d.length + 1 }, (_, i) => diceMotionAngle(i, now));
+  diceMotion = { mode: 'none', t0: 0, pausedAt: null };
   const dice = d.map((v, i) => diceDieHtml(v, (spinning ? 'is-spinning' : '') + (i === 2 ? ' boost' : ''))).join('');
   walkDiceEl.innerHTML = `<div class="sd-row"><span class="sd-dice">${dice}</span>`
     + `<span class="sd-ewrap"><span class="sd-gain${spinning ? '' : ' show'}${e === 0 ? ' zero' : ''}">+${e}</span>${diceEnergyDieHtml(e, spinning ? 'is-spinning' : '')}</span></div>`
@@ -111,19 +160,31 @@ function diceRenderRoll(d, e, total, key, opts = {}){
   diceSetHudResult(true);
   if (!spinning){ diceRenderProgress(); if (fresh && opts.flow) diceFlowEnergy(); return; }
 
-  // draaien om de eigen as: snel beginnen, steeds langzamer, rechtop stoppen (hele rondjes);
-  // de kanten wisselen intussen, ook steeds trager, tot de echte uitkomst
+  // draaien om de eigen as en rechtop stoppen (hele rondjes); de kanten wisselen intussen, ook
+  // steeds trager, tot de echte uitkomst
   const els = [...walkDiceEl.querySelectorAll('.sd-die, .sd-edie')];
   const finals = [...d, e];
   let left = els.length;
   els.forEach((el, i) => {
     const isE = el.classList.contains('sd-edie');
-    const dur = spinMs + i * Math.round(spinMs / 9);
-    const turns = (isE ? 2 : 3) + (i % 2);
-    const dir = i % 2 ? -1 : 1;
-    const a0 = fromAngles[i] || 0;
-    el.animate([{ transform: `rotate(${a0}deg) scale(.96)` }, { transform: `rotate(${dir * 360 * turns * .7}deg) scale(1.06)`, offset: .55 }, { transform: `rotate(${dir * 360 * turns}deg) scale(1)` }],
-               { duration: dur, easing: 'cubic-bezier(.2,.65,.3,1)' });
+    const s = diceSign(i), a0 = fromAngles[i] || 0;
+    let dur, anim;
+    if (from === 'tumble'){
+      // tollen (bot / Automatisch): met dezelfde vaart (800°/s) verder en kwadratisch afremmen tot
+      // het volgende hele rondje; kwadratisch afremmen begint met snelheid 2·afstand/duur
+      const v = 360 / DICE_TUMBLE_MS;   // graden per ms
+      const a1 = s * Math.ceil((s * a0 + v * spinMs / 2) / 360) * 360;
+      dur = Math.round(2 * Math.abs(a1 - a0) / v) + i * 40;
+      anim = el.animate([{ transform: `rotate(${a0.toFixed(2)}deg) scale(.94)` }, { transform: `rotate(${a1}deg) scale(1)` }],
+                        { duration: dur, easing: OD_EASE_OUT });
+    } else {
+      // eigen worp (vanuit het wiebelen): een flinke zwiep, steeds langzamer, rechtop stoppen
+      dur = spinMs + i * Math.round(spinMs / 9);
+      const turns = (isE ? 2 : 3) + (i % 2);
+      anim = el.animate([{ transform: `rotate(${a0.toFixed(2)}deg) scale(.96)` }, { transform: `rotate(${s * 360 * turns * .7}deg) scale(1.06)`, offset: .55 }, { transform: `rotate(${s * 360 * turns}deg) scale(1)` }],
+                        { duration: dur, easing: 'cubic-bezier(.2,.65,.3,1)' });
+    }
+    anim.startTime = now;   // zelfde moment als waarop de hoek hierboven berekend is
     let t = 0, gap = 55;
     while (t + gap < dur - 120){
       t += gap; gap *= 1.22;
@@ -146,18 +207,11 @@ function diceRenderRoll(d, e, total, key, opts = {}){
   }
 }
 
-// huidige draaihoek van een steen (uit de berekende transform), in graden
-function diceAngleOf(el){
-  const m = getComputedStyle(el).transform;
-  if (!m || m === 'none') return 0;
-  const v = m.slice(m.indexOf('(') + 1, -1).split(',').map(Number);
-  return Math.atan2(v[1], v[0]) * 180 / Math.PI;
-}
-
 // Geen worp nodig (een sprong/sprint maakte de beurt al af): alleen de energiesteen.
 function diceRenderNoRoll(e){
   if (!walkDiceEl) return;
   diceProgress = null;
+  diceMotion = { mode: 'none', t0: 0, pausedAt: null };
   walkDiceEl.dataset.key = '';
   walkDiceEl.innerHTML = `<div class="sd-row"><span class="sd-none">geen worp nodig</span>`
     + `<span class="sd-ewrap"><span class="sd-gain show${e === 0 ? ' zero' : ''}">+${e}</span>${diceEnergyDieHtml(e)}</span></div>`;
@@ -195,7 +249,9 @@ function diceRenderProgress(){
   const html = left <= 0 ? 'Klaar' : `${left}<small>van ${total}</small>`;
   if (lv && lv.innerHTML !== html){
     lv.innerHTML = html;
-    lv.classList.remove('is-pop'); void lv.offsetWidth; lv.classList.add('is-pop');
+    // "plop" via een losse animatie i.p.v. klasse eraf/erop met een gedwongen herberekening van de
+    // opmaak ertussen: dat kostte bij elke stap ±8 ms en liet de rest haperen (gemeten)
+    if (!crystalReduceMotion()) lv.animate([{ transform: 'scale(1.25)' }, { transform: 'none' }], { duration: 350, easing: 'cubic-bezier(.2,1.8,.4,1)' });
     lv.parentNode.classList.toggle('is-done', left <= 0);
   }
   // één streepje per stap; de straf van Stroomonderbreking doorgestreept erachter
@@ -235,48 +291,60 @@ function diceFlowEnergy(){
   const cells = walkEnergyCellsEl ? [...walkEnergyCellsEl.children] : [];
   const visible = from && from.getClientRects().length && cells.length && cells[0].getClientRects().length;
   if (!visible || crystalReduceMotion()){ f.arrived = f.total; f.done = true; soloRenderEnergyOverview(); return; }
+  // Alle posities één keer vooraf opmeten (elke meting midden in het spel dwingt de browser de
+  // opmaak opnieuw te berekenen, ±8 ms). Het vliegen zelf is een browser-animatie (alleen
+  // transform/opacity): die loopt los van JavaScript, dus hapert niet als er tegelijk een pion
+  // loopt of de zijkolom opnieuw getekend wordt (gebruikersmelding: "enorm hakkelig"). Eerst werd
+  // elk beeldje de positie in JavaScript gezet, met een drop-shadow-filter, en kwam er elke 30 ms
+  // een nieuw spoorelementje bij. Nu: een vaste gloed (geen filter) en 4 volgers als staart.
   const fr = from.getBoundingClientRect(), A = [fr.left + fr.width / 2, fr.top + fr.height / 2];
+  const targets = Array.from({ length: f.total }, (_, k) => {
+    const cr = cells[Math.min(ENERGY_MAX - 1, f.base + k)].getBoundingClientRect();
+    return k >= f.gained ? [cr.left + cr.width / 2 + 16, cr.top - 30] : [cr.left + cr.width / 2, cr.top + cr.height / 2];
+  });
   let landed = 0;
   for (let k = 0; k < f.total; k++){
     diceLater(() => {
       if (diceFlow !== f) return;
-      const lost = k >= f.gained;
-      const cell = cells[Math.min(ENERGY_MAX - 1, f.base + k)];
-      const cr = cell.getBoundingClientRect();
-      const C = lost ? [cr.left + cr.width / 2 + 16, cr.top - 30] : [cr.left + cr.width / 2, cr.top + cr.height / 2];
+      const lost = k >= f.gained, C = targets[k];
       const P = [(A[0] + C[0]) / 2 + 30, Math.min(A[1], C[1]) - 50];
-      const orb = document.createElement('div');
-      orb.className = 'sd-fx sd-orb';
-      document.body.appendChild(orb);
-      const t0 = performance.now();
-      let lastTrail = 0;
-      crystalLoop(() => {
-        if (!orb.isConnected) return false;
-        const now = performance.now();
-        const t = Math.min(1, (now - t0) / DICE_ORB_FLIGHT_MS), q = t < .5 ? 2*t*t : 1 - Math.pow(-2*t + 2, 2) / 2;
-        const [x, y] = crystalBez(A, P, C, q);
-        orb.style.transform = `translate(${x}px,${y}px) scale(${1 + .4 * Math.sin(t * Math.PI)})`;
-        if (now - lastTrail > 30){
-          lastTrail = now;
-          const tr = document.createElement('div');
-          tr.className = 'sd-fx sd-trail'; tr.style.left = x + 'px'; tr.style.top = y + 'px';
-          document.body.appendChild(tr); tr.addEventListener('animationend', () => tr.remove());
-        }
-        if (t < 1) return;
-        orb.remove();
+      const orb = diceOrbFly('sd-orb', A, P, C, 1, 1, 0);
+      for (const t of DICE_ORB_TRAIL) diceOrbFly('sd-trail', A, P, C, t.scale, t.alpha, t.delay);
+      orb.finished.then(() => {
+        orb.effect.target.remove();
+        if (diceFlow !== f) return;   // intussen nieuw potje / gestopt
         if (lost){
           const l = document.createElement('div');
           l.className = 'sd-fx sd-lost'; l.textContent = 'verloren'; l.style.left = C[0] + 'px'; l.style.top = C[1] + 'px';
           document.body.appendChild(l); l.addEventListener('animationend', () => l.remove());
-        } else if (diceFlow === f){
+        } else {
           f.arrived++;
           soloRenderEnergyOverview();   // precies deze cel laadt nu op
         }
-        if (++landed === f.total && diceFlow === f){ f.done = true; soloRenderEnergyOverview(); }
-        return false;
-      });
+        if (++landed === f.total){ f.done = true; soloRenderEnergyOverview(); }
+      }, () => {});   // afgebroken (nieuw potje): niets doen
     }, k * DICE_ORB_STAGGER_MS);
   }
+}
+// de staart: kleinere, vagere kopieën die hetzelfde pad iets later afleggen
+const DICE_ORB_TRAIL = [
+  { delay: 40, scale: .75, alpha: .6 }, { delay: 80, scale: .58, alpha: .42 },
+  { delay: 120, scale: .44, alpha: .28 }, { delay: 160, scale: .32, alpha: .16 },
+];
+// één bolletje (of staartstuk) langs de boog A → (P) → C laten vliegen; geeft de Animation terug
+function diceOrbFly(cls, A, P, C, scale, alpha, delay){
+  const el = document.createElement('div');
+  el.className = 'sd-fx ' + cls;
+  document.body.appendChild(el);
+  const N = 24, frames = [];
+  for (let i = 0; i <= N; i++){
+    const t = i / N, q = t < .5 ? 2*t*t : 1 - Math.pow(-2*t + 2, 2) / 2;
+    const [x, y] = crystalBez(A, P, C, q);
+    frames.push({ transform: `translate(${x.toFixed(1)}px,${y.toFixed(1)}px) scale(${(scale * (1 + .4 * Math.sin(t * Math.PI))).toFixed(3)})`, opacity: alpha });
+  }
+  const anim = el.animate(frames, { duration: DICE_ORB_FLIGHT_MS, delay });
+  if (cls !== 'sd-orb') anim.finished.then(() => el.remove(), () => el.remove());
+  return anim;
 }
 // Is de worp die nu in soloMove staat die van mij (de kijker), en nog niet "afgehandeld"?
 // Dan de energiebalk laten wachten op de bolletjes. Gebruikt door de host/Zelf spelen
@@ -414,6 +482,7 @@ function diceReset(){
   diceTimers.clear();
   for (const s of odState.values()) odClearTimers(s);
   odState.clear();
+  diceMotion = { mode: 'none', t0: 0, pausedAt: null };
   diceFlow = { done: true };
   diceFlowKey = null;
   diceProgress = null;
