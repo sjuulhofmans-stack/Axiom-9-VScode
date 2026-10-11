@@ -81,10 +81,12 @@ const btnWalkEndgameShowResult = document.getElementById('btnWalkEndgameShowResu
 // zelf niets van deze synchronisatie hoeven te weten. Gepauzeerde animaties (Pauze in
 // Automatisch) blijven met rust: starttijd zetten zou ze weer laten lopen.
 const PULSE_DURATION_MS = 1900;   // moet gelijk blijven aan axPulse/walkRoomPulse in styles.css
-// ecellSpend: het knipperen van de energiecellen die een actie gaat kosten — ook op één ritme,
-// anders knipperen net bijgekomen cellen uit de pas met de rest
+// ecSpend: het knipperen van de knooppunten die een actie gaat kosten — ook op één ritme,
+// anders knipperen net bijgekomen knooppunten uit de pas met de rest
 // crystalPulse: het gekozen kristal in de kluis (zeshoek-versie van axPulseBtn)
-const PULSE_ANIMATIONS = new Set(['axPulse', 'axPulseBtn', 'walkRoomPulse', 'ecellSpend', 'crystalPulse']);
+// ecHalo/ecPacket: de puls in de energiebalk (lichtpakketje + oplichtende knooppunten), ecSpend:
+// de kostenpreview — allemaal op hetzelfde ritme, ook knooppunten die net vol zijn geworden
+const PULSE_ANIMATIONS = new Set(['axPulse', 'axPulseBtn', 'walkRoomPulse', 'ecSpend', 'ecHalo', 'ecPacket', 'crystalPulse']);
 let pulseSyncQueued = false;
 function syncAllPulses(){
   pulseSyncQueued = false;
@@ -508,8 +510,16 @@ function soloRenderQuestChecklist(){
 // Hoveren over een betaalbare energie-actie licht de cellen op die hij gaat kosten (zie
 // soloPreviewEnergyCost hieronder).
 let soloEnergyShown = { idx: -1, energy: 0 };
-const ENERGY_CELL_CHARGE_MS = 520;   // = duur van ecellCharge in styles.css
-const ENERGY_CELL_DRAIN_MS = 380;    // = duur van ecellDrain in styles.css
+// Stroomcircuit (gebruikerswens, zie het CSS-blok bij .walk-energy-cells): opladen en leeglopen
+// gaan strikt één knooppunt per ENERGY_STEP_MS. Bij opladen loopt eerst de stroom over het
+// leidingstukje en ploft het knooppunt ENERGY_IGNITE_MS later aan; bij leeglopen dooft het
+// knooppunt en trekt de stroom zich daarna (+160 ms) terug.
+const ENERGY_STEP_MS = 380;
+const ENERGY_IGNITE_MS = 200;
+// de knooppunten (ook gebruikt door de energiebolletjes in 96d-dice.js, die erop landen)
+function walkEnergyNodes(){
+  return walkEnergyCellsEl ? [...walkEnergyCellsEl.querySelectorAll('.ec-node')] : [];
+}
 function soloRenderEnergyOverview(){
   if (!walkEnergyOverviewEl || !walkEnergyCellsEl) return;
   const p = soloViewer();   // in Multiplayer altijd je eigen energie, ook in andermans beurt
@@ -519,58 +529,69 @@ function soloRenderEnergyOverview(){
   const prev = samePlayer ? soloEnergyShown.energy : energy;
   walkEnergyOverviewEl.classList.toggle('is-full', energy >= ENERGY_MAX);
   walkEnergyValueEl.textContent = energy;
-  const fresh = walkEnergyCellsEl.children.length !== ENERGY_MAX;
+  const fresh = walkEnergyCellsEl.querySelectorAll('.ec-node').length !== ENERGY_MAX;
   if (fresh){
-    walkEnergyCellsEl.innerHTML = Array.from({ length: ENERGY_MAX }, () => '<span class="ecell"><i></i></span>').join('');
+    walkEnergyCellsEl.innerHTML =
+      Array.from({ length: ENERGY_MAX - 1 }, (_, k) => `<span class="ec-seg" style="--k:${k}"><i></i></span>`).join('') +
+      '<span class="ec-track"><i></i></span>' +
+      Array.from({ length: ENERGY_MAX }, () => '<span class="ec-node"><i class="ec-halo"></i><i class="ec-core"></i><i class="ec-flash"></i><i class="ec-ghost"></i><i class="ec-spend"></i></span>').join('');
   }
   // Deze functie loopt bij elke stap/klik mee (via renderSoloMeta). Is er niets veranderd, dan
-  // de cellen met rust laten — anders werd een lopende oplaad-/ontlaadanimatie bij de eerste
+  // de knooppunten met rust laten — anders werd een lopende oplaad-/ontlaadanimatie bij de eerste
   // stap meteen afgebroken (gebruikersmelding: "animatie moet gewoon helemaal afspelen").
   if (!fresh && samePlayer && energy === prev) return;
   soloEnergyShown = { idx: p ? p.idx : -1, energy };
-  [...walkEnergyCellsEl.children].forEach((cell, i) => {
+  // de puls: het lichtpakketje loopt tot het laatste volle knooppunt, en elk knooppunt licht op
+  // als het erlangs komt (tussen 8% en 55% van 2,4 s = 190 tot 1320 ms)
+  walkEnergyCellsEl.classList.toggle('has-flow', energy >= 2);
+  if (energy >= 2) walkEnergyCellsEl.style.setProperty('--dist', `${((energy - 1) / (ENERGY_MAX - 1) * 100).toFixed(2)}%`);
+  walkEnergyNodes().forEach((node, i) => {
+    node.style.setProperty('--halo', `${Math.round(190 + (energy > 1 ? i / (energy - 1) * 1130 : 0))}ms`);
     const on = i < energy;
     const charging = on && i >= prev;
     const draining = !on && i < prev;
-    cell.classList.toggle('is-on', on);
-    cell.classList.remove('will-spend');
-    // Alleen de cellen die nu veranderen aanraken. Eerst werd bij elke aanroep ook de animatie van
-    // de vorige cel weggehaald — en die komt aan als de energiebolletjes één voor één binnenvliegen,
-    // dus het opladen van de vorige cel werd telkens halverwege afgebroken (hakkelig).
+    node.classList.toggle('is-on', on);
+    node.classList.remove('will-spend');
+    // Alleen de knooppunten die nu veranderen aanraken: de animatie van het vorige knooppunt loopt
+    // gewoon door als het volgende energiebolletje al binnenkomt.
     if (!charging && !draining) return;
     const cls = charging ? 'is-charging' : 'is-draining';
-    const had = cell.classList.contains(cls);
-    cell.classList.remove(charging ? 'is-draining' : 'is-charging');
-    // strikt na elkaar (gebruikerswens): opladen van links naar rechts, de volgende cel pas als
-    // de vorige vol is; uitgeven in omgekeerde volgorde, de laatste cel eerst. Duur gelijk aan
-    // ecellCharge/ecellDrain in styles.css.
-    cell.style.animationDelay = charging
-      ? `${(i - prev) * ENERGY_CELL_CHARGE_MS}ms`
-      : `${(prev - 1 - i) * ENERGY_CELL_DRAIN_MS}ms`;
-    cell.classList.add(cls);
+    const had = node.classList.contains(cls);
+    node.classList.remove(charging ? 'is-draining' : 'is-charging');
+    // strikt na elkaar (gebruikerswens): opladen van links naar rechts, leeglopen van achteren af
+    node.style.animationDelay = charging
+      ? `${(i - prev) * ENERGY_STEP_MS + (i === 0 ? 0 : ENERGY_IGNITE_MS)}ms`
+      : `${(prev - 1 - i) * ENERGY_STEP_MS}ms`;
+    node.classList.add(cls);
     // stond de klasse er al op, dan de animatie opnieuw laten beginnen — zonder de gedwongen
-    // herberekening van de opmaak (void offsetWidth) die dat eerst deed, ±8 ms per keer (gemeten)
-    if (had) for (const a of cell.getAnimations({ subtree: true })) if (a.animationName !== 'ecellShine') a.currentTime = 0;
+    // herberekening van de opmaak (void offsetWidth), ±8 ms per keer (gemeten)
+    if (had) for (const a of node.getAnimations({ subtree: true })) if (a.animationName !== 'ecHalo') a.currentTime = 0;
+  });
+  // leidingstukje k loopt van knooppunt k naar k+1: vol als knooppunt k+1 vol is
+  walkEnergyCellsEl.querySelectorAll('.ec-seg').forEach((seg, k) => {
+    const lit = k + 1 < energy;
+    if (seg.classList.contains('is-lit') === lit) return;
+    const to = k + 1;
+    seg.firstElementChild.style.transitionDelay = !samePlayer ? '0ms'
+      : lit ? `${Math.max(0, to - prev) * ENERGY_STEP_MS}ms`
+      : `${Math.max(0, prev - 1 - to) * ENERGY_STEP_MS + 160}ms`;
+    seg.classList.toggle('is-lit', lit);
   });
 }
-// Animatieklassen weg zodra de animatie klaar is. Anders bleef bv. .is-charging op de laatst
-// opgeladen cel staan, en startte het opladen opnieuw zodra de kostenpreview (.will-spend, die
-// tijdelijk een andere animatie op dezelfde cel zet) weer verdween (gebruikersmelding: "het
-// laatste blokje gaat ineens opnieuw aan"). ecellGlint is de langste van de oplaadanimaties.
+// Animatieklassen weg zodra de animatie klaar is (ecRing is de langste van opladen én leeglopen).
+// Anders startte het opnieuw zodra de kostenpreview (.will-spend) weer verdween.
 if (walkEnergyCellsEl){
   walkEnergyCellsEl.addEventListener('animationend', (e) => {
-    const cell = e.target.closest('.ecell');
-    if (!cell) return;
-    if (e.animationName === 'ecellGlint') cell.classList.remove('is-charging');
-    if (e.animationName === 'ecellDrain') cell.classList.remove('is-draining');
+    if (e.animationName !== 'ecRing') return;
+    const node = e.target.closest('.ec-node');
+    if (node) node.classList.remove('is-charging', 'is-draining');
   });
 }
-// laatste `cost` gevulde cellen oplichten = wat deze actie zou kosten (null = preview weg)
+// laatste `cost` volle knooppunten laten knipperen = wat deze actie zou kosten (null = preview weg)
 function soloPreviewEnergyCost(cost){
-  if (!walkEnergyCellsEl) return;
   const energy = soloEnergyShown.energy;
-  [...walkEnergyCellsEl.children].forEach((cell, i) => {
-    cell.classList.toggle('will-spend', cost !== null && i < energy && i >= energy - cost);
+  walkEnergyNodes().forEach((node, i) => {
+    node.classList.toggle('will-spend', cost !== null && i < energy && i >= energy - cost);
   });
 }
 // De preview blijft staan zolang de muis ergens in de lijst met acties is — ook boven het
@@ -706,14 +727,28 @@ function renderEnergySoloButton(id, disabled, reason){
   // in de 300px-zijkolom — de derde viel op een tweede rij, en dwong je ze smaller te maken,
   // brak "HERPRIORITERING" middenin het woord af. Als volle-breedte-rij is er ruimte zat voor
   // de naam én de uitleg op één regel.
+  // icoonrij (gebruikerswens, ontwerp C): symbool, naam + uitleg, prijs groot rechts. Te weinig
+  // energie: in de uitlegregel hoeveel je nog mist
+  const short = Math.max(0, act.cost - solo().energy);
+  const sub = reason || (short > 0 ? `nog ${short} energie nodig` : act.hint);
   return `<button type="button" class="energy-pick${disabled ? ' is-disabled' : ''}${pulse ? ' walk-pulse-affordable' : ''}" data-energy="${id}"${disabled ? ' disabled' : ''} title="${title}">
-    <span class="energy-pick-cost">⚡${act.cost}</span>
+    <span class="energy-pick-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="${ENERGY_ACTION_ICONS[id] || ''}"></path></svg></span>
     <span class="energy-pick-text">
       <b>${act.name}</b>
-      <span>${reason || act.hint}</span>
+      <span>${sub}</span>
     </span>
+    <span class="energy-pick-price">${act.cost}<svg viewBox="0 0 14 24" aria-hidden="true"><path d="M9.4 .8 1.6 13.4h4.3L4.6 23.2l7.8-13h-4.5z"></path></svg></span>
   </button>`;
 }
+// symbolen van de energie-acties (lijntekeningen, 24×24): Stuwstoot = dubbele pijl omhoog (extra
+// steen = extra vaart), Herprioritering = wisselpijlen, laarzen = sprint rechtdoor, Noodtransport
+// = sprong in een boog
+const ENERGY_ACTION_ICONS = {
+  boost: 'M5 13l7-7 7 7M5 19l7-7 7 7',
+  reorder: 'M7 20V4M3 8l4-4 4 4M17 4v16M13 16l4 4 4-4',
+  gravity: 'M3 8h6M2 12h7M3 16h6M12 12h9M17 8l4 4-4 4',
+  jump: 'M4 18c2.5-9 13.5-9 16 0M16 15.5l4 2.5 1.5-4.5M4 18h3',
+};
 // De 'choose-action'-fase toont ALLEEN de energie-acties — die moet je immers vóór het dobbelen
 // inzetten. De meeste kaarten spelen/afleggen kan pas ná het dobbelen, vóór of tijdens het
 // stappen zetten (via het kaartvenster, zie hieronder) — behalve Noodrantsoen/Stuwlading, die

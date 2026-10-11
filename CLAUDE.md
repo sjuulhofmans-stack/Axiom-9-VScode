@@ -148,10 +148,18 @@ aangeroepen (functiedeclaraties worden gehoist, `const`/`let` niet).
   De energie-acties staan weer ONDER ELKAAR (gebruikerswens: de 2x2-tegels stonden scheef en de
   tekst liep door het vak; alleen de laarzen-richtingen zijn nog 2x2); het grote kristal schaalt
   met `--wcell`. Dobbelvak (134px) en energievak hebben een VASTE hoogte, vóór én na de worp —
-  anders schuift de kolom bij het dobbelen (gebruikersmelding). Energievak: 270px met uitlegregel
-  (Full HD, gemeten 261–266px), en onder 830px hoogte of 1580px breedte 196px zonder uitlegregel
-  (tooltip), krappe rijen (`.is-actions` in styles.css). Gemeten: kolom = bordhoogte op 1440×780
-  (559px, exact passend) én 1920×960. Iets toevoegen in de zijkolom? Opnieuw meten.
+  anders schuift de kolom bij het dobbelen (gebruikersmelding). Energievak: 300px met icoonrijen
+  + uitlegregel (Full HD, gemeten max. 298px bij 0 energie), en onder 865px hoogte of 1630px
+  breedte 196px: kleine iconen, geen uitlegregel (tooltip) (`.is-actions` in styles.css).
+  Gemeten: kolom = bordhoogte op 1440×780 (559px), 1920×870 (717px) én 1920×960. Iets
+  toevoegen in de zijkolom? Opnieuw meten.
+  **Energiebalk = stroomcircuit** (gekozen uit 10 ontwerpen): 10 knooppunten (`.ec-node`) aan
+  één leiding (`.ec-seg`), opgebouwd in `soloRenderEnergyOverview`. Opladen: stroom over het
+  leidingstukje, knooppunt ploft aan met een ring; leeglopen: van achteren af, flakkeren +
+  amber ring; puls: lichtpakketje (`.ec-track`) elke 2,4 s over de volle leiding. Eén
+  knooppunt per `ENERGY_STEP_MS`. Het getal staat rechts met een vaste breedte (verspringt niet
+  bij 10). De energiebolletjes landen op de knooppunten (`walkEnergyNodes`). Acties = icoonrijen
+  (`ENERGY_ACTION_ICONS`, `renderEnergySoloButton` in 97-solo.js).
   **Oprapen** (`crystalEvent`, op elke plek waar iemand een kristal krijgt of een volle kluis
   heeft): eigen kristal groeit uit het vakje en vliegt in een boog naar je kluis ("Nieuw" tot je
   erop klikt); kluis vol = zilver vraagteken-kristal dat uit elkaar knalt (bewust niet het

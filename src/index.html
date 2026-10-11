@@ -635,11 +635,12 @@
               <!-- duidelijk, op zichzelf staand overzicht van je energie t.o.v. het plafond;
                    bovenin de Energieactie-kolom, want die energie bepaalt wat je hier kan doen. -->
               <div class="walk-energy-overview" id="walkEnergyOverview" hidden>
-                <span class="walk-energy-label" title="Energie">⚡</span>
-                <span class="walk-energy-value"><b id="walkEnergyValue">0</b> / 10</span>
-                <!-- 10 reactorcellen i.p.v. een balkje (gebruikerswens), gevuld door
-                     soloRenderEnergyOverview in 97-solo.js -->
+                <span class="walk-energy-label" title="Energie"><svg width="12" height="20" viewBox="0 0 14 24" aria-hidden="true"><path d="M9.4 .8 1.6 13.4h4.3L4.6 23.2l7.8-13h-4.5z" fill="#ffb545"></path></svg></span>
+                <!-- stroomcircuit: 10 knooppunten aan één leiding (gebruikerswens), opgebouwd door
+                     soloRenderEnergyOverview in 97-solo.js. Het getal staat erna, met een vaste
+                     breedte (.walk-energy-value), zodat niets verschuift bij 9 → 10. -->
                 <div class="walk-energy-cells" id="walkEnergyCells"></div>
+                <span class="walk-energy-value"><b id="walkEnergyValue">0</b> / 10</span>
               </div>
               <div class="walk-solo-actions" id="walkSoloActions"></div>
             </div>

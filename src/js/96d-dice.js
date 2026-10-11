@@ -288,7 +288,7 @@ function diceFlowEnergy(){
   if (f.done || f.started) return;
   f.started = true;
   const from = walkDiceEl && walkDiceEl.querySelector('.sd-edie');
-  const cells = walkEnergyCellsEl ? [...walkEnergyCellsEl.children] : [];
+  const cells = walkEnergyNodes();   // de knooppunten van het stroomcircuit (97-solo.js)
   const visible = from && from.getClientRects().length && cells.length && cells[0].getClientRects().length;
   if (!visible || crystalReduceMotion()){ f.arrived = f.total; f.done = true; soloRenderEnergyOverview(); return; }
   // Alle posities één keer vooraf opmeten (elke meting midden in het spel dwingt de browser de
