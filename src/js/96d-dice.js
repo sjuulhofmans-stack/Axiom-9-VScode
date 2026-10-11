@@ -97,6 +97,9 @@ function diceRenderRoll(d, e, total, key, opts = {}){
   if (!diceProgress || diceProgress.key !== key) diceProgress = { key, sum, steps, done: 0, left: steps };
   const spinMs = crystalReduceMotion() ? 0 : (opts.spinMs === undefined ? DICE_SPIN_MS : opts.spinMs);
   const spinning = fresh && spinMs > 0;
+  // de wachtende stenen wiebelen om hun as (sdWiggle): het rollen begint vanaf de hoek waar ze
+  // nu staan, anders springen ze bij de klik eerst even terug naar recht
+  const fromAngles = spinning ? [...walkDiceEl.querySelectorAll('.sd-die.is-pending, .sd-edie.is-pending')].map(diceAngleOf) : [];
   const dice = d.map((v, i) => diceDieHtml(v, (spinning ? 'is-spinning' : '') + (i === 2 ? ' boost' : ''))).join('');
   walkDiceEl.innerHTML = `<div class="sd-row"><span class="sd-dice">${dice}</span>`
     + `<span class="sd-ewrap"><span class="sd-gain${spinning ? '' : ' show'}${e === 0 ? ' zero' : ''}">+${e}</span>${diceEnergyDieHtml(e, spinning ? 'is-spinning' : '')}</span></div>`
@@ -118,7 +121,8 @@ function diceRenderRoll(d, e, total, key, opts = {}){
     const dur = spinMs + i * Math.round(spinMs / 9);
     const turns = (isE ? 2 : 3) + (i % 2);
     const dir = i % 2 ? -1 : 1;
-    el.animate([{ transform: 'rotate(0deg) scale(.9)' }, { transform: `rotate(${dir * 360 * turns * .7}deg) scale(1.06)`, offset: .55 }, { transform: `rotate(${dir * 360 * turns}deg) scale(1)` }],
+    const a0 = fromAngles[i] || 0;
+    el.animate([{ transform: `rotate(${a0}deg) scale(.96)` }, { transform: `rotate(${dir * 360 * turns * .7}deg) scale(1.06)`, offset: .55 }, { transform: `rotate(${dir * 360 * turns}deg) scale(1)` }],
                { duration: dur, easing: 'cubic-bezier(.2,.65,.3,1)' });
     let t = 0, gap = 55;
     while (t + gap < dur - 120){
@@ -140,6 +144,14 @@ function diceRenderRoll(d, e, total, key, opts = {}){
     diceRenderProgress();
     if (opts.flow) diceLater(diceFlowEnergy, 300);
   }
+}
+
+// huidige draaihoek van een steen (uit de berekende transform), in graden
+function diceAngleOf(el){
+  const m = getComputedStyle(el).transform;
+  if (!m || m === 'none') return 0;
+  const v = m.slice(m.indexOf('(') + 1, -1).split(',').map(Number);
+  return Math.atan2(v[1], v[0]) * 180 / Math.PI;
 }
 
 // Geen worp nodig (een sprong/sprint maakte de beurt al af): alleen de energiesteen.
@@ -283,6 +295,92 @@ function diceMaybeHold(){
   if (p && typeof soloViewer === 'function' && soloViewer() === p && soloEnergyGain) diceHoldEnergy(p, soloEnergyGain);
   else diceFlow = { done: true };
 }
+// ---------- "Wie begint?": wiebelen, doorrollen en uitrollen ----------
+// renderOpeningPanel (96-walk.js) bouwt het paneel bij elke stap opnieuw op. De draaiing zit
+// daarom niet in de stenen zelf maar hier, per speler: elk beeldje zoekt de stenen van die
+// speler op (data-od="speler-steen") en zet alleen hun transform. Zo loopt een draai gewoon door
+// over een nieuwe opbouw heen, en gaat het wiebelen bij de klik naadloos over in rollen.
+//   wiggle  wacht op de worp: zachtjes heen en weer om de eigen as (gebruikerswens: niet meer
+//           op en neer)
+//   spin    gooien: vanuit het wiebelen optrekken tot 4 rondjes per seconde, kanten flitsen voorbij
+//   land    de worp is bekend: met dezelfde vaart uitrollen en precies rechtop stilvallen op de
+//           uitkomst (een Hermite-kromme: begint met de huidige snelheid, eindigt op 0)
+// De twee stenen draaien tegen elkaar in. Alleen transform op een eigen laag (zie Prestatie in
+// CLAUDE.md); de kanten wisselen via data-face.
+const OD_WIGGLE_DEG = 11, OD_WIGGLE_MS = 1400, OD_SPIN_DPS = 1440, OD_LAND_MS = 1000;
+const odState = new Map();   // speler-idx -> { mode, angle, vel, t, flick, flickNow, finals, a0, a1, v0, landed }
+let odRaf = 0, odLast = 0;
+// mode: 'wiggle' | 'spin' | 'result' (finals = de worp) | 'rest'
+function openingDiceSet(idx, mode, finals){
+  let s = odState.get(idx);
+  if (!s){ s = { mode: 'rest', angle: 0, vel: 0, t: 0, flick: 0 }; odState.set(idx, s); }
+  // tabblad op de achtergrond: de browser tekent dan geen beeldjes, dus niet beginnen (anders
+  // blijven de stenen half gedraaid en de som verborgen tot je terugkomt)
+  if (crystalReduceMotion() || (document.hidden && mode !== 'wiggle')) mode = 'rest';
+  if (mode === 'result'){
+    if (s.mode === 'land') return;
+    if (s.mode !== 'spin' && s.mode !== 'wiggle'){ s.mode = 'rest'; return; }
+    // uitrollen: minstens een derde van de huidige vaart × duur aan draai (anders draait de
+    // kromme even terug), en eindigen op een heel rondje = rechtop
+    const v0 = Math.max(0, s.vel), turn = Math.max(v0 * OD_LAND_MS / 3000, 360);
+    Object.assign(s, { mode: 'land', t: 0, a0: s.angle, v0, a1: Math.ceil((s.angle + turn) / 360) * 360, finals });
+  } else if (mode !== s.mode){
+    if (mode === 'wiggle') s.t = 0;
+    if (mode === 'rest'){ s.angle = 0; s.vel = 0; }
+    s.mode = mode;
+  }
+  if (s.mode !== 'rest' && !odRaf){ odLast = performance.now(); odRaf = requestAnimationFrame(odFrame); }
+}
+function odStep(s, dt){
+  const ms = dt * 1000;
+  if (s.mode === 'wiggle'){
+    s.t += ms;
+    const w = 2 * Math.PI * s.t / OD_WIGGLE_MS;
+    s.angle = OD_WIGGLE_DEG * Math.sin(w);
+    s.vel = OD_WIGGLE_DEG * Math.cos(w) * 2 * Math.PI / (OD_WIGGLE_MS / 1000);
+  } else if (s.mode === 'spin'){
+    s.vel += (OD_SPIN_DPS - s.vel) * Math.min(1, dt * 4);
+    s.angle += s.vel * dt;
+    s.flick += ms;
+    if (s.flick >= 70){ s.flick = 0; s.flickNow = true; }
+  } else if (s.mode === 'land'){
+    s.t += ms;
+    const u = Math.min(1, s.t / OD_LAND_MS), D = OD_LAND_MS / 1000;
+    s.angle = s.a0 + s.v0 * D * (u - 2*u*u + u*u*u) + (s.a1 - s.a0) * (3*u*u - 2*u*u*u);
+    s.flick += ms;
+    if (u < .8 && s.flick >= 70 * (1 + 6 * u * u)){ s.flick = 0; s.flickNow = true; }
+    if (u >= 1){ s.mode = 'rest'; s.angle = 0; s.vel = 0; s.landed = true; }
+  }
+}
+function odFrame(now){
+  const dt = Math.min(.05, (now - odLast) / 1000);
+  odLast = now;
+  const els = document.querySelectorAll('[data-od]');
+  if (!els.length){ odState.clear(); odRaf = 0; return; }
+  const paused = !!walkPanelEl && walkPanelEl.classList.contains('walk-is-paused');
+  if (!paused) for (const s of odState.values()) odStep(s, dt);
+  for (const el of els){
+    const [idx, k] = el.dataset.od.split('-').map(Number);
+    const s = odState.get(idx);
+    if (!s) continue;
+    const a = s.angle * (k ? -1 : 1);
+    const tf = a ? `rotate(${a.toFixed(2)}deg)` : '';
+    if (el.style.transform !== tf) el.style.transform = tf;
+    const die = el.firstElementChild;
+    if (die && die.dataset.face){
+      if (s.mode === 'land' && s.t >= OD_LAND_MS * .8) die.dataset.face = s.finals[k];
+      else if (s.flickNow) die.dataset.face = 1 + Math.floor(Math.random() * 6);
+      if (s.landed){ die.dataset.face = s.finals[k]; die.classList.add('is-landed'); }
+    }
+    // de som pas tonen als de stenen stilliggen
+    const sum = el.closest('.walk-opening-row')?.querySelector('.walk-opening-sum');
+    if (sum) sum.classList.toggle('is-hidden', s.mode === 'land');
+  }
+  let busy = false;
+  for (const s of odState.values()){ s.flickNow = false; s.landed = false; if (s.mode !== 'rest') busy = true; }
+  odRaf = busy ? requestAnimationFrame(odFrame) : 0;
+}
+
 // nieuw potje / gestopt
 function diceReset(){
   for (const t of diceTimers) clearTimeout(t);

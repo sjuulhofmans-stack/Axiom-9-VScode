@@ -315,7 +315,12 @@ Check minimaal:
     vrije startvakjes (klikbaar, of via de knoppen in het paneel). Daarna komt
     de gewone kolom (dobbelen/energie/kaarten) terug en is de beurtvolgorde
     gelijk aan de kiesvolgorde. In Multiplayer moet een gast op zijn eigen
-    scherm kunnen gooien en kiezen.
+    scherm kunnen gooien en kiezen. Elke speler heeft een groot vak met vaste plekken voor 2
+    stenen + de som (vaag "?" zolang je niet gooide; "gooit"/"gelijk" is een tabje op de rand),
+    dus de stenen verspringen nooit. Wachten = stenen wiebelen om hun as; bij de klik rollen ze
+    vanuit die hoek door en rollen ze met dezelfde vaart uit tot ze rechtop op de worp liggen
+    (`openingDiceSet` in 96d-dice.js, per speler, omdat het paneel bij elke stap opnieuw wordt
+    opgebouwd). Ook de gewone stenen wiebelen om hun as (`sdWiggle`), niet meer op en neer.
 14. Winscherm → knop "Statistieken" opent een grote pop-up over het scherm
     (Escape/klik ernaast/Sluiten = dicht): bovenaan elke speler een eigen
     kolom, daaronder 6 categorieën (Algemeen, Dobbelstenen, Verplaatsing,

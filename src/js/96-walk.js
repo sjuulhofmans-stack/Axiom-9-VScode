@@ -460,8 +460,12 @@ function walkOpeningNote(players, buckets){
 // `opts`: { canRoll, canPick (de kijker mag nu zelf), shaking (wie aan de beurt is gooit nu) }
 function renderOpeningPanel(players, op, opts = {}){
   if (!walkOpeningPanelEl || !op) return;
-  const die = (v, rolling, pending) => pending ? diceDieHtml('?', 'is-sm')
-    : diceDieHtml(rolling ? 1 + Math.floor(Math.random() * 6) : v, 'is-sm' + (rolling ? ' is-tumbling' : ''));
+  // Elke speler heeft vaste plekken voor twee stenen en de som, ook als er (nog) niets staat:
+  // zo verspringen de stenen niet meer als de tekst ernaast verandert (gebruikersmelding). Het
+  // draaien (wiebelen → rollen → uitrollen) zit in openingDiceSet (96d-dice.js); de steen staat
+  // daarvoor in een eigen omhulsel met data-od="speler-steen".
+  const die = (i, k, face, cls = '') => `<span class="walk-opening-die" data-od="${i}-${k}">${diceDieHtml(face, 'is-op' + cls)}</span>`;
+  const spin = [];   // [speler, toestand, worp] — pas toepassen als het paneel getekend is
   const row = (i, placeHtml, right, cls) =>
     `<li class="walk-opening-row${cls}" style="--pc:${players[i].color}">` +
       `<span class="walk-opening-place">${placeHtml}</span>` +
@@ -475,12 +479,14 @@ function renderOpeningPanel(players, op, opts = {}){
       for (const i of b){
         const up = op.rolling === i;
         const r = op.last[i];
-        // aan de beurt: schudden als er gegooid wordt, anders (wachten op de klik) zachtjes
-        // wiebelende "?"-stenen — net als de gewone dobbelstenen (renderSoloDicePending)
-        const dice = up && opts.shaking
-          ? die('?', true) + die('?', true)
-          : up ? die('?', false, true) + die('?', false, true)
-          : r ? die(r[0]) + die(r[1]) + `<span class="walk-opening-sum">${r[0] + r[1]}</span>` : '';
+        // aan de beurt: rollen als er gegooid wordt, anders (wachten op de klik) "?"-stenen die
+        // zachtjes om hun as wiebelen; nog niet aan de beurt: vage "?"-stenen op hun plek
+        let dice, sum = '';
+        if (up && opts.shaking){ dice = die(i, 0, 1) + die(i, 1, 1); spin.push([i, 'spin']); }
+        else if (up){ dice = die(i, 0, '?') + die(i, 1, '?'); spin.push([i, 'wiggle']); }
+        else if (r){ dice = die(i, 0, r[0]) + die(i, 1, r[1]); sum = r[0] + r[1]; spin.push([i, 'result', r]); }
+        else { dice = die(i, 0, '?', ' is-idle') + die(i, 1, '?', ' is-idle'); spin.push([i, 'rest']); }
+        dice += `<span class="walk-opening-sum">${sum}</span>`;
         // "gelijk" pas als de dobbelronde van deze groep klaar is: tijdens de ronde zit iedereen
         // die nog moet gooien ook in dezelfde emmer, dus wie al gooide is dan nog niet gelijk
         // (gebruikersmelding: de eerste gooier kreeg meteen "gelijk"). Via includes i.p.v.
@@ -524,14 +530,16 @@ function renderOpeningPanel(players, op, opts = {}){
     html =
       `<h3 class="walk-opening-title">Startpositie kiezen</h3>` +
       `<p class="walk-opening-sub">In volgorde van de worp kiest iedereen een startvakje — dit is meteen ook de beurtvolgorde. Wie aan de beurt is ziet pas nu zijn eerste opdracht; de gloeiende vakjes zijn nog vrij.</p>` +
-      `<ol class="walk-opening-list">${rows.join('')}</ol>` +
+      `<ol class="walk-opening-list is-pick">${rows.join('')}</ol>` +
       `<div class="walk-opening-action">${action}</div>`;
   }
   // alleen vervangen als er echt iets veranderd is: in Multiplayer komt dezelfde stand vaak
   // opnieuw binnen, en een knop die tussen indrukken en loslaten vervangen wordt slikt de klik in
-  if (walkOpeningPanelEl.dataset.html === html) return;
-  walkOpeningPanelEl.dataset.html = html;
-  walkOpeningPanelEl.innerHTML = html;
+  if (walkOpeningPanelEl.dataset.html !== html){
+    walkOpeningPanelEl.dataset.html = html;
+    walkOpeningPanelEl.innerHTML = html;
+  }
+  for (const [i, mode, r] of spin) openingDiceSet(i, mode, r);
 }
 
 // Automatisch: dezelfde fase, maar alles bots en zichtbaar in het ingestelde tempo. Geeft de

@@ -1201,25 +1201,45 @@
   .walk-opening-panel[hidden]{display:none;}
   .walk-opening-title{margin:0; font-size:15px; letter-spacing:.08em; text-transform:uppercase; color:var(--text);}
   .walk-opening-sub{margin:0; font-size:12px; line-height:1.45; color:var(--text-dim);}
-  .walk-opening-list{list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:6px;}
+  /* Eén vak per speler, groot nu het bord meer ruimte geeft (gebruikerswens). Vaste kolommen:
+     plaats | stip | naam | stenen + som. De stenen en de som staan er altijd (vaag "?" als je nog
+     niet gegooid hebt), en het label "gooit"/"gelijk"/"kiest nu" is een tabje op de rand — zo
+     verspringen de stenen niet meer als de tekst verandert (gebruikersmelding). --od = maat van
+     een steen, schaalt met de vakjesgrootte van het bord. */
+  .walk-opening-panel{--od:clamp(36px, calc(var(--wcell, 20px) * 2.2), 52px);}
+  .walk-opening-list{list-style:none; margin:4px 0 0; padding:0; display:flex; flex-direction:column; gap:14px;}
   .walk-opening-row{
-    display:flex; align-items:center; gap:8px; min-height:42px; padding:6px 10px;
-    border:1px solid var(--line); border-left:3px solid var(--pc); border-radius:6px; background:var(--panel);
+    position:relative; display:grid; grid-template-columns:26px 12px minmax(0,1fr) auto;
+    align-items:center; column-gap:10px; min-height:calc(var(--od) + 20px); padding:8px 12px;
+    border:1px solid var(--line); border-left:4px solid var(--pc); border-radius:8px; background:var(--panel);
   }
+  /* startposities kiezen: geen stenen, dus compacter (ruimte voor de keuzeknoppen eronder) */
+  .walk-opening-list.is-pick .walk-opening-row{min-height:46px;}
   .walk-opening-row.is-up{border-color:var(--pc); box-shadow:0 0 0 1px var(--pc);}
-  .walk-opening-place{flex:none; width:22px; font-family:var(--font-mono); font-size:12px; font-weight:700; color:var(--text-dim);}
-  .walk-opening-dot{flex:none; width:10px; height:10px; border-radius:50%; background:var(--pc);}
-  .walk-opening-name{flex:1; min-width:0; font-weight:600; color:var(--text); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
-  .walk-opening-dice{flex:none; display:flex; align-items:center; gap:4px;}
-  .walk-die.walk-die--sm{width:26px; height:26px; font-size:14px; border-radius:5px;}
-  .walk-opening-sum{min-width:22px; text-align:right; font-family:var(--font-mono); font-size:15px; font-weight:700; color:var(--text);}
+  .walk-opening-place{font-family:var(--font-mono); font-size:14px; font-weight:700; color:var(--text-dim);}
+  .walk-opening-dot{width:12px; height:12px; border-radius:50%; background:var(--pc);}
+  .walk-opening-name{min-width:0; font-size:17px; font-weight:600; color:var(--text); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+  .walk-opening-dice{display:flex; align-items:center; gap:calc(var(--od) * .18);}
+  .walk-opening-die{display:flex; will-change:transform;}
+  .sd-die.is-op{width:var(--od); height:var(--od); border-radius:calc(var(--od) * .22);}
+  .sd-die.is-op .sd-q{font-size:calc(var(--od) * .46);}
+  /* het draaien doet openingDiceSet (96d-dice.js) op het omhulsel, dus geen eigen CSS-animatie —
+     behalve het kleine "plof" bij het stilvallen */
+  .sd-die.is-op:not(.is-landed){animation:none;}
+  .sd-die.is-op.is-idle{opacity:.28; box-shadow:inset 0 0 0 1px color-mix(in srgb, var(--sd) 35%, transparent);}
+  .walk-opening-sum{
+    width:calc(var(--od) * .8); text-align:right; font-family:var(--font-display); font-size:calc(var(--od) * .62);
+    font-weight:700; line-height:1; color:var(--text); transition:opacity .25s;
+  }
+  .walk-opening-sum.is-hidden{opacity:0; transition:none;}
   .walk-opening-chip{
-    flex:none; padding:2px 6px; border-radius:4px; border:1px solid var(--line);
-    font-family:var(--font-mono); font-size:9.5px; letter-spacing:.06em; text-transform:uppercase; color:var(--text-dim);
+    position:absolute; top:-9px; right:12px; padding:2px 8px; border-radius:4px; border:1px solid var(--line);
+    background:var(--panel); font-family:var(--font-mono); font-size:10px; letter-spacing:.08em; line-height:1.3;
+    text-transform:uppercase; color:var(--text-dim);
   }
   .walk-opening-chip.up{color:var(--pc); border-color:var(--pc);}
   .walk-opening-chip.tie{color:var(--amber); border-color:var(--amber);}
-  .walk-opening-start{flex:none; font-family:var(--font-mono); font-size:14px; font-weight:700; color:var(--start);}
+  .walk-opening-start{font-family:var(--font-mono); font-size:calc(var(--od) * .4); font-weight:700; color:var(--start);}
   .walk-opening-note{margin:0; font-size:12.5px; line-height:1.45; color:var(--text);}
   .walk-opening-turn{margin:0; font-size:13px; line-height:1.45; color:var(--text);}
   .walk-opening-turn b, .walk-opening-note b{color:var(--text);}
@@ -3531,7 +3551,11 @@
   .sd-edie[data-face="3"] .sd-f3{display:block;}
   .sd-q{position:absolute; inset:0; display:grid; place-items:center; font:700 19px/1 var(--font-display); color:color-mix(in srgb, var(--sd) 70%, transparent);}
   /* will-change: eigen laag, zodat wiebelen/draaien niet het hele vak opnieuw laat tekenen */
-  .sd-die.is-pending, .sd-edie.is-pending{animation:walkDiceBob 2.2s ease-in-out infinite; will-change:transform;}
+  /* wachten op de worp: zachtjes heen en weer om de eigen as (gebruikerswens: niet meer op en
+     neer). Bij de klik rolt diceRenderRoll vanaf deze hoek verder (diceAngleOf, 96d-dice.js). */
+  .sd-die.is-pending, .sd-edie.is-pending{animation:sdWiggle 1.4s ease-in-out infinite; will-change:transform;}
+  .sd-dice .sd-die.is-pending:nth-child(even){animation-direction:reverse;}
+  @keyframes sdWiggle{0%,100%{transform:rotate(-11deg);} 50%{transform:rotate(11deg);}}
   #tabWalk.walk-is-paused .sd-die.is-pending, #tabWalk.walk-is-paused .sd-edie.is-pending{animation-play-state:paused;}
   #walkPlayArea.mp-not-my-turn .sd-die.is-pending, #walkPlayArea.mp-not-my-turn .sd-edie.is-pending{animation:none;}
   /* schudden (bot / Automatisch): ronddraaien tot de worp valt */
@@ -3541,9 +3565,6 @@
   .sd-die.is-spinning, .sd-edie.is-spinning{will-change:transform;}
   .sd-die.is-landed, .sd-edie.is-landed{animation:sdLand .5s cubic-bezier(.2,1.6,.4,1);}
   @keyframes sdLand{0%{transform:scale(1.16); box-shadow:inset 0 0 0 1px var(--sd), 0 0 20px color-mix(in srgb, var(--sd) 65%, transparent);} 100%{transform:none;}}
-  .sd-die.is-sm{width:26px; height:26px; border-radius:6px;}
-  .sd-die.is-sm::before, .sd-die.is-sm::after{display:none;}
-  .sd-die.is-sm .sd-q{font-size:13px;}
 
   /* energiesteen: groen glas met bliksems op stip-plekken */
   .sd-edie{--sd: var(--start);
