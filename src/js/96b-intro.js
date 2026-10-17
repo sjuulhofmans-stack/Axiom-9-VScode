@@ -18,7 +18,7 @@ const INTRO_T = {          // tijdlijn in ms vanaf de start van de animatie
   jump: 2900,              // hyperjump begint (START vervaagt)
   implode: 4200,           // zwart gat trekt alles naar binnen
   end: 5400,               // klaar: spel start, overlay faadt weg
-  fadeOut: 380,
+  fadeOut: 1200,           // zwart → potje, rustig (gebruikerswens: was 380); = .start-intro.is-leaving
 };
 
 function introEnabled(){

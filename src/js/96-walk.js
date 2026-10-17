@@ -120,8 +120,14 @@ function walkPauseStopSyncVisibility(){
 // Na "Start spel" speelt eerst de startanimatie (96b-intro.js) als die aan staat — zie
 // walkTryStart() hieronder.
 const WALK_FADE_MS = 350;   // moet gelijk blijven aan .walk-fade's transition-duur in styles.css
-function walkFadeSwap(hideEl, showEl){
+// lobby → potje (zonder startanimatie) rustiger dan de rest (gebruikerswens): 0,9 s, als inline
+// transition-duur op beide vakken zolang de wissel loopt
+const WALK_FADE_PLAY_MS = 900;
+function walkFadeSwap(hideEl, showEl, ms = WALK_FADE_MS){
   if (!hideEl || !showEl){ if (hideEl) hideEl.hidden = true; if (showEl) showEl.hidden = false; return; }
+  const dur = ms === WALK_FADE_MS ? '' : `${ms}ms`;
+  hideEl.style.transitionDuration = dur;
+  showEl.style.transitionDuration = dur;
   // showEl start onzichtbaar (nog vóór het `hidden` weggaat, anders is er niets om vanaf te
   // animeren) en een reflow ertussen dwingt de browser die starttoestand ook echt te
   // registreren — anders springt hij meteen naar opacity 1 in plaats van te transitionen.
@@ -136,10 +142,12 @@ function walkFadeSwap(hideEl, showEl){
   setTimeout(() => {
     hideEl.hidden = true;
     hideEl.classList.remove('walk-fade-hidden');
+    hideEl.style.transitionDuration = '';
+    showEl.style.transitionDuration = '';
     walkFooterSyncVisibility();   // en komt pas terug zodra je weer echt (en helemaal) in de lobby staat
-  }, WALK_FADE_MS);
+  }, ms);
 }
-function walkFadeToPlay(){ walkFadeSwap(walkLobbyEl, walkPlayAreaEl); }
+function walkFadeToPlay(){ walkFadeSwap(walkLobbyEl, walkPlayAreaEl, WALK_FADE_PLAY_MS); }
 function walkFadeToLobby(){ walkFadeSwap(walkPlayAreaEl, walkLobbyEl); }
 
 // Dezelfde controle als runWalkSimulation()/startSoloGame() zelf al doen, maar dan VOORDAT we
@@ -429,20 +437,48 @@ function walkNewOpening(players){
 function walkSetOpeningMode(on){
   const stack = document.getElementById('walkSideStack');
   if (stack) stack.classList.toggle('is-opening', on);
+  // ook het infovak links (wie er aan zet is, beurt): staat al in de spelersbalk boven het bord
+  // (gebruikersmelding) — zie .walk-info-panel.is-opening in styles.css
+  const info = document.querySelector('.walk-info-panel');
+  if (info) info.classList.toggle('is-opening', on);
   if (walkOpeningPanelEl){
     walkOpeningPanelEl.hidden = !on;
     if (!on){ walkOpeningPanelEl.innerHTML = ''; walkOpeningPanelEl.dataset.html = ''; }
   }
-  if (!on && walkBoardEl) walkClearClass('walk-start-glow');
+  if (!on) walkClearStartGlow();
 }
 // de nog vrije startvakjes laten gloeien in de kleur van wie er nu kiest
+// Schijnwerper (gekozen ontwerp C, met de draaiende ring van D; 2026-10): de rest van het bord
+// wordt donker, alleen de tegel met de startvakjes (Hibernatie) blijft licht — en het doel van wie
+// kiest (.walk-target), want daar kies je je startvak op. De vrije startvakjes krijgen de kleur
+// van wie kiest, een draaiende ring van rondjes en een dobberend pijltje (styles.css,
+// .cell.walk-start-glow). Kiezen kan alleen nog op het bord (de 3.x-knoppen zijn weg).
 function walkGlowStarts(graph, labels, color){
-  walkClearClass('walk-start-glow');
+  walkClearStartGlow();
+  if (!labels.length) return;
+  const blocks = new Set();
   for (const l of labels){
-    const el = walkCellDiv(graph, graph.startCells[l]);
+    const key = graph.startCells[l];
+    const el = walkCellDiv(graph, key);
     el.style.setProperty('--pc', color);
     el.classList.add('walk-start-glow');
+    blocks.add(`${Math.floor(Math.floor(key / graph.W) / 8)},${Math.floor((key % graph.W) / 8)}`);
   }
+  for (const b of blocks){
+    const [tr, tc] = b.split(',').map(Number);
+    for (let r = tr * 8; r < tr * 8 + 8; r++){
+      const row = walkCellEls[r];
+      if (!row) continue;
+      for (let c = tc * 8; c < tc * 8 + 8; c++) if (row[c]) row[c].classList.add('walk-spot');
+    }
+  }
+  walkBoardEl.classList.add('is-start-pick');
+}
+function walkClearStartGlow(){
+  if (!walkBoardEl) return;
+  walkClearClass('walk-start-glow');
+  walkClearClass('walk-spot');
+  walkBoardEl.classList.remove('is-start-pick');
 }
 function walkOpeningFreeLabels(players){
   return SIM_START_LABELS.filter(l => !players.some(p => p.startLabel === l));
@@ -524,7 +560,8 @@ function renderOpeningPanel(players, op, opts = {}){
     const rows = op.order.map((i, k) => {
       const picked = op.picks[i];
       const now = k === op.pickPos && !picked;
-      const chip = picked ? `<span class="walk-opening-chip start">start ${picked}</span>`
+      // geen 3.x-label meer (zegt de speler niets, gebruikersmelding): de pion staat al op het bord
+      const chip = picked ? `<span class="walk-opening-chip start">gekozen</span>`
         : now ? `<span class="walk-opening-chip up">kiest nu</span>` : '';
       return row(i, `${k + 1}e`, diceHtml(i, false, false) + chip, now ? ' is-up' : '');
     });
@@ -532,10 +569,10 @@ function renderOpeningPanel(players, op, opts = {}){
     const free = opts.freeLabels || [];
     const action = !chooser ? ''
       : op.picks[chooser.idx]
-        ? `<p class="walk-opening-turn"><b>${chooser.name}</b> kiest <b>${op.picks[chooser.idx]}</b>.</p>`
+        ? `<p class="walk-opening-turn"><b>${chooser.name}</b> heeft gekozen.</p>`
       : opts.canPick
-        ? `<p class="walk-opening-turn"><b>${chooser.name}</b>, kies je startpositie. Je eerste opdracht staat nu op het bord; klik een gloeiend startvakje, of kies hier:</p>` +
-          `<div class="walk-opening-picks">${free.map(l => `<button type="button" class="walk-opening-pick" data-opening-pick="${l}">${l}</button>`).join('')}</div>`
+        // alleen nog kiezen op het bord (gebruikerswens: de 3.x-knoppen hadden geen meerwaarde)
+        ? `<p class="walk-opening-turn walk-opening-howto"><b>${chooser.name}</b>, kies je startpositie. Je eerste opdracht staat nu op het bord; klik op een <b>oplichtend startvak</b> in de Hibernatie-kamer.</p>`
         : `<p class="walk-opening-turn"><b>${chooser.name}</b> kiest een startpositie…</p>`;
     html =
       `<h3 class="walk-opening-title">Startpositie kiezen</h3>` +

@@ -34,8 +34,6 @@ const walkMultiHintEl = document.getElementById('walkMultiHint');
 // is uitgevoerd, dus een const daar zou op dat moment nog in zijn temporal dead zone zitten
 // ("Cannot access 'mpChatPanelEl' before initialization").
 const mpChatPanelEl = document.getElementById('mpChatPanel');
-const walkSoloPlayersSel = document.getElementById('walkSoloPlayers');
-const walkSoloBotsSel = document.getElementById('walkSoloBots');
 const walkSoloBotViewSel = document.getElementById('walkSoloBotView');
 const walkSoloSetupEl = document.getElementById('walkSoloSetupPlayers');
 const walkSoloStartRowEl = document.getElementById('walkSoloStartRow');
@@ -135,20 +133,14 @@ let soloSetupPlayers = [];   // { idx, isHuman, name, color, deck, startLabel, s
 
 function soloSetupHumans(){ return soloSetupPlayers.filter(p => p.isHuman); }
 
-function soloSyncBotOptions(){
-  if (!walkSoloPlayersSel || !walkSoloBotsSel) return;
-  const total = Math.max(1, Math.min(WALK_MAX_PLAYERS, parseInt(walkSoloPlayersSel.value, 10) || 1));
-  const maxBots = Math.max(0, total - 1);
-  const prev = parseInt(walkSoloBotsSel.value, 10);
-  const opts = [];
-  for (let b = 0; b <= maxBots; b++){
-    opts.push(`<option value="${b}">${b === 0 ? 'geen bots' : b + (b === 1 ? ' bot' : ' bots')}</option>`);
-  }
-  walkSoloBotsSel.innerHTML = opts.join('');
-  // standaard: alle overige plekken zijn bots (dus "speel tegen bots") — lager zetten geeft
-  // plek aan medespelers op hetzelfde scherm ("1 tegen 1 tegen een vriend" = 2 spelers, 0 bots)
-  walkSoloBotsSel.value = Number.isFinite(prev) && prev <= maxBots ? String(prev) : String(maxBots);
-}
+// Bemanningslijst (gekozen ontwerp "B", vervangt de keuzelijsten Aantal spelers/Aantal bots):
+// eerst de mensen (plek 1 = jij), dan de bots. "+ Speler" voegt een mens toe ná de laatste mens,
+// "+ Bot" een bot achteraan, ✕ haalt precies die plek weg. Standaard: jij tegen 3 bots.
+let soloHumanCount = 1;
+let soloBotCount = WALK_MAX_PLAYERS - 1;
+// botnamen blijven staan als je iemand toevoegt of weghaalt (anders kreeg elke bot bij elke klik
+// een nieuwe naam); alleen een nieuwe bot krijgt een nieuwe naam (pickBotNames, 96-walk.js)
+let soloBotNames = [];
 
 // Zelf ingevulde namen, per spelersplek. Ze staan bewust NIET in het spelerobject: dat wordt
 // bij elke wijziging van het aantal spelers opnieuw opgebouwd, en dan zou je je naam telkens
@@ -166,14 +158,22 @@ function soloSeatName(idx){
 
 function soloRebuildSetup(){
   stopSoloGame();
-  const total = Math.max(1, Math.min(WALK_MAX_PLAYERS, parseInt(walkSoloPlayersSel ? walkSoloPlayersSel.value : '1', 10) || 1));
-  const bots = Math.max(0, Math.min(total - 1, parseInt(walkSoloBotsSel ? walkSoloBotsSel.value : '0', 10) || 0));
-  const humanCount = total - bots;
+  soloHumanCount = Math.max(1, Math.min(WALK_MAX_PLAYERS, soloHumanCount));
+  soloBotCount = Math.max(0, Math.min(WALK_MAX_PLAYERS - soloHumanCount, soloBotCount));
+  const humanCount = soloHumanCount;
+  const bots = soloBotCount;
+  const total = humanCount + bots;
 
   soloSetupRand = mulberry32(Math.floor(Math.random() * 4294967296));
   soloSetupPlayers = [];
-  // bots een toffe naam (pickBotNames, 96-walk.js) — nooit gelijk aan een mens aan tafel
-  const botNames = pickBotNames(bots, Array.from({ length: humanCount }, (_, i) => soloSeatName(i)));
+  // bots een toffe naam (pickBotNames, 96-walk.js) — nooit gelijk aan een mens aan tafel; wie er
+  // al zat houdt zijn naam
+  soloBotNames = soloBotNames.slice(0, bots);
+  if (soloBotNames.length < bots){
+    const taken = Array.from({ length: humanCount }, (_, i) => soloSeatName(i)).concat(soloBotNames);
+    soloBotNames = soloBotNames.concat(pickBotNames(bots - soloBotNames.length, taken));
+  }
+  const botNames = soloBotNames;
   for (let i = 0; i < total; i++){
     const isHuman = i < humanCount;   // eerste plekken zijn mens, de rest bot
     soloSetupPlayers.push({
@@ -215,24 +215,78 @@ function soloRenderSetupUI(){
     if (walkSoloStartRowEl) walkSoloStartRowEl.hidden = true;
     return;
   }
-  // Twee kolommen (zie .walk-solo-setup in styles.css) i.p.v. alles onder elkaar — nieuwe
-  // spelers komen zo naast elkaar te staan, niet eronder, en de lobby-kolom verspringt daardoor
-  // hooguit één keer (bij de 3e speler) i.p.v. bij elke speler opnieuw (gebruikerswens).
-  // Alleen de speler en zijn naam: startpositie en eerste opdracht komen pas aan het begin van
-  // het potje (soloBeginOpening) — in de lobby kon je toch niet zien waar die kamer ligt.
-  walkSoloSetupEl.innerHTML = humans.map(p =>
-    `<div class="walk-solo-setup-player" style="--pc:${p.color}">` +
-      `<span class="walk-solo-setup-row1">` +
-        `<span class="walk-solo-setup-dot"></span>` +
-        `<input type="text" class="walk-solo-setup-input" data-name-seat="${p.idx}"` +
+  // Bemanningslijst: altijd 4 rijen hoog (lege plekken als gestippelde rij, waarvan alleen de
+  // eerste "nog N plekken vrij" zegt), zodat de lobby niet verspringt bij toevoegen/weghalen.
+  // Mens = naamvak + "jij"/"speler"; bot = alleen de naam met het woordje "bot" erachter
+  // (gebruikerswens). Startpositie en eerste opdracht komen pas aan het begin van het potje.
+  // Elke rij = vijf vaste vakjes (gebruikerswens, zie .crew-row in styles.css): nummer, bolletje,
+  // naamvak (bij een bot een vak van dezelfde maat met zijn naam, niet te wijzigen), rolvak
+  // (jij/speler/bot, overal even breed) en verwijdervak (bij jou uitgezet, maar wel op zijn plek).
+  const rows = soloSetupPlayers.map(p => {
+    const name = p.isHuman
+      ? `<input type="text" class="walk-solo-setup-input" data-name-seat="${p.idx}"` +
           ` value="${soloCustomNames[p.idx] || ''}" maxlength="18" spellcheck="false"` +
-          ` placeholder="Speler ${p.idx + 1}" aria-label="Naam van speler ${p.idx + 1}">` +
-      `</span>` +
-    `</div>`
-  ).join('');
+          ` placeholder="Speler ${p.idx + 1}" aria-label="Naam van speler ${p.idx + 1}">`
+      : `<span class="crew-bot-name" title="${p.name}">${p.name}</span>`;
+    const role = !p.isHuman ? 'bot' : p.idx === 0 ? 'jij' : 'speler';
+    return `<div class="crew-row" style="--pc:${p.color}">` +
+      `<span class="crew-num">${p.idx + 1}</span>` +
+      `<span class="crew-dot"></span>` +
+      name +
+      `<span class="crew-role is-${role}">${role}</span>` +
+      (p.idx === 0
+        ? `<button type="button" class="crew-del" disabled aria-label="Jij kunt niet weg" title="Jij blijft altijd aan boord">✕</button>`
+        : `<button type="button" class="crew-del" data-crew-del="${p.idx}" aria-label="${p.name} weghalen" title="Weghalen">✕</button>`) +
+    `</div>`;
+  });
+  const free = WALK_MAX_PLAYERS - soloSetupPlayers.length;
+  for (let i = 0; i < free; i++){
+    rows.push(i === 0
+      ? `<div class="crew-row is-free">nog ${free === 1 ? '1 plek' : free + ' plekken'} vrij</div>`
+      : `<div class="crew-row is-free is-blank" aria-hidden="true"></div>`);
+  }
+  const full = free === 0;
+  walkSoloSetupEl.innerHTML =
+    `<div class="crew-list">${rows.join('')}</div>` +
+    `<div class="crew-add">` +
+      `<button type="button" class="ghost" data-crew-add="human"${full ? ' disabled' : ''}>+ Speler</button>` +
+      `<button type="button" class="ghost" data-crew-add="bot"${full ? ' disabled' : ''}>+ Bot</button>` +
+    `</div>`;
   if (walkSoloStartRowEl) walkSoloStartRowEl.hidden = false;
 }
+// ✕ bij een plek: precies die speler/bot eruit. Namen van de mensen erna schuiven een plek op,
+// zodat iedereen zijn eigen naam houdt.
+function soloCrewRemove(idx){
+  if (idx <= 0) return;   // plek 1 ben jij
+  if (idx < soloHumanCount){
+    for (let i = idx; i < soloHumanCount - 1; i++){
+      if (soloCustomNames[i + 1]) soloCustomNames[i] = soloCustomNames[i + 1]; else delete soloCustomNames[i];
+    }
+    delete soloCustomNames[soloHumanCount - 1];
+    soloHumanCount--;
+  } else {
+    soloBotNames.splice(idx - soloHumanCount, 1);
+    soloBotCount--;
+  }
+  soloRebuildSetup();
+}
+function soloCrewAdd(kind){
+  if (soloHumanCount + soloBotCount >= WALK_MAX_PLAYERS) return;
+  if (kind === 'human') soloHumanCount++; else soloBotCount++;
+  soloRebuildSetup();
+  // meteen in het naamvak van de nieuwe speler, zodat je kunt typen
+  if (kind === 'human' && walkSoloSetupEl){
+    const veld = walkSoloSetupEl.querySelector(`input[data-name-seat="${soloHumanCount - 1}"]`);
+    if (veld) veld.focus();
+  }
+}
 if (walkSoloSetupEl){
+  walkSoloSetupEl.addEventListener('click', (e) => {
+    const del = e.target.closest('[data-crew-del]');
+    if (del){ soloCrewRemove(parseInt(del.dataset.crewDel, 10)); return; }
+    const add = e.target.closest('[data-crew-add]');
+    if (add && !add.disabled) soloCrewAdd(add.dataset.crewAdd);
+  });
   // Bewust op 'input' en zónder de opzet opnieuw te tekenen: dat zou bij elke toetsaanslag
   // de focus uit het veld halen.
   walkSoloSetupEl.addEventListener('input', (e) => {
@@ -246,8 +300,6 @@ if (walkSoloSetupEl){
     p.name = soloSeatName(seat);
   });
 }
-if (walkSoloPlayersSel) walkSoloPlayersSel.addEventListener('change', () => { soloSyncBotOptions(); soloRebuildSetup(); });
-if (walkSoloBotsSel) walkSoloBotsSel.addEventListener('change', soloRebuildSetup);
 
 // ---------- het lopende potje ----------
 let soloPlayers = [];
@@ -439,22 +491,58 @@ function soloLiveRank(){
   if (!p) return null;
   return walkOrderPlayers(soloPlayers).findIndex(q => q.idx === p.idx) + 1;
 }
-// 3 kleine tegels bovenin het Spelerstatus-vakje. Hangt aan renderSoloMeta zodat hij overal
-// meeloopt waar de rest van je beurtinfo ook al opnieuw getekend wordt.
+// Missiestrook bovenin de linkerkolom (gekozen ontwerp D uit 4, sinds 2026-10; vervangt de 3 tegels
+// én de opdrachtkaart, die is voor de fysieke versie van het spel): bovenaan Beurt en Stand,
+// daaronder 6 zeshoekjes aan een lijn (voltooid = groen met vinkje, de volgende in de kleur van je
+// actieve opdracht) en "Opdrachten voltooid x / 6". Staat in #walkStatTiles (zelfde plek, zelfde
+// moment); .walk-info-panel.is-mission verbergt dan de opdrachtkaart en #walkMeta/#walkScoreActive.
+// Hangt aan renderSoloMeta zodat hij overal meeloopt waar de rest van je beurtinfo ook al opnieuw
+// getekend wordt. Alleen opnieuw in de DOM als er echt iets veranderd is (zie Prestatie in CLAUDE.md).
+const walkInfoPanelEl = walkStatTilesEl ? walkStatTilesEl.closest('.walk-info-panel') : null;
+const SOLO_MISSION_CHECK = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12l5 5 9-10"></path></svg>';
+function soloMissionHtml(p){
+  const goal = SIM_QUESTS_TO_WIN;
+  const done = Math.min(goal, p.completed);
+  const current = p.rank ? null : p.deck[p.nextIdx];
+  const rank = p.rank || soloLiveRank();
+  // het actieve vakje (de opdracht waar je nu mee bezig bent) is groen, net als de voltooide, en
+  // pulst als een sonar (gebruikerswens: niet in de kamerkleur). De ringen zitten op .mission-slot,
+  // want de zeshoek zelf knipt alles buiten zijn vorm weg (clip-path).
+  const hexes = Array.from({ length: goal }, (_, i) => {
+    const cls = i < done ? ' is-on' : (i === done && current ? ' is-next' : '');
+    return `<span class="mission-slot${cls}"><span class="mission-hex">${i < done ? SOLO_MISSION_CHECK : `<b>${i + 1}</b>`}</span></span>`;
+  }).join('');
+  // groene lijn van het eerste tot het laatst voltooide zeshoekje (middens liggen op (i+½)/6)
+  const lineW = done > 1 ? `${((done - 1) / goal) * 100}%` : '0%';
+  // volgorde (gebruikerswens): Beurt/Stand → kopje → de 6 zeshoekjes; geen los "x / 6"-getal meer.
+  // Het kopje noemt de opdracht waar je mee bezig bent (= het oplichtende vakje): "Opdrachten
+  // voltooid" boven een oplichtende 1 las als "1 voltooid" (gebruikersmelding).
+  const caption = done < goal && !p.rank
+    ? `Bezig met opdracht <b>${done + 1}</b> van ${goal}`
+    : `Alle ${goal} opdrachten voltooid`;
+  return `<div class="mission-pills">` +
+      `<div class="mission-pill"><span class="mission-lbl">Beurt</span><b>${p.myTurn}</b></div>` +
+      `<div class="mission-pill is-me" style="--pc:${p.color}"><span class="mission-lbl">Stand</span><b>${walkRankLabel(rank)}</b><span class="mission-lbl">/ ${soloPlayers.length}</span></div>` +
+    `</div>` +
+    `<div class="mission-caption">${caption}</div>` +
+    `<div class="mission-strip" style="--done-w:${lineW}">${hexes}</div>`;
+}
 function soloRenderStatusExtras(){
-  const p = soloViewer();   // in Multiplayer altijd je eigen tegels, ook in andermans beurt
+  const p = soloViewer();   // in Multiplayer altijd je eigen strook, ook in andermans beurt
   // tijdens het dobbelen aan het begin (soloBeginOpening) is je opdracht nog geheim — dan ook
   // geen opdrachtenoverzicht dat "Actief" bij je eerste opdracht zet
   if (!p || !walkStatTilesEl || p.questHidden){
-    if (walkStatTilesEl) walkStatTilesEl.innerHTML = '';
+    if (walkStatTilesEl){ walkStatTilesEl.innerHTML = ''; walkStatTilesEl.dataset.html = ''; }
+    if (walkInfoPanelEl) walkInfoPanelEl.classList.remove('is-mission');
     if (walkQuestChecklistEl) walkQuestChecklistEl.innerHTML = '';
     return;
   }
-  const rank = soloLiveRank();
-  walkStatTilesEl.innerHTML =
-    `<div class="walk-stat-tile"><span class="walk-stat-tile-num">${p.completed}/${SIM_QUESTS_TO_WIN}</span><span class="walk-stat-tile-lbl">voltooid</span></div>` +
-    `<div class="walk-stat-tile"><span class="walk-stat-tile-num">${p.myTurn}</span><span class="walk-stat-tile-lbl">beurt</span></div>` +
-    `<div class="walk-stat-tile"><span class="walk-stat-tile-num">${walkRankLabel(rank)}</span><span class="walk-stat-tile-lbl">positie</span></div>`;
+  const html = soloMissionHtml(p);
+  if (walkStatTilesEl.dataset.html !== html){
+    walkStatTilesEl.innerHTML = html;
+    walkStatTilesEl.dataset.html = html;
+  }
+  if (walkInfoPanelEl && !walkInfoPanelEl.classList.contains('is-mission')) walkInfoPanelEl.classList.add('is-mission');
   soloRenderQuestChecklist();
 }
 // opdrachtenoverzicht links van het bord: alle 9 opdrachten (2.1-2.9), altijd in dezelfde
@@ -480,10 +568,8 @@ function soloRenderQuestChecklist(){
   // de opdrachtkaarten krijgen later alleen nog een naam en een opdracht. Opmaak: zie het
   // CSS-blok bij .walk-quest-checklist. --pc = jouw kleur, voor de hover-rand (spieken).
   walkQuestChecklistEl.style.setProperty('--pc', p.color);
-  const nDone = Math.min(SIM_QUESTS_TO_WIN, p.completed);
-  const lamps = Array.from({ length: SIM_QUESTS_TO_WIN }, (_, i) => `<i${i < nDone ? ' class="is-on"' : ''}></i>`).join('');
-  const head = `<div class="quest-check-head"><span class="quest-check-title">Opdrachten</span>` +
-    `<span class="quest-check-score"><span class="quest-check-lamps">${lamps}</span><span><b>${nDone}</b>/${SIM_QUESTS_TO_WIN}</span></span></div>`;
+  // (de zes lampjes rechtsboven zijn weg: de voortgang staat nu in de missiestrook erboven)
+  const head = `<div class="quest-check-head"><span class="quest-check-title">Opdrachten</span></div>`;
   walkQuestChecklistEl.innerHTML = head + Object.keys(QUEST_NAMES).map(label => {
     const isDone = done.has(label);
     const isCurrent = label === current;
@@ -2379,6 +2465,9 @@ function soloShowEndgame(trophy, title, sub, players = soloPlayers, isMe = soloI
   // de dobbelstenen van de laatste beurt horen niet meer naast het winscherm (gebruikerswens)
   if (walkDiceEl) walkDiceEl.innerHTML = '';
   soloHideStepCounter();
+  // en ook het vak eromheen, het energievak en het opdrachtenoverzicht niet (gebruikersmelding:
+  // die bleven na afloop staan). Blijft zo bij "Toon kaart"; pas soloHideEndgame() haalt het weg.
+  soloSetGameOverView(true);
   soloRenderEndgameResult();
   soloReopenEndgame();
 }
@@ -2659,11 +2748,18 @@ function soloReopenEndgame(){
 // "Toon kaart": winscherm weg, knop om 'm terug te halen erbij
 function soloEndgameShowMap(){
   soloHideEndgame();
+  soloSetGameOverView(true);   // het potje is nog steeds afgelopen: zijkolom blijft leeg
   if (btnWalkEndgameShowResult) btnWalkEndgameShowResult.hidden = false;
+}
+// .is-game-over (styles.css): zijkolom (dobbelen/energie/kluis) en opdrachtenoverzicht weg
+const walkPlayLayoutEl = document.querySelector('.walk-play-layout');
+function soloSetGameOverView(on){
+  if (walkPlayLayoutEl && walkPlayLayoutEl.classList.contains('is-game-over') !== on) walkPlayLayoutEl.classList.toggle('is-game-over', on);
 }
 // helemaal weg (nieuw potje/stoppen): ook geen "Toon uitslag" meer
 function soloHideEndgame(){
   if (walkEndgameEl) walkEndgameEl.hidden = true;
+  soloSetGameOverView(false);
   soloCloseStats();   // statistieken-pop-up van het vorige potje hoort ook dicht
   if (btnWalkEndgameShowResult) btnWalkEndgameShowResult.hidden = true;
   soloStopConfetti();
@@ -2875,8 +2971,6 @@ function soloEndGame(stuck){
   walkStatusEl.innerHTML = '';
   soloShowEndgame(t.trophy, t.title, t.sub);
   btnWalkSoloStart.disabled = false;
-  if (walkSoloPlayersSel) walkSoloPlayersSel.disabled = false;
-  if (walkSoloBotsSel) walkSoloBotsSel.disabled = false;
   for (const sel of walkSoloSetupEl ? walkSoloSetupEl.querySelectorAll('select') : []) sel.disabled = false;
 }
 
@@ -2910,7 +3004,7 @@ function soloRenderOpening(){
   if (!op) return;
   const mine = soloOpeningIsMine();
   if (op.stage === 'roll'){
-    walkClearClass('walk-start-glow');
+    walkClearStartGlow();
     renderOpeningPanel(soloPlayers, op, { canRoll: mine && op.rolling === soloActiveIdx && !op.shaking, shaking: !!op.shaking });
   } else {
     const free = walkOpeningFreeLabels(soloPlayers);
@@ -3117,7 +3211,8 @@ function stopSoloGame(){
   const soloModeOn = !!walkModeSoloBtn && walkModeSoloBtn.classList.contains('active');
   if (walkSoloControlsEl && soloModeOn) walkSoloControlsEl.hidden = false;
   if (walkSoloHintEl && soloModeOn) walkSoloHintEl.hidden = false;
-  if (walkStatTilesEl) walkStatTilesEl.innerHTML = '';
+  if (walkStatTilesEl){ walkStatTilesEl.innerHTML = ''; walkStatTilesEl.dataset.html = ''; }
+  if (walkInfoPanelEl) walkInfoPanelEl.classList.remove('is-mission');
   if (walkQuestChecklistEl) walkQuestChecklistEl.innerHTML = '';
   if (walkSoloActionsEl) walkSoloActionsEl.innerHTML = '';
   soloClearCardActionsPanel();
@@ -3125,8 +3220,6 @@ function stopSoloGame(){
   if (btnWalkSoloSkip) btnWalkSoloSkip.hidden = true;
   if (btnWalkSoloStart) btnWalkSoloStart.disabled = false;
   if (btnWalkSoloReset) btnWalkSoloReset.disabled = true;
-  if (walkSoloPlayersSel) walkSoloPlayersSel.disabled = false;
-  if (walkSoloBotsSel) walkSoloBotsSel.disabled = false;
   for (const sel of walkSoloSetupEl ? walkSoloSetupEl.querySelectorAll('select') : []) sel.disabled = false;
 }
 function startSoloGame(){
@@ -3176,8 +3269,6 @@ function startSoloGame(){
   crystalResetVault();
   diceReset();
 
-  if (walkSoloPlayersSel) walkSoloPlayersSel.disabled = true;
-  if (walkSoloBotsSel) walkSoloBotsSel.disabled = true;
   // De per-mens startpositie-kiezers hebben hun werk gedaan zodra het potje loopt — laten staan
   // (uitgeschakeld) kostte alleen maar ruimte boven het speelveld en liet het bord bij de eerste
   // volgende klik met een sprong omhoog schieten toen die rijen alsnog ergens verdwenen.
@@ -3258,5 +3349,4 @@ function walkSoloResetSyncVisibility(){
 // van de pagina — soloRebuildSetup() vult en toont 'm namelijk onvoorwaardelijk, ongeacht welke
 // tab actief is. setWalkMode('auto') zet alle mode-afhankelijke zichtbaarheid meteen goed (en
 // bouwt de solo-spelerobjecten pas op zodra je écht naar "Zelf spelen" wisselt).
-soloSyncBotOptions();
 setWalkMode('auto');

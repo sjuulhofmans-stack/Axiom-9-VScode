@@ -70,6 +70,7 @@ aangeroepen (functiedeclaraties worden gehoist, `const`/`let` niet).
 | regel wijzigen over waar een tegel mag liggen | `10-rules.js` (`canTileGoInSlot`) |
 | de generator slimmer/anders maken           | `70-generator.js`     |
 | kleuren, formaat vakjes, mobiel             | `styles.css`          |
+| de blauwe hoofdknoppen (alle `button.primary`) | `styles.css` (`button.primary`): "glas + hoofdletters", gekozen optie 9 uit 9 (2026-10). Eén stijl én één lettergrootte (13px, ook groot/klein) voor alle 14 + de modusknoppen Automatisch/Zelf spelen (`.walk-mode-btn`); grote knoppen zijn alleen breder/hoger. Geen eigen `font-size` per knop toevoegen (gemeten: overal 13px, niets loopt uit een knop op 1440 en 1920 breed) |
 | een knop toevoegen                          | `index.html` + `80-controls.js` |
 | iets aan de tegel-editor                    | `90-editor.js`        |
 | de spelsimulatie aanpassen                  | `95-simulate.js`      |
@@ -82,6 +83,7 @@ aangeroepen (functiedeclaraties worden gehoist, `const`/`let` niet).
 | een kristal toevoegen / tekst of moment aanpassen | `95-simulate.js`: `ACTION_CARDS` (name/text/when/hint) + `ACTION_CARD_TINTS` + `ACTION_CARD_ICONS` |
 | hoe een kristal, de kluis of het oprapen eruitziet | `96c-crystals.js` + het kristallen-blok onderaan `styles.css` |
 | de dobbelstenen, de stappenteller of de energiebolletjes | `96d-dice.js` + het dobbelstenen-blok onderaan `styles.css` |
+| de kaders/vlakken tijdens een potje ("zwevende kolommen", gekozen variant 5 uit 6, 2026-10) | blok `SPEELSCHERM "ZWEVENDE KOLOMMEN"` onderaan `styles.css`: spelerskaarten, beide zijkolommen, bord en chat elk één kaart (`--panel`, ronde hoeken, zachte schaduw) op `#070a0e`, alles binnenin plat. Randen houden hun DIKTE (alleen kleur transparent), zodat alle gemeten maten gelijk blijven — gemeten 1920×960 en 1440×780: identiek aan vóór de wijziging |
 | de speelweergave (smalle balk, ☰-menu, bordgrootte tijdens een potje) | `body.is-playing` in `styles.css` + `playMenuSetOpen` (80-controls.js) + `walkPauseStopSyncVisibility` (96-walk.js) |
 
 ## Spelregels die in de code zitten
@@ -234,7 +236,12 @@ Check minimaal:
 3. Een tegel selecteren → draaiknoppen gaan per **90°** (niet 180).
 4. Een tegel over een andere slepen → wisselt om, rood kader = niet toegestaan.
 5. Browserconsole moet leeg zijn.
-6. Paneel Simulatie → "Draai simulatie" → 4 startposities laten allemaal winst
+6. Paneel Simulatie: het aantal potjes is een **rolteller** (gekozen ontwerp B uit 4, sinds 2026-10):
+   5 rolcijfers (voorloopnullen gedimd), −100/+100 ernaast (ingedrukt houden = steeds sneller,
+   na 12 stappen per 500), pijltjestoetsen op de teller, snelkeuzes 500/1.000/2.000/5.000/10.000
+   en een brede startknop. Bron blijft het verborgen veld #simCount (100–20.000, stap 100);
+   weergave `simCounterRender`/`simCountSet` in 95-simulate.js, opmaak `.sim-*` bovenin styles.css.
+   "Draai simulatie" → 4 startposities laten allemaal winst
    zien, "vastgelopen potjes" is 0 of bijna 0. Tijdens het rekenen staat er een
    "Aan het simuleren"-vakje (radarscherm + dezelfde voortgangsring als bij genereren,
    gedeelde code: `createProgressLoader` in `80-controls.js`) met aftellende tijd,
@@ -246,6 +253,10 @@ Check minimaal:
    zichtbaar, de dobbelstenen rollen, en het potje eindigt met hetzelfde
    winscherm als Zelf spelen (embleem in winnaarskleur + klassement plaats/naam/opdrachten, "Toon kaart"/"Toon
    uitslag"); de knop rechtsboven heet dan "Terug naar lobby" en werkt.
+   Na afloop is de zijkolom (dobbelen/energie/kluis) en het opdrachtenoverzicht leeg, en zijn
+   "Toon legenda"/"Toon log" (plus de legenda en het log zelf) weg, ook na
+   "Toon kaart" (`.is-game-over` op .walk-play-layout, `soloSetGameOverView` in 97-solo.js;
+   weer weg via `soloHideEndgame` bij een nieuw potje/stoppen).
    Tempo moet je tijdens het lopen kunnen wijzigen (schuif
    rechtsboven naast Pauze/Stoppen); "Stoppen"
    moet de pion echt stilzetten (geen achtergrondlus die doorloopt).
@@ -302,12 +313,23 @@ Check minimaal:
     onder 1360px staat alles onder elkaar. `--wcell` schaalt óók met de
     schermhoogte: vanaf ±780px zichtbare hoogte (o.a. Full HD met
     browserbalken, 1440×780) moet het hele speelscherm zonder scrollen passen.
-    "Toon legenda"/"Toon log" staan onderaan de linkerkolom (gelijk met de
-    onderrand van het bord), niet meer onder het bord; het opdrachtenoverzicht
+    "Toon legenda"/"Toon log" zijn VOOR NU VERBORGEN (gebruikerswens 2026-10: staan in de weg,
+    komen later op een andere manier terug): één CSS-regel bij `.walk-extras-toggle` in
+    styles.css verbergt de knoppen + #walkLegend + #walkLog; walkLog() schrijft gewoon door.
+    Het opdrachtenoverzicht
     is een **afvinklijst met kleurstroken** (gekozen uit 4 ontwerpen; `soloRenderQuestChecklist`):
     geen 2.x-nummers meer (de opdrachtkaarten krijgen later alleen naam + opdracht), streep +
-    rondje in de opdrachtkleur, groen vinkje = voltooid, kloppende stip + "actief" = huidig doel,
-    zes lampjes bovenin; hover = spieken (rand in jouw kleur + oogje). Alle rijen even brede
+    rondje in de opdrachtkleur, groen vinkje = voltooid, kloppende stip + "actief" = huidig doel;
+    hover = spieken (rand in jouw kleur + oogje). Erboven (Zelf spelen + Multiplayer) de
+    **missiestrook** (gekozen ontwerp D uit 4, 2026-10; `soloMissionHtml` in 97-solo.js, `.mission-*`
+    in styles.css): volgorde pillen Beurt / Stand → kopje "Opdrachten voltooid" (geen los x/6-getal
+    meer) → 6 zeshoekjes; overal 14px tussen de regels en alle tekst in pillen + kopje 15px
+    (gemeten: tekst exact gecentreerd in de pillen). De zeshoekjes aan een
+    lijn (groen + vinkje = voltooid; de actieve opdracht ook groen, NIET de kamerkleur, met een
+    sonarpuls: 2 ringen op `.mission-slot.is-next`, `missionSonar`, alleen transform/opacity) en groot
+    "Opdrachten voltooid x / 6". De opdrachtkaart en de 3 tegels zijn daar weg (de kaarten zijn voor
+    de fysieke versie); `.walk-info-panel.is-mission` verbergt #walkQuestCard/#walkMeta/#walkScoreActive.
+    Automatisch toont ze nog wel. Gemeten 1920×960 en 1440×780: kolom = bordhoogte, niets scrollt. Alle rijen even brede
     rand/streep, zodat rondjes en namen exact onder elkaar staan (gemeten). Onder 865px hoogte of
     1630px breedte naam + kamer op één regel; nooit scrollen (gemeten 1920×900 en 1440×780). Minimum is
     13px per vakje; daaronder scrolt het nog. De tabbladen staan in de kop naast
@@ -323,12 +345,28 @@ Check minimaal:
     daarna gooi je gewoon. De kaart Zwaartekracht-laarzen kan alleen vóór het
     dobbelen en blokkeert de laarzen-actie in dezelfde beurt. Simulatie →
     "Welke energie-actie wint?" toont alle vier rond de 25%.
-13. Begin van een potje (Zelf spelen met bots): lobby toont alleen namen. Na
+13. Lobby Zelf spelen = **bemanningslijst** (gekozen ontwerp B uit 4, sinds 2026-10; vervangt de
+    keuzelijsten Aantal spelers/Aantal bots): altijd 4 rijen (lege plekken gestippeld), eerst de
+    mensen (plek 1 = "jij"), dan de bots; achter een bot alleen het woordje "bot" (gebruikerswens,
+    geen icoon). "+ Speler"/"+ Bot" (uit bij 4), ✕ haalt precies die plek weg; botnamen en
+    ingevulde namen blijven staan. Elke rij = vijf VASTE vakjes (gebruikerswens, "niets mag
+    verschuiven"): dik nummer 28px | bolletje 12px | naamvak (rest, 38px hoog; bij een bot een
+    gestippeld vak van dezelfde maat) | rolvak jij/speler/bot 96px | verwijdervak 38×38 (bij jou
+    uitgezet maar wel aanwezig). Gemeten: alle rijen exact gelijk, ook met een lange naam. De
+    aparte kolom "In het schip" is op verzoek weer weggehaald (dubbel met de lijst). Code:
+    `soloHumanCount`/`soloBotCount`/`soloBotNames`, `soloRenderSetupUI`, `soloCrewAdd`/`soloCrewRemove`
+    (97-solo.js), opmaak `.crew-*` in styles.css.
+    Begin van een potje (Zelf spelen met bots): lobby toont alleen namen. Na
     "Start spel" is de rechterkolom één groot paneel tot onderaan het bord;
     jij gooit via de knop, bots vanzelf; bovenaan staat ieders opdracht als
     "opdracht nog geheim". Bij gelijke worp gooien alleen die spelers opnieuw.
-    Bij het kiezen staat de opdracht van wie kiest op het bord en gloeien de
-    vrije startvakjes (klikbaar, of via de knoppen in het paneel). Daarna komt
+    Bij het kiezen staat de opdracht van wie kiest op het bord en lichten de
+    vrije startvakjes op met een **schijnwerper** (gekozen ontwerp C + de ring van D, 2026-10;
+    `walkGlowStarts`/`walkClearStartGlow` in 96-walk.js): rest van het bord gedimd behalve de
+    startkamer (`.walk-spot`) en het doel (`.walk-target`), vrije vakjes in de kleur van wie
+    kiest met een draaiende ring van RONDJES (geen streepjes: leek op een verkeerd symbool) en
+    een dobberend pijltje. Kiezen kan ALLEEN op het bord; de 3.x-knoppen in het paneel zijn weg,
+    en het paneel noemt geen 3.x-labels meer ("gekozen"). Daarna komt
     de gewone kolom (dobbelen/energie/kaarten) terug en is de beurtvolgorde
     gelijk aan de kiesvolgorde. In Multiplayer moet een gast op zijn eigen
     scherm kunnen gooien en kiezen. Elke speler heeft een groot vak met vaste plekken voor 2

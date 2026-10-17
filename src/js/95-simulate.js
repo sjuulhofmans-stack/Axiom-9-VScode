@@ -1510,15 +1510,81 @@ const simCountEl = document.getElementById('simCount');
 const simStatusEl = document.getElementById('simStatus');
 const simResultsEl = document.getElementById('simResults');
 const btnSimulate = document.getElementById('btnSimulate');
-// −/+ knoppen naast een getalveld (.num-step, data-step-for = id van het veld, data-step = ±1):
-// één klik = één `step` van het veld, binnen min/max — i.p.v. de piepkleine browserpijltjes
-for (const btn of document.querySelectorAll('.num-step')){
-  btn.addEventListener('click', () => {
-    const input = document.getElementById(btn.dataset.stepFor);
-    if (!input) return;
-    if (btn.dataset.step === '1') input.stepUp(); else input.stepDown();
-    input.dispatchEvent(new Event('change', { bubbles: true }));
+// ---------- rolteller "Aantal potjes" (gekozen ontwerp B, zie index.html) ----------
+// #simCount (verborgen) is de bron; dit tekent 5 rolcijfers die naar hun cijfer schuiven
+// (transform, geen herberekening van de opmaak), voorloopnullen gedimd. −100/+100: klik = 100,
+// ingedrukt houden telt steeds sneller door (na 12 stappen per 500). Pijltjestoetsen op de teller
+// werken ook. Snelkeuzes zetten het getal in één keer.
+const SIM_COUNT_MIN = 100, SIM_COUNT_MAX = 20000, SIM_COUNT_STEP = 100;
+const SIM_COUNT_DIGITS = 5;
+const SIM_COUNT_PRESETS = [500, 1000, 2000, 5000, 10000];
+const simDigitsEl = document.getElementById('simDigits');
+const simPresetsEl = document.getElementById('simPresets');
+function simCountClamp(n){
+  if (!Number.isFinite(n)) n = 2000;
+  return Math.max(SIM_COUNT_MIN, Math.min(SIM_COUNT_MAX, Math.round(n / SIM_COUNT_STEP) * SIM_COUNT_STEP));
+}
+if (simDigitsEl){
+  simDigitsEl.innerHTML = Array.from({ length: SIM_COUNT_DIGITS }, () =>
+    `<span class="sim-digit"><span class="sim-reel">${'0123456789'.split('').map(d => `<i>${d}</i>`).join('')}</span></span>`
+  ).join('');
+}
+function simCounterRender(){
+  if (!simCountEl || !simDigitsEl) return;
+  const n = simCountClamp(parseInt(simCountEl.value, 10));
+  const s = String(n).padStart(SIM_COUNT_DIGITS, '0');
+  const lead = SIM_COUNT_DIGITS - String(n).length;
+  [...simDigitsEl.children].forEach((d, i) => {
+    d.classList.toggle('is-lead', i < lead);
+    // één cijfer = 10% van de rol omhoog
+    d.firstChild.style.transform = `translateY(${-10 * Number(s[i])}%)`;
   });
+  simDigitsEl.setAttribute('aria-valuenow', String(n));
+  simDigitsEl.setAttribute('aria-valuetext', `${n.toLocaleString('nl-NL')} potjes`);
+  if (simPresetsEl){
+    simPresetsEl.innerHTML = SIM_COUNT_PRESETS.map(p =>
+      `<button type="button" class="sim-preset${p === n ? ' is-on' : ''}" data-sim-preset="${p}">${p.toLocaleString('nl-NL')}</button>`
+    ).join('');
+  }
+}
+function simCountSet(n){
+  if (!simCountEl) return;
+  simCountEl.value = String(simCountClamp(n));
+  simCounterRender();
+}
+function simCountStep(dir, size = SIM_COUNT_STEP){
+  simCountSet(parseInt(simCountEl.value, 10) + dir * size);
+}
+{
+  let holdTimer = null;
+  const stopHold = () => { clearTimeout(holdTimer); holdTimer = null; };
+  for (const btn of document.querySelectorAll('[data-sim-step]')){
+    const dir = Number(btn.dataset.simStep);
+    btn.addEventListener('pointerdown', (e) => {
+      if (e.button !== 0) return;
+      simCountStep(dir);
+      let delay = 380, n = 0;
+      const tick = () => {
+        n++;
+        simCountStep(dir, n > 12 ? 5 * SIM_COUNT_STEP : SIM_COUNT_STEP);
+        delay = Math.max(45, delay * 0.8);
+        holdTimer = setTimeout(tick, delay);
+      };
+      holdTimer = setTimeout(tick, delay);
+    });
+    for (const t of ['pointerup', 'pointerleave', 'pointercancel']) btn.addEventListener(t, stopHold);
+    // toetsenbord (Enter/spatie op de knop): de click zonder pointerdown ervoor
+    btn.addEventListener('click', (e) => { if (e.detail === 0) simCountStep(dir); });
+  }
+  if (simDigitsEl) simDigitsEl.addEventListener('keydown', (e) => {
+    const dir = { ArrowUp: 1, ArrowRight: 1, ArrowDown: -1, ArrowLeft: -1 }[e.key];
+    if (dir){ e.preventDefault(); simCountStep(dir); }
+  });
+  if (simPresetsEl) simPresetsEl.addEventListener('click', (e) => {
+    const b = e.target.closest('[data-sim-preset]');
+    if (b) simCountSet(Number(b.dataset.simPreset));
+  });
+  simCounterRender();
 }
 // "Aan het simuleren"-vakje: zelfde laadvakje + voortgangsring als map genereren
 // (createProgressLoader in 80-controls.js); vervangt de oude voortgangsbalk (gebruikerswens)
@@ -2126,10 +2192,8 @@ function runSimulationBatch(){
     return;
   }
 
-  let n = parseInt(simCountEl.value, 10);
-  if (!Number.isFinite(n)) n = 2000;
-  n = Math.max(100, Math.min(20000, n));
-  simCountEl.value = n;
+  const n = simCountClamp(parseInt(simCountEl.value, 10));
+  simCountSet(n);
 
   simRunning = true;
   simDone = 0; simTotal = n;

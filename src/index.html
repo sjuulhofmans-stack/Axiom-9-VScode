@@ -199,18 +199,21 @@
   <div id="tabSimulate" class="tab-panel" role="tabpanel" hidden>
     <div class="panel">
       <div class="controls">
-        <div class="field sim-run">
-          <label for="simCount">Aantal potjes</label>
-          <div class="seed-row">
-            <!-- eigen −/+ knoppen i.p.v. de piepkleine pijltjes van de browser (gebruikersmelding),
-                 zie 80-controls.js -->
-            <div class="num-stepper">
-              <button type="button" class="num-step" data-step-for="simCount" data-step="-1" aria-label="Minder potjes">−</button>
-              <input type="number" id="simCount" min="100" max="20000" step="100" value="2000">
-              <button type="button" class="num-step" data-step-for="simCount" data-step="1" aria-label="Meer potjes">+</button>
-            </div>
-            <button id="btnSimulate" class="primary">Draai simulatie</button>
+        <!-- Rolteller (gekozen ontwerp "B" uit 4, sinds 2026-10): het aantal potjes als teller met
+             rolcijfers, −100/+100 ernaast (ingedrukt houden = doortellen), snelkeuzes eronder en een
+             brede startknop. #simCount blijft de bron (verborgen veld) die runSimulationBatch leest;
+             de weergave staat in simCounterRender (95-simulate.js). -->
+        <div class="sim-run">
+          <span class="sim-run-label" id="simCountLabel">Aantal potjes</span>
+          <input type="hidden" id="simCount" value="2000">
+          <div class="sim-counter">
+            <button type="button" class="sim-step" data-sim-step="-1" aria-label="100 potjes minder">−100</button>
+            <div class="sim-digits" id="simDigits" tabindex="0" role="spinbutton" aria-labelledby="simCountLabel"
+                 aria-valuemin="100" aria-valuemax="20000" aria-valuenow="2000"></div>
+            <button type="button" class="sim-step" data-sim-step="1" aria-label="100 potjes meer">+100</button>
           </div>
+          <div class="sim-presets" id="simPresets"></div>
+          <button id="btnSimulate" class="primary sim-go">Draai simulatie</button>
         </div>
         <!-- "Aan het simuleren"-vakje: zelfde laadvakje + voortgangsring als bij map genereren
              (createProgressLoader in 80-controls.js), maar in het midden een radarscherm met een
@@ -313,20 +316,10 @@
         </div>
         <!-- (uitlegtekst #walkAutoHint weggehaald, gebruikerswens: komt later in een eigen tabblad Spelregels) -->
 
+        <!-- Wie er meedoet staat in de bemanningslijst hieronder (#walkSoloSetupPlayers, gekozen
+             ontwerp "B"): de keuzelijsten "Aantal spelers"/"Aantal bots" zijn daardoor vervangen. -->
+        <div id="walkSoloSetupPlayers" class="walk-solo-setup"></div>
         <div class="walk-controls walk-lobby-fields" id="walkSoloControls" hidden>
-          <div class="field">
-            <label for="walkSoloPlayers">Aantal spelers</label>
-            <select id="walkSoloPlayers">
-              <option value="1">1 speler (alleen)</option>
-              <option value="2">2 spelers</option>
-              <option value="3">3 spelers</option>
-              <option value="4" selected>4 spelers</option>
-            </select>
-          </div>
-          <div class="field">
-            <label for="walkSoloBots">Aantal bots</label>
-            <select id="walkSoloBots"></select>
-          </div>
           <!-- meteen doorspelen (zoals altijd) of elke bot-beurt zichtbaar op het bord afspelen:
                dobbelstenen rollen, pion loopt stap voor stap. Waarde = index in WALK_SPEEDS
                (96-walk.js). Zie soloAnimateBotTurn() in 97-solo.js. -->
@@ -341,7 +334,6 @@
           </div>
         </div>
         <!-- (uitlegtekst #walkSoloHint weggehaald, gebruikerswens: komt later in een eigen tabblad Spelregels) -->
-        <div id="walkSoloSetupPlayers" class="walk-solo-setup"></div>
 
         <!-- MULTIPLAYER: was een losse tab, nu de derde modus hier (gebruikerswens) — zelfde
              smalle gecentreerde kolom als Automatisch/Zelf spelen i.p.v. de vroegere brede
