@@ -1581,9 +1581,11 @@
     .mission-slot.is-next::after{display:none;}
   }
   /* "Opdrachten voltooid" boven de zeshoekjes, in dezelfde letter en maat als de pillen */
+  /* nowrap + iets minder letterruimte: "Bezig met opdracht 1 van 6" past zo ook in de smallere
+     kolom van Multiplayer op één regel (viel daar eerst op twee regels) */
   .mission-caption{
     text-align:center; font-family:var(--font-display); font-weight:700; font-size:15px; line-height:1;
-    letter-spacing:.1em; text-transform:uppercase; color:var(--text);
+    letter-spacing:.06em; text-transform:uppercase; color:var(--text); white-space:nowrap;
   }
   /* het nummer van de opdracht waar je mee bezig bent: zelfde groen als het oplichtende vakje */
   .mission-caption b{font-weight:700; color:var(--start-glow);}

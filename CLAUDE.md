@@ -168,6 +168,21 @@ aangeroepen (functiedeclaraties worden gehoist, `const`/`let` niet).
   kristal dat je had gekregen: dat blijft op de stapel en zou de volgende trekking verklappen);
   een ander = anoniem zilver kristalletje naar diens spelerskaartje, nooit kleur of naam.
   Nagespeelde bot-beurten spelen het af als de pion er langskomt (`replay.crystals`).
+  **Kaart in multiplayer**: de host stuurt bij de start `layout` (welke tegel waar) ÉN `rotation`
+  (tileRotation per tegel) ÉN `tiles` (de vakjes per tegel, voor als de host tegels bewerkte) mee;
+  de gast neemt alle drie over in `mpApplyHostMap` (99-multiplayer.js). Vroeger alleen `layout`,
+  waardoor elke gast zijn eigen draaiing gebruikte (gebruikersmelding 2026-10: "niet iedereen ziet
+  dezelfde map, sommige tegels zitten verkeerd"). Nieuwe kaart-instelling? Ook hier meesturen.
+  **Gast: dobbelvak bij een nieuwe beurt** — `mpApplyState` zet in de fases 'choose-action' en
+  'rolling' het dobbelvak terug naar "?" (`renderSoloDicePending`), net als de host in
+  soloBeginHumanTurn. Anders hield .walk-hud de klasse .has-result van de vorige worp en verborg de
+  opmaak de knoppen Dobbelen/Gooi: de gast kon niet meer dobbelen en het potje liep vast
+  (gebruikersmelding 2026-10). **#mpWaitTurn** ("X is aan zet — even wachten") staat in het
+  energievak (#walkSoloPanel), niet in het dobbelvak: dat heeft een vaste hoogte en de melding viel
+  dan over de energiebalk heen. **Testen zonder twee computers**: een testpagina met twee iframes
+  (host + gast) en een nagebootste Trystero via BroadcastChannel (`mpTrysteroMod` vervangen vóór
+  mpHostCreate/mpJoinConnect) + een automatische speler per venster vond beide fouten; na de
+  oplossing 5 potjes van 48–67 beurten zonder vastlopen of fouten.
   **Geheim in multiplayer**: de host stuurt de stand per gast apart (`mpSendPerGuest`); in
   `mpPublicPlayer` ziet elke gast alleen zijn eigen kristallen, van anderen alleen het aantal.
   Logregels noemen in multiplayer en bij bots nooit welk kristal er werd opgeraapt.

@@ -931,6 +931,11 @@ function mpHostStartGame(){
 
   mp.actions.start.send({
     layout: layout.slice(),
+    // ook de draaiing per tegel en de vorm van elke tegel: zonder die twee legde elke gast de
+    // tegels met zijn EIGEN draaiing neer (gebruikersmelding: "niet iedereen ziet dezelfde map,
+    // sommige tegels zitten verkeerd"). De vorm voor het geval de host tegels heeft bewerkt.
+    rotation: mpTileRotationSnapshot(),
+    tiles: mpTileShapesSnapshot(),
     players: mpPublicPlayers(soloPlayers),
     turnOrder: soloTurnOrder,
     finishTarget: soloFinishTarget,
@@ -942,9 +947,34 @@ function mpHostStartGame(){
   mpBroadcastState();
 }
 
+// ---------- de kaart van de host precies overnemen ----------
+// layout = welke tegel op welke plek, tileRotation = hoe elke tegel gedraaid ligt (10-rules.js),
+// tileLookup = de vakjes van elke tegel (00-data.js, kan via de tegel-editor afwijken).
+function mpTileRotationSnapshot(){
+  const rot = {};
+  for (let tid = 1; tid <= 20; tid++) rot[tid] = tileRotation[tid] || 0;
+  return rot;
+}
+function mpTileShapesSnapshot(){
+  const out = {};
+  for (const [id, m] of Object.entries(tileLookup)) out[id] = [...m.entries()];
+  return out;
+}
+function mpApplyHostMap(payload){
+  layout = payload.layout.slice();
+  if (payload.tiles){
+    for (const [id, entries] of Object.entries(payload.tiles)) tileLookup[id] = new Map(entries);
+    recomputeOpenEdges();   // 10-rules.js: de open zijden horen bij de (nieuwe) vorm
+  }
+  // oudere host zonder rotatie: dan liever alles recht dan de eigen (andere) draaiing
+  for (let tid = 1; tid <= 20; tid++){
+    tileRotation[tid] = payload.rotation ? (payload.rotation[tid] || 0) : 0;
+  }
+}
+
 // ---------- client: potje ontvangen ----------
 function mpClientOnStart(payload){
-  layout = payload.layout.slice();
+  mpApplyHostMap(payload);
   soloGraph = buildSimGraph();
   // wegwerp-RNG, puur zodat toevallige UI-filters die soloRand aanraken (bv. soloCardBlockReason
   // op een Duwstoot-kaart in de eigen hand) niet crashen — het RESULTAAT wordt hier nooit
@@ -1249,7 +1279,12 @@ function mpApplyState(payload){
   } else if (soloMove && soloMove.d1 !== undefined && soloPhase !== 'choose-action' && soloPhase !== 'rolling'){
     renderWalkDice(soloMove.d1, soloMove.d2, soloEnergyRoll, false, soloMove.d3, soloMove.roll, { key: diceSoloRollKey(), flow: true });
     if (soloMove.path) diceSetProgress(soloMove.path.length - 1, soloMove.stepsLeft);
-  } else if (soloEnergyRoll !== null && soloPhase === 'rolling'){
+  } else if (soloPhase === 'rolling' || soloPhase === 'choose-action'){
+    // begin van een (nieuwe) beurt: dobbelvak terug naar "?" — net als de host in
+    // soloBeginHumanTurn. Bleef hier de worp van de vorige beurt staan, dan hield het dobbelvak
+    // de klasse .has-result en verborg de opmaak de knoppen "Dobbelen"/"Gooi de dobbelstenen":
+    // de gast kon niet meer dobbelen en het potje liep vast (gebruikersmelding, nagebootst met
+    // twee spelers). diceRenderPending tekent niets opnieuw als het al zo staat.
     renderSoloDicePending();
   }
 

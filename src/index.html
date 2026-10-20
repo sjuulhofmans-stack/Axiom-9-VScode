@@ -614,9 +614,6 @@
                 <button id="btnWalkSoloRoll" class="primary" hidden>🎲 Gooi de dobbelstenen</button>
                 <button id="btnWalkSoloSkip" class="primary" hidden>Dobbelen</button>
               </div>
-              <!-- Multiplayer, tijdens andermans beurt: i.p.v. de (verborgen) bediening van die
-                   speler alleen wie er aan zet is (mpSyncTurnOwner in 99-multiplayer.js) -->
-              <p class="mp-wait-turn" id="mpWaitTurn" hidden></p>
             </div>
 
             <!-- "of": je kunt dobbelen, óf eerst een energie-actie inzetten. Zichtbaar zolang de
@@ -635,6 +632,12 @@
                 <span class="walk-energy-value"><b id="walkEnergyValue">0</b> / 10</span>
               </div>
               <div class="walk-solo-actions" id="walkSoloActions"></div>
+              <!-- Multiplayer, tijdens andermans beurt: wie er aan zet is (mpSyncTurnOwner in
+                   99-multiplayer.js). Staat HIER, op de plek van de energie-acties (die zijn dan
+                   verborgen), en niet meer in het dobbelvak: dat heeft een vaste hoogte, en met de
+                   worp van de ander erin viel de melding over de energiebalk heen (gebruikersmelding
+                   "kapotte energiebalk als je niet aan de beurt bent"). -->
+              <p class="mp-wait-turn" id="mpWaitTurn" hidden></p>
             </div>
 
             <!-- "of": een actiekaart spelen kan ook, maar alleen als Noodrantsoen of Stuwlading
