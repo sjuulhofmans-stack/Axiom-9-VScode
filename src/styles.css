@@ -3325,13 +3325,11 @@
   #tabWalk.is-multi-tab .walk-lobby-col:has(#mpChatPanel:not([hidden])) .walk-mode-toggle,
   .walk-lobby-col:has(#mpChatPanel:not([hidden])) > .walk-lobby-start-row{display:none;}
   .walk-lobby-col:has(#mpChatPanel:not([hidden])) .walk-lobby-body{padding-top:0;}
-  .mp-room-layout:has(#mpChatPanel:not([hidden])){grid-template-columns:300px minmax(0,1fr) minmax(280px,360px);}
+  /* (de kolommen van de kamer staan nu bij #mpRoomLayout.is-room, blok "DE BRUG" onderaan) */
   .mp-mid-col{display:flex; flex-direction:column; gap:14px; min-height:0; min-width:0;}
   .mp-mid-col[hidden]{display:none;}
   .mp-mid-col > .mp-chat-panel{flex:1 1 auto;}
-  @media (max-width:1300px){
-    .mp-room-layout:has(#mpChatPanel:not([hidden])){grid-template-columns:260px minmax(0,1fr) 260px;}
-  }
+
 
   /* ---------- avatars (98b-avatar.js) ---------- */
   /* begrensd en gecentreerd, zodat de 4 vakjes niet de hele middenkolom breed worden */
@@ -3944,3 +3942,121 @@
   body.is-playing .walk-chat-col::before{display:none;}
   /* na afloop is de rechterkolom leeg: dan ook geen lege kaart laten staan */
   body.is-playing .walk-play-layout.is-game-over .walk-side-stack{background:none; box-shadow:none;}
+
+  /* ================= MULTIPLAYER-KAMER "DE BRUG" (gekozen ontwerp, 2026-10) =================
+     Links boven de avatar-maker (#mpAvatarEditor, van boven tot aan de knoppen), links onder in
+     de hoek de knoppen (.mp-room-info: alleen nog .mp-room-bottom = Spel starten/afbreken of de
+     wachtstatus/Verlaten), midden de brug (#mpBridge, mpRenderBridge in 99-multiplayer.js), rechts
+     de chat over de volle hoogte en breder. .is-room zet mpShowRoomCols op #mpRoomLayout. */
+  #mpRoomLayout.is-room{
+    grid-template-columns:300px minmax(0,1fr) 400px;
+    grid-template-rows:minmax(0,1fr) auto;
+    grid-template-areas:"editor bridge chat" "info bridge chat";
+  }
+  @media (max-width:1300px){ #mpRoomLayout.is-room{grid-template-columns:270px minmax(0,1fr) 320px;} }
+  #mpRoomLayout.is-room > .mp-room-info{grid-area:info;}
+  #mpRoomLayout.is-room > #mpMidCol{grid-area:bridge;}
+  #mpRoomLayout.is-room > #mpChatPanel{grid-area:chat;}
+  #mpRoomLayout.is-room > #mpAvatarEditor{grid-area:editor;}
+  /* code en plekken staan nu op de brug: links alleen nog de knoppen, als eigen vak in de hoek */
+  #mpRoomLayout.is-room .mp-room > .hint,
+  #mpRoomLayout.is-room .mp-room > .mp-room-code,
+  #mpRoomLayout.is-room .mp-room > .mp-seats{display:none;}
+  #mpRoomLayout.is-room > .mp-room-info{
+    background:linear-gradient(180deg, var(--panel), var(--panel-2)); border:1px solid var(--line);
+    border-radius:6px; padding:14px; overflow:visible;
+  }
+  #mpRoomLayout.is-room .mp-room-bottom{margin-top:0;}
+
+  /* avatar-maker: één raster van 5 kolommen voor alle keuzes, elke groep een kopje van vaste hoogte */
+  .av-grid{display:grid; grid-template-columns:repeat(5, minmax(0,1fr)); gap:8px; align-content:start; flex:1 1 auto; min-height:0;}
+  .av-sub{
+    grid-column:1 / -1; display:flex; justify-content:space-between; align-items:flex-end; height:18px; margin-top:4px;
+    font-family:var(--font-mono); font-size:10px; letter-spacing:.14em; text-transform:uppercase; color:var(--text-dim);
+  }
+  .av-sub:first-child{margin-top:0;}
+  .av-sub em{font-style:normal; letter-spacing:.02em; text-transform:none; font-size:11px; color:var(--text);}
+  .av-grid .av-pick{aspect-ratio:1; width:100%; height:auto; padding:3px; min-width:0;}
+
+  /* de brug */
+  #mpMidCol{min-height:0;}
+  .mp-bridge{
+    position:relative; flex:1 1 auto; min-height:460px; height:100%; overflow:hidden; border-radius:14px;
+    display:grid; place-items:center;
+    background:radial-gradient(circle at 50% 50%, #0f1a24 0 38%, transparent 70%), var(--hull);
+    border:1px solid var(--line-dim);
+  }
+  .mp-bridge-table{
+    position:relative; z-index:2; width:230px; height:230px; border-radius:50%; display:grid; place-items:center; text-align:center;
+    background:radial-gradient(circle, #13202b 0 55%, #0d151d 56% 100%);
+    box-shadow:0 0 0 2px var(--line), 0 0 0 14px #0b1117, 0 0 0 15px var(--line-dim), inset 0 0 60px -10px rgba(79,184,224,.35);
+  }
+  .mp-bridge-table-in{display:flex; flex-direction:column; align-items:center; gap:8px; transition:opacity .25s;}
+  .mp-bridge-lbl{font-family:var(--font-mono); font-size:10px; letter-spacing:.16em; text-transform:uppercase; color:var(--text-dim);}
+  .mp-bridge-code{font-family:var(--font-mono); font-weight:700; font-size:24px; letter-spacing:.2em; color:var(--quest-glow); padding-left:.2em;}
+  /* sonar: rustig, steeds opnieuw vanuit de tafel (alleen transform/opacity) */
+  .mp-sonar{
+    position:absolute; left:50%; top:50%; width:230px; height:230px; margin:-115px 0 0 -115px; border-radius:50%;
+    pointer-events:none; z-index:1; border:2px solid rgba(79,184,224,.55); opacity:0;
+    animation:mpSonar 4.8s cubic-bezier(.25,.6,.35,1) infinite; will-change:transform, opacity;
+  }
+  .mp-sonar.s2{animation-delay:1.6s;} .mp-sonar.s3{animation-delay:3.2s;}
+  @keyframes mpSonar{0%{transform:scale(1); opacity:.7;} 100%{transform:scale(2.3); opacity:0;}}
+  /* BAM bij binnenkomst: dikke ring in de kleur van de nieuwe speler, flits op de tafel, grote naam */
+  .mp-boom{
+    position:absolute; left:50%; top:50%; width:230px; height:230px; margin:-115px 0 0 -115px; border-radius:50%;
+    pointer-events:none; z-index:3; border:14px solid var(--join); box-shadow:0 0 40px 10px var(--join), inset 0 0 40px 6px var(--join);
+    animation:mpBoom 1.3s cubic-bezier(.15,.7,.25,1) forwards;
+  }
+  .mp-boom.b2{border-width:6px; animation-delay:.18s; opacity:0;}
+  @keyframes mpBoom{0%{transform:scale(.6); opacity:1;} 70%{opacity:.6;} 100%{transform:scale(3.4); opacity:0;}}
+  .mp-bridge-table.is-flash{animation:mpFlash .9s ease-out;}
+  @keyframes mpFlash{
+    0%{box-shadow:0 0 0 2px var(--join), 0 0 0 14px color-mix(in srgb, var(--join) 50%, #0b1117), 0 0 90px 30px var(--join);}
+    100%{box-shadow:0 0 0 2px var(--line), 0 0 0 14px #0b1117, 0 0 0 15px var(--line-dim), inset 0 0 60px -10px rgba(79,184,224,.35);}
+  }
+  .mp-bridge-table.is-bam .mp-bridge-table-in{opacity:0;}
+  .mp-bam{
+    position:absolute; left:50%; top:50%; z-index:5; pointer-events:none; text-align:center; white-space:nowrap;
+    translate:-50% -50%; animation:mpBam 2.4s cubic-bezier(.2,1.4,.3,1) forwards;
+  }
+  .mp-bam b{
+    display:block; font-family:var(--font-display); font-weight:700; font-size:62px; line-height:1; letter-spacing:.04em;
+    text-transform:uppercase; color:var(--join); text-shadow:0 0 30px var(--join), 0 4px 0 #000;
+  }
+  .mp-bam span{
+    display:block; margin-top:6px; font-family:var(--font-display); font-weight:700; font-size:20px; letter-spacing:.3em;
+    text-transform:uppercase; color:#fff; text-shadow:0 2px 6px #000;
+  }
+  @keyframes mpBam{0%{transform:scale(.2); opacity:0;} 14%{transform:scale(1.15); opacity:1;} 24%{transform:scale(1);} 78%{transform:scale(1); opacity:1;} 100%{transform:scale(1.1); opacity:0;}}
+  /* stoelen in de hoeken: de laag ligt óver de brug (geen eigen rij in het raster), zodat de
+     tafel precies in het midden blijft */
+  .mp-bridge-chairs{position:absolute; inset:0; z-index:4; pointer-events:none;}
+  .mp-bridge-chairs .mp-chair{pointer-events:auto;}
+  .mp-chair{position:absolute; z-index:4; width:140px; display:flex; flex-direction:column; align-items:center; gap:5px; text-align:center;}
+  .mp-chair.k0{top:18px; left:18px;} .mp-chair.k1{top:18px; right:18px;}
+  .mp-chair.k2{bottom:18px; left:18px;} .mp-chair.k3{bottom:18px; right:18px;}
+  .mp-chair-pic{
+    width:100px; height:100px; border-radius:50%; background:var(--panel); overflow:hidden; display:grid; place-items:center;
+    box-shadow:0 0 0 3px var(--pc), 0 0 22px -4px var(--pc), 0 10px 26px -10px #000;
+  }
+  .mp-chair-pic .av-svg{width:100%; height:100%;}
+  .mp-chair-none{font-size:10px; line-height:14px; color:var(--text-dim);}
+  .mp-chair-name{font-family:var(--font-display); font-weight:700; font-size:19px; color:var(--pc); max-width:140px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+  .mp-chair-tags{display:flex; gap:4px; min-height:16px;}
+  .mp-chair-tag{font-family:var(--font-mono); font-size:9px; letter-spacing:.12em; text-transform:uppercase; padding:2px 6px; border-radius:3px;}
+  .mp-chair-tag.host{color:#0b0f14; background:var(--amber);}
+  .mp-chair-tag.you{color:var(--pc); border:1px solid var(--pc);}
+  .mp-chair.is-empty .mp-chair-pic{box-shadow:none; background:transparent; border:2px dashed var(--line);}
+  .mp-chair.is-empty .mp-chair-pic .av-svg{opacity:.12; filter:grayscale(1);}
+  .mp-chair.is-unused{opacity:.35;}
+  .mp-chair-no{font-family:var(--font-mono); font-size:10px; color:var(--text-dim);}
+  .mp-chair.is-pop .mp-chair-pic{animation:mpPop .8s cubic-bezier(.2,1.6,.3,1);}
+  @keyframes mpPop{0%{transform:scale(.3);} 100%{transform:scale(1);}}
+  /* systeemregel in de chat ("Tijn is aan boord") */
+  /* de chat is een raster van 2 kolommen (naam | tekst); een systeemregel heeft geen naam en
+     loopt dus over de hele breedte, op een eigen regel */
+  .mp-chat-msg.mp-chat-sys > span{grid-column:1 / -1; color:var(--text-dim); font-style:italic;}
+  @media (prefers-reduced-motion: reduce){
+    .mp-sonar{animation:none;} .mp-boom{animation-duration:.01s;} .mp-chair.is-pop .mp-chair-pic{animation:none;}
+  }

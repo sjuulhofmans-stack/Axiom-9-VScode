@@ -309,9 +309,20 @@ Check minimaal:
     'botturn'-bericht (`mpOnBotReplay`) en zendt tijdens soloPhase 'bots' géén stand; elke
     gast speelt de beurt zelf na (`mpClientOnBotTurn` → `soloAnimateBotTurn`). Check: bij de
     gast loopt de bot-pion vloeiend, en het log is gelijk aan dat van de host (geen dubbele regels).
-    Kamer = 3 kolommen: plekken | 4 avatarvakjes + chat (gecentreerd) | avatar-editor. Eerst een
-    karakter (tab Accessoires zit tot dan op slot), daarna bril/hoedje — staat meteen op je vakje
-    en bij de anderen (gast → 'avatar'-bericht → host zet `seat.avatar` en stuurt de lijst rond).
+    Kamer = **"De brug"** (gekozen ontwerp, 2026-10; `#mpRoomLayout.is-room` in styles.css):
+    links boven de avatar-maker (van boven tot aan de knoppen), links onder in de hoek de knoppen
+    (Spel starten/afbreken of wachtstatus/Verlaten), midden de brug (`mpRenderBridge`: tafel met
+    code + Kopieer + "x / y aan boord" die als sonar pulst, 4 stoelen in de hoeken), rechts de chat
+    over de volle hoogte. Komt er iemand binnen: **BAM** (`mpBridgeJoin`) — dikke ring in zijn
+    kleur, tafel flitst, stoel klapt open, naam groot in beeld + chatregel "X is aan boord"; pas
+    bijhouden zodra je zelf aan boord bent (anders kreeg een gast een BAM voor iedereen + zichzelf).
+    Avatar = { c, e, g, h }: 10 karakters (5 nieuw: Luna, Krak, Pixel, Comet, Rots), 5 gezichten
+    (Blij, Lachen, Verbaasd, Stoer, Boos; `AVATAR_FACES`), 5 brillen, 5 hoedjes; een karakter is
+    alleen het hoofd, het gezicht tekent wenkbrauwen + mond in de kleuren van het karakter. Oude
+    avatars zonder `e` krijgen gezicht 0. Editor = één raster van 5 kolommen (Karakter + Gezicht |
+    Bril + Hoedje). Eerst een karakter (tab Accessoires zit tot dan op slot), daarna de rest —
+    staat meteen op je stoel en bij de anderen (gast → 'avatar'-bericht → host zet `seat.avatar`
+    en stuurt de lijst rond).
     Nog een keer klikken op een item = weer af. Wordt per browser onthouden (localStorage).
 11. **Speelweergave** (alle drie de modi, zolang er een potje in beeld is): `body.is-playing`
     (gezet in `walkPauseStopSyncVisibility`, 96-walk.js; in Multiplayer ook `is-mp-game`).

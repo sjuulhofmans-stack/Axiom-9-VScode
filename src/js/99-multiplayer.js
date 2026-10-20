@@ -544,17 +544,114 @@ function mpBroadcastLobby(){
 }
 // ---------- avatars in de kamer (tekeningen + editor: 98b-avatar.js) ----------
 function mpHelloPayload(){ return { name: mp.pendingName, avatar: avatarMine }; }
-function mpRenderAvatarRow(){
-  const el = document.getElementById('mpAvatarRow');
-  if (el) el.innerHTML = avatarRowHtml(mp.seats || [], mp.totalSeats, mp.myPeerId);
+// (de oude naam blijft: hij wordt overal aangeroepen waar de plekken veranderen)
+function mpRenderAvatarRow(){ mpRenderBridge(); }
+
+// ---------- de brug (gekozen ontwerp "De brug", 2026-10) ----------
+// Midden in de kamer een ronde tafel met de spelcode, "Kopieer" en "x / y aan boord", die rustig
+// pulst als een sonar; de 4 stoelen staan in de hoeken (plek 1 linksboven, 2 rechtsboven, 3
+// linksonder, 4 rechtsonder), elk met de avatar, naam en Host/jij. Komt er iemand binnen, dan
+// "BAM" (gebruikerswens): een dikke ring in de kleur van die speler slaat uit de tafel, de tafel
+// flitst in die kleur, de stoel klapt open en de naam knalt groot in beeld ("Tijn is aan boord!"),
+// plus een regel in de chat. Gebeurt bij iedereen in de kamer, zodra die de nieuwe plek ziet.
+// Tafel en sonar worden één keer gebouwd (anders begint de puls bij elke lobby-update opnieuw);
+// alleen de stoelen en de teksten worden bijgewerkt, en alleen als er iets veranderd is.
+let mpBridgeKnown = null;   // peerIds die al aan boord waren; null = de kamer is net geopend
+function mpRenderBridge(){
+  const el = document.getElementById('mpBridge');
+  if (!el) return;
+  if (!el.dataset.built){
+    el.dataset.built = '1';
+    el.innerHTML =
+      '<span class="mp-sonar"></span><span class="mp-sonar s2"></span><span class="mp-sonar s3"></span>' +
+      '<div class="mp-bridge-chairs"></div>' +
+      '<div class="mp-bridge-table"><div class="mp-bridge-table-in">' +
+        '<span class="mp-bridge-lbl">Code van de brug</span><b class="mp-bridge-code"></b>' +
+        '<button type="button" class="small ghost" data-mp-copy>Kopieer</button>' +
+        '<span class="mp-bridge-lbl mp-bridge-crew"></span>' +
+      '</div></div>';
+  }
+  const seats = mp.seats || [], total = mp.totalSeats || 4;
+  el.querySelector('.mp-bridge-code').textContent = mp.roomCode || '';
+  el.querySelector('.mp-bridge-crew').textContent = `${Math.min(seats.length, total)} / ${total} aan boord`;
+  let html = '';
+  for (let i = 0; i < 4; i++){
+    const seat = seats[i];
+    const color = WALK_PLAYER_COLORS[i % WALK_PLAYER_COLORS.length];
+    if (!seat){
+      const unused = i >= total;   // kamer voor minder dan 4: deze stoel blijft leeg en gedimd
+      html += `<div class="mp-chair k${i} is-empty${unused ? ' is-unused' : ''}" style="--pc:${color}">` +
+        `<div class="mp-chair-pic">${avatarSvg({ c: 2, e: 0, g: -1, h: 0 })}</div>` +
+        (unused ? '<span class="mp-chair-no">geen plek</span>' : mpWaveText('Wachten…')) + `</div>`;
+      continue;
+    }
+    const you = seat.peerId === mp.myPeerId;
+    const svg = avatarSvg(seat.avatar);
+    html += `<div class="mp-chair k${i}${you ? ' is-you' : ''}" data-peer="${mpEscapeHtml(seat.peerId)}" style="--pc:${color}">` +
+      `<div class="mp-chair-pic">${svg || `<span class="mp-chair-none">${you ? 'Kies links<br>een karakter' : 'Nog geen<br>avatar'}</span>`}</div>` +
+      `<span class="mp-chair-name">${mpEscapeHtml(seat.name)}</span>` +
+      `<span class="mp-chair-tags">${seat.isHost ? '<span class="mp-chair-tag host">Host</span>' : ''}${you ? '<span class="mp-chair-tag you">jij</span>' : ''}</span>` +
+    `</div>`;
+  }
+  const chairs = el.querySelector('.mp-bridge-chairs');
+  if (chairs.dataset.html !== html){ chairs.dataset.html = html; chairs.innerHTML = html; }
+  // nieuw aan boord — pas bijhouden zodra je zelf aan boord bent: een gast opent de kamer al
+  // vóórdat de spelerslijst binnen is, en kreeg anders een BAM voor iedereen die er al zat
+  // (ook voor zichzelf). Wie er zat toen jij binnenkwam, krijgt dus geen BAM.
+  const seated = seats.some(s => s && s.peerId === mp.myPeerId);
+  if (!seated){ mpBridgeKnown = null; return; }
+  if (mpBridgeKnown){
+    seats.forEach((s, i) => { if (s && !mpBridgeKnown.has(s.peerId)) mpBridgeJoin(el, s, i); });
+  }
+  mpBridgeKnown = new Set(seats.map(s => s.peerId));
 }
-// de middelste (avatars + chat) en rechter (editor) kolom horen alleen bij een bestaande kamer
+function mpBridgeJoin(el, seat, i){
+  const color = WALK_PLAYER_COLORS[i % WALK_PLAYER_COLORS.length];
+  el.style.setProperty('--join', color);
+  for (const cls of ['mp-boom', 'mp-boom b2']){
+    const r = document.createElement('span');
+    r.className = cls;
+    el.appendChild(r);
+    setTimeout(() => r.remove(), 1800);
+  }
+  const table = el.querySelector('.mp-bridge-table');
+  if (table){
+    table.classList.remove('is-flash', 'is-bam');
+    void table.offsetWidth;   // flits opnieuw laten beginnen (lobby, geen lopend potje)
+    table.classList.add('is-flash', 'is-bam');
+    clearTimeout(table._bamTimer);
+    table._bamTimer = setTimeout(() => table.classList.remove('is-flash', 'is-bam'), 2200);
+  }
+  const bam = document.createElement('div');
+  bam.className = 'mp-bam';
+  bam.innerHTML = `<b>${mpEscapeHtml(seat.name)}</b><span>is aan boord!</span>`;
+  el.appendChild(bam);
+  setTimeout(() => bam.remove(), 2500);
+  const chair = el.querySelector(`.mp-chair.k${i}`);
+  if (chair) chair.classList.add('is-pop');
+  mpAppendSystemChat(`${seat.name} is aan boord`);
+}
+// de middelste (brug), rechter (chat) en linker (editor) kolom horen alleen bij een bestaande kamer
 function mpShowRoomCols(on){
   if (mpChatPanelEl) mpChatPanelEl.hidden = !on;
   const mid = document.getElementById('mpMidCol'), ed = document.getElementById('mpAvatarEditor');
+  const layout = document.getElementById('mpRoomLayout');
   if (mid) mid.hidden = !on;
   if (ed) ed.hidden = !on;
-  if (on){ mpRenderAvatarRow(); avatarRenderEditor(); }
+  if (layout) layout.classList.toggle('is-room', on);
+  if (!on) mpBridgeKnown = null;   // volgende kamer: wie er dan al zit, krijgt geen BAM
+  if (on){ mpRenderBridge(); avatarRenderEditor(); }
+}
+{
+  const el = document.getElementById('mpBridge');
+  if (el) el.addEventListener('click', (e) => {
+    const b = e.target.closest('[data-mp-copy]');
+    if (!b) return;
+    if (navigator.clipboard) navigator.clipboard.writeText(mp.roomCode || '').catch(() => {});
+    b.textContent = 'Gekopieerd';
+    clearTimeout(b._t);
+    b._t = setTimeout(() => { b.textContent = 'Kopieer'; }, 1400);
+  });
 }
 // aangeroepen door avatarSetMine (98b-avatar.js) zodra je in de editor iets kiest
 function mpOnMyAvatarChanged(){
@@ -1573,8 +1670,15 @@ function mpAppendChat(peerId, text, chant, egg){
   if (mpChatMessages.length > 200) mpChatMessages.shift();
   mpRenderChat();
 }
+// regel van het spel zelf (geen speler), bv. "Tijn is aan boord" bij de BAM op de brug
+function mpAppendSystemChat(text){
+  mpChatMessages.push({ sys: true, text, ts: Date.now() });
+  if (mpChatMessages.length > 200) mpChatMessages.shift();
+  mpRenderChat();
+}
 function mpRenderChat(){
   const html = mpChatMessages.map(msg => {
+    if (msg.sys) return `<div class="mp-chat-msg mp-chat-sys"><span>${mpEscapeHtml(msg.text)}</span></div>`;
     const mine = msg.peerId === mp.myPeerId;
     // msg.chant is hier altijd al een gevalideerd getal (zie mpSendChatMessage/mpOnRemoteChat
     // — alleen ooit gezet als CHANT_AUDIO[n] echt bestaat), dus veilig direct te tonen.

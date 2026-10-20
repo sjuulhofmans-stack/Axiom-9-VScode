@@ -465,10 +465,13 @@
                  (#mpChatPanelGame, verderop in dit bestand bij .walk-side-stack) — een lopend
                  gesprek loopt gewoon door zodra het potje start. class="panel" hier is geen
                  nieuw patroon: #mpChatPanelGame nestelt een .panel al net zo binnen #walkPanel. -->
-            <!-- middelste kolom van de kamer: de 4 avatars van de spelers (98b-avatar.js) en daaronder
-                 de chat, samen gecentreerd -->
+            <!-- KAMER = "De brug" (gekozen ontwerp, 2026-10): links de avatar-maker met daaronder de
+                 knoppen (.mp-room-info, alleen nog .mp-room-bottom), midden de brug (tafel met de
+                 code + 4 stoelen in de hoeken, mpRenderBridge in 99-multiplayer.js), rechts de chat
+                 over de volle hoogte. De indeling staat in styles.css (.mp-room-layout.is-room). -->
             <div class="mp-mid-col" id="mpMidCol" hidden>
-              <div class="mp-avatars" id="mpAvatarRow"></div>
+              <div class="mp-bridge" id="mpBridge"></div>
+            </div>
             <div class="panel mp-chat-panel" id="mpChatPanel" hidden>
               <h2>Chat</h2>
               <div id="mpChatLog" class="mp-chat-log" role="log" aria-live="polite"></div>
@@ -478,12 +481,11 @@
               </form>
               <p class="hint">Typ alleen een cijfer (bv. <b>7</b>) voor een taunt — hoorbaar voor iedereen in de room.</p>
             </div>
-            </div>
 
             <!-- rechterkolom van de kamer: avatar-editor (98b-avatar.js). Alleen plaatjes; eerst een
                  karakter kiezen, daarna pas brillen/hoedjes -->
             <div class="panel mp-avatar-editor" id="mpAvatarEditor" hidden>
-              <h2>Avatar</h2>
+              <h2>Avatar maken</h2>
               <div class="av-tabs" id="mpAvatarTabs">
                 <button type="button" class="av-tab active" data-av-tab="char">Karakter</button>
                 <button type="button" class="av-tab" data-av-tab="items">Accessoires</button>
