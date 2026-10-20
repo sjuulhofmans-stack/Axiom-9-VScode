@@ -480,6 +480,16 @@ function walkClearStartGlow(){
   walkClearClass('walk-spot');
   walkBoardEl.classList.remove('is-start-pick');
 }
+// "Jouw eerste opdracht: <naam> — <kamer>" in het kiespaneel, in de kleur van die opdracht
+function walkOpeningGoalHtml(p){
+  const label = p && !p.questHidden ? p.deck[p.nextIdx] : null;
+  if (!label || !QUEST_NAMES[label]) return '';
+  const tid = findLabelTile(label);
+  const room = tid !== null ? (ROOM_NAMES[tid] || ('Gang ' + tid)) : '';
+  return `<div class="walk-opening-goal" style="--qtint:${questTint(label)}">` +
+    `<span class="walk-opening-goal-lbl">Jouw eerste opdracht</span>` +
+    `<b>${QUEST_NAMES[label]}</b>${room ? `<span class="walk-opening-goal-room">in de ${room}</span>` : ''}</div>`;
+}
 function walkOpeningFreeLabels(players){
   return SIM_START_LABELS.filter(l => !players.some(p => p.startLabel === l));
 }
@@ -571,8 +581,11 @@ function renderOpeningPanel(players, op, opts = {}){
       : op.picks[chooser.idx]
         ? `<p class="walk-opening-turn"><b>${chooser.name}</b> heeft gekozen.</p>`
       : opts.canPick
-        // alleen nog kiezen op het bord (gebruikerswens: de 3.x-knoppen hadden geen meerwaarde)
-        ? `<p class="walk-opening-turn walk-opening-howto"><b>${chooser.name}</b>, kies je startpositie. Je eerste opdracht staat nu op het bord; klik op een <b>oplichtend startvak</b> in de Hibernatie-kamer.</p>`
+        // alleen nog kiezen op het bord (gebruikerswens: de 3.x-knoppen hadden geen meerwaarde);
+        // je eerste opdracht staat er met naam en kamer bij (gebruikersmelding: in Multiplayer zag
+        // je niet goed wat je eerste opdracht was, dus ook niet welk startvak het handigst is)
+        ? walkOpeningGoalHtml(chooser) +
+          `<p class="walk-opening-turn walk-opening-howto"><b>${chooser.name}</b>, kies een startvak dicht bij je opdracht: klik op een <b>oplichtend startvak</b> in de Hibernatie-kamer.</p>`
         : `<p class="walk-opening-turn"><b>${chooser.name}</b> kiest een startpositie…</p>`;
     html =
       `<h3 class="walk-opening-title">Startpositie kiezen</h3>` +

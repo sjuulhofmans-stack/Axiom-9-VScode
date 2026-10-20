@@ -395,7 +395,11 @@ Check minimaal:
     startkamer (`.walk-spot`) en het doel (`.walk-target`), vrije vakjes in de kleur van wie
     kiest met een draaiende ring van RONDJES (geen streepjes: leek op een verkeerd symbool) en
     een dobberend pijltje. Kiezen kan ALLEEN op het bord; de 3.x-knoppen in het paneel zijn weg,
-    en het paneel noemt geen 3.x-labels meer ("gekozen"). Daarna komt
+    en het paneel noemt geen 3.x-labels meer ("gekozen").
+    Wie kiest, ziet in het paneel groot "Jouw eerste opdracht: <naam> in de <kamer>" in de kleur
+    van die opdracht (`walkOpeningGoalHtml`), en op het gedimde bord een draaiende ring om het
+    opdrachtvakje (`#walkBoard.is-start-pick .cell.walk-target::before`) — gebruikersmelding: in
+    Multiplayer zag je je eerste opdracht niet goed, dus ook niet welk startvak het handigst is. Daarna komt
     de gewone kolom (dobbelen/energie/kaarten) terug en is de beurtvolgorde
     gelijk aan de kiesvolgorde. In Multiplayer moet een gast op zijn eigen
     scherm kunnen gooien en kiezen. Elke speler heeft een groot vak met vaste plekken voor 2

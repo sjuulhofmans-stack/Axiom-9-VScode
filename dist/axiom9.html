@@ -1920,6 +1920,24 @@
     animation:startArrowBob 1.1s ease-in-out infinite; will-change:transform;
   }
   @keyframes startArrowBob{50%{transform:translateY(-5px);}}
+  /* je eerste opdracht tijdens het kiezen: in de schijnwerper net zo opvallend als de startvakjes
+     (draaiende ring + pijltje), maar in de kleur van de opdracht (gebruikersmelding: in Multiplayer
+     zag je je eerste opdracht niet goed) */
+  #walkBoard.is-start-pick .cell.walk-target{z-index:6;}
+  #walkBoard.is-start-pick .cell.walk-target::before{
+    content:''; position:absolute; inset:-7px; border-radius:50%; pointer-events:none;
+    border:2.5px dotted var(--qtint, var(--quest)); box-sizing:border-box;
+    animation:startRingSpin 4s linear infinite reverse; will-change:transform;
+  }
+  /* blok "Jouw eerste opdracht" in het kiespaneel */
+  .walk-opening-goal{
+    display:flex; flex-direction:column; gap:3px; padding:12px 14px; border-radius:8px;
+    border:1px solid var(--qtint, var(--quest)); background:color-mix(in srgb, var(--qtint, var(--quest)) 14%, transparent);
+    box-shadow:inset 4px 0 0 var(--qtint, var(--quest));
+  }
+  .walk-opening-goal-lbl{font-family:var(--font-mono); font-size:10px; letter-spacing:.16em; text-transform:uppercase; color:var(--text-dim);}
+  .walk-opening-goal b{font-family:var(--font-display); font-size:22px; font-weight:700; line-height:1.1; color:#eef3f8;}
+  .walk-opening-goal-room{font-family:var(--font-mono); font-size:12px; color:var(--qtint, var(--quest));}
   .cell.walk-start-glow:hover{transform:scale(1.15);}
   @media (prefers-reduced-motion: reduce){
     .cell.walk-start-glow::before, .cell.walk-start-glow::after{animation:none;}
@@ -10044,6 +10062,16 @@ function walkClearStartGlow(){
   walkClearClass('walk-spot');
   walkBoardEl.classList.remove('is-start-pick');
 }
+// "Jouw eerste opdracht: <naam> — <kamer>" in het kiespaneel, in de kleur van die opdracht
+function walkOpeningGoalHtml(p){
+  const label = p && !p.questHidden ? p.deck[p.nextIdx] : null;
+  if (!label || !QUEST_NAMES[label]) return '';
+  const tid = findLabelTile(label);
+  const room = tid !== null ? (ROOM_NAMES[tid] || ('Gang ' + tid)) : '';
+  return `<div class="walk-opening-goal" style="--qtint:${questTint(label)}">` +
+    `<span class="walk-opening-goal-lbl">Jouw eerste opdracht</span>` +
+    `<b>${QUEST_NAMES[label]}</b>${room ? `<span class="walk-opening-goal-room">in de ${room}</span>` : ''}</div>`;
+}
 function walkOpeningFreeLabels(players){
   return SIM_START_LABELS.filter(l => !players.some(p => p.startLabel === l));
 }
@@ -10135,8 +10163,11 @@ function renderOpeningPanel(players, op, opts = {}){
       : op.picks[chooser.idx]
         ? `<p class="walk-opening-turn"><b>${chooser.name}</b> heeft gekozen.</p>`
       : opts.canPick
-        // alleen nog kiezen op het bord (gebruikerswens: de 3.x-knoppen hadden geen meerwaarde)
-        ? `<p class="walk-opening-turn walk-opening-howto"><b>${chooser.name}</b>, kies je startpositie. Je eerste opdracht staat nu op het bord; klik op een <b>oplichtend startvak</b> in de Hibernatie-kamer.</p>`
+        // alleen nog kiezen op het bord (gebruikerswens: de 3.x-knoppen hadden geen meerwaarde);
+        // je eerste opdracht staat er met naam en kamer bij (gebruikersmelding: in Multiplayer zag
+        // je niet goed wat je eerste opdracht was, dus ook niet welk startvak het handigst is)
+        ? walkOpeningGoalHtml(chooser) +
+          `<p class="walk-opening-turn walk-opening-howto"><b>${chooser.name}</b>, kies een startvak dicht bij je opdracht: klik op een <b>oplichtend startvak</b> in de Hibernatie-kamer.</p>`
         : `<p class="walk-opening-turn"><b>${chooser.name}</b> kiest een startpositie…</p>`;
     html =
       `<h3 class="walk-opening-title">Startpositie kiezen</h3>` +
