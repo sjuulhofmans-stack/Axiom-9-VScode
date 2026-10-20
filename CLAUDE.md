@@ -316,11 +316,14 @@ Check minimaal:
     over de volle hoogte. Komt er iemand binnen: **BAM** (`mpBridgeJoin`) — dikke ring in zijn
     kleur, tafel flitst, stoel klapt open, naam groot in beeld + chatregel "X is aan boord"; pas
     bijhouden zodra je zelf aan boord bent (anders kreeg een gast een BAM voor iedereen + zichzelf).
-    Avatar = { c, e, g, h }: 10 karakters (5 nieuw: Luna, Krak, Pixel, Comet, Rots), 5 gezichten
-    (Blij, Lachen, Verbaasd, Stoer, Boos; `AVATAR_FACES`), 5 brillen, 5 hoedjes; een karakter is
-    alleen het hoofd, het gezicht tekent wenkbrauwen + mond in de kleuren van het karakter. Oude
-    avatars zonder `e` krijgen gezicht 0. Editor = één raster van 5 kolommen (Karakter + Gezicht |
-    Bril + Hoedje). Eerst een karakter (tab Accessoires zit tot dan op slot), daarna de rest —
+    Avatar = { c, e, g, h }: 12 karakters (nieuw: Luna, Krak, Pixel, Comet, Rots, Kristal, Baard),
+    8 gezichten (Blij, Lachen, Verbaasd, Stoer, Boos, Tong uit, Grijns, Verdrietig; `AVATAR_FACES`),
+    8 brillen, 8 hoedjes; een karakter is alleen het hoofd, het gezicht tekent wenkbrauwen + mond in
+    de kleuren van het karakter. Oude avatars zonder `e` krijgen gezicht 0. Editor = één raster van
+    4 kolommen (Karakter + Gezicht | Bril + Hoedje), dus elke groep 12 of 8 stuks — nieuwe items
+    altijd per 4 toevoegen, en ACHTERAAN (de index is wat er bewaard/verstuurd wordt). Stoelen op
+    de brug zijn 4 blijvende elementen die elk apart worden bijgewerkt (anders begon "Wachten…"
+    opnieuw te golven zodra iemand iets aan zijn avatar veranderde). Eerst een karakter (tab Accessoires zit tot dan op slot), daarna de rest —
     staat meteen op je stoel en bij de anderen (gast → 'avatar'-bericht → host zet `seat.avatar`
     en stuurt de lijst rond).
     Nog een keer klikken op een item = weer af. Wordt per browser onthouden (localStorage).

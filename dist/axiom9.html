@@ -3975,15 +3975,16 @@
   }
   #mpRoomLayout.is-room .mp-room-bottom{margin-top:0;}
 
-  /* avatar-maker: één raster van 5 kolommen voor alle keuzes, elke groep een kopje van vaste hoogte */
-  .av-grid{display:grid; grid-template-columns:repeat(5, minmax(0,1fr)); gap:8px; align-content:start; flex:1 1 auto; min-height:0;}
+  /* avatar-maker: één raster van 4 kolommen voor alle keuzes (gebruikerswens: grotere vakjes;
+     elke groep is daarom 12 of 8 stuks), elke groep een kopje van vaste hoogte */
+  .av-grid{display:grid; grid-template-columns:repeat(4, minmax(0,1fr)); gap:8px; align-content:start; flex:1 1 auto; min-height:0;}
   .av-sub{
     grid-column:1 / -1; display:flex; justify-content:space-between; align-items:flex-end; height:18px; margin-top:4px;
     font-family:var(--font-mono); font-size:10px; letter-spacing:.14em; text-transform:uppercase; color:var(--text-dim);
   }
   .av-sub:first-child{margin-top:0;}
   .av-sub em{font-style:normal; letter-spacing:.02em; text-transform:none; font-size:11px; color:var(--text);}
-  .av-grid .av-pick{aspect-ratio:1; width:100%; height:auto; padding:3px; min-width:0;}
+  .av-grid .av-pick{aspect-ratio:1; width:100%; height:auto; padding:4px; min-width:0;}
 
   /* de brug */
   #mpMidCol{min-height:0;}
@@ -4040,16 +4041,16 @@
      tafel precies in het midden blijft */
   .mp-bridge-chairs{position:absolute; inset:0; z-index:4; pointer-events:none;}
   .mp-bridge-chairs .mp-chair{pointer-events:auto;}
-  .mp-chair{position:absolute; z-index:4; width:140px; display:flex; flex-direction:column; align-items:center; gap:5px; text-align:center;}
+  .mp-chair{position:absolute; z-index:4; width:170px; display:flex; flex-direction:column; align-items:center; gap:5px; text-align:center;}
   .mp-chair.k0{top:18px; left:18px;} .mp-chair.k1{top:18px; right:18px;}
   .mp-chair.k2{bottom:18px; left:18px;} .mp-chair.k3{bottom:18px; right:18px;}
   .mp-chair-pic{
-    width:100px; height:100px; border-radius:50%; background:var(--panel); overflow:hidden; display:grid; place-items:center;
+    width:132px; height:132px; border-radius:50%; background:var(--panel); overflow:hidden; display:grid; place-items:center;
     box-shadow:0 0 0 3px var(--pc), 0 0 22px -4px var(--pc), 0 10px 26px -10px #000;
   }
   .mp-chair-pic .av-svg{width:100%; height:100%;}
   .mp-chair-none{font-size:10px; line-height:14px; color:var(--text-dim);}
-  .mp-chair-name{font-family:var(--font-display); font-weight:700; font-size:19px; color:var(--pc); max-width:140px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+  .mp-chair-name{font-family:var(--font-display); font-weight:700; font-size:21px; color:var(--pc); max-width:170px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
   .mp-chair-tags{display:flex; gap:4px; min-height:16px;}
   .mp-chair-tag{font-family:var(--font-mono); font-size:9px; letter-spacing:.12em; text-transform:uppercase; padding:2px 6px; border-radius:3px;}
   .mp-chair-tag.host{color:#0b0f14; background:var(--amber);}
@@ -15929,7 +15930,7 @@ const avatarCollar = (suit, stripe, neck) =>
   `<path d="M24 100 Q24 83 50 83 Q76 83 76 100 Z" fill="${suit}"/>` +
   `<path d="M27 95 Q50 85 73 95" stroke="${stripe}" stroke-width="3" fill="none"/>`;
 
-// 10 karakters (gebruikerswens 2026-10: 5 extra) — elk alleen het HOOFD, zonder mond en
+// 12 karakters (gebruikerswens 2026-10: eerst 5, toen 10, toen 12 — rijen van 4 in de editor) — elk alleen het HOOFD, zonder mond en
 // wenkbrauwen; die komen uit het gekozen gezicht (AVATAR_FACES hieronder), in de kleuren van het
 // karakter: mc = mondlijn, md = open mond, bc = wenkbrauwen. De eerste 5 staan op dezelfde plek
 // als vroeger, dus eerder gekozen avatars ({c,g,h} zonder gezicht) blijven gewoon werken (gezicht 0).
@@ -16021,8 +16022,25 @@ const AVATAR_CHARS = [
     `<path d="M38 27 Q47 19 58 26 Q50 29 38 27Z" fill="#7cc552"/><circle cx="62" cy="27" r="2.4" fill="#7cc552"/>` +
     `<circle cx="40" cy="54" r="4.6" fill="#2d2a26"/><circle cx="60" cy="54" r="4.6" fill="#2d2a26"/>` +
     `<circle cx="40" cy="54" r="2.6" fill="#9be15d"/><circle cx="60" cy="54" r="2.6" fill="#9be15d"/>` },
+  { name: 'Kristal', mc: '#4a1f7a', md: '#3a1060', bc: '#efe0ff', svg:
+    avatarCollar('#2a1f4a', '#d9b3ff', '#9b6ee8') +
+    `<path d="M50 22 L72 34 L77 58 L62 80 L38 80 L23 58 L28 34Z" fill="#b57bef"/>` +
+    `<path d="M50 22 L72 34 L50 43 L28 34Z" fill="#dcc0ff" fill-opacity=".75"/>` +
+    `<path d="M23 58 L38 80 L45 64Z" fill="#8a4fd6"/><path d="M77 58 L62 80 L55 64Z" fill="#9a62e0"/>` +
+    `<path d="M28 34 L23 58 L34 50Z" fill="#c99bf5"/>` +
+    `<circle cx="40" cy="54" r="6.5" fill="#fff" fill-opacity=".22"/><circle cx="60" cy="54" r="6.5" fill="#fff" fill-opacity=".22"/>` +
+    `<path d="M40 50 L43.5 54 L40 58 L36.5 54Z" fill="#fff"/><path d="M60 50 L63.5 54 L60 58 L56.5 54Z" fill="#fff"/>` },
+  { name: 'Baard', mc: '#6a2a14', md: '#4a1608', bc: '#a8441f', svg:
+    avatarCollar('#3b5a7a', '#ffd23f', '#e2b48c') +
+    `<ellipse cx="27" cy="56" rx="4" ry="6" fill="#e9b98f"/><ellipse cx="73" cy="56" rx="4" ry="6" fill="#e9b98f"/>` +
+    `<ellipse cx="50" cy="54" rx="23" ry="26" fill="#f1c7a0"/>` +
+    `<path d="M27 49 Q26 26 50 26 Q74 26 73 49 Q68 34 50 34 Q32 34 27 49Z" fill="#c4552a"/>` +
+    `<path d="M27 58 Q28 85 50 87 Q72 85 73 58 Q67 75 50 75 Q33 75 27 58Z" fill="#c4552a"/>` +
+    `<path d="M40 64 Q50 59.5 60 64 Q50 66 40 64Z" fill="#a8441f"/>` +
+    `<ellipse cx="40" cy="54" rx="3" ry="3.6" fill="#2a1f1a"/><ellipse cx="60" cy="54" rx="3" ry="3.6" fill="#2a1f1a"/>` +
+    `<circle cx="41" cy="52.8" r="1" fill="#fff"/><circle cx="61" cy="52.8" r="1" fill="#fff"/>` },
 ];
-// 5 gezichtsuitdrukkingen (gebruikerswens): wenkbrauwen + mond, passen op elk karakter
+// 8 gezichtsuitdrukkingen (gebruikerswens): wenkbrauwen + mond, passen op elk karakter
 const avatarBrows = (c, d) => `<path d="${d}" stroke="${c.bc}" stroke-width="2.2" fill="none" stroke-linecap="round"/>`;
 const avatarLine = (c, d) => `<path d="${d}" stroke="${c.mc}" stroke-width="2.2" fill="none" stroke-linecap="round"/>`;
 const AVATAR_FACES = [
@@ -16032,6 +16050,13 @@ const AVATAR_FACES = [
   { name: 'Verbaasd', svg: c => avatarBrows(c, 'M34 44 Q40 40 45 43 M55 43 Q60 40 66 44') + `<ellipse cx="50" cy="69" rx="3.6" ry="4.6" fill="${c.md}"/>` },
   { name: 'Stoer', svg: c => avatarBrows(c, 'M35 46 L44 47.5 M56 47.5 L65 45') + avatarLine(c, 'M44 69 Q52 71 57 66') },
   { name: 'Boos', svg: c => avatarBrows(c, 'M34 44 L45 48 M66 44 L55 48') + avatarLine(c, 'M44 71 Q50 66 56 71') },
+  { name: 'Tong uit', svg: c => avatarBrows(c, 'M35 47 Q40 45 44 47 M56 47 Q60 45 65 47') +
+      `<path d="M49 69 Q49 77 53.5 77 Q58 77 57 69Z" fill="#ff7a8f" stroke="${c.md}" stroke-width="1"/>` + avatarLine(c, 'M43 67 Q50 71.5 58 67') },
+  { name: 'Grijns', svg: c => avatarBrows(c, 'M35 46 Q40 44 44 46 M56 46 Q60 44 65 46') +
+      `<path d="M40 65 Q50 77 60 65 Z" fill="${c.md}"/><path d="M41.5 65.6 L58.5 65.6 L57 69 L43 69Z" fill="#fff"/>` +
+      `<path d="M46 65.6 V69 M50 65.6 V69 M54 65.6 V69" stroke="${c.md}" stroke-width=".8"/>` },
+  { name: 'Verdrietig', svg: c => avatarBrows(c, 'M35 45 L44 42.5 M56 42.5 L65 45') + avatarLine(c, 'M44 71.5 Q50 66.5 56 71.5') +
+      `<path d="M37 59 Q35.5 62 37 63.5 Q38.5 62 37 59Z" fill="#7fd6ff"/>` },
 ];
 
 // box = uitsnede (viewBox) waarmee het item los als plaatje in de editor staat
@@ -16061,6 +16086,19 @@ const AVATAR_GLASSES = [
     `<path d="M52 49 L72 49 L69 60 L54 60 Z" fill="#111" stroke="#39ff88" stroke-width="2" stroke-linejoin="round"/>` +
     `<path d="M48 51 L52 51" stroke="#39ff88" stroke-width="2"/>` +
     `<path d="M32 52 L38 52" stroke="#39ff88" stroke-opacity=".6" stroke-width="1.4" stroke-linecap="round"/>` },
+  { name: 'Monocle', box: '22 40 60 38', svg:
+    `<circle cx="60" cy="54" r="8.5" fill="#cfefff" fill-opacity=".3" stroke="#d4a63a" stroke-width="2.6"/>` +
+    `<path d="M56 50 L59 48" stroke="#fff" stroke-width="1.6" stroke-linecap="round"/>` +
+    `<path d="M67 59 Q76 66 72 76" stroke="#d4a63a" stroke-width="1.4" fill="none" stroke-dasharray="2 1.5"/>` },
+  { name: 'Ooglap', box: '22 34 58 32', svg:
+    `<path d="M25 47 L75 39" stroke="#8a95a3" stroke-width="3.6"/><path d="M25 47 L75 39" stroke="#1a1a1a" stroke-width="2"/>` +
+    `<ellipse cx="40" cy="54" rx="8.5" ry="7.5" fill="#1a1a1a" stroke="#8a95a3" stroke-width="1.4"/>` +
+    `<path d="M36 52 L43 52" stroke="#444" stroke-width="1.2" stroke-linecap="round"/>` },
+  { name: '3D-bril', box: '22 40 56 28', svg:
+    `<path d="M24 52 L28 51 M72 51 L76 52" stroke="#f2f2f2" stroke-width="2.4"/>` +
+    `<rect x="28" y="47" width="20" height="14" rx="2" fill="#ff3b5c" fill-opacity=".75" stroke="#f2f2f2" stroke-width="2.4"/>` +
+    `<rect x="52" y="47" width="20" height="14" rx="2" fill="#3bd8ff" fill-opacity=".75" stroke="#f2f2f2" stroke-width="2.4"/>` +
+    `<path d="M48 52 L52 52" stroke="#f2f2f2" stroke-width="2.4"/>` },
 ];
 
 const AVATAR_HATS = [
@@ -16089,6 +16127,17 @@ const AVATAR_HATS = [
     `<circle cx="50" cy="18" r="10" fill="#f0a35e"/>` +
     `<path d="M41 15 Q50 18 59 15 M41.5 21 Q50 23.5 58.5 21" stroke="#d9823f" stroke-width="1.8" fill="none"/>` +
     `<ellipse cx="50" cy="19" rx="20" ry="5" fill="none" stroke="#ffe2a8" stroke-width="2.6" transform="rotate(-12 50 19)"/>` },
+  { name: 'Koptelefoon', box: '14 12 72 56', svg:
+    `<path d="M24 54 Q23 18 50 18 Q77 18 76 54" stroke="#2f343c" stroke-width="5" fill="none" stroke-linecap="round"/>` +
+    `<rect x="17" y="45" width="11" height="19" rx="5" fill="#ff5fd2" stroke="#2f343c" stroke-width="2"/>` +
+    `<rect x="72" y="45" width="11" height="19" rx="5" fill="#ff5fd2" stroke="#2f343c" stroke-width="2"/>` },
+  { name: 'Kroon', box: '26 6 48 30', svg:
+    `<path d="M32 31 L31 15 L41 23 L50 10 L59 23 L69 15 L68 31Z" fill="#ffd23f" stroke="#c99a1e" stroke-width="1.4" stroke-linejoin="round"/>` +
+    `<circle cx="41" cy="27" r="2" fill="#ff3b5c"/><circle cx="50" cy="26" r="2.4" fill="#3bd8ff"/><circle cx="59" cy="27" r="2" fill="#39ff88"/>` },
+  { name: 'Pet', box: '22 12 66 30', svg:
+    `<path d="M27 37 Q26 18 50 18 Q74 18 73 37Z" fill="#e8463c"/>` +
+    `<path d="M50 18 L50 37" stroke="#c4352d" stroke-width="1.4"/><circle cx="50" cy="18.5" r="2" fill="#c4352d"/>` +
+    `<path d="M62 33 L86 35 Q87 40 74 40 L62 38Z" fill="#b8322a"/>` },
 ];
 
 function avatarClean(av){
@@ -16125,9 +16174,9 @@ function avatarSetMine(av){
 }
 
 // ---------- de editor (linkerkolom in de kamer, gekozen ontwerp "De brug") ----------
-// Eén raster van 5 vaste kolommen voor ALLE keuzes (gebruikerswens: "alle selecteerbare opties op
-// dezelfde lijn"): tab Karakter = groep Karakter (10) + groep Gezicht (5, ingezoomd op het gezicht
-// van je eigen karakter); tab Accessoires = groep Bril (5) + groep Hoedje (5). Elke groep heeft
+// Eén raster van 4 vaste kolommen voor ALLE keuzes (gebruikerswens: "alle selecteerbare opties op
+// dezelfde lijn"): tab Karakter = groep Karakter (12) + groep Gezicht (8, ingezoomd op het gezicht
+// van je eigen karakter); tab Accessoires = groep Bril (8) + groep Hoedje (8). Elke groep heeft
 // een kopje met rechts wat je nu gekozen hebt. Geen voorvertoning: je ziet jezelf al op de brug.
 function avatarRenderEditor(){
   const tabsEl = document.getElementById('mpAvatarTabs');
@@ -16797,27 +16846,38 @@ function mpRenderBridge(){
   const seats = mp.seats || [], total = mp.totalSeats || 4;
   el.querySelector('.mp-bridge-code').textContent = mp.roomCode || '';
   el.querySelector('.mp-bridge-crew').textContent = `${Math.min(seats.length, total)} / ${total} aan boord`;
-  let html = '';
+  // Elke stoel is een eigen, blijvend element dat alleen wordt bijgewerkt als DIE stoel verandert
+  // (gebruikersmelding: kiest iemand een ander hoedje, dan begon "Wachten…" op de lege stoelen
+  // opnieuw te golven — toen werden alle vier de stoelen in één keer opnieuw getekend).
+  const chairs = el.querySelector('.mp-bridge-chairs');
+  if (chairs.children.length !== 4){
+    chairs.innerHTML = [0, 1, 2, 3].map(i => `<div class="mp-chair k${i}"></div>`).join('');
+  }
   for (let i = 0; i < 4; i++){
     const seat = seats[i];
     const color = WALK_PLAYER_COLORS[i % WALK_PLAYER_COLORS.length];
+    let cls, inner;
     if (!seat){
       const unused = i >= total;   // kamer voor minder dan 4: deze stoel blijft leeg en gedimd
-      html += `<div class="mp-chair k${i} is-empty${unused ? ' is-unused' : ''}" style="--pc:${color}">` +
-        `<div class="mp-chair-pic">${avatarSvg({ c: 2, e: 0, g: -1, h: 0 })}</div>` +
-        (unused ? '<span class="mp-chair-no">geen plek</span>' : mpWaveText('Wachten…')) + `</div>`;
-      continue;
+      cls = `mp-chair k${i} is-empty${unused ? ' is-unused' : ''}`;
+      inner = `<div class="mp-chair-pic">${avatarSvg({ c: 2, e: 0, g: -1, h: 0 })}</div>` +
+        (unused ? '<span class="mp-chair-no">geen plek</span>' : mpWaveText('Wachten…'));
+    } else {
+      const you = seat.peerId === mp.myPeerId;
+      const svg = avatarSvg(seat.avatar);
+      cls = `mp-chair k${i}${you ? ' is-you' : ''}`;
+      inner = `<div class="mp-chair-pic">${svg || `<span class="mp-chair-none">${you ? 'Kies links<br>een karakter' : 'Nog geen<br>avatar'}</span>`}</div>` +
+        `<span class="mp-chair-name">${mpEscapeHtml(seat.name)}</span>` +
+        `<span class="mp-chair-tags">${seat.isHost ? '<span class="mp-chair-tag host">Host</span>' : ''}${you ? '<span class="mp-chair-tag you">jij</span>' : ''}</span>`;
     }
-    const you = seat.peerId === mp.myPeerId;
-    const svg = avatarSvg(seat.avatar);
-    html += `<div class="mp-chair k${i}${you ? ' is-you' : ''}" data-peer="${mpEscapeHtml(seat.peerId)}" style="--pc:${color}">` +
-      `<div class="mp-chair-pic">${svg || `<span class="mp-chair-none">${you ? 'Kies links<br>een karakter' : 'Nog geen<br>avatar'}</span>`}</div>` +
-      `<span class="mp-chair-name">${mpEscapeHtml(seat.name)}</span>` +
-      `<span class="mp-chair-tags">${seat.isHost ? '<span class="mp-chair-tag host">Host</span>' : ''}${you ? '<span class="mp-chair-tag you">jij</span>' : ''}</span>` +
-    `</div>`;
+    const chair = chairs.children[i];
+    const key = cls + '|' + inner;
+    if (chair.dataset.key === key) continue;
+    chair.dataset.key = key;
+    chair.className = cls;   // (is-pop van een BAM mag hier gewoon weg: die animatie is dan al klaar)
+    chair.style.setProperty('--pc', color);
+    chair.innerHTML = inner;
   }
-  const chairs = el.querySelector('.mp-bridge-chairs');
-  if (chairs.dataset.html !== html){ chairs.dataset.html = html; chairs.innerHTML = html; }
   // nieuw aan boord — pas bijhouden zodra je zelf aan boord bent: een gast opent de kamer al
   // vóórdat de spelerslijst binnen is, en kreeg anders een BAM voor iedereen die er al zat
   // (ook voor zichzelf). Wie er zat toen jij binnenkwam, krijgt dus geen BAM.

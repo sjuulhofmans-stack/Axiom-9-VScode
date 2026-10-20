@@ -574,27 +574,38 @@ function mpRenderBridge(){
   const seats = mp.seats || [], total = mp.totalSeats || 4;
   el.querySelector('.mp-bridge-code').textContent = mp.roomCode || '';
   el.querySelector('.mp-bridge-crew').textContent = `${Math.min(seats.length, total)} / ${total} aan boord`;
-  let html = '';
+  // Elke stoel is een eigen, blijvend element dat alleen wordt bijgewerkt als DIE stoel verandert
+  // (gebruikersmelding: kiest iemand een ander hoedje, dan begon "Wachten…" op de lege stoelen
+  // opnieuw te golven — toen werden alle vier de stoelen in één keer opnieuw getekend).
+  const chairs = el.querySelector('.mp-bridge-chairs');
+  if (chairs.children.length !== 4){
+    chairs.innerHTML = [0, 1, 2, 3].map(i => `<div class="mp-chair k${i}"></div>`).join('');
+  }
   for (let i = 0; i < 4; i++){
     const seat = seats[i];
     const color = WALK_PLAYER_COLORS[i % WALK_PLAYER_COLORS.length];
+    let cls, inner;
     if (!seat){
       const unused = i >= total;   // kamer voor minder dan 4: deze stoel blijft leeg en gedimd
-      html += `<div class="mp-chair k${i} is-empty${unused ? ' is-unused' : ''}" style="--pc:${color}">` +
-        `<div class="mp-chair-pic">${avatarSvg({ c: 2, e: 0, g: -1, h: 0 })}</div>` +
-        (unused ? '<span class="mp-chair-no">geen plek</span>' : mpWaveText('Wachten…')) + `</div>`;
-      continue;
+      cls = `mp-chair k${i} is-empty${unused ? ' is-unused' : ''}`;
+      inner = `<div class="mp-chair-pic">${avatarSvg({ c: 2, e: 0, g: -1, h: 0 })}</div>` +
+        (unused ? '<span class="mp-chair-no">geen plek</span>' : mpWaveText('Wachten…'));
+    } else {
+      const you = seat.peerId === mp.myPeerId;
+      const svg = avatarSvg(seat.avatar);
+      cls = `mp-chair k${i}${you ? ' is-you' : ''}`;
+      inner = `<div class="mp-chair-pic">${svg || `<span class="mp-chair-none">${you ? 'Kies links<br>een karakter' : 'Nog geen<br>avatar'}</span>`}</div>` +
+        `<span class="mp-chair-name">${mpEscapeHtml(seat.name)}</span>` +
+        `<span class="mp-chair-tags">${seat.isHost ? '<span class="mp-chair-tag host">Host</span>' : ''}${you ? '<span class="mp-chair-tag you">jij</span>' : ''}</span>`;
     }
-    const you = seat.peerId === mp.myPeerId;
-    const svg = avatarSvg(seat.avatar);
-    html += `<div class="mp-chair k${i}${you ? ' is-you' : ''}" data-peer="${mpEscapeHtml(seat.peerId)}" style="--pc:${color}">` +
-      `<div class="mp-chair-pic">${svg || `<span class="mp-chair-none">${you ? 'Kies links<br>een karakter' : 'Nog geen<br>avatar'}</span>`}</div>` +
-      `<span class="mp-chair-name">${mpEscapeHtml(seat.name)}</span>` +
-      `<span class="mp-chair-tags">${seat.isHost ? '<span class="mp-chair-tag host">Host</span>' : ''}${you ? '<span class="mp-chair-tag you">jij</span>' : ''}</span>` +
-    `</div>`;
+    const chair = chairs.children[i];
+    const key = cls + '|' + inner;
+    if (chair.dataset.key === key) continue;
+    chair.dataset.key = key;
+    chair.className = cls;   // (is-pop van een BAM mag hier gewoon weg: die animatie is dan al klaar)
+    chair.style.setProperty('--pc', color);
+    chair.innerHTML = inner;
   }
-  const chairs = el.querySelector('.mp-bridge-chairs');
-  if (chairs.dataset.html !== html){ chairs.dataset.html = html; chairs.innerHTML = html; }
   // nieuw aan boord — pas bijhouden zodra je zelf aan boord bent: een gast opent de kamer al
   // vóórdat de spelerslijst binnen is, en kreeg anders een BAM voor iedereen die er al zat
   // (ook voor zichzelf). Wie er zat toen jij binnenkwam, krijgt dus geen BAM.
