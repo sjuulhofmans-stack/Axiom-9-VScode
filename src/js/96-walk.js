@@ -480,6 +480,81 @@ function walkClearStartGlow(){
   walkClearClass('walk-spot');
   walkBoardEl.classList.remove('is-start-pick');
 }
+// ---------- komeet: de pion vliegt naar zijn startvak (gekozen variant A, 2026-10) ----------
+// Gebruikerswens: niet meer "BOEM, daar staat je pion", maar een vlucht. De pion vertrekt bij het
+// bolletje van die speler in het kiespaneel, schiet in een boog (met een staart van lichtjes) over
+// het bord naar het gekozen startvak en landt met twee schokgolven in zijn kleur. Zolang hij
+// vliegt, staat hij nog niet op het bord (walkFlyingIdx, zie paintWalkPawns) en wacht het spel met
+// de volgende speler (de belofte lost op bij de landing). Gebruikt door Zelf spelen
+// (soloOpeningDoPick), Multiplayer-gasten (mpApplyState) en Automatisch (walkRunOpening).
+// Eén keer meten aan het begin (geen herberekening tijdens de vlucht), daarna alleen transform/opacity.
+const WALK_COMET_MS = 950;
+const walkFlyingIdx = new Set();
+function walkCometToStart(graph, player, key){
+  return new Promise(resolve => {
+    const target = graph && key !== null && key !== undefined ? walkCellDiv(graph, key) : null;
+    const fromEl = walkOpeningPanelEl && walkOpeningPanelEl.querySelector(`.walk-opening-row[data-pi="${player.idx}"] .walk-opening-dot`);
+    const reduced = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (!target || !fromEl || reduced || typeof Element.prototype.animate !== 'function'){ resolve(); return; }
+    const a = fromEl.getBoundingClientRect(), b = target.getBoundingClientRect();
+    if (!a.width || !b.width){ resolve(); return; }
+    target.classList.remove('walk-start-glow');
+    const from = [a.left + a.width / 2, a.top + a.height / 2], to = [b.left + b.width / 2, b.top + b.height / 2];
+    const size = Math.max(10, b.width * 0.9);
+    const layer = document.createElement('div');
+    layer.className = 'walk-comet-layer';
+    layer.style.setProperty('--pc', player.color);
+    layer.style.setProperty('--sz', `${size}px`);
+    document.body.appendChild(layer);
+    const mk = (cls, x, y) => {
+      const e = document.createElement('span');
+      e.className = cls;
+      e.style.left = `${x}px`; e.style.top = `${y}px`;
+      layer.appendChild(e);
+      return e;
+    };
+    fromEl.style.opacity = '0';
+    // boog: kwadratische bezier met het hoogste punt ruim boven start en doel
+    const ctl = [(from[0] + to[0]) / 2, Math.min(from[1], to[1]) - 170];
+    const N = 30;
+    const pts = Array.from({ length: N + 1 }, (_, i) => {
+      const t = i / N, u = 1 - t;
+      return [u * u * from[0] + 2 * u * t * ctl[0] + t * t * to[0], u * u * from[1] + 2 * u * t * ctl[1] + t * t * to[1]];
+    });
+    const pawn = mk('walk-comet-pawn', 0, 0);
+    const fly = pawn.animate(pts.map(([x, y], i) => ({ transform: `translate(${x}px,${y}px) scale(${1 + Math.sin(i / N * Math.PI) * 0.7})` })),
+      { duration: WALK_COMET_MS, easing: 'cubic-bezier(.45,.05,.4,1)', fill: 'forwards' });
+    // staart: een lichtje per beeldje op de plek waar de pion nu ongeveer is
+    const t0 = performance.now();
+    const tick = () => {
+      const p = (performance.now() - t0) / WALK_COMET_MS;
+      if (p >= 1 || !layer.isConnected) return;
+      const [x, y] = pts[Math.min(N, Math.round(p * N))];
+      const tr = mk('walk-comet-trail', x, y);
+      tr.animate([{ opacity: 0.8, transform: 'scale(1)' }, { opacity: 0, transform: 'scale(.2)' }], { duration: 420, fill: 'forwards' })
+        .onfinish = () => tr.remove();
+      requestAnimationFrame(tick);
+    };
+    requestAnimationFrame(tick);
+    let landed = false;
+    const land = () => {
+      if (landed) return;
+      landed = true;
+      pawn.remove();
+      fromEl.style.opacity = '';
+      for (const [delay, scale] of [[0, 4], [120, 6]]){
+        const r = mk('walk-comet-ring', to[0], to[1]);
+        r.animate([{ transform: 'scale(.6)', opacity: 1 }, { transform: `scale(${scale})`, opacity: 0 }],
+          { duration: 650, delay, easing: 'cubic-bezier(.2,.7,.3,1)', fill: 'forwards' });
+      }
+      setTimeout(() => layer.remove(), 900);
+      resolve();
+    };
+    fly.onfinish = land;
+    setTimeout(land, WALK_COMET_MS + 400);   // vangnet als het tabblad op de achtergrond stond
+  });
+}
+
 // "Jouw eerste opdracht: <naam> — <kamer>" in het kiespaneel, in de kleur van die opdracht
 function walkOpeningGoalHtml(p){
   const label = p && !p.questHidden ? p.deck[p.nextIdx] : null;
@@ -705,9 +780,14 @@ async function walkRunOpening(graph, players, rand, aborted){
     p.pos = graph.startCells[choice];
     op.picks[p.idx] = choice;
     walkLog(`${p.name} kiest startpositie <b>${choice}</b> — eerste opdracht ${label} ${QUEST_NAMES[label] || ''}.`, null, p);
+    // komeet naar het startvak; de pion staat pas op het bord als hij geland is
+    walkFlyingIdx.add(p.idx);
+    await walkCometToStart(graph, p, p.pos);
+    walkFlyingIdx.delete(p.idx);
+    if (aborted()) return null;
     paintWalkPawns(graph, players, p.idx);
     renderOpeningPanel(players, op, { freeLabels: walkOpeningFreeLabels(players) });
-    await pause(0.7);
+    await pause(0.4);
     if (aborted()) return null;
   }
   clearWalkTarget();
@@ -723,6 +803,7 @@ function paintWalkPawns(graph, players, activeIdx){
   for (const p of players){
     if (walkIsIn(p)) continue;   // binnen: pion is van het bord
     if (p.pos === null || p.pos === undefined) continue;   // nog geen startpositie gekozen (zie renderOpeningPanel)
+    if (walkFlyingIdx.has(p.idx)) continue;   // vliegt nog naar zijn startvak (walkCometToStart)
     const el = walkCellDiv(graph, p.pos);
     el.style.setProperty('--pawn', p.color);
     el.classList.add('walk-pawn');

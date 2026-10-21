@@ -4079,3 +4079,23 @@
   @media (prefers-reduced-motion: reduce){
     .mp-sonar{animation:none;} .mp-boom{animation-duration:.01s;} .mp-chair.is-pop .mp-chair-pic{animation:none;}
   }
+
+  /* ---------- komeet naar het startvak (walkCometToStart in 96-walk.js, gekozen variant A) ----------
+     Eén laag over het hele scherm (position:fixed, de posities zijn schermcoördinaten), alleen
+     transform/opacity. --pc = kleur van de speler, --sz = maat van een bordvakje. */
+  .walk-comet-layer{position:fixed; inset:0; z-index:60; pointer-events:none; overflow:visible;}
+  .walk-comet-pawn{
+    position:absolute; left:0; top:0; width:var(--sz); height:var(--sz);
+    margin:calc(var(--sz) / -2) 0 0 calc(var(--sz) / -2); border-radius:50%;
+    background:var(--pc); box-shadow:0 0 0 2px #fff, 0 0 14px var(--pc); will-change:transform;
+  }
+  .walk-comet-trail{
+    position:absolute; width:calc(var(--sz) * .65); height:calc(var(--sz) * .65);
+    margin:calc(var(--sz) * -.325) 0 0 calc(var(--sz) * -.325); border-radius:50%;
+    background:var(--pc); will-change:transform, opacity;
+  }
+  .walk-comet-ring{
+    position:absolute; width:calc(var(--sz) * 1.2); height:calc(var(--sz) * 1.2);
+    margin:calc(var(--sz) * -.6) 0 0 calc(var(--sz) * -.6); border-radius:50%;
+    border:3px solid var(--pc); opacity:0; will-change:transform, opacity;
+  }

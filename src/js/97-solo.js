@@ -3119,16 +3119,26 @@ function soloOpeningPick(key){
 function soloOpeningDoPick(idx, label){
   const op = soloOpening;
   if (!op || op.stage !== 'pick' || op.order[op.pickPos] !== idx) return;
+  if (walkFlyingIdx.has(idx)) return;   // vliegt al: een tweede klik telt niet
   const p = soloPlayers[idx];
   p.startLabel = label;
   p.pos = soloGraph.startCells[label];
   op.picks[idx] = label;
-  op.pickPos++;
   const first = p.deck[p.nextIdx];
   walkLog(`${p.name} kiest startpositie <b>${label}</b> — eerste opdracht ${first} ${QUEST_NAMES[first] || ''}.`, null, p);
   soloClearClickable();
-  paintWalkPawns(soloGraph, soloPlayers, idx);
-  soloOpeningStep();
+  // komeet naar het startvak (walkCometToStart, 96-walk.js); pas na de landing staat de pion en is
+  // de volgende aan de beurt. op.pickPos schuift ook pas dan door, zodat Multiplayer-gasten
+  // ondertussen "gekozen, onderweg" zien en dezelfde komeet afspelen (mpApplyState).
+  walkFlyingIdx.add(idx);
+  const runId = soloRunId;
+  walkCometToStart(soloGraph, p, p.pos).then(() => {
+    walkFlyingIdx.delete(idx);
+    if (runId !== soloRunId || soloOpening !== op) return;   // intussen gestopt of opnieuw begonnen
+    op.pickPos++;
+    paintWalkPawns(soloGraph, soloPlayers, idx);
+    soloOpeningStep();
+  });
 }
 function soloFinishOpening(){
   soloTurnOrder = soloOpening.order.slice();

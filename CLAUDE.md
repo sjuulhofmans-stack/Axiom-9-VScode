@@ -399,7 +399,14 @@ Check minimaal:
     Wie kiest, ziet in het paneel groot "Jouw eerste opdracht: <naam> in de <kamer>" in de kleur
     van die opdracht (`walkOpeningGoalHtml`), en op het gedimde bord een draaiende ring om het
     opdrachtvakje (`#walkBoard.is-start-pick .cell.walk-target::before`) — gebruikersmelding: in
-    Multiplayer zag je je eerste opdracht niet goed, dus ook niet welk startvak het handigst is. Daarna komt
+    Multiplayer zag je je eerste opdracht niet goed, dus ook niet welk startvak het handigst is.
+    Na het kiezen **vliegt de pion als komeet** naar zijn startvak (gekozen variant A, 2026-10;
+    `walkCometToStart` in 96-walk.js): vanaf zijn bolletje in het kiespaneel in een boog met een
+    staart van lichtjes, landing met twee schokgolven. Geen grote naam in beeld (gebruikerswens).
+    Tijdens de vlucht staat de pion niet op het bord (`walkFlyingIdx`, paintWalkPawns slaat hem
+    over) en wacht het spel met de volgende: `soloOpeningDoPick` verhoogt `op.pickPos` pas na de
+    landing. Multiplayer-gasten zien een nieuwe keuze in de stand en spelen dezelfde komeet af
+    (mpApplyState); Automatisch wacht er ook op (walkRunOpening). Vangnet: landing na 950+400 ms. Daarna komt
     de gewone kolom (dobbelen/energie/kaarten) terug en is de beurtvolgorde
     gelijk aan de kiesvolgorde. In Multiplayer moet een gast op zijn eigen
     scherm kunnen gooien en kiezen. Elke speler heeft een groot vak met vaste plekken voor 2

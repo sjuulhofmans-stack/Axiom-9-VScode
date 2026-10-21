@@ -1362,6 +1362,12 @@ function mpApplyState(payload){
   soloFinished = payload.soloFinished;
   soloFinishTarget = payload.soloFinishTarget;
   soloRoundFinishers = payload.soloRoundFinishers;
+  // wie heeft er sinds de vorige stand een startvak gekozen? Die vliegt hier als komeet naar zijn
+  // vak (walkCometToStart, 96-walk.js) — de host doet hetzelfde en wacht met de volgende speler
+  const prevPicks = soloOpening && soloOpening.picks ? soloOpening.picks : {};
+  const newPicks = payload.soloOpening && payload.soloOpening.picks ? payload.soloOpening.picks : {};
+  const justPicked = Object.keys(newPicks).map(Number).filter(i => !prevPicks[i] && !walkFlyingIdx.has(i));
+  for (const i of justPicked) walkFlyingIdx.add(i);
   soloOpening = payload.soloOpening || null;
   const opening = !!soloOpening;
   walkSetOpeningMode(opening);
@@ -1417,6 +1423,15 @@ function mpApplyState(payload){
   if (opening){
     if (active && walkSideStackEl) walkSideStackEl.style.setProperty('--pc', active.color);
     soloRenderOpening();
+  }
+  // komeet(en) pas starten als het kiespaneel er staat (daar vertrekt de pion)
+  for (const i of justPicked){
+    const p = soloPlayers[i];
+    if (!p){ walkFlyingIdx.delete(i); continue; }
+    walkCometToStart(soloGraph, p, p.pos).then(() => {
+      walkFlyingIdx.delete(i);
+      paintWalkPawns(soloGraph, soloPlayers, soloActiveIdx);
+    });
   }
 
   if (walkStatusEl) walkStatusEl.innerHTML = payload.statusHtml || '';
