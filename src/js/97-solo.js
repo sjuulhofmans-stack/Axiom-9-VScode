@@ -434,15 +434,22 @@ function setWalkMode(mode){
 }
 
 // ---------- bord: welke vakjes zijn nu aanklikbaar ----------
+let soloClickableTimer = null;
 function soloClearClickable(){
+  clearTimeout(soloClickableTimer);
+  soloClickableTimer = null;
   if (!walkBoardEl) return;
   for (const el of walkBoardEl.querySelectorAll('.walk-clickable')){
     el.classList.remove('walk-clickable');
     delete el.dataset.key;
   }
 }
+// Draaien de stenen van een verse worp nog uit, dan pas omranden zodra ze stilliggen (diceBusyMs,
+// 96d-dice.js) — gebruikersmelding: je kon al lopen terwijl de dobbelanimatie nog bezig was.
 function soloMarkClickable(graph, keys){
   soloClearClickable();
+  const wait = diceBusyMs();
+  if (wait > 0){ soloClickableTimer = setTimeout(() => soloMarkClickable(graph, keys), wait + 20); return; }
   for (const k of keys){
     const el = walkCellDiv(graph, k);
     el.classList.add('walk-clickable');
@@ -1611,7 +1618,7 @@ document.addEventListener('keydown', (e) => {
   const tag = document.activeElement && document.activeElement.tagName;
   if (tag === 'INPUT' || tag === 'SELECT' || tag === 'TEXTAREA') return;
   e.preventDefault();
-  if (soloPhase !== 'moving') return;
+  if (soloPhase !== 'moving' || diceBusyMs() > 0) return;   // stenen rollen nog uit
   const match = soloCurrentLegalMoves.find(l => l.dir === dir);
   if (!match) return;
   soloHandleMoveClick(match.key);

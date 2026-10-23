@@ -19,6 +19,10 @@ Python-installer geen apart `python3`-commando, dus daar is het gewoon `python`.
 Dit is precies waarom het project is opgesplitst: één wijziging in de knopjes hoeft
 niet het hele logo mee te slepen.
 
+**Na elke afgeronde wijziging: altijd committen én pushen** naar GitHub (`git push origin
+master`), zonder het eerst te vragen (gebruikerswens 2026-10). De online versie (GitHub Pages)
+komt uit master, dus pas na de push staat de nieuwe versie online.
+
 ## Structuur
 
 ```

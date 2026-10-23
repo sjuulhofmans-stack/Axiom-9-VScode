@@ -315,41 +315,6 @@
     visibility:hidden; transition:opacity .9s ease, visibility 0s linear .9s;   /* zie .sim-loader */
   }
   .map-board-panel.is-generating > .gen-overlay{opacity:1; visibility:visible; transition:opacity .9s ease, visibility 0s;}
-  .gen-box{
-    display:flex; flex-direction:column; align-items:center; gap:18px; padding:44px 84px;
-    border-radius:14px; border:1px solid rgba(79,184,224,.35);
-    background:radial-gradient(ellipse at 50% 30%, rgba(79,184,224,.12), transparent 70%), rgba(5,8,14,.88);
-    box-shadow:0 0 40px rgba(79,184,224,.18), inset 0 0 30px rgba(79,184,224,.08);
-  }
-  .gen-orbit{position:relative; width:150px; height:150px;}
-  /* voortgangsring (createProgressLoader in 80-controls.js). Was een SVG met stroke-dashoffset, maar
-     die animatie draait op dezelfde draad als het rekenwerk en hakkelde dus. Nu: twee halve bogen
-     die alleen draaien (transform) — dat doet de browser los van JavaScript, ook als die bezig is.
-     Rechterhelft: een boog die zelf links ligt en 0→180° rechtsom het zicht in draait (0–50%);
-     linkerhelft idem gespiegeld (50–100%). Ring: middellijn 136px, dikte 5px, 7px marge voor de gloed. */
-  .gen-track{position:absolute; inset:7px; border-radius:50%; border:5px solid rgba(79,184,224,.16);}
-  .gen-half{position:absolute; top:0; width:50%; height:100%; overflow:hidden;}
-  .gen-half-r{left:50%;}
-  .gen-half-l{left:0;}
-  .gen-half > i{
-    position:absolute; top:0; width:200%; height:100%; will-change:transform; transform:rotate(0deg);
-  }
-  .gen-half-r > i{left:-100%; clip-path:inset(0 50% 0 0);}
-  .gen-half-l > i{left:0; clip-path:inset(0 0 0 50%);}
-  .gen-half > i::before{
-    content:''; position:absolute; inset:7px; border-radius:50%; border:5px solid #4fb8e0;
-    box-shadow:0 0 5px rgba(79,184,224,.7), inset 0 0 5px rgba(79,184,224,.5);
-  }
-  /* ronde kopjes: .gen-cap is het vaste beginpuntje bovenaan, .gen-lead draait in één stuk mee
-     met het voorste uiteinde (0–360°). Bij 0% voortgang is alles onzichtbaar (#genOrbit.on). */
-  .gen-lead{position:absolute; inset:0; will-change:transform; transform:rotate(0deg);}
-  .gen-lead::after, .gen-cap{
-    content:''; position:absolute; top:7px; left:50%; width:5px; height:5px; margin-left:-2.5px;
-    border-radius:50%; background:#4fb8e0; box-shadow:0 0 5px rgba(79,184,224,.7);
-  }
-  .gen-half, .gen-cap, .gen-lead{opacity:0; transition:opacity .25s;}
-  .gen-orbit.on .gen-half, .gen-orbit.on .gen-cap, .gen-orbit.on .gen-lead{opacity:1;}
-  @keyframes genSpin{to{transform:rotate(360deg);}}   /* o.a. de radar van het simulatievakje */
 
   /* ---------- "Sterrenbeeld" in het genereer-vakje (genNet in 80-controls.js) ----------
      Gekozen variant 8 uit 8 (2026-10). .gen-net ligt precies over #board (JS zet left/top/width/
@@ -654,14 +619,14 @@
   /* ---------- simulatie ---------- */
   /* korter (gecentreerd, max. 520px) zodat de tekst links en rechts eronder dichter bij elkaar
      staat, en een dikkere balk (gebruikerswens) */
-  /* "Aan het simuleren"-vakje (runSimulationBatch in 95-simulate.js): zelfde .gen-box + ring als
-     bij map genereren. Het ligt óver de uitslag (#simResults), zodat bij klaar het vakje kan
+  /* "Aan het simuleren"-vakje (runSimulationBatch in 95-simulate.js): de datastroom (hieronder) met
+     eronder titel, tijd, teller en Stoppen. Het ligt óver de uitslag (#simResults), zodat bij klaar het vakje kan
      uitfaden terwijl de uitslag op dezelfde plek infaadt (0,9 s = GEN_FADE_MS). Tijdens het
      rekenen houdt .sim-stage ruimte vrij voor het vakje. */
   .sim-stage{position:relative;}
   .sim-stage.is-running, .sim-stage.is-holding{min-height:380px;}
   .sim-loader{
-    position:absolute; top:0; left:0; right:0; display:flex; justify-content:center; padding-top:6px;
+    position:absolute; inset:0;
     z-index:3; opacity:0; pointer-events:none; will-change:opacity;
     /* na het uitfaden ook echt weg (visibility), anders zat de onzichtbare tekst ("Aan het
        simuleren…", "Stoppen") nog op de pagina en kwam die mee bij selecteren/kopiëren */
@@ -671,43 +636,36 @@
   .sim-stage > #simResults, .sim-stage > #simStatus{transition:opacity .9s ease;}
   .sim-stage.is-running > #simResults, .sim-stage.is-running > #simStatus{opacity:0;}
   .sim-stage > #simStatus:not(:empty){margin-bottom:10px;}
-  .sim-loader .gen-box{padding:36px 84px 26px; gap:14px;}
-  .sim-loader-count{font-size:11.5px; font-variant-numeric:tabular-nums; margin-top:-8px; opacity:.75;}
-  .sim-stop{align-self:center; margin-top:4px; min-width:140px;}
+  /* Datastroom (gekozen variant 3 uit 8, 2026-10; simStream in 95-simulate.js): kolommen cijfers
+     regenen naar beneden en stapelen zich op tot een staafdiagram. Alles beweegt via transform/
+     opacity (Web Animations + transitions): de simulatie rekent in brokken van 30 ms op dezelfde
+     draad, en alleen zulke animaties blijven daar vloeiend bij. Een staaf is een vaste kolom
+     cijfers die omhoog schuift (.sim-bar > i), een vallend cijfer een los stukje tekst (.sim-drop).
+     Raster: 16px per vakje; de maten hieronder moeten gelijk blijven aan SIM_STREAM_CELL. */
+  .sim-stream{
+    position:absolute; left:0; right:0; top:0; bottom:120px; overflow:hidden;
+    font-family:var(--font-mono); font-size:13px; line-height:16px;
+  }
+  .sim-bar{position:absolute; bottom:0; width:16px; overflow:hidden; text-align:center;}
+  .sim-bar > i{
+    position:absolute; left:0; right:0; bottom:0; display:flex; flex-direction:column; font-style:normal;
+    transform:translateY(100%); transition:transform .3s ease-out; will-change:transform;
+  }
+  .sim-bar > i > b{display:block; height:16px; font-weight:400;}
+  .sim-drop{
+    position:absolute; left:0; top:0; width:16px; text-align:center; white-space:pre; will-change:transform, opacity;
+    background:linear-gradient(to bottom, rgba(79,184,224,0), rgba(79,184,224,.55) 70%, #eaf9ff 88%);
+    -webkit-background-clip:text; background-clip:text; color:transparent;
+  }
+  .sim-cap{
+    position:absolute; left:0; right:0; bottom:0; height:120px; padding-bottom:10px;
+    display:flex; flex-direction:column; align-items:center; justify-content:flex-end; gap:8px;
+  }
+  .sim-loader-count{font-size:11.5px; font-variant-numeric:tabular-nums; opacity:.75;}
+  .sim-stop{margin-top:4px; min-width:140px;}
   /* melding na "Stoppen": gecentreerd onder de knop, net als de rest erboven */
   .sim-stopped{display:block; text-align:center;}
-  /* radarscherm in de ring: raster, een draaiende scanstraal en vier pionnen die oplichten als de
-     straal ze raakt (zelfde 2,4 s als de straal; --d per pion). Alles transform/opacity, dus net als
-     de ring vloeiend terwijl er gerekend wordt. */
-  .sim-radar{
-    position:absolute; inset:44px; border-radius:50%; overflow:hidden;
-    background:radial-gradient(circle, rgba(79,184,224,.18), rgba(8,22,38,.95) 70%);
-    box-shadow:0 0 22px rgba(79,184,224,.45), inset 0 0 12px rgba(79,184,224,.35);
-  }
-  .sim-radar-grid{
-    position:absolute; inset:0; border-radius:50%;
-    background:
-      radial-gradient(circle, transparent 0 9px, rgba(79,184,224,.35) 9px 10px, transparent 10px 19px,
-                      rgba(79,184,224,.35) 19px 20px, transparent 20px),
-      linear-gradient(rgba(79,184,224,.3), rgba(79,184,224,.3)) center / 1px 100% no-repeat,
-      linear-gradient(rgba(79,184,224,.3), rgba(79,184,224,.3)) center / 100% 1px no-repeat;
-  }
-  .sim-radar-sweep{
-    position:absolute; inset:0; border-radius:50%; will-change:transform;
-    background:conic-gradient(from 0deg, transparent 0 72%, rgba(79,184,224,.08) 80%, rgba(159,220,255,.55) 100%);
-    animation:genSpin 2.4s linear infinite;
-  }
-  .sim-radar-sweep::after{
-    content:''; position:absolute; left:50%; top:0; width:1.5px; height:50%; margin-left:-.75px;
-    background:linear-gradient(#dff4ff, rgba(159,220,255,.2)); box-shadow:0 0 6px #9fdcff;
-  }
-  .sim-blip{
-    position:absolute; left:50%; top:50%; width:7px; height:7px; margin:-3.5px 0 0 -3.5px;
-    border-radius:50%; background:var(--c); box-shadow:0 0 8px var(--c);
-    transform:rotate(var(--a)) translateY(calc(-1 * var(--r)));
-    opacity:.18; animation:simBlip 2.4s linear var(--d) infinite;
-  }
-  @keyframes simBlip{0%{opacity:1;} 55%{opacity:.25;} 100%{opacity:.18;}}
+  @media (prefers-reduced-motion: reduce){ .sim-stream{display:none;} }
 
   .sim-table{width:100%; border-collapse:collapse; font-family:var(--font-mono); font-size:12px; margin:10px 0;}
   /* Op een telefoon zijn de tabellen met 5-6 kolommen breder dan het scherm. Omdat `body`
@@ -4372,33 +4330,18 @@
           <div class="sim-presets" id="simPresets"></div>
           <button id="btnSimulate" class="primary sim-go">Draai simulatie</button>
         </div>
-        <!-- "Aan het simuleren"-vakje: zelfde laadvakje + voortgangsring als bij map genereren
-             (createProgressLoader in 80-controls.js), maar in het midden een radarscherm met een
-             draaiende scanstraal en vier pionnen. Ligt tijdens het rekenen óver de (lege) uitslag
+        <!-- "Aan het simuleren"-vakje: de "Datastroom" (gekozen variant 3 uit 8, 2026-10): cijfers
+             regenen naar beneden en stapelen zich op tot een staafdiagram (simStream in
+             95-simulate.js), eronder de aftellende tijd (createProgressLoader in 80-controls.js),
+             de potjesteller en Stoppen. Ligt tijdens het rekenen óver de (lege) uitslag
              en faadt bij klaar uit terwijl de uitslag infaadt — zie runSimulationBatch.
              #simStatus staat bewust BINNEN .sim-stage: daarbuiten (erboven) duwde de melding
              "✓ Klaar in …" het nog zichtbare vakje bij het uitfaden een regel omlaag. -->
         <div class="sim-stage" id="simStage">
           <div id="simStatus" class="reach-status"></div>
           <div class="sim-loader" id="simLoader">
-            <div class="gen-box">
-              <div class="gen-orbit" aria-hidden="true">
-                <span class="gen-track"></span>
-                <span class="gen-half gen-half-r"><i></i></span>
-                <span class="gen-half gen-half-l"><i></i></span>
-                <span class="gen-cap"></span>
-                <span class="gen-lead"></span>
-                <span class="sim-radar">
-                  <span class="sim-radar-grid"></span>
-                  <span class="sim-radar-sweep"></span>
-                  <!-- pionnen in de spelerkleuren (WALK_PLAYER_COLORS); --d = wanneer de straal
-                       er langskomt (hoek/360 × 2,4 s), dan lichten ze op -->
-                  <i class="sim-blip" style="--a:30deg;  --r:15px; --d:.2s;  --c:#ff4fd8"></i>
-                  <i class="sim-blip" style="--a:125deg; --r:22px; --d:.83s; --c:#ffd23d"></i>
-                  <i class="sim-blip" style="--a:215deg; --r:10px; --d:1.43s; --c:#7c5cff"></i>
-                  <i class="sim-blip" style="--a:300deg; --r:20px; --d:2s;   --c:#ff7a45"></i>
-                </span>
-              </div>
+            <div class="sim-stream" id="simStream" aria-hidden="true"></div>
+            <div class="sim-cap">
               <b class="gen-title">Aan het simuleren<span class="gen-dots"><i>.</i><i>.</i><i>.</i></span></b>
               <span class="gen-sub gen-eta">even geduld…</span>
               <span class="gen-sub sim-loader-count" id="simLoaderCount"></span>
@@ -6580,99 +6523,31 @@ function constrainedShuffleAsync(seedStr, onProgress){
 // applyGeneratedLayout zorgt dat zo'n verouderde run zijn resultaat dan ook niet meer toepast.
 let genRunning = false;
 
-// ---------- laadvakje met voortgangsring (gedeeld: map genereren + simulatie) ----------
-// Eén vakje in ruimtestijl (.gen-box in styles.css) met een ring die zich vult met de voortgang en
-// eronder hoe lang het nog duurt (telt af). Wordt gebruikt door het "Aan het genereren"-vakje op
-// het bord (#genOverlay, hieronder) en het "Aan het simuleren"-vakje (#simLoader, 95-simulate.js);
-// alleen het plaatje in het midden verschilt (planeet met maantje / radarscherm met pionnen).
+// ---------- aftellende tijd in de laadvakjes (gedeeld: map genereren + simulatie) ----------
+// Het "Aan het genereren"-vakje (#genOverlay, sterrenbeeld hieronder) en het "Aan het
+// simuleren"-vakje (#simLoader, datastroom in 95-simulate.js) tonen allebei hoe lang het nog
+// duurt. Vroeger zat hier ook een voortgangsring bij; die is met beide nieuwe animaties vervallen.
 // GEN_FADE_MS moet gelijk blijven aan de transitieduur van .gen-overlay/.sim-loader e.d.
 const GEN_FADE_MS = 900;
-const GEN_RING_FILL_MS = 350;   // zo lang duurt het volmaken van de ring als het klaar is
-const GEN_RING_CAP = 0.96;      // verder dan dit gaat de ring niet zolang er nog gerekend wordt
 function genSleep(ms){ return new Promise(r => setTimeout(r, ms)); }
 function genNextFrames(n){
   return new Promise(r => { const tick = () => (--n <= 0 ? r() : requestAnimationFrame(tick)); requestAnimationFrame(tick); });
 }
 
-// Vroeger sprong de ring per rekenbrok naar het nieuwe percentage (met een korte CSS-overgang op
-// stroke-dashoffset). Dat hakkelde: de brokken komen onregelmatig, en die overgang draait op
-// dezelfde draad als het rekenwerk, dus elk brok van 30 ms liet hem haperen.
-// Nu: de ring is twee halve bogen + een kopje die alleen DRAAIEN (index.html/styles.css), en die
-// draaiing loopt via element.animate() — dat speelt de browser los van JavaScript af. Bij elke
-// nieuwe schatting start er een nieuw, rechtlijnig stuk animatie vanaf waar de ring NU staat
-// richting GEN_RING_CAP op de geschatte eindtijd; zo verandert alleen de snelheid, nooit de plek
-// (geen sprongen, nooit achteruit). Pas als het echt klaar is gaat hij in 0,35 s naar 100%.
-//
-// createProgressLoader(root): root bevat .gen-orbit (met .gen-half-r > i, .gen-half-l > i,
-// .gen-lead) en .gen-eta. Geeft { start, progress(gedaan, totaal, verstrekenMs), complete, stop }.
+// createProgressLoader(root): root bevat .gen-eta. Geeft { start, progress(gedaan, totaal,
+// verstrekenMs), complete, stop }.
 function createProgressLoader(root){
-  const orbitEl = root.querySelector('.gen-orbit');
-  const arcREl = root.querySelector('.gen-half-r > i');
-  const arcLEl = root.querySelector('.gen-half-l > i');
-  const leadEl = root.querySelector('.gen-lead');
   const etaEl = root.querySelector('.gen-eta');
-  let seg = { p0: 0, p1: 0, dur: 1 };   // huidig animatiestuk (voortgang 0..1)
-  let anims = [];
-  let lastStart = 0;
   let pct = 0;                          // echte voortgang in % (voor de "bijna klaar…"-tekst)
   let etaEnd = null, etaTimer = null;
 
-  // waar de ring op dit moment echt staat: uit de lopende animatie zelf (currentTime), niet uit
-  // een eigen klok — zo begint een nieuw stuk exact waar het vorige was, zonder sprongetje
-  function now(){
-    const a = anims[2];
-    if (!a || seg.p1 === seg.p0) return seg.p1;
-    const f = Math.min(1, Math.max(0, (a.currentTime || 0) / seg.dur));
-    return seg.p0 + (seg.p1 - seg.p0) * f;
-  }
-  function keyframes(p0, p1, angleOf){
-    const rot = p => ({ transform: `rotate(${angleOf(p).toFixed(2)}deg)` });
-    // knik precies op de helft (daar neemt de linkerboog het over van de rechter)
-    if (p0 < 0.5 && p1 > 0.5){
-      const f = (0.5 - p0) / (p1 - p0);
-      return [{ ...rot(p0), offset: 0 }, { ...rot(0.5), offset: f }, { ...rot(p1), offset: 1 }];
-    }
-    return [rot(p0), rot(p1)];
-  }
-  function setTarget(p1, dur, easing = 'linear'){
-    const p0 = now();
-    p1 = Math.max(p0, Math.min(1, p1));
-    dur = Math.max(16, dur);
-    // now() rekent rechtlijnig; met een andere easing (alleen het volmaken op het eind) doen we
-    // alsof hij al op zijn eindstand staat — daarna komt er toch geen nieuw stuk meer
-    seg = easing === 'linear' ? { p0, p1, dur } : { p0: p1, p1, dur: 1 };
-    lastStart = performance.now();
-    if (orbitEl) orbitEl.classList.toggle('on', p1 > 0);
-    const opts = { duration: dur, easing, fill: 'forwards' };
-    const old = anims;
-    anims = [];
-    if (arcREl && arcREl.animate){
-      anims.push(
-        arcREl.animate(keyframes(p0, p1, p => 360 * Math.min(p, 0.5)), opts),
-        arcLEl.animate(keyframes(p0, p1, p => 360 * Math.max(p - 0.5, 0)), opts),
-        leadEl.animate([{ transform: `rotate(${(360 * p0).toFixed(2)}deg)` },
-                        { transform: `rotate(${(360 * p1).toFixed(2)}deg)` }], opts),
-      );
-    }
-    for (const a of old) a.cancel();   // pas NA het starten van de nieuwe: geen knipperframe
-  }
-  function reset(){
-    for (const a of anims) a.cancel();
-    anims = [];
-    seg = { p0: 0, p1: 0, dur: 1 };
-    if (orbitEl) orbitEl.classList.remove('on');
-  }
-
   function start(){
-    reset();
     pct = 0;
-    // nog geen schatting: rustig op gang komen (eerste brok is er binnen ~30 ms)
-    setTarget(0.08, 1500);
     etaEnd = null;
     if (etaEl) etaEl.textContent = 'even geduld…';
     clearInterval(etaTimer);
     // aftellen per seconde op basis van de laatste schatting (progress)
-    // het getal mag alleen dalen (de schatting schommelt per brok), en is de ring vol dan wordt
+    // het getal mag alleen dalen (de schatting schommelt per brok), en is het klaar dan wordt
     // er nog afgerond: "bijna klaar…" i.p.v. een "nog 1 seconde" die blijft hangen
     let shown = Infinity;
     etaTimer = setInterval(() => {
@@ -6686,26 +6561,9 @@ function createProgressLoader(root){
   function progress(done, total, elapsedMs){
     pct = total ? Math.min(100, (done / total) * 100) : 0;
     if (done <= 0 || !total) return;
-    const t = performance.now();
-    const left = (elapsedMs / done) * (total - done);
-    etaEnd = t + left;
-    if (done >= total) return;   // klaar: complete() maakt de ring vol
-    // vanaf waar de ring nu staat in één rechte lijn naar GEN_RING_CAP op de geschatte eindtijd.
-    // Hooguit 4x per seconde bijsturen: de schatting schommelt per brok, en dan zou de snelheid
-    // onrustig gaan wiebelen. De eerste schatting wel meteen gebruiken (dan staat er nog het
-    // langzame op-gang-komen-stuk uit start()).
-    const firstEstimate = seg.p1 < GEN_RING_CAP;
-    if (!firstEstimate && t - lastStart < 250) return;
-    // is het vorige stuk nog niet eens gestart (de browser heeft sindsdien geen beeldje gemaakt),
-    // dan dat stuk laten staan — steeds vervangen hield de ring anders eindeloos op zijn beginstand
-    if (!firstEstimate && anims[2] && anims[2].pending) return;
-    if (now() < GEN_RING_CAP) setTarget(GEN_RING_CAP, Math.max(200, left));
+    etaEnd = performance.now() + (elapsedMs / done) * (total - done);
   }
-  // ring rustig volmaken (afremmend)
-  function complete(){
-    pct = 100;
-    setTarget(1, GEN_RING_FILL_MS, 'cubic-bezier(.3,.7,.4,1)');
-  }
+  function complete(){ pct = 100; }
   function stop(){
     clearInterval(etaTimer); etaTimer = null;
   }
@@ -6870,7 +6728,7 @@ async function applyGeneratedLayout(seed){
   genLoader.complete();
   if (genNet) genNet.complete(generated);
   const waited = performance.now() - t0;
-  await genSleep(Math.max(genNet ? GEN_NET_DONE_MS : GEN_RING_FILL_MS + 120, GEN_FADE_MS - waited));
+  await genSleep(Math.max(GEN_NET_DONE_MS, GEN_FADE_MS - waited));
   if (runId !== simRunId){ return; }
   if (genNet){
     genNet.reveal();
@@ -9039,8 +8897,101 @@ function simCountStep(dir, size = SIM_COUNT_STEP){
   });
   simCounterRender();
 }
-// "Aan het simuleren"-vakje: zelfde laadvakje + voortgangsring als map genereren
-// (createProgressLoader in 80-controls.js); vervangt de oude voortgangsbalk (gebruikerswens)
+// ---------- "Datastroom" in het simulatievak (gekozen variant 3 uit 8, 2026-10) ----------
+// Kolommen cijfers regenen naar beneden; een deel ervan "landt" en stapelt zich op tot een
+// staafdiagram dat vol is als de simulatie klaar is (hoeveel er al liggen = de voortgang). De vorm
+// is elke keer anders en zegt niets over de uitslag: het is sfeer. Alles beweegt via Web Animations
+// en transitions op transform/opacity, zodat de browser het afspeelt terwijl runSimulationBatch in
+// brokken van 30 ms rekent (zie het blok in styles.css). Opmeten gebeurt één keer, bij de start.
+const SIM_STREAM_CELL = 16;       // = de 16px in .sim-stream/.sim-bar/.sim-drop (styles.css)
+const SIM_STREAM_DONE_MS = 700;   // na het laatste brok: het volle diagram nog even in beeld
+const simStream = (() => {
+  const root = document.getElementById('simStream');
+  if (!root) return null;
+  const GL = '0123456789ABCDEF', C = SIM_STREAM_CELL, TRAIL = 7;
+  let cols = 0, rows = 0, H = 0, tgt = [], bars = [], pend = [], barEls = [];
+  let total = 0, landed = 0, inflight = 0, rainTimer = null, run = 0, done = false;
+  const glyph = () => GL[Math.floor(Math.random() * GL.length)];
+  // kleur per plek in de kolom: bovenste cijfer bijna wit, naar onder via blauw naar paars
+  const RAMP = [[234, 249, 255], [143, 224, 255], [79, 184, 224], [124, 92, 255]];
+  function color(t){
+    const x = Math.min(.999, t) * (RAMP.length - 1), i = Math.floor(x), f = x - i;
+    const c = RAMP[i].map((v, k) => Math.round(v + (RAMP[i + 1][k] - v) * f));
+    return `rgba(${c[0]},${c[1]},${c[2]},${(.95 - t * .45).toFixed(2)})`;
+  }
+  // een staaf is een vaste kolom cijfers die omhoog schuift: bars[c] cijfers in beeld
+  function setBar(c){ barEls[c].style.transform = `translateY(${((rows - bars[c]) / rows * 100).toFixed(3)}%)`; }
+  function drop(c, land){
+    const el = document.createElement('span');
+    el.className = 'sim-drop';
+    el.textContent = Array.from({ length: TRAIL }, glyph).join('\n');
+    root.appendChild(el);
+    const x = c * C, y0 = -TRAIL * C - Math.random() * H * 0.3;
+    let y1;
+    if (land){ y1 = H - (bars[c] + pend[c]) * C - TRAIL * C; pend[c]++; inflight++; }
+    else y1 = H * (0.25 + Math.random() * 0.35) - TRAIL * C;
+    const speed = (land ? 0.35 + Math.random() * 0.35 : 0.25 + Math.random() * 0.3) * H / 1000;   // px per ms
+    const at = (y, o) => ({ transform: `translate(${x}px, ${y.toFixed(1)}px)`, opacity: o });
+    const kf = land ? [at(y0, 1), at(y1, 1)] : [at(y0, 1), { ...at(y0 + (y1 - y0) * 0.7, 1), offset: 0.7 }, at(y1, 0)];
+    const me = run;
+    el.animate(kf, { duration: Math.max(300, (y1 - y0) / speed), easing: 'linear' }).onfinish = () => {
+      el.remove();
+      if (!land || me !== run) return;
+      pend[c]--; inflight--;
+      if (!done){ bars[c]++; landed++; setBar(c); }
+    };
+  }
+  function clearDrops(){ root.querySelectorAll('.sim-drop').forEach(el => el.remove()); }
+
+  function start(){
+    stop();
+    run++; done = false; landed = 0; inflight = 0;
+    clearDrops();
+    H = root.clientHeight;
+    cols = Math.max(1, Math.floor(root.clientWidth / C));
+    rows = Math.max(4, Math.min(15, Math.floor(H / C) - 1));
+    const ph = Math.random() * 6;
+    tgt = Array.from({ length: cols }, (_, i) => Math.max(1, Math.round(Math.min(1, Math.max(0.08,
+      0.35 + 0.3 * Math.sin(i * 0.28 + ph) + 0.25 * Math.sin(i * 0.11 - ph * 0.7) + (Math.random() - 0.5) * 0.12)) * rows)));
+    total = tgt.reduce((a, b) => a + b, 0);
+    bars = new Array(cols).fill(0); pend = new Array(cols).fill(0);
+    let html = '';
+    for (let c = 0; c < cols; c++){
+      let cells = '';
+      for (let k = 0; k < rows; k++) cells += `<b style="color:${color(k / (rows - 1))}">${glyph()}</b>`;
+      html += `<div class="sim-bar" style="left:${c * C}px;height:${rows * C}px"><i style="transform:translateY(100%)">${cells}</i></div>`;
+    }
+    root.innerHTML = html;
+    barEls = [...root.querySelectorAll('.sim-bar > i')];
+    // sfeerregen die niet landt (vervaagt halverwege)
+    rainTimer = setInterval(() => { if (root.childElementCount < cols + 30) drop(Math.floor(Math.random() * cols), false); }, 140);
+  }
+  // frac = gedaan/totaal; er vallen zoveel landers dat het diagram precies meegroeit
+  function progress(frac){
+    if (done || !cols) return;
+    const need = Math.round(frac * total) - landed - inflight;
+    for (let n = 0; n < Math.min(need, 8); n++){
+      const open = [];
+      for (let c = 0; c < cols; c++) if (bars[c] + pend[c] < tgt[c]) open.push(c);
+      if (!open.length) break;
+      drop(open[Math.floor(Math.random() * open.length)], true);
+    }
+  }
+  function complete(){
+    done = true;
+    for (let c = 0; c < cols; c++){ bars[c] = tgt[c]; setBar(c); }
+  }
+  // pas na het uitfaden de vallende cijfers weghalen (anders verdwijnen ze zichtbaar)
+  function stop(){
+    clearInterval(rainTimer); rainTimer = null;
+    const me = run;
+    setTimeout(() => { if (me === run) clearDrops(); }, GEN_FADE_MS);
+  }
+  return { start, progress, complete, stop };
+})();
+
+// "Aan het simuleren"-vakje: de datastroom hierboven + aftellende tijd (createProgressLoader in
+// 80-controls.js); vervangt de oude voortgangsbalk en later de ring met radar (gebruikerswens)
 const simStageEl = document.getElementById('simStage');
 const simLoaderEl = document.getElementById('simLoader');
 const simLoaderCountEl = document.getElementById('simLoaderCount');
@@ -9051,6 +9002,7 @@ function showSimLoader(){
   simStageEl.classList.remove('is-holding');
   simStageEl.classList.add('is-running');
   simLoader.start();
+  if (simStream) simStream.start();   // na is-running: dan heeft het vak zijn maat
 }
 let simHoldTimer = null;
 function hideSimLoader(){
@@ -9060,6 +9012,7 @@ function hideSimLoader(){
   simStageEl.classList.add('is-holding');
   simStageEl.classList.remove('is-running');
   simLoader.stop();
+  if (simStream) simStream.stop();
   clearTimeout(simHoldTimer);
   simHoldTimer = setTimeout(() => simStageEl.classList.remove('is-holding'), GEN_FADE_MS);
 }
@@ -9611,6 +9564,7 @@ function formatSimSeconds(ms){
 function updateSimProgress(done, n, elapsedMs){
   if (!simLoader) return;
   simLoader.progress(done, n, elapsedMs);
+  if (simStream && n) simStream.progress(done / n);
   if (simLoaderCountEl) simLoaderCountEl.textContent =
     `${done.toLocaleString('nl-NL')} / ${n.toLocaleString('nl-NL')} potjes`;
 }
@@ -9748,11 +9702,12 @@ function runSimulationBatch(){
       if (runId !== simRunId) return;
 
       const elapsedMs = performance.now() - t0;
-      // net als bij map genereren: ring rustig volmaken en het vakje minstens helemaal laten
-      // infaden; dan de uitslag (nog onzichtbaar) opbouwen, en pas daarna overfaden
+      // het diagram afmaken en even laten staan, en het vakje minstens helemaal laten infaden;
+      // dan de uitslag (nog onzichtbaar) opbouwen, en pas daarna overfaden
       simLoader && simLoader.complete();
+      if (simStream) simStream.complete();
       await new Promise(res => setTimeout(res,
-        Math.max(GEN_RING_FILL_MS + 120, GEN_FADE_MS - (performance.now() - tShown))));
+        Math.max(SIM_STREAM_DONE_MS, GEN_FADE_MS - (performance.now() - tShown))));
       if (runId !== simRunId) return;
       renderSimResults({ n, stuckCount, startWins, startTurnsSum, startRanks, strategyStats, seatWins, gameLengths, questStats, extra, graph, heatmap, elapsedMs });
       await genNextFrames(2);
@@ -12548,6 +12503,7 @@ function diceRenderPending(n, energy){
   const key = `pending|${n}|${energy}`;
   if (walkDiceEl.dataset.key === key && walkDiceEl.firstElementChild) return;
   diceProgress = null;
+  diceLandAt = 0;
   const dice = Array.from({ length: n }, (_, i) => diceDieHtml('?', i === 2 ? 'boost' : '')).join('');
   const known = energy !== null && energy !== undefined;
   walkDiceEl.dataset.key = key;
@@ -12602,6 +12558,7 @@ function diceRenderRoll(d, e, total, key, opts = {}){
     +   `<div class="sd-track"></div>`
     + `</div>`;
   diceSetHudResult(true);
+  diceLandAt = 0;
   if (!spinning){ diceRenderProgress(); if (fresh && opts.flow) diceFlowEnergy(); return; }
 
   // draaien om de eigen as en rechtop stoppen (hele rondjes); de kanten wisselen intussen, ook
@@ -12639,6 +12596,7 @@ function diceRenderRoll(d, e, total, key, opts = {}){
       el.classList.remove('is-spinning'); el.classList.add('is-landed');
       if (--left === 0) landed();
     }, dur);
+    diceLandAt = Math.max(diceLandAt, now + dur);
   });
   function landed(){
     if (walkDiceEl.dataset.key !== key) return;   // intussen een andere worp getekend
@@ -12651,9 +12609,17 @@ function diceRenderRoll(d, e, total, key, opts = {}){
   }
 }
 
+// Wanneer liggen de stenen van de laatste worp stil (odNow-tijd, 0 = nu al)? Pas dan mag je lopen
+// (gebruikersmelding: je kon al stappen zetten terwijl de stenen nog draaiden). soloMarkClickable
+// (97-solo.js) wacht hierop; dat dekt Zelf spelen, Koerscorrectie en een gast in Multiplayer, die
+// elk de worp in hun eigen venster zien uitrollen.
+let diceLandAt = 0;
+function diceBusyMs(){ return diceLandAt ? Math.max(0, diceLandAt - odNow()) : 0; }
+
 // Geen worp nodig (een sprong/sprint maakte de beurt al af): alleen de energiesteen.
 function diceRenderNoRoll(e){
   if (!walkDiceEl) return;
+  diceLandAt = 0;
   diceProgress = null;
   diceMotion = { mode: 'none', t0: 0, pausedAt: null };
   walkDiceEl.dataset.key = '';
@@ -12927,6 +12893,7 @@ function diceReset(){
   for (const s of odState.values()) odClearTimers(s);
   odState.clear();
   diceMotion = { mode: 'none', t0: 0, pausedAt: null };
+  diceLandAt = 0;
   diceFlow = { done: true };
   diceFlowKey = null;
   diceProgress = null;
@@ -13373,15 +13340,22 @@ function setWalkMode(mode){
 }
 
 // ---------- bord: welke vakjes zijn nu aanklikbaar ----------
+let soloClickableTimer = null;
 function soloClearClickable(){
+  clearTimeout(soloClickableTimer);
+  soloClickableTimer = null;
   if (!walkBoardEl) return;
   for (const el of walkBoardEl.querySelectorAll('.walk-clickable')){
     el.classList.remove('walk-clickable');
     delete el.dataset.key;
   }
 }
+// Draaien de stenen van een verse worp nog uit, dan pas omranden zodra ze stilliggen (diceBusyMs,
+// 96d-dice.js) — gebruikersmelding: je kon al lopen terwijl de dobbelanimatie nog bezig was.
 function soloMarkClickable(graph, keys){
   soloClearClickable();
+  const wait = diceBusyMs();
+  if (wait > 0){ soloClickableTimer = setTimeout(() => soloMarkClickable(graph, keys), wait + 20); return; }
   for (const k of keys){
     const el = walkCellDiv(graph, k);
     el.classList.add('walk-clickable');
@@ -14550,7 +14524,7 @@ document.addEventListener('keydown', (e) => {
   const tag = document.activeElement && document.activeElement.tagName;
   if (tag === 'INPUT' || tag === 'SELECT' || tag === 'TEXTAREA') return;
   e.preventDefault();
-  if (soloPhase !== 'moving') return;
+  if (soloPhase !== 'moving' || diceBusyMs() > 0) return;   // stenen rollen nog uit
   const match = soloCurrentLegalMoves.find(l => l.dir === dir);
   if (!match) return;
   soloHandleMoveClick(match.key);

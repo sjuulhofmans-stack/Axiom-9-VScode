@@ -104,6 +104,7 @@ function diceRenderPending(n, energy){
   const key = `pending|${n}|${energy}`;
   if (walkDiceEl.dataset.key === key && walkDiceEl.firstElementChild) return;
   diceProgress = null;
+  diceLandAt = 0;
   const dice = Array.from({ length: n }, (_, i) => diceDieHtml('?', i === 2 ? 'boost' : '')).join('');
   const known = energy !== null && energy !== undefined;
   walkDiceEl.dataset.key = key;
@@ -158,6 +159,7 @@ function diceRenderRoll(d, e, total, key, opts = {}){
     +   `<div class="sd-track"></div>`
     + `</div>`;
   diceSetHudResult(true);
+  diceLandAt = 0;
   if (!spinning){ diceRenderProgress(); if (fresh && opts.flow) diceFlowEnergy(); return; }
 
   // draaien om de eigen as en rechtop stoppen (hele rondjes); de kanten wisselen intussen, ook
@@ -195,6 +197,7 @@ function diceRenderRoll(d, e, total, key, opts = {}){
       el.classList.remove('is-spinning'); el.classList.add('is-landed');
       if (--left === 0) landed();
     }, dur);
+    diceLandAt = Math.max(diceLandAt, now + dur);
   });
   function landed(){
     if (walkDiceEl.dataset.key !== key) return;   // intussen een andere worp getekend
@@ -207,9 +210,17 @@ function diceRenderRoll(d, e, total, key, opts = {}){
   }
 }
 
+// Wanneer liggen de stenen van de laatste worp stil (odNow-tijd, 0 = nu al)? Pas dan mag je lopen
+// (gebruikersmelding: je kon al stappen zetten terwijl de stenen nog draaiden). soloMarkClickable
+// (97-solo.js) wacht hierop; dat dekt Zelf spelen, Koerscorrectie en een gast in Multiplayer, die
+// elk de worp in hun eigen venster zien uitrollen.
+let diceLandAt = 0;
+function diceBusyMs(){ return diceLandAt ? Math.max(0, diceLandAt - odNow()) : 0; }
+
 // Geen worp nodig (een sprong/sprint maakte de beurt al af): alleen de energiesteen.
 function diceRenderNoRoll(e){
   if (!walkDiceEl) return;
+  diceLandAt = 0;
   diceProgress = null;
   diceMotion = { mode: 'none', t0: 0, pausedAt: null };
   walkDiceEl.dataset.key = '';
@@ -483,6 +494,7 @@ function diceReset(){
   for (const s of odState.values()) odClearTimers(s);
   odState.clear();
   diceMotion = { mode: 'none', t0: 0, pausedAt: null };
+  diceLandAt = 0;
   diceFlow = { done: true };
   diceFlowKey = null;
   diceProgress = null;
