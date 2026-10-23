@@ -99,6 +99,9 @@ def build() -> pathlib.Path:
     partycar_body = read_optional_b64(SRC / "assets" / "partycar-body.b64")
     partycar_wheel = read_optional_b64(SRC / "assets" / "partycar-wheel.b64")
     kaboem = read_optional_b64(SRC / "assets" / "kaboem.b64")
+    # Orbitron 900 voor de startanimatie (96b-intro.js); ontbreekt hij, dan valt de tekst terug op
+    # het gewone lettertype
+    orbitron = read_optional_b64(SRC / "assets" / "orbitron900.b64")
     chants = build_chants()
 
     # --- tegeldata controleren en injecteren ---
@@ -123,6 +126,7 @@ def build() -> pathlib.Path:
     js = js.replace("{{PARTYCAR_BODY}}", partycar_body)
     js = js.replace("{{PARTYCAR_WHEEL}}", partycar_wheel)
     js = js.replace("{{KABOEM}}", kaboem)
+    js = js.replace("{{ORBITRON}}", orbitron)
 
     if "{{TILES}}" in js:
         sys.exit("FOUT: {{TILES}} placeholder niet vervangen")
@@ -136,6 +140,8 @@ def build() -> pathlib.Path:
         sys.exit("FOUT: {{PARTYCAR_WHEEL}} placeholder niet vervangen")
     if "{{KABOEM}}" in js:
         sys.exit("FOUT: {{KABOEM}} placeholder niet vervangen")
+    if "{{ORBITRON}}" in js:
+        sys.exit("FOUT: {{ORBITRON}} placeholder niet vervangen")
 
     html = template.replace("{{CSS}}", css)
     html = html.replace("{{JS}}", js)

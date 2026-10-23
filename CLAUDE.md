@@ -26,6 +26,7 @@ src/
   index.html          HTML-skelet met placeholders {{CSS}} {{JS}} {{LOGO}}
   styles.css          alle opmaak (~77 KB)
   assets/logo.b64     logo als base64 — hier zelden iets aan doen
+  assets/orbitron900.b64  lettertype Orbitron 900 voor de startanimatie (ingebakken, werkt offline)
   data/tiles.json     de 20 tegels + de vorm van een tegel (pattern)
   js/
     00-data.js        laadt tiles.json, bouwt tileLookup, globale state (layout, selectedSlot)
@@ -42,7 +43,9 @@ src/
     90-editor.js      tegel-editor (vakjes aan/uit klikken)
     95-simulate.js    batch-spelsimulatie (2xD6, geen U-turn, bezette vakjes blokkeren)
     96-walk.js        tabblad "Spelen": modus Automatisch, automatische simulatie van 1-4 spelers
-    96b-intro.js      startanimatie na "Start spel" (aftellen 3-2-1, hyperjump, zwart gat) + vinkje in de lobby
+    96b-intro.js      startanimatie na "Start spel", variant "Titan" (2026-10): traag aftellen met zware dreun,
+                      schudden + opbouw, BAM, hyperjump, het zwarte gat in met een gong (gekozen uit 15
+                      geluiden; ±10,6 s) + vinkje in de lobby
     96c-crystals.js   kristallen: tekenen (renderCrystal), de kluis, de animaties bij oprapen, zeshoekjes op
                       de spelerskaartjes. Staat bewust vóór 97-solo.js (zie de kop van het bestand)
     96d-dice.js       dobbelvak: ruimte-stenen (draaien om hun as), energiesteen met bliksems + "+2",
