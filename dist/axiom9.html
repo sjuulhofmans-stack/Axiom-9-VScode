@@ -805,10 +805,13 @@
   /* groter (gebruikerswens): was 11,5px / 9px padding */
   /* Zelfde letter en vorm als de blauwe knoppen (button.primary, "glas + hoofdletters"):
      gekozen modus = die glasstijl, de andere = zelfde letter/maat maar donker (gebruikersmelding:
-     de modusknoppen hadden nog de oude typemachineletter en zagen er anders uit). */
+     de modusknoppen hadden nog de oude typemachineletter en zagen er anders uit).
+     Vaste hoogte 45px = die van "Spel hosten" (#btnMpHost) op dezelfde plek in het tabblad
+     Multiplayer: met 13px padding waren ze 43px, en na "Spel hosten" neemt deze (onzichtbare)
+     balk de plek over, waardoor het formulier 2px omhoog floepte (gebruikersmelding). */
   .walk-mode-btn{
     flex:1; font-family:var(--font-display); font-weight:700; font-size:13px; letter-spacing:.1em;
-    text-transform:uppercase; padding:13px 12px; background:var(--hull);
+    text-transform:uppercase; height:45px; padding:0 12px; background:var(--hull);
     border:1px solid var(--line-dim); border-radius:6px; color:var(--text-dim);
     transition:border-color .15s, color .15s, background .15s, box-shadow .15s;
   }
