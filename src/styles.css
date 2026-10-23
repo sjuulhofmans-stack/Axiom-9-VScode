@@ -342,17 +342,62 @@
   }
   .gen-half, .gen-cap, .gen-lead{opacity:0; transition:opacity .25s;}
   .gen-orbit.on .gen-half, .gen-orbit.on .gen-cap, .gen-orbit.on .gen-lead{opacity:1;}
-  .gen-planet{
-    position:absolute; inset:46px; border-radius:50%;
-    background:radial-gradient(circle at 35% 30%, #9fdcff, #2a6a9a 55%, #0b1d33 100%);
-    box-shadow:0 0 24px rgba(79,184,224,.55);
+  @keyframes genSpin{to{transform:rotate(360deg);}}   /* o.a. de radar van het simulatievakje */
+
+  /* ---------- "Sterrenbeeld" in het genereer-vakje (genNet in 80-controls.js) ----------
+     Gekozen variant 8 uit 8 (2026-10). .gen-net ligt precies over #board (JS zet left/top/width/
+     height); zonder meting staat hij gecentreerd. .gen-net-vis is het netwerk zelf: tijdens het laden
+     op 80% en iets omhoog (ruimte voor de tekst eronder), bij .is-reveal zoomt het naar bordgrootte
+     en faadt de echte kaart erover in. ALLES alleen transform/opacity: de generator rekent in brokken
+     op dezelfde draad, alleen die animaties blijven dan vloeiend. Lijnen = een div die schaalt
+     (scaleX/scaleY), kleuren = lagen die in opacity wisselen. */
+  .gen-net{position:absolute; left:50%; top:50%; width:min(90%, 860px); aspect-ratio:5/4; translate:-50% -50%;}
+  .gen-net.is-placed{translate:none;}
+  .gen-net-vis{position:absolute; inset:0; transform:translateY(-7%) scale(.8); transition:transform .7s cubic-bezier(.2,.7,.2,1); will-change:transform;}
+  .gen-net.is-reveal .gen-net-vis{transform:none;}
+  .gen-net-cap{
+    position:absolute; left:0; right:0; bottom:1%; display:flex; flex-direction:column; align-items:center; gap:10px;
+    transition:opacity .4s;
   }
-  .gen-moon{position:absolute; inset:22px; border-radius:50%; animation:genSpin 2.4s linear infinite;}
-  .gen-moon::before{
-    content:''; position:absolute; top:-5px; left:50%; width:11px; height:11px; margin-left:-5.5px; border-radius:50%;
-    background:#ffd27a; box-shadow:0 0 12px #ffb545, 0 0 3px #fff;
+  .gen-net.is-reveal .gen-net-cap{opacity:0;}
+  .gen-net-tile{position:absolute; width:20%; height:25%;}
+  .gen-net-tile::before{content:''; position:absolute; inset:5%; border:1px solid rgba(79,184,224,.1); border-radius:3px;}
+  /* naad tussen twee sterren: .is-h van links naar rechts, .is-v van boven naar onder; .is-rev groeit
+     vanaf de andere kant. Lagen: .ok (blauw), .bad (rood: de solver spoort terug), .hot (wit: klaar) */
+  .gen-edge{position:absolute; will-change:transform; transition:transform .35s ease-out;}
+  .gen-edge.is-h{width:20%; height:3px; margin-top:-1.5px; transform:scaleX(0); transform-origin:0 50%;}
+  .gen-edge.is-v{height:25%; width:3px; margin-left:-1.5px; transform:scaleY(0); transform-origin:50% 0;}
+  .gen-edge.is-h.is-rev{transform-origin:100% 50%;}
+  .gen-edge.is-v.is-rev{transform-origin:50% 100%;}
+  .gen-edge.is-on{transform:none;}
+  .gen-edge.is-ghost{transform:none; transition:none; opacity:.14;}
+  .gen-edge > i{position:absolute; inset:0; border-radius:2px; background:#8fe0ff; opacity:.85;}
+  .gen-edge.is-ghost > i{background:var(--quest); opacity:1;}
+  .gen-edge > i.bad{background:var(--danger); opacity:0;}
+  .gen-edge > i.hot{background:#fff; opacity:0; transition:opacity .4s;}
+  .gen-edge.is-bad > i.bad{opacity:1;}
+  .gen-net.is-done .gen-edge > i.hot{opacity:1;}
+  /* ster: dof rondje; .is-on = blauw met een sonarping; bij klaar een golf vanaf Hibernatie
+     (--d = afstand) en per ster de kleur van de nieuwe kaart (.is-gang = paars) */
+  .gen-node{
+    position:absolute; width:2.8%; aspect-ratio:1; translate:-50% -50%; border-radius:50%;
+    background:#1d2a37; border:2px solid rgba(79,184,224,.35); will-change:transform;
   }
-  @keyframes genSpin{to{transform:rotate(360deg);}}
+  .gen-node > i{position:absolute; inset:-2px; border-radius:50%; opacity:0;}
+  .gen-node > i.n-on{background:#8fe0ff; transition:opacity .3s; box-shadow:0 0 0 2px #fff, 0 0 12px #4fb8e0;}
+  .gen-node > i.n-gang{background:var(--actioncell-glow); transition:opacity .4s; transition-delay:var(--d, 0s); box-shadow:0 0 0 2px #fff, 0 0 12px var(--actioncell);}
+  .gen-node > i.n-ping{inset:-180%; border:2px solid #8fe0ff;}
+  .gen-node.is-on > i.n-on{opacity:1;}
+  .gen-node.is-on > i.n-ping{animation:genPing 1s ease-out;}
+  .gen-node.is-gang > i.n-gang{opacity:1;}
+  .gen-net.is-done .gen-node{animation:genWave .6s ease-out both; animation-delay:var(--d, 0s);}
+  @keyframes genPing{0%{transform:scale(.2); opacity:1;} 100%{transform:scale(1); opacity:0;}}
+  @keyframes genWave{0%{transform:scale(1);} 40%{transform:scale(2.3);} 100%{transform:scale(1);}}
+  /* terugzetten zonder dat je lijnen ziet terugschieten (genNet.start) */
+  .gen-net.is-reset, .gen-net.is-reset *{transition:none !important; animation:none !important;}
+  @media (prefers-reduced-motion: reduce){
+    .gen-net *{animation:none !important;}
+  }
   .gen-title{
     font-family:var(--font-mono); font-size:17px; letter-spacing:.32em; text-transform:uppercase; color:#dff4ff;
     text-shadow:0 0 10px rgba(79,184,224,.6);

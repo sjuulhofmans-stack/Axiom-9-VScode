@@ -86,21 +86,15 @@
            een vakje in ruimtestijl — zie applyGeneratedLayout in 80-controls.js. Staat bij het
            laden al aan, zodat je nooit eerst een oude kaart ziet. -->
       <div class="gen-overlay" id="genOverlay">
-        <div class="gen-box">
-          <!-- planeet + ring die zich vult met de voortgang + een draaiend maantje. De ring bestaat
-               uit twee halve bogen die alleen DRAAIEN (transform), zodat de browser hem los van het
-               rekenwerk vloeiend kan animeren — zie createProgressLoader in 80-controls.js -->
-          <div class="gen-orbit" aria-hidden="true">
-            <span class="gen-track"></span>
-            <span class="gen-half gen-half-r"><i></i></span>
-            <span class="gen-half gen-half-l"><i></i></span>
-            <span class="gen-cap"></span>
-            <span class="gen-lead"></span>
-            <span class="gen-planet"></span>
-            <span class="gen-moon"></span>
+        <!-- "Sterrenbeeld" (gekozen variant 8 uit 8, 2026-10): elke tegel een ster, verbindingen
+             trekken zich over het bord. Ligt precies over #board (genNetPlace in 80-controls.js);
+             sterren, lijnen en tegelkaders worden door genNet in .gen-net-vis gezet. -->
+        <div class="gen-net" id="genNet">
+          <div class="gen-net-vis" aria-hidden="true"></div>
+          <div class="gen-net-cap">
+            <b class="gen-title">Aan het genereren<span class="gen-dots"><i>.</i><i>.</i><i>.</i></span></b>
+            <span class="gen-sub gen-eta">even geduld…</span>
           </div>
-          <b class="gen-title">Aan het genereren<span class="gen-dots"><i>.</i><i>.</i><i>.</i></span></b>
-          <span class="gen-sub gen-eta">even geduld…</span>
         </div>
       </div>
       <div class="board-zoom-wrap">

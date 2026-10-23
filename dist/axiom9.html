@@ -349,17 +349,62 @@
   }
   .gen-half, .gen-cap, .gen-lead{opacity:0; transition:opacity .25s;}
   .gen-orbit.on .gen-half, .gen-orbit.on .gen-cap, .gen-orbit.on .gen-lead{opacity:1;}
-  .gen-planet{
-    position:absolute; inset:46px; border-radius:50%;
-    background:radial-gradient(circle at 35% 30%, #9fdcff, #2a6a9a 55%, #0b1d33 100%);
-    box-shadow:0 0 24px rgba(79,184,224,.55);
+  @keyframes genSpin{to{transform:rotate(360deg);}}   /* o.a. de radar van het simulatievakje */
+
+  /* ---------- "Sterrenbeeld" in het genereer-vakje (genNet in 80-controls.js) ----------
+     Gekozen variant 8 uit 8 (2026-10). .gen-net ligt precies over #board (JS zet left/top/width/
+     height); zonder meting staat hij gecentreerd. .gen-net-vis is het netwerk zelf: tijdens het laden
+     op 80% en iets omhoog (ruimte voor de tekst eronder), bij .is-reveal zoomt het naar bordgrootte
+     en faadt de echte kaart erover in. ALLES alleen transform/opacity: de generator rekent in brokken
+     op dezelfde draad, alleen die animaties blijven dan vloeiend. Lijnen = een div die schaalt
+     (scaleX/scaleY), kleuren = lagen die in opacity wisselen. */
+  .gen-net{position:absolute; left:50%; top:50%; width:min(90%, 860px); aspect-ratio:5/4; translate:-50% -50%;}
+  .gen-net.is-placed{translate:none;}
+  .gen-net-vis{position:absolute; inset:0; transform:translateY(-7%) scale(.8); transition:transform .7s cubic-bezier(.2,.7,.2,1); will-change:transform;}
+  .gen-net.is-reveal .gen-net-vis{transform:none;}
+  .gen-net-cap{
+    position:absolute; left:0; right:0; bottom:1%; display:flex; flex-direction:column; align-items:center; gap:10px;
+    transition:opacity .4s;
   }
-  .gen-moon{position:absolute; inset:22px; border-radius:50%; animation:genSpin 2.4s linear infinite;}
-  .gen-moon::before{
-    content:''; position:absolute; top:-5px; left:50%; width:11px; height:11px; margin-left:-5.5px; border-radius:50%;
-    background:#ffd27a; box-shadow:0 0 12px #ffb545, 0 0 3px #fff;
+  .gen-net.is-reveal .gen-net-cap{opacity:0;}
+  .gen-net-tile{position:absolute; width:20%; height:25%;}
+  .gen-net-tile::before{content:''; position:absolute; inset:5%; border:1px solid rgba(79,184,224,.1); border-radius:3px;}
+  /* naad tussen twee sterren: .is-h van links naar rechts, .is-v van boven naar onder; .is-rev groeit
+     vanaf de andere kant. Lagen: .ok (blauw), .bad (rood: de solver spoort terug), .hot (wit: klaar) */
+  .gen-edge{position:absolute; will-change:transform; transition:transform .35s ease-out;}
+  .gen-edge.is-h{width:20%; height:3px; margin-top:-1.5px; transform:scaleX(0); transform-origin:0 50%;}
+  .gen-edge.is-v{height:25%; width:3px; margin-left:-1.5px; transform:scaleY(0); transform-origin:50% 0;}
+  .gen-edge.is-h.is-rev{transform-origin:100% 50%;}
+  .gen-edge.is-v.is-rev{transform-origin:50% 100%;}
+  .gen-edge.is-on{transform:none;}
+  .gen-edge.is-ghost{transform:none; transition:none; opacity:.14;}
+  .gen-edge > i{position:absolute; inset:0; border-radius:2px; background:#8fe0ff; opacity:.85;}
+  .gen-edge.is-ghost > i{background:var(--quest); opacity:1;}
+  .gen-edge > i.bad{background:var(--danger); opacity:0;}
+  .gen-edge > i.hot{background:#fff; opacity:0; transition:opacity .4s;}
+  .gen-edge.is-bad > i.bad{opacity:1;}
+  .gen-net.is-done .gen-edge > i.hot{opacity:1;}
+  /* ster: dof rondje; .is-on = blauw met een sonarping; bij klaar een golf vanaf Hibernatie
+     (--d = afstand) en per ster de kleur van de nieuwe kaart (.is-gang = paars) */
+  .gen-node{
+    position:absolute; width:2.8%; aspect-ratio:1; translate:-50% -50%; border-radius:50%;
+    background:#1d2a37; border:2px solid rgba(79,184,224,.35); will-change:transform;
   }
-  @keyframes genSpin{to{transform:rotate(360deg);}}
+  .gen-node > i{position:absolute; inset:-2px; border-radius:50%; opacity:0;}
+  .gen-node > i.n-on{background:#8fe0ff; transition:opacity .3s; box-shadow:0 0 0 2px #fff, 0 0 12px #4fb8e0;}
+  .gen-node > i.n-gang{background:var(--actioncell-glow); transition:opacity .4s; transition-delay:var(--d, 0s); box-shadow:0 0 0 2px #fff, 0 0 12px var(--actioncell);}
+  .gen-node > i.n-ping{inset:-180%; border:2px solid #8fe0ff;}
+  .gen-node.is-on > i.n-on{opacity:1;}
+  .gen-node.is-on > i.n-ping{animation:genPing 1s ease-out;}
+  .gen-node.is-gang > i.n-gang{opacity:1;}
+  .gen-net.is-done .gen-node{animation:genWave .6s ease-out both; animation-delay:var(--d, 0s);}
+  @keyframes genPing{0%{transform:scale(.2); opacity:1;} 100%{transform:scale(1); opacity:0;}}
+  @keyframes genWave{0%{transform:scale(1);} 40%{transform:scale(2.3);} 100%{transform:scale(1);}}
+  /* terugzetten zonder dat je lijnen ziet terugschieten (genNet.start) */
+  .gen-net.is-reset, .gen-net.is-reset *{transition:none !important; animation:none !important;}
+  @media (prefers-reduced-motion: reduce){
+    .gen-net *{animation:none !important;}
+  }
   .gen-title{
     font-family:var(--font-mono); font-size:17px; letter-spacing:.32em; text-transform:uppercase; color:#dff4ff;
     text-shadow:0 0 10px rgba(79,184,224,.6);
@@ -4190,21 +4235,15 @@
            een vakje in ruimtestijl — zie applyGeneratedLayout in 80-controls.js. Staat bij het
            laden al aan, zodat je nooit eerst een oude kaart ziet. -->
       <div class="gen-overlay" id="genOverlay">
-        <div class="gen-box">
-          <!-- planeet + ring die zich vult met de voortgang + een draaiend maantje. De ring bestaat
-               uit twee halve bogen die alleen DRAAIEN (transform), zodat de browser hem los van het
-               rekenwerk vloeiend kan animeren — zie createProgressLoader in 80-controls.js -->
-          <div class="gen-orbit" aria-hidden="true">
-            <span class="gen-track"></span>
-            <span class="gen-half gen-half-r"><i></i></span>
-            <span class="gen-half gen-half-l"><i></i></span>
-            <span class="gen-cap"></span>
-            <span class="gen-lead"></span>
-            <span class="gen-planet"></span>
-            <span class="gen-moon"></span>
+        <!-- "Sterrenbeeld" (gekozen variant 8 uit 8, 2026-10): elke tegel een ster, verbindingen
+             trekken zich over het bord. Ligt precies over #board (genNetPlace in 80-controls.js);
+             sterren, lijnen en tegelkaders worden door genNet in .gen-net-vis gezet. -->
+        <div class="gen-net" id="genNet">
+          <div class="gen-net-vis" aria-hidden="true"></div>
+          <div class="gen-net-cap">
+            <b class="gen-title">Aan het genereren<span class="gen-dots"><i>.</i><i>.</i><i>.</i></span></b>
+            <span class="gen-sub gen-eta">even geduld…</span>
           </div>
-          <b class="gen-title">Aan het genereren<span class="gen-dots"><i>.</i><i>.</i><i>.</i></span></b>
-          <span class="gen-sub gen-eta">even geduld…</span>
         </div>
       </div>
       <div class="board-zoom-wrap">
@@ -6659,21 +6698,134 @@ function createProgressLoader(root){
   return { start, progress, complete, stop };
 }
 
+// ---------- "Sterrenbeeld" in het genereer-vakje (gekozen variant 8 uit 8, 2026-10) ----------
+// Elke tegelplek is een ster (op het midden van die plek op het bord). Vanuit een ster in het midden
+// trekken verbindingen (de naden) zich over het bord; hoeveel er al liggen = de voortgang. Af en toe
+// schiet er een rode lijn uit die weer terugtrekt: de solver die terugspoort. Klaar → alles verbonden,
+// een golf door het netwerk vanaf waar Hibernatie op de NIEUWE kaart ligt, sterren kleuren naar kamer
+// (blauw) / gang (paars), het netwerk zoomt in tot bordgrootte en de echte kaart faadt erover in.
+// Alleen transform/opacity (zie het blok in styles.css). Zonder #genNet doet alles niets.
+const GEN_NET_DONE_MS = 650;   // na het laatste brok: lijnen vol + begin van de golf
+const GEN_NET_ZOOM_MS = 700;   // = transitie van .gen-net-vis bij .is-reveal
+const genNet = (() => {
+  const root = document.getElementById('genNet');
+  const vis = root && root.querySelector('.gen-net-vis');
+  if (!vis) return null;
+  const pos = i => ({ c: i % 5, r: Math.floor(i / 5) });
+  const edges = [];   // [a, b]: a links van/boven b
+  for (let i = 0; i < 20; i++){ const { c, r } = pos(i); if (c < 4) edges.push([i, i + 1]); if (r < 3) edges.push([i, i + 5]); }
+  let html = '';
+  for (let i = 0; i < 20; i++){ const { c, r } = pos(i); html += `<span class="gen-net-tile" style="left:${c * 20}%;top:${r * 25}%"></span>`; }
+  const edgeHtml = (cls, [a, b]) => {
+    const { c, r } = pos(a);
+    return `<span class="gen-edge ${b === a + 1 ? 'is-h' : 'is-v'} ${cls}" style="left:${c * 20 + 10}%;top:${r * 25 + 12.5}%">`
+      + (cls ? '<i></i>' : '<i class="ok"></i><i class="bad"></i><i class="hot"></i>') + '</span>';
+  };
+  for (const e of edges) html += edgeHtml('is-ghost', e);
+  for (const e of edges) html += edgeHtml('', e);
+  for (let i = 0; i < 20; i++){
+    const { c, r } = pos(i);
+    html += `<span class="gen-node" style="left:${c * 20 + 10}%;top:${r * 25 + 12.5}%"><i class="n-on"></i><i class="n-gang"></i><i class="n-ping"></i></span>`;
+  }
+  vis.innerHTML = html;
+  const edgeEls = [...vis.querySelectorAll('.gen-edge:not(.is-ghost)')];
+  const nodeEls = [...vis.querySelectorAll('.gen-node')];
+  let conn = new Set(), act = new Set(), timers = [], lastBad = 0;
+
+  const frontier = () => edges.map((e, i) => i)
+    .filter(i => !act.has(i) && (conn.has(edges[i][0]) || conn.has(edges[i][1])));
+  // lijn laten groeien vanaf de ster die al verbonden is
+  function aim(ei){ const [a] = edges[ei]; edgeEls[ei].classList.toggle('is-rev', !conn.has(a)); }
+  function activate(ei){
+    const [a, b] = edges[ei], to = conn.has(a) ? b : a;
+    aim(ei); act.add(ei);
+    edgeEls[ei].classList.remove('is-bad'); edgeEls[ei].classList.add('is-on');
+    if (!conn.has(to)){ conn.add(to); nodeEls[to].classList.add('is-on'); }
+  }
+  function later(fn, ms){ timers.push(setTimeout(fn, ms)); }
+
+  function start(){
+    stop();
+    root.classList.add('is-reset');
+    root.classList.remove('is-done', 'is-reveal');
+    edgeEls.forEach(el => el.classList.remove('is-on', 'is-bad', 'is-rev'));
+    nodeEls.forEach(el => { el.classList.remove('is-on', 'is-gang'); el.style.removeProperty('--d'); });
+    const first = [6, 7, 8, 11, 12, 13][Math.floor(Math.random() * 6)];   // ergens binnenin
+    conn = new Set([first]); act = new Set(); lastBad = 0;
+    // pas na een getekend beeldje weer met overgangen (geen gedwongen herberekening nodig)
+    genNextFrames(2).then(() => { root.classList.remove('is-reset'); nodeEls[first].classList.add('is-on'); });
+  }
+  function progress(frac){
+    const want = Math.min(edges.length - 1, Math.floor(frac * edges.length));
+    while (act.size < want){ const f = frontier(); if (!f.length) break; activate(f[Math.floor(Math.random() * f.length)]); }
+    // terugsporen: hooguit één rode lijn per 350 ms (de brokken komen veel vaker)
+    const t = performance.now();
+    if (frac < 0.85 && t - lastBad > 350 && Math.random() < 0.35){
+      const f = frontier();
+      if (f.length){
+        lastBad = t;
+        const ei = f[Math.floor(Math.random() * f.length)], el = edgeEls[ei];
+        aim(ei); el.classList.add('is-bad', 'is-on');
+        later(() => { if (!act.has(ei)) el.classList.remove('is-on'); }, 380);
+        later(() => { if (!act.has(ei)) el.classList.remove('is-bad'); }, 760);
+      }
+    }
+  }
+  // newLayout: tile-id per plek; geeft de golf zijn beginpunt (Hibernatie) en de kleuren
+  function complete(newLayout){
+    let f;
+    while ((f = frontier()).length) activate(f[0]);
+    const from = Math.max(0, newLayout.indexOf(8));
+    const dist = { [from]: 0 }, q = [from];
+    while (q.length){
+      const n = q.shift();
+      for (const [a, b] of edges){ const o = a === n ? b : b === n ? a : -1; if (o >= 0 && dist[o] === undefined){ dist[o] = dist[n] + 1; q.push(o); } }
+    }
+    nodeEls.forEach((el, i) => {
+      el.style.setProperty('--d', (dist[i] * 0.09 + 0.2).toFixed(2) + 's');
+      if (!ROOM_NAMES[newLayout[i]]) el.classList.add('is-gang');
+    });
+    root.classList.add('is-done');
+  }
+  function reveal(){ root.classList.add('is-reveal'); }
+  function stop(){ timers.forEach(clearTimeout); timers = []; }
+  return { start, progress, complete, reveal, stop };
+})();
+
+// netwerk precies over het bord leggen (alleen bij het begin van het genereren en bij een andere
+// schermgrootte — nooit tijdens een potje). Is het bord niet te meten, dan blijft het gecentreerd.
+function genNetPlace(){
+  const netEl = document.getElementById('genNet');
+  const boardEl = document.getElementById('board');
+  if (!netEl || !boardEl || !genOverlayEl) return;
+  const b = boardEl.getBoundingClientRect(), o = genOverlayEl.getBoundingClientRect();
+  if (!b.width || !o.width){ netEl.classList.remove('is-placed'); netEl.removeAttribute('style'); return; }
+  netEl.classList.add('is-placed');
+  netEl.style.left = (b.left - o.left) + 'px';
+  netEl.style.top = (b.top - o.top) + 'px';
+  netEl.style.width = b.width + 'px';
+  netEl.style.height = b.height + 'px';
+}
+
 // ---------- "Aan het genereren"-vakje (index.html, #genOverlay) ----------
 // Tijdens het genereren (én bij het openen, vóórdat er een kaart is) faadt de kaart rustig uit en
-// verschijnt in het midden het laadvakje met een planeet en een draaiend maantje. Klaar → het
-// vakje faadt uit en de nieuwe kaart faadt in. De losse voortgangsbalk rechts is weg (gebruikerswens).
+// verschijnt het sterrenbeeld (genNet, hierboven) met eronder de aftellende tijd. Klaar → het
+// netwerk zoomt in, faadt uit en de nieuwe kaart faadt in. De losse voortgangsbalk rechts is weg.
 const genOverlayEl = document.getElementById('genOverlay');
 const mapBoardPanelEl = document.querySelector('.map-board-panel');
 const genLoader = createProgressLoader(genOverlayEl);
 function showGenOverlay(){
+  genNetPlace();
+  if (genNet) genNet.start();
   if (mapBoardPanelEl) mapBoardPanelEl.classList.add('is-generating');
   genLoader.start();
 }
 function hideGenOverlay(){
   if (mapBoardPanelEl) mapBoardPanelEl.classList.remove('is-generating');
   genLoader.stop();
+  if (genNet) genNet.stop();
 }
+window.addEventListener('resize', () => { if (genRunning) genNetPlace(); });
 function hideGenProgress(){
   hideGenOverlay();
   genRunning = false;
@@ -6696,14 +6848,21 @@ async function applyGeneratedLayout(seed){
   const generated = await constrainedShuffleAsync(seed, (found, target) => {
     if (runId !== simRunId) return; // bord intussen op een andere manier gewijzigd
     genLoader.progress(found, target, performance.now() - t0);
+    if (genNet && target) genNet.progress(found / target);
   });
   if (runId !== simRunId){ return; } // verouderd: bord is inmiddels iets anders geworden
-  // ring rustig volmaken, en de oude kaart moet helemaal uitgefaded zijn vóórdat de nieuwe erin
-  // komt — wachten op wat het langst duurt
+  // netwerk afmaken (golf), en de oude kaart moet helemaal uitgefaded zijn vóórdat de nieuwe erin
+  // komt — wachten op wat het langst duurt; daarna zoomt het netwerk in tot bordgrootte
   genLoader.complete();
+  if (genNet) genNet.complete(generated);
   const waited = performance.now() - t0;
-  await genSleep(Math.max(GEN_RING_FILL_MS + 120, GEN_FADE_MS - waited));
+  await genSleep(Math.max(genNet ? GEN_NET_DONE_MS : GEN_RING_FILL_MS + 120, GEN_FADE_MS - waited));
   if (runId !== simRunId){ return; }
+  if (genNet){
+    genNet.reveal();
+    await genSleep(GEN_NET_ZOOM_MS);
+    if (runId !== simRunId){ return; }
+  }
 
   layout = generated;
   selectedSlot = null; highlightTile = null;

@@ -242,8 +242,13 @@ Na een wijziging altijd `python build.py` en dan `dist/axiom9.html` openen.
 Check minimaal:
 1. "Genereer nieuwe map" → willekeurige nieuwe kaart (geen dobbelsteentje meer; het
    seed-veld is alleen-lezen en toont de huidige seed), seed ook rechtsboven. De kaart
-   faadt uit, in het bordvak verschijnt "Aan het genereren" met een voortgangsring en
-   aftellende tijd, daarna faadt de nieuwe kaart in (0,9 s, GEN_FADE_MS). Onder de knoppen
+   faadt uit, in het bordvak verschijnt het **sterrenbeeld** (gekozen variant 8 uit 8, 2026-10;
+   `genNet` in 80-controls.js, blok `.gen-net` in styles.css): één ster per tegelplek, precies
+   over het bord gelegd (`genNetPlace`). Verbindingen groeien mee met de voortgang, soms een rode
+   lijn die terugtrekt (terugsporen), eronder "Aan het genereren" + aftellende tijd. Klaar → golf
+   vanaf Hibernatie op de nieuwe kaart, sterren blauw (kamer) / paars (gang), netwerk zoomt naar
+   bordgrootte, daarna faadt de nieuwe kaart in (0,9 s, GEN_FADE_MS). Alleen transform/opacity
+   (de generator rekent op dezelfde draad). Het simulatievakje houdt de ring + radar. Onder de knoppen
    staat normaal niets; alleen bij een fout (mislukte indeling, kan niet draaien/wisselen)
    een korte rode melding. Niets verschuift tijdens het genereren.
 2. Onbereikbare vakjes (bv. na een tegel-bewerking) krijgen een roze/magenta rand
