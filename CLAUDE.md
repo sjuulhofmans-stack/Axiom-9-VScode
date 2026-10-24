@@ -328,7 +328,8 @@ Check minimaal:
 4. Een tegel over een andere slepen → wisselt om, rood kader = niet toegestaan.
 5. Browserconsole moet leeg zijn.
 6. Paneel Simulatie: het aantal potjes is een **rolteller** (gekozen ontwerp B uit 4, sinds 2026-10):
-   5 rolcijfers (voorloopnullen gedimd), −100/+100 ernaast (ingedrukt houden = steeds sneller,
+   5 rolcijfers (voorloopnullen gedimd; een hoger cijfer komt van BOVEN binnen en 9 → 0 rolt door als
+   een kilometerteller, `simReelMove`: rol = 3x 9..0, beweging is een Web Animation), −100/+100 ernaast (ingedrukt houden = steeds sneller,
    na 12 stappen per 500), pijltjestoetsen op de teller, snelkeuzes 500/1.000/2.000/5.000/10.000
    en een brede startknop. Bron blijft het verborgen veld #simCount (100–20.000, stap 100);
    weergave `simCounterRender`/`simCountSet` in 95-simulate.js, opmaak `.sim-*` bovenin styles.css.

@@ -1772,20 +1772,61 @@ function simCountClamp(n){
   if (!Number.isFinite(n)) n = 2000;
   return Math.max(SIM_COUNT_MIN, Math.min(SIM_COUNT_MAX, Math.round(n / SIM_COUNT_STEP) * SIM_COUNT_STEP));
 }
+// Elke rol = 3x de cijfers 9..0 van boven naar onder, zodat een hoger cijfer van BOVEN binnenkomt en
+// 9 → 0 gewoon doorrolt (als een kilometerteller) i.p.v. de hele rol terug (gebruikerswens 2026-10).
+// Per cijfer het getoonde cijfer (simReelPos); in rust staat de rol altijd in de middelste ronde, de
+// beweging zelf is een Web Animation vanaf waar de rol op dat moment is.
+const SIM_REEL_CELLS = 30, SIM_REEL_MS = 450;
+const simReelPos = new Array(SIM_COUNT_DIGITS).fill(null);
+const simReelAnims = new Array(SIM_COUNT_DIGITS).fill(null);
+let simCounterLast = null;
 if (simDigitsEl){
+  const cells = Array.from({ length: SIM_REEL_CELLS }, (_, j) => `<i>${9 - (j % 10)}</i>`).join('');
   simDigitsEl.innerHTML = Array.from({ length: SIM_COUNT_DIGITS }, () =>
-    `<span class="sim-digit"><span class="sim-reel">${'0123456789'.split('').map(d => `<i>${d}</i>`).join('')}</span></span>`
+    `<span class="sim-digit"><span class="sim-reel">${cells}</span></span>`
   ).join('');
+}
+// rij in de rol → translateY in % van de rol; in rust staat cijfer d op rij 19 - d (middelste ronde)
+const simReelY = (row) => -row * 100 / SIM_REEL_CELLS;
+const simReelRest = (d) => 19 - d;
+function simReelMove(reel, i, digit, dir){
+  const old = simReelPos[i];
+  simReelPos[i] = digit;
+  reel.style.transform = `translateY(${simReelY(simReelRest(digit))}%)`;
+  if (old === null || dir === 0 || old === digit) return;
+  // waar staat de rol nu (een vorige beweging kan nog lopen)? uitrekenen, niet opmeten
+  let fromRow = simReelRest(old);
+  const prev = simReelAnims[i];
+  if (prev && prev.playState === 'running'){
+    const p = prev.effect.getComputedTiming().progress || 0;
+    fromRow = prev._from + (prev._to - prev._from) * p;
+    prev.cancel();
+  }
+  // omhoog tellen = de rol zakt (lager rijnummer, nieuw cijfer komt van boven); omlaag = andersom.
+  // Doel = eerstvolgende rij met dat cijfer in die richting; daarna beide met hele rondes
+  // verschuiven zodat de beweging binnen de 30 rijen blijft.
+  const resid = simReelRest(digit) % 10;
+  let toRow;
+  if (dir > 0){ toRow = fromRow - (((fromRow - resid) % 10) + 10) % 10; if (toRow === fromRow) toRow -= 10; }
+  else { toRow = fromRow + (((resid - fromRow) % 10) + 10) % 10; if (toRow === fromRow) toRow += 10; }
+  const shift = dir > 0 ? -Math.floor(toRow / 10) * 10 : (2 - Math.floor(toRow / 10)) * 10;
+  fromRow += shift; toRow += shift;
+  if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  const a = reel.animate([{ transform:`translateY(${simReelY(fromRow)}%)` }, { transform:`translateY(${simReelY(toRow)}%)` }],
+    { duration: SIM_REEL_MS, easing: 'cubic-bezier(.2,.9,.25,1)' });
+  a._from = fromRow; a._to = toRow;
+  simReelAnims[i] = a;
 }
 function simCounterRender(){
   if (!simCountEl || !simDigitsEl) return;
   const n = simCountClamp(parseInt(simCountEl.value, 10));
   const s = String(n).padStart(SIM_COUNT_DIGITS, '0');
   const lead = SIM_COUNT_DIGITS - String(n).length;
+  const dir = simCounterLast === null ? 0 : Math.sign(n - simCounterLast);
+  simCounterLast = n;
   [...simDigitsEl.children].forEach((d, i) => {
     d.classList.toggle('is-lead', i < lead);
-    // één cijfer = 10% van de rol omhoog
-    d.firstChild.style.transform = `translateY(${-10 * Number(s[i])}%)`;
+    simReelMove(d.firstChild, i, Number(s[i]), dir);
   });
   simDigitsEl.setAttribute('aria-valuenow', String(n));
   simDigitsEl.setAttribute('aria-valuetext', `${n.toLocaleString('nl-NL')} potjes`);

@@ -449,7 +449,8 @@
   }
   /* de "naad" van een rolcijfer, zoals op een ouderwetse teller */
   .sim-digit::after{content:""; position:absolute; left:0; right:0; top:50%; height:1px; background:rgba(0,0,0,.7);}
-  .sim-reel{display:flex; flex-direction:column; transition:transform .45s cubic-bezier(.2,.9,.25,1); will-change:transform;}
+  /* beweging = Web Animation (simReelMove in 95-simulate.js), geen transition */
+  .sim-reel{display:flex; flex-direction:column; will-change:transform;}
   .sim-reel i{
     height:58px; display:grid; place-items:center; font-style:normal;
     font-family:var(--font-display); font-weight:700; font-size:40px; color:var(--amber);
@@ -472,7 +473,6 @@
   /* zelfde tekst als de andere hoofdknoppen (gewone button.primary, maat van "Start spel" =
      .walk-lobby-start) — gebruikersmelding: hoofdletters/spatiëring week af van de rest */
   button.sim-go{width:100%; padding:13px;}
-  @media (prefers-reduced-motion: reduce){ .sim-reel{transition:none;} }
   @media (max-width: 420px){ .sim-digit{width:30px;} button.sim-step{width:40px;} }
   /* verplicht-veld-fout (nu alleen #mpHostName, zie mpHostCreate in 99-multiplayer.js) — rode
      rand + gloed i.p.v. de normale amber-focusring, generiek genoeg voor hergebruik elders. */
