@@ -4158,32 +4158,43 @@
 
   /* ---------- PORTALEN (Portaalkanon, 5e energie-actie, 2026-10) ----------
      Een portaal per kleur als kind van het vakje (walkPaintPortals in 96-walk.js): blauw en rood.
-     Ontwerp "Ovale poort" (gekozen variant 2 uit 10, 2026-10, artifact "Axiom-9 Portaalontwerpen"):
-     een staande ovaal zoals in het videospel Portal, met een ademende lichtkern en een zachte gloed.
+     Ontwerp "Gyroscoop" (gekozen variant 16 uit 20, tweede ronde 2026-10, artifact "Axiom-9
+     Portaalvormen"; de ovale poort uit de eerste ronde viel af): twee ringen die samen om een felle
+     kern draaien, met een zachte gloed eromheen. Opbouw zonder extra elementen:
+       .walk-portal::before = gloed (pulst in opacity)
+       b                    = de draaiende houder, met b::before (liggende ring) en b::after (staande ring)
+       .walk-portal::after  = de kern
      Alleen transform/opacity beweegt (Prestatie in CLAUDE.md). Het schot (de komeet, zie
      walkPortalShotFx) en de flits (.walk-portal-burst) zijn Web Animations op transform/opacity.
      pointer-events:none: klikken gaan gewoon naar het vakje. */
   #walkBoard .cell.has-portal, #walkBoard .cell.has-portal-fx{position:relative;}
   .walk-portal{
-    --pcol:#3fa9ff; --pglow:rgba(63,169,255,.55);
-    position:absolute; inset:-22% 14%; border-radius:50%; pointer-events:none; z-index:5;
-    border:max(1.5px, calc(var(--cell, 20px) * .1)) solid var(--pcol); box-shadow:0 0 6px var(--pglow);
+    --pcol:#3fa9ff; --pglow:rgba(63,169,255,.55); --plight:#bfe4ff;
+    --pring:max(2px, calc(var(--cell, 20px) * .11));
+    position:absolute; inset:0; pointer-events:none; z-index:5;
     will-change:transform, opacity;
   }
-  .walk-portal.is-red{--pcol:#ff5a4e; --pglow:rgba(255,90,78,.55);}
-  /* de lichtkern: wit in het midden, naar de rand de kleur van het portaal, ademt in scale */
-  .walk-portal b{
-    position:absolute; inset:7% 14%; border-radius:50%;
-    background:radial-gradient(ellipse at 50% 50%, #fff 0, var(--pcol) 35%, rgba(0,0,0,.6) 75%);
-    opacity:.8; animation:portalBreathe 2.2s ease-in-out infinite; will-change:transform;
-  }
-  .walk-portal::after{
-    content:''; position:absolute; inset:-6% -14%; border-radius:50%;
+  .walk-portal.is-red{--pcol:#ff5a4e; --pglow:rgba(255,90,78,.55); --plight:#ffd0ca;}
+  .walk-portal::before{
+    content:''; position:absolute; inset:-30%; border-radius:50%;
     background:radial-gradient(closest-side, var(--pglow), transparent);
-    animation:portalGlow 2.2s ease-in-out infinite; will-change:opacity;
+    animation:portalGlow 2s ease-in-out infinite; will-change:opacity;
   }
-  @keyframes portalBreathe{ 0%,100%{ transform:scale(.92); } 50%{ transform:scale(1.06); } }
-  @keyframes portalGlow{ 0%,100%{ opacity:.25; } 50%{ opacity:.85; } }
+  .walk-portal b{
+    position:absolute; inset:-12%;
+    animation:portalGyro 3s linear infinite; will-change:transform;
+  }
+  .walk-portal b::before, .walk-portal b::after{
+    content:''; position:absolute; inset:0; border-radius:50%;
+  }
+  .walk-portal b::before{border:var(--pring) solid var(--pcol); transform:scaleY(.42);}
+  .walk-portal b::after{border:var(--pring) solid var(--plight); transform:scaleX(.42);}
+  .walk-portal::after{
+    content:''; position:absolute; inset:31%; border-radius:50%;
+    background:radial-gradient(closest-side, #fff, var(--pcol) 70%); box-shadow:0 0 6px var(--pcol);
+  }
+  @keyframes portalGyro{ to{ transform:rotate(360deg); } }
+  @keyframes portalGlow{ 0%,100%{ opacity:.5; } 50%{ opacity:1; } }
   /* het schot: komeet (kop + staart), elk lichtje zo groot als een vakje en verschoven in % daarvan */
   .walk-portal-comet{
     position:absolute; inset:0; border-radius:50%; pointer-events:none; z-index:9; opacity:0;

@@ -271,8 +271,9 @@ aangeroepen (functiedeclaraties worden gehoist, `const`/`let` niet).
   (`botPortalShot`); de Slim-bot alleen als het meer oplevert dan een sprint (`botSmartPick`).
   Bord: `walkPaintPortals`/`walkPortalShotFx`/`walkPortalJumpFx` (96-walk.js), opmaak blok
   PORTALEN onderaan styles.css (alleen transform/opacity). Uiterlijk gekozen uit 10 + 10
-  varianten (artifact "Axiom-9 Portaalontwerpen", 2026-10): portaal = **ovale poort** (staande
-  ovaal, ademende lichtkern), schot = **komeet** (kop + staart van 6 lichtjes, rechte lijn naar de
+  varianten (artifact "Axiom-9 Portaalontwerpen", 2026-10): portaal = **gyroscoop** (tweede
+  ronde, variant 16 uit 20, artifact "Axiom-9 Portaalvormen": twee ringen die samen om een felle
+  kern draaien; de ovale poort uit de eerste ronde viel af), schot = **komeet** (kop + staart van 6 lichtjes, rechte lijn naar de
   muur, 2 schokgolven, portaal ploft open), bewust LANGZAAM (gebruikerswens: "zodat je echt goed
   ziet wat er gebeurt"): 130 ms per vakje, 0,7–1,7 s, op de snelste Automatisch-standen ×0,45
   (`PORTAL_COMET_MS_PER_CELL`). De komeet meet niets op: elk lichtje is een vakje groot en schuift
