@@ -277,8 +277,7 @@ function resolveEnergyJump(graph, fromKey, range, targetKey, occupiedSet){
 }
 
 // Wisselt alleen als de volgende opdracht in je stapel AANTOONBAAR dichterbij ligt dan de
-// huidige. Dat mag, want bij allebei de doelwissels bekijk je eerst je volgende kaart:
-// Herkalibratie (gratis kaart) en Herprioritering (energie, zie botWantsReorderPeek).
+// huidige. Dat mag, want bij Herprioritering bekijk je eerst je volgende kaart (zie botWantsReorderPeek).
 function energyReorderTarget(graph, player, fromKey){
   const curLabel = player.order[player.nextIdx];
   const altLabel = player.order[player.nextIdx + 1];
@@ -712,7 +711,10 @@ function useActionCard(player, id, deck, extra){
   if (i === -1) return;
   player.cards.splice(i, 1);
   deck.discard.push(id);
-  if (extra) extra.cardUses[id]++;
+  if (extra){
+    extra.cardUses[id]++;
+    (player.playedKinds || (player.playedKinds = new Set())).add(id);   // voor "Wint wie hem speelt?"
+  }
   if (player.stats){   // afleggen corrigeert dit (soloDiscardCard)
     player.stats.cardsPlayed++;
     if (player.stats.cardUse) player.stats.cardUse[id] = (player.stats.cardUse[id] || 0) + 1;
@@ -1180,8 +1182,8 @@ function pickEnd(graph, layersKeys, layersParent, layersBanked, step, targets, o
 // (vrijwel altijd 0 of 1).
 // `endBlockedSet` (optioneel) is de verzameling vakjes waar je wel DOORHEEN mag maar niet op
 // mag EINDIGEN — alleen gebruikt door Blinde Vlek. Geeft null terug als er met die beperking
-// geen zet mogelijk is. `allowUturn` (Snelroute) zet de geen-U-turn-regel deze zet uit.
-function resolveMove(graph, startKey, steps, occupiedSet, targets, rand, endBlockedSet, allowUturn){
+// geen zet mogelijk is.
+function resolveMove(graph, startKey, steps, occupiedSet, targets, rand, endBlockedSet){
   const { adjKey, adjDir } = graph;
   const layersKeys = [[startKey]], layersDirs = [[-1]], layersParent = [[]], layersBanked = [[0]];
   let wasBlocked = false;
@@ -1203,7 +1205,7 @@ function resolveMove(graph, startKey, steps, occupiedSet, targets, rand, endBloc
       const neigh = adjKey[ck], dirs = adjDir[ck];
       for (let j = 0; j < neigh.length; j++){
         const d = dirs[j];
-        if (!allowUturn && cd !== -1 && d === (cd + 2) % 4) continue; // geen U-turn (tenzij Snelroute)
+        if (cd !== -1 && d === (cd + 2) % 4) continue; // geen U-turn
         const nk = neigh[j];
         if (occupiedSet.has(nk)){ wasBlocked = true; continue; } // bezet vakje blokkeert
         // eerstvolgende nog openstaande opdracht geraakt: telt mee, maar de beurt loopt door met
@@ -1335,6 +1337,12 @@ function recordGameEndStats(players, halfway, extra){
     extra.comebackGames++;
   }
   if (players.some(p => p.longestSearch >= SIM_LONG_SEARCH)) extra.gamesWithLongSearch++;
+  // per kristal: hoe vaak won een speler die hem dit potje minstens één keer speelde?
+  for (const p of players){
+    if (!p.playedKinds) continue;
+    const won = rankOverlapFraction(p.rank, p.rankShare || 1, 1);
+    for (const id of p.playedKinds){ extra.cardWin[id].games++; extra.cardWin[id].wins += won; }
+  }
 }
 
 // speelt één potje; telt onderweg mee in `heatmap` (bezoeken per cel), `questStats`
@@ -1386,13 +1394,10 @@ function simulateOneGame(graph, rand, heatmap, questStats, extra){
       player.ownTurns = (player.ownTurns || 0) + 1;   // per-beurt-keuzes van de bot (botPortalWanted)
       // Energie-acties en kaarten hebben ELK hun eigen actie-slot per beurt (max 1 van elk) —
       // vroeger deelden ze één gezamenlijk slot ("hooguit 1 actie per beurt, kaart of energie").
-      // Drie kaarten hebben echter een GRATIS variant van een energie-actie (Stuwlading↔Stuwstoot:
-      // allebei een 3e loopsteen; Herkalibratie↔Herprioritering: allebei dezelfde
-      // energyReorderTarget()-swap; Blinde Vlek↔Noodtransport: allebei een uitweg uit een
-      // blokkade) — die drie blijven elkaar binnen hún ene bewegingsmoment uitsluiten (kaart gaat
-      // voor, is gratis), ook al staan ze nu op verschillende sloten. Zonder die uitsluiting zou
-      // je bv. gratis Herkalibratie én betaalde Herprioritering in dezelfde beurt kunnen stapelen
-      // voor een dubbele/onzinnige swap.
+      // Drie kristallen zijn een GRATIS variant van een energie-actie (Stuwlading↔Stuwstoot:
+      // allebei een 3e loopsteen; laarzen-kristal↔laarzen: één sprint; Portaalsleutel↔Portaalkanon:
+      // één portaalschot) — die blijven elkaar binnen hún ene moment uitsluiten (kristal gaat voor,
+      // is gratis), ook al staan ze op verschillende sloten.
       let energyActionUsed = false;   // hooguit 1 energie-actie per beurt
       let energyUsedId = null;        // welke energie-actie deze beurt (voor de statistiek)
       let cardActionUsed = false;     // hooguit 1 kaart spelen per beurt
@@ -1488,7 +1493,6 @@ function simulateOneGame(graph, rand, heatmap, questStats, extra){
       }
       // 2. doel bepalen: Herprioritering (betaald, energie) kan je doel wisselen
       let targetLabel = player.order[player.nextIdx];
-      let targetSwapped = false;
       if (!cardActionUsed && player.cards.includes('shove')){
         const shove = pickShoveMove(graph, players, pIdx, rand);
         if (shove){
@@ -1499,7 +1503,7 @@ function simulateOneGame(graph, rand, heatmap, questStats, extra){
       }
       // Herprioritering: betalen, volgende kaart bekijken, wisselen als die dichterbij ligt.
       // Je betaalt ook als wisselen niets oplevert (zie botWantsReorderPeek).
-      if (!targetSwapped && !energyActionUsed && botStrategyNow(graph, player) === 'reorder' && player.energy >= ENERGY_ACTIONS.reorder.cost
+      if (!energyActionUsed && botStrategyNow(graph, player) === 'reorder' && player.energy >= ENERGY_ACTIONS.reorder.cost
           && botWantsReorderPeek(graph, player, player.pos)){
         player.energy -= ENERGY_ACTIONS.reorder.cost;
         player.actionUses++;
@@ -2459,11 +2463,18 @@ function renderSimResults({ n, stuckCount, startWins, startTurnsSum, startRanks,
   }
 
   // ---------- beloningskaarten ----------
+  // Winst% van wie het kristal speelde: 25% is gemiddeld (4 spelers). Boven 31% = verdacht sterk,
+  // onder 19% = zwak. Let op: wie vooraan ligt krijgt vaker kristallen (elke opdracht levert er een
+  // op), dus alle kristallen zitten wat boven de 25%; het gaat om de uitschieters.
   const cardRows = ACTION_CARD_IDS.map(id => {
     const act = ACTION_CARDS[id];
     const uses = extra.cardUses[id];
     const perGame = played ? (uses / played) : 0;
-    return `<tr><td>${act.name} <span class="sub">${act.hint}</span></td><td class="num">${nl(perGame, 2)}</td></tr>`;
+    const w = extra.cardWin[id];
+    const winPct = w.games ? w.wins / w.games * 100 : 0;
+    const tag = !w.games ? '—' : winPct > 31 ? '<span class="bad">✕ te sterk</span>'
+      : winPct < 19 ? '<span style="color:var(--amber)">≈ zwak</span>' : '<span class="ok">✓ in balans</span>';
+    return `<tr><td>${act.name} <span class="sub">${act.hint}</span></td><td class="num">${nl(perGame, 2)}</td><td class="num">${w.games ? nl(winPct, 1) + '%' : '—'}</td><td>${tag}</td></tr>`;
   }).join('');
   const drawsPerGame = played ? (extra.cardDraws / played) : 0;
   const handFullPct = extra.cardDraws + extra.handFullOnBank
@@ -2472,10 +2483,11 @@ function renderSimResults({ n, stuckCount, startWins, startTurnsSum, startRanks,
   const actionCellHandFullPct = extra.actionCellDraws + extra.handFullOnActionCell
     ? (extra.handFullOnActionCell / (extra.actionCellDraws + extra.handFullOnActionCell) * 100) : 0;
   html += simSectionOpen('Kristallen');
-  html += `<p class="hint">Wie een opdracht bereikt krijgt een kristal uit een gedeelde stapel van ${ACTION_CARD_IDS.length * 2} (2 van elk van de ${ACTION_CARD_IDS.length} soorten), tenzij de kluis al vol is (max ${ACTION_CARD_HAND_MAX}). Gemiddeld <b>${nl(drawsPerGame, 1)}</b> kristallen gekregen per potje via opdrachten (alle 4 spelers samen); <b>${nl(handFullPct, 1)}%</b> van die kansen ging verloren aan een volle kluis.</p>`;
+  const deckSize = ACTION_CARD_IDS.reduce((n, id) => n + actionCardCopies(id), 0);
+  html += `<p class="hint">Wie een opdracht bereikt krijgt een kristal uit een gedeelde stapel van ${deckSize} (${ACTION_CARD_IDS.length} soorten, van elk 2, Portaalsleutel ${actionCardCopies('portalkey')}), tenzij de kluis al vol is (max ${ACTION_CARD_HAND_MAX}). Gemiddeld <b>${nl(drawsPerGame, 1)}</b> kristallen gekregen per potje via opdrachten (alle 4 spelers samen); <b>${nl(handFullPct, 1)}%</b> van die kansen ging verloren aan een volle kluis.</p>`;
   html += `<p class="hint">Elke gangtegel heeft ook een <b>kristalvakje</b>: loop je daar overheen (je beurt stopt er niet voor), dan krijg je er net zo een kristal bij — hooguit 1x per beurt, ook als je meerdere van deze vakjes passeert. Gemiddeld <b>${nl(actionCellDrawsPerGame, 1)}</b> kristallen gekregen per potje via kristalvakjes; <b>${nl(actionCellHandFullPct, 1)}%</b> van die kansen ging verloren aan een volle kluis.</p>`;
-  html += `<table class="sim-table"><thead><tr><th>Kristal</th><th>Keer gebruikt per potje</th></tr></thead><tbody>${cardRows}</tbody></table>`;
-  html += `<p class="hint">Prioriteitspas heeft in deze simulatie geen mechanisch effect (het is pure informatie voor een mens aan tafel) en wordt daarom nooit ingezet — 0,00 hierboven is dus verwacht, niet een bug. Een getrokken Prioriteitspas bezet wel een handslot tot het potje afloopt.</p>`;
+  html += `<table class="sim-table"><thead><tr><th>Kristal</th><th>Keer gebruikt per potje</th><th>Wint wie hem speelt</th><th>Oordeel</th></tr></thead><tbody>${cardRows}</tbody></table>`;
+  html += `<p class="hint">"Wint wie hem speelt": van de spelers die dit kristal in een potje minstens één keer gebruikten, het deel dat dat potje won. Gemiddeld is 25%. Wie vooroploopt krijgt vaker kristallen, dus iets erboven is normaal; boven 31% is een kristal waarschijnlijk te sterk, onder 19% te zwak.</p>`;
 
   html += simSectionOpen('Energie');
   html += `<p class="hint">De energiesteen (<b>${ENERGY_DIE_FACES.map(f => f || '–').join(' ')}</b>) rolt elke beurt mee, gemiddeld <b>${nl(energyPerTurn, 2)}</b> per beurt, met een plafond van <b>${ENERGY_MAX}</b>. Wat je gooit, kun je pas volgende beurt uitgeven. Onderstaande cijfers zijn over de ${ENERGY_STRATEGIES.length} bot-strategieën samen (${ENERGY_STRATEGIES.map(id => ENERGY_ACTIONS[id].name).join(' / ')}) — "Geen energie" telt hier niet mee, want die speler komt in het echt niet voor.</p>`;
@@ -2592,13 +2604,13 @@ function runSimulationBatch(){
       const seatWins = [0, 0, 0, 0];
       const gameLengths = [];
       const heatmap = new Int32Array(graph.N);
-      const cardUses = {};
-      for (const id of ACTION_CARD_IDS) cardUses[id] = 0;
+      const cardUses = {}, cardWin = {};
+      for (const id of ACTION_CARD_IDS){ cardUses[id] = 0; cardWin[id] = { games: 0, wins: 0 }; }
       const extra = {
         totalTurns: 0, blockedTurns: 0, winGapSum: 0, winGapCount: 0, nailBiters: 0,
         energyRolled: 0, energyWasted: 0,
         energyLevels: new Int32Array(ENERGY_MAX + 1),   // hoe vaak stond een speler op N energie
-        cardDraws: 0, handFullOnBank: 0, cardUses,
+        cardDraws: 0, handFullOnBank: 0, cardUses, cardWin,
         actionCellDraws: 0, handFullOnActionCell: 0,
         // "Wat levert een energie-actie op?" — per actie: keer ingezet, beurten met een gehaalde
         // opdracht, verplaatste vakjes (sprint/sprong) of extra steen (Stuwstoot), direct op de

@@ -40,7 +40,10 @@ function rulesSections(){
   const hand = typeof ACTION_CARD_HAND_MAX !== 'undefined' ? ACTION_CARD_HAND_MAX : 3;
   const eMax = typeof ENERGY_MAX !== 'undefined' ? ENERGY_MAX : 10;
   const faces = (typeof ENERGY_DIE_FACES !== 'undefined' ? ENERGY_DIE_FACES : [0, 1, 1, 2, 2, 3]).join(', ');
-  const nCrystalKinds = typeof ACTION_CARD_IDS !== 'undefined' ? ACTION_CARD_IDS.length : 18;
+  const nCrystalKinds = ACTION_CARD_IDS.length;
+  const deckSize = ACTION_CARD_IDS.reduce((n, id) => n + actionCardCopies(id), 0);
+  const extraCopies = ACTION_CARD_IDS.filter(id => actionCardCopies(id) !== 2)
+    .map(id => `${ACTION_CARDS[id].name} ${actionCardCopies(id)}`).join(', ');
 
   const energyRows = Object.entries(ENERGY_ACTIONS)
     .filter(([id]) => id !== 'none')
@@ -80,7 +83,7 @@ function rulesSections(){
       <ul class="rules-list">
         <li>Iedereen schudt zijn eigen <b>9 opdrachtkaarten</b> en legt ze gedekt neer.</li>
         <li>Je eerste opdracht blijft geheim tot jij je startvak mag kiezen.</li>
-        <li>De <b>kristallen</b> vormen één gedeelde, geschudde stapel: ${nCrystalKinds} soorten, van elk 2.</li>
+        <li>De <b>kristallen</b> vormen één gedeelde, geschudde stapel van ${deckSize}: ${nCrystalKinds} soorten, van elk 2${extraCopies ? ` (${extraCopies})` : ''}.</li>
         <li>Leg het <b>blauwe</b> en het <b>rode portaal</b> op twee gewone vakjes, minstens ${typeof PORTAL_START_MIN_DIST !== 'undefined' ? PORTAL_START_MIN_DIST : 16} stappen uit elkaar.</li>
         <li>Iedereen begint met <b>0 energie</b> en een lege kluis.</li>
       </ul>` },
@@ -137,7 +140,7 @@ function rulesSections(){
         <li>Er liggen altijd twee portalen op het bord: een <b>blauwe</b> en een <b>rode</b>. Ze zijn van iedereen.</li>
         <li>Stap je in een portaal, dan kom je uit het andere en <b>stopt je zet</b> daar. De rest van je worp vervalt.</li>
         <li>Staat er een pion op een van de twee portalen, dan werkt het paar niet.</li>
-        <li>Met de energie-actie <b>Portaalkanon</b> verplaats je een portaal. Het vliegt rechtdoor tot de muur of tot vóór een pion.</li>
+        <li>Met de energie-actie <b>Portaalkanon</b> of het kristal <b>Portaalsleutel</b> verplaats je een portaal. Het vliegt rechtdoor tot de muur of tot vóór een pion. Hooguit één schot per beurt.</li>
         <li>Je kiest zelf welke kleur je verplaatst, ook als een ander hem legde.</li>
         <li>Een portaal landt nooit op een opdracht-, start- of kristalvakje.</li>
         <li>Noodtransport, de laarzen en duwkaarten gaan gewoon over een portaal heen.</li>
@@ -182,7 +185,7 @@ function rulesCrystalTable(){
       ${groups[tint].map(id => {
         const c = ACTION_CARDS[id];
         return `<div class="rules-crystal-row"><span class="rules-hex"></span>
-          <span class="rules-crystal-name">${c.name}</span>
+          <span class="rules-crystal-name">${c.name}${actionCardCopies(id) !== 2 ? ` <small>${actionCardCopies(id)}×</small>` : ''}</span>
           <span class="rules-crystal-when">${CRYSTAL_WHEN[c.when] || ''}</span>
           <span class="rules-crystal-text">${c.text}</span></div>`;
       }).join('')}

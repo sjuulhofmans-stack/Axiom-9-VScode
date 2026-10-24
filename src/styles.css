@@ -1764,9 +1764,17 @@
   }
   .walk-solo-setup-input::placeholder{color:var(--text-dim);}
 
-  /* doelwit kiezen voor Kortsluiting/Duwstoot/Prioriteitspas: dezelfde kaart-knoppenrij als
+  /* doelwit kiezen voor Kortsluiting/Duwstoot/Energielek e.d.: dezelfde kaart-knoppenrij als
      de richtingskeuze bij Zwaartekracht-laarzen, maar dan met tegenstanders als opties */
   .walk-target-picker{display:flex; flex-direction:column; gap:8px; margin:10px 0 0;}
+  /* Zelf kiezen (soloEnterDiePick): per steen een rij met de waarden 1-6, de huidige uitgegrijsd */
+  .die-pick-row{display:flex; align-items:center; gap:5px; margin-top:8px;}
+  .die-pick-label{flex:0 0 84px; font-size:14px; color:var(--text-dim);}
+  .die-pick-label b{color:#fff;}
+  .die-pick-btn{flex:1 1 0; min-width:0; height:34px; border-radius:6px; border:1px solid var(--line);
+    background:var(--panel-2); color:var(--text); font-family:var(--font-mono); font-size:15px; cursor:pointer;}
+  .die-pick-btn:hover:not(:disabled){border-color:var(--quest); color:#fff;}
+  .die-pick-btn.is-current{opacity:.35; cursor:default;}
   .walk-target-picker-hint{font-family:var(--font-mono); font-size:11.5px; color:var(--text-dim);}
 
   /* stappenteller tijdens het lopen in de solo-modus, naast de dobbelstenen in .walk-hud —
@@ -2262,8 +2270,7 @@
   }
 
   /* ---------- kaart-illustraties ---------- */
-  /* tint-kleur per kaarttype: amber=beweging, groen=energie, blauw=nut, rood=verstoring,
-     gedimd=puur informatief (Prioriteitspas) */
+  /* tint-kleur per kaarttype: amber=beweging, groen=energie, blauw=nut, rood=verstoring */
   .action-card--amber{ --card-tint: var(--amber); --card-glow: rgba(255,181,69,.35); }
   .action-card--start{ --card-tint: var(--start); --card-glow: rgba(85,214,138,.35); }
   .action-card--quest{ --card-tint: var(--quest); --card-glow: rgba(79,184,224,.35); }
@@ -4115,31 +4122,42 @@
   }
 
   /* ---------- PORTALEN (Portaalkanon, 5e energie-actie, 2026-10) ----------
-     Een ring per portaal als kind van het vakje (walkPaintPortals in 96-walk.js): blauw en rood.
-     Alleen transform/opacity beweegt (Prestatie in CLAUDE.md): de draaikolk draait, de gloed pulst
-     in opacity. Het schot (.walk-portal-beam) en de flits (.walk-portal-burst) zijn Web Animations
-     op transform/opacity. pointer-events:none: klikken gaan gewoon naar het vakje. */
+     Een portaal per kleur als kind van het vakje (walkPaintPortals in 96-walk.js): blauw en rood.
+     Ontwerp "Ovale poort" (gekozen variant 2 uit 10, 2026-10, artifact "Axiom-9 Portaalontwerpen"):
+     een staande ovaal zoals in het videospel Portal, met een ademende lichtkern en een zachte gloed.
+     Alleen transform/opacity beweegt (Prestatie in CLAUDE.md). Het schot (de komeet, zie
+     walkPortalShotFx) en de flits (.walk-portal-burst) zijn Web Animations op transform/opacity.
+     pointer-events:none: klikken gaan gewoon naar het vakje. */
   #walkBoard .cell.has-portal, #walkBoard .cell.has-portal-fx{position:relative;}
   .walk-portal{
     --pcol:#3fa9ff; --pglow:rgba(63,169,255,.55);
-    position:absolute; inset:-14% -4%; border-radius:50%; pointer-events:none; z-index:5;
-    border:2px solid var(--pcol); box-shadow:0 0 6px var(--pglow), inset 0 0 4px var(--pglow);
-    background:radial-gradient(closest-side, rgba(0,0,0,.65), rgba(0,0,0,.2) 70%, transparent);
-    overflow:hidden;
+    position:absolute; inset:-22% 14%; border-radius:50%; pointer-events:none; z-index:5;
+    border:max(1.5px, calc(var(--cell, 20px) * .1)) solid var(--pcol); box-shadow:0 0 6px var(--pglow);
+    will-change:transform, opacity;
   }
   .walk-portal.is-red{--pcol:#ff5a4e; --pglow:rgba(255,90,78,.55);}
+  /* de lichtkern: wit in het midden, naar de rand de kleur van het portaal, ademt in scale */
   .walk-portal b{
-    position:absolute; inset:8%; border-radius:50%;
-    background:conic-gradient(from 0deg, transparent 0 20%, var(--pcol) 30%, transparent 45% 70%, var(--pcol) 80%, transparent 95%);
-    opacity:.75; animation:portalSwirl 2.6s linear infinite; will-change:transform;
+    position:absolute; inset:7% 14%; border-radius:50%;
+    background:radial-gradient(ellipse at 50% 50%, #fff 0, var(--pcol) 35%, rgba(0,0,0,.6) 75%);
+    opacity:.8; animation:portalBreathe 2.2s ease-in-out infinite; will-change:transform;
   }
   .walk-portal::after{
-    content:''; position:absolute; inset:0; border-radius:50%;
+    content:''; position:absolute; inset:-6% -14%; border-radius:50%;
     background:radial-gradient(closest-side, var(--pglow), transparent);
-    animation:portalGlow 1.9s ease-in-out infinite; will-change:opacity;
+    animation:portalGlow 2.2s ease-in-out infinite; will-change:opacity;
   }
-  @keyframes portalSwirl{ to{ transform:rotate(360deg); } }
-  @keyframes portalGlow{ 0%,100%{ opacity:.25; } 50%{ opacity:.8; } }
+  @keyframes portalBreathe{ 0%,100%{ transform:scale(.92); } 50%{ transform:scale(1.06); } }
+  @keyframes portalGlow{ 0%,100%{ opacity:.25; } 50%{ opacity:.85; } }
+  /* het schot: komeet (kop + staart), elk lichtje zo groot als een vakje en verschoven in % daarvan */
+  .walk-portal-comet{
+    position:absolute; inset:0; border-radius:50%; pointer-events:none; z-index:9; opacity:0;
+    background:radial-gradient(closest-side, #fff, #3fa9ff 55%, transparent);
+    will-change:transform, opacity;
+  }
+  .walk-portal-comet.is-tail{background:radial-gradient(closest-side, #8fd2ff, rgba(63,169,255,.5) 55%, transparent);}
+  .walk-portal-comet.is-red{background:radial-gradient(closest-side, #fff, #ff5a4e 55%, transparent);}
+  .walk-portal-comet.is-red.is-tail{background:radial-gradient(closest-side, #ffb0a6, rgba(255,90,78,.5) 55%, transparent);}
   /* staat er een pion op het portaal, dan blijft de pion zichtbaar: ring iets lichter */
   #walkBoard .cell.walk-pawn > .walk-portal{opacity:.7;}
   .walk-portal-burst, .walk-portal-beam{

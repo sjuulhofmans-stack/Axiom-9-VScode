@@ -984,8 +984,7 @@ function mpHostStartGame(){
       // myTurn: eigen beurtenteller (zie soloBeginHumanTurn/soloResolveBotTurn) — ontbrak hier,
       // waardoor "beurt" en "wint in N beurten" in multiplayer NaN werden
       nextIdx: 0, completed: 0, myTurn: 0, energy: 0, cards: [], rank: 0, doneCells: [],
-      condenserPending: false, lockedNextTurn: false, rollPenalty: 0, barrierCell: null,
-      reorderBlocked: false, lastDir: -1,
+      condenserPending: false, lockedNextTurn: false, rollPenalty: 0,
       // bots denken zelf na welke energie-actie nu slim is, of sparen (botStrategyNow, 95-simulate.js)
       strategy: isHuman ? null : 'smart',
       // startpositie en beurtvolgorde volgen uit het dobbelen aan het begin (soloBeginOpening);
@@ -1310,7 +1309,7 @@ function mpBroadcastState(){
     soloBootsOptions, soloCurrentLegalMoves, soloRoundPos, soloTurnOrder,
     soloPortalOptions, soloPortalAim,
     portals: mpPortalSnapshot(),   // plek + eigenaar van beide portalen: elke gast ziet hetzelfde
-    soloBankCountThisTurn, soloAllowUturn, soloPendingBoost, soloUsedBoots, soloUsedJump,
+    soloBankCountThisTurn, soloPendingBoost, soloUsedBoots, soloUsedJump,
     soloTargetSwapped, soloUsedEnergyId, soloUsedCardId, soloDiscardedCardId,
     soloEnergyRoll, soloEnergyGain, soloBlindOfferAvailable, soloLockedThisTurn,
     soloActionCellDrawnThisTurn, walkScoreOrder, soloDeck: mpPublicDeck(soloDeck),
@@ -1383,7 +1382,6 @@ function mpApplyState(payload){
   soloRoundPos = payload.soloRoundPos;
   soloTurnOrder = payload.soloTurnOrder;
   soloBankCountThisTurn = payload.soloBankCountThisTurn;
-  soloAllowUturn = payload.soloAllowUturn;
   soloPendingBoost = payload.soloPendingBoost;
   soloUsedBoots = payload.soloUsedBoots;
   soloUsedJump = payload.soloUsedJump;
@@ -1560,6 +1558,7 @@ const MP_INTENT_HANDLERS = {
   playCard: (a) => soloPlayCard(a.id),
   discardCard: (a) => soloDiscardCard(a.id),
   resolveTarget: (a) => soloResolveTargetCard(a.cardId, a.targetIdx),
+  pickDie: (a) => soloResolveDiePick(a.die, a.value),
   resolveBoots: (a) => soloResolveBoots(a.dir),
   portalAim: (a) => soloResolvePortalAim(a.dir),
   portalColor: (a) => soloResolvePortalColor(a.color),

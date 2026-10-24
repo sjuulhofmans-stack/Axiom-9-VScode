@@ -371,26 +371,72 @@ function walkPortalBurst(graph, key, color, big){
   ], { duration: big ? 520 : 380, easing: 'cubic-bezier(.2,.7,.3,1)' });
   a.onfinish = () => { fx.remove(); if (!cell.querySelector('.walk-portal-burst')) cell.classList.remove('has-portal-fx'); };
 }
-// het schot: een lichtje springt van vakje naar vakje over de vlucht, het oude portaal van die
-// kleur implodeert en het nieuwe ploft open. Geeft een Promise die klaar is als het portaal ligt.
+// Het schot = een KOMEET (gekozen variant 6 uit 10, 2026-10, bewust langzaam: "zodat je echt goed
+// ziet wat er gebeurt"). Volgorde: het oude portaal van die kleur krimpt weg, dan vliegt een
+// lichtbol met een staart van lichtjes in een rechte lijn van de schutter naar de muur, en daar
+// slaan twee schokgolven uit en ploft het portaal open (de aanroeper tekent het daarna met
+// walkPaintPortals; de pop-animatie zit hier). Niets wordt opgemeten (Prestatie in CLAUDE.md):
+// elk lichtje is zo groot als een vakje en schuift in procenten van zichzelf, plus 1px tussenruimte
+// per vakje (#walkBoard gap). Geeft een Promise die klaar is op het moment van de inslag.
+const PORTAL_COMET_MS_PER_CELL = 130;   // vliegtijd per vakje (gebruikerswens: "een stuk langzamer")
+const PORTAL_COMET_TAIL = 6;            // lichtjes in de staart
 function walkPortalShotFx(graph, path, color, fromKey, fast){
-  const stepMs = fast ? 12 : 32;
   return new Promise(resolve => {
+    const reduced = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (!path || path.length < 2 || reduced || typeof Element.prototype.animate !== 'function'){ resolve(); return; }
+    const speed = fast ? 0.45 : 1;
+    const ring = walkPortalEl(color);
+    // 1. het oude portaal krimpt weg (blijft weg tot het op zijn nieuwe plek getekend is)
+    const shrinkMs = Math.round(380 * speed);
+    const shrink = ring.parentNode ? ring.animate([{ transform: 'scale(1)', opacity: 1 }, { transform: 'scale(0)', opacity: 0 }],
+      { duration: shrinkMs, easing: 'ease-in', fill: 'forwards' }) : null;
     if (fromKey >= 0 && fromKey !== undefined) walkPortalBurst(graph, fromKey, color, false);
-    path.slice(1).forEach((k, i) => {
-      const cell = walkCellDiv(graph, k);
-      const dot = document.createElement('i');
-      dot.className = 'walk-portal-beam ' + (color ? 'is-red' : 'is-blue');
-      cell.classList.add('has-portal-fx');
-      cell.appendChild(dot);
-      const a = dot.animate([
-        { transform: 'scale(.2)', opacity: 0 },
-        { transform: 'scale(1)', opacity: 1, offset: .3 },
-        { transform: 'scale(.4)', opacity: 0 },
-      ], { duration: 260, delay: i * stepMs, easing: 'ease-out' });
-      a.onfinish = () => { dot.remove(); if (!cell.querySelector('.walk-portal-beam, .walk-portal-burst')) cell.classList.remove('has-portal-fx'); };
-    });
-    setTimeout(resolve, Math.max(0, path.length - 1) * stepMs + 120);
+    // 2. de komeet: kop + staart, elk lichtje vertrekt iets later over dezelfde lijn
+    const from = path[0], to = path[path.length - 1];
+    const dc = (to % graph.W) - (from % graph.W), dr = Math.floor(to / graph.W) - Math.floor(from / graph.W);
+    const cells = Math.abs(dc) + Math.abs(dr);
+    const flyMs = Math.round(Math.max(700, Math.min(1700, cells * PORTAL_COMET_MS_PER_CELL)) * speed);
+    const tailGap = Math.round(60 * speed);
+    const startAt = Math.round(shrinkMs * 0.6);
+    const start = walkCellDiv(graph, from);
+    start.classList.add('has-portal-fx');
+    const tr = (f, s) => `translate(calc(${dc * f * 100}% + ${dc * f}px), calc(${dr * f * 100}% + ${dr * f}px)) scale(${s})`;
+    const lights = [];
+    for (let k = 0; k <= PORTAL_COMET_TAIL; k++){
+      const el = document.createElement('i');
+      el.className = 'walk-portal-comet' + (k ? ' is-tail' : '') + (color ? ' is-red' : '');
+      start.appendChild(el);
+      lights.push(el);
+      const s = k ? 0.95 - k * 0.1 : 1.25, o = k ? 0.8 - k * 0.1 : 1;
+      el.animate([
+        { transform: tr(0, s * 0.4), opacity: 0 },
+        { transform: tr(0.06, s), opacity: o, offset: 0.08 },
+        { transform: tr(1, s), opacity: o, offset: 0.96 },
+        { transform: tr(1, s * 0.6), opacity: 0 },
+      ], { duration: flyMs, delay: startAt + k * tailGap, easing: 'cubic-bezier(.35,.05,.45,1)', fill: 'both' });
+    }
+    const cleanup = () => {
+      for (const el of lights) el.remove();
+      if (!start.querySelector('.walk-portal-comet, .walk-portal-burst')) start.classList.remove('has-portal-fx');
+    };
+    // 3. inslag: schokgolven en het portaal ploft open (na de kop, de staart dooft vanzelf uit)
+    let landed = false;
+    const land = () => {
+      if (landed) return;
+      landed = true;
+      walkPortalBurst(graph, to, color, true);
+      setTimeout(() => walkPortalBurst(graph, to, color, true), Math.round(140 * speed));
+      if (shrink) shrink.cancel();
+      // de aanroeper zet het portaal nu op zijn nieuwe plek; in het volgende beeldje ploft het open
+      requestAnimationFrame(() => ring.animate([
+        { transform: 'scale(0)', opacity: 0 },
+        { transform: 'scale(1.35)', opacity: 1, offset: 0.6 },
+        { transform: 'scale(1)', opacity: 1 },
+      ], { duration: Math.round(460 * speed), easing: 'ease-out' }));
+      setTimeout(cleanup, PORTAL_COMET_TAIL * tailGap + 200);
+      resolve();
+    };
+    setTimeout(land, startAt + flyMs);
   });
 }
 // door een portaal gestapt: flits bij de ingang en bij de uitgang
@@ -1132,9 +1178,6 @@ async function runWalkSimulation(){
     condenserPending: false, // Condensator gespeeld: de VOLGENDE energiesteen telt dubbel
     lockedNextTurn: false,   // getroffen door Vergrendeling: mist volgende beurt energie- én kaartslot
     rollPenalty: 0,          // getroffen door Stroomonderbreking: -N stappen op de eerstvolgende worp
-    barrierCell: null,       // getroffen door Noodbarrière: dit vakje telt als bezet tijdens de eerstvolgende beurt
-    reorderBlocked: false,   // getroffen door Signaalstoring: eerstvolgende doelwissel-poging mislukt
-    lastDir: -1,             // laatst gelopen richting (voor Terugtrekbevel), -1 = nog nooit gelopen
     rank: 0,                // 0 = nog aan het spelen; 1..4 = binnengekomen op die plaats
     doneCells: [],          // opdrachtvakjes die DEZE speler al gehad heeft
   }));
@@ -1183,8 +1226,8 @@ async function runWalkSimulation(){
       player.ownTurns = (player.ownTurns || 0) + 1;   // eigen beurten, voor "wint in N beurten"
       // Energie-acties en kaarten hebben ELK hun eigen actie-slot per beurt (max 1 van elk) —
       // zelfde opzet als simulateOneGame() in 95-simulate.js, zie de uitgebreide toelichting
-      // daar voor de drie paren (Stuwlading/Stuwstoot, Herkalibratie/Herprioritering, Blinde
-      // Vlek/Noodtransport) die elkaar nog wél uitsluiten binnen hún ene bewegingsmoment.
+      // daar voor de paren (Stuwlading/Stuwstoot, laarzen, Portaalsleutel/Portaalkanon) die
+      // elkaar nog wél uitsluiten binnen hún ene bewegingsmoment.
       let energyActionUsed = false;   // hooguit 1 energie-actie per beurt
       let cardActionUsed = false;     // hooguit 1 kaart spelen per beurt
       let actionCellDrawnThisTurn = false;   // hooguit 1 beloningskaart per beurt via een actiekaartvakje
@@ -1231,6 +1274,25 @@ async function runWalkSimulation(){
           cardActionUsed = true; usedCardId = 'short';
         }
       }
+      // Energielek: alleen als er bij een ander genoeg te halen valt (zie simulateOneGame)
+      if (!cardActionUsed && player.cards.includes('leak') && player.energy < ENERGY_MAX){
+        const victim = pickEnergyLeakTarget(players, pIdx, rand);
+        if (victim && victim.energy >= ENERGY_LEAK_AMOUNT){
+          const r = applyEnergyLeak(player, victim);
+          useActionCard(player, 'leak', deck);
+          cardActionUsed = true; usedCardId = 'leak';
+          walkLog(`${player.name} gebruikt <b>Energielek</b> en pakt ${r.taken} energie van ${victim.name}.`, null, player);
+        }
+      }
+      // Dubbele steen: een tweede energiesteen, telt net als de eerste pas na de zet
+      if (!cardActionUsed && player.cards.includes('twin') && botWantsTwinEnergy(player, pendingEnergy)){
+        const second = simRollEnergy(rand);
+        pendingEnergy += second;
+        player.stats.energyRolled += second;
+        useActionCard(player, 'twin', deck);
+        cardActionUsed = true; usedCardId = 'twin';
+        walkLog(`${player.name} gooit met <b>Dubbele steen</b> een tweede energiesteen: ${second}.`, null, player);
+      }
       if (!cardActionUsed && player.cards.includes('ration') && player.energy < ENERGY_MAX){
         simGainEnergy(player, 3);
         useActionCard(player, 'ration', deck);
@@ -1255,58 +1317,10 @@ async function runWalkSimulation(){
           walkLog(`${player.name} gebruikt <b>Stroomonderbreking</b> op ${victim.name}.`, null, player);
         }
       }
-      if (!cardActionUsed && player.cards.includes('barrier')){
-        const occNow = new Set(players.filter(simOnBoard).map(p => p.pos));
-        const target = pickBarrierTarget(graph, players, occNow, pIdx, rand);
-        if (target){
-          target.player.barrierCell = target.cell;
-          useActionCard(player, 'barrier', deck);
-          cardActionUsed = true; usedCardId = 'barrier';
-          walkLog(`${player.name} gebruikt <b>Noodbarrière</b> naast ${target.player.name}.`, null, player);
-        }
-      }
-      if (!cardActionUsed && player.cards.includes('jam')){
-        const victim = pickLeaderTarget(players, pIdx, p => p.reorderBlocked, rand);
-        if (victim){
-          victim.reorderBlocked = true;
-          useActionCard(player, 'jam', deck);
-          cardActionUsed = true; usedCardId = 'jam';
-          walkLog(`${player.name} gebruikt <b>Signaalstoring</b> op ${victim.name}.`, null, player);
-        }
-      }
-      // fase 1c: Kaartenruil (ruilt een nutteloze Prioriteitspas tegen de bovenste aflegkaart) en
-      // Herinnering (schuift Zwaartekracht-laarzen/Stuwlading naar de top van de trekstapel) —
-      // zie de toelichting bij performCardTrade()/performPeekReorder() in 95-simulate.js.
-      if (!cardActionUsed && player.cards.includes('trade') && player.cards.includes('scan') && deck.discard.length){
-        performCardTrade(player, 'scan', deck);
-        useActionCard(player, 'trade', deck);
-        cardActionUsed = true; usedCardId = 'trade';
-      }
-      if (!cardActionUsed && player.cards.includes('peek') && deck.draw.length){
-        performPeekReorder(deck);
-        useActionCard(player, 'peek', deck);
-        cardActionUsed = true; usedCardId = 'peek';
-      }
-
-      // fase 2: doel bepalen — Herkalibratie (kaart, gratis) en Herprioritering (energie, betaald)
-      // doen hetzelfde (energyReorderTarget) en blijven daarom elkaar uitsluiten via
-      // `targetSwapped`; Duwstoot verplaatst een tegenstander, niet jezelf, dus geen conflict
+      // fase 2: doel bepalen — Herprioritering (energie, betaald) kan je doel wisselen; Duwstoot
+      // verplaatst een tegenstander, niet jezelf
       let targetLabel = player.deck[player.nextIdx];
-      let targetSwapped = false;
       const shim = { order: player.deck, nextIdx: player.nextIdx };  // energyReorderTarget() werkt op `order`
-      if (!cardActionUsed && player.cards.includes('recal')){
-        const swapped = energyReorderTarget(graph, shim, player.pos);
-        if (swapped !== null){
-          useActionCard(player, 'recal', deck);
-          cardActionUsed = true; usedCardId = 'recal';
-          targetSwapped = true;
-          if (player.reorderBlocked){
-            player.reorderBlocked = false;
-            applyReorderSwap(shim);   // wissel terugdraaien: gesaboteerd
-            walkLog(`${player.name}'s Herkalibratie wordt gesaboteerd door <b>Signaalstoring</b>.`, null, player);
-          } else targetLabel = swapped;
-        }
-      }
       if (!cardActionUsed && player.cards.includes('shove')){
         const shove = pickShoveMove(graph, players, pIdx, rand);
         if (shove){
@@ -1316,19 +1330,9 @@ async function runWalkSimulation(){
           walkLog(`${player.name} gebruikt <b>Duwstoot</b> op ${shove.player.name}.`, null, player);
         }
       }
-      if (!cardActionUsed && player.cards.includes('recoil')){
-        const occNow = new Set(players.filter(simOnBoard).map(p => p.pos));
-        const push = pickRecoilMove(graph, players, occNow, pIdx);
-        if (push){
-          push.player.pos = push.toKey;
-          useActionCard(player, 'recoil', deck);
-          cardActionUsed = true; usedCardId = 'recoil';
-          walkLog(`${player.name} gebruikt <b>Terugtrekbevel</b> op ${push.player.name}.`, null, player);
-        }
-      }
       // Herprioritering: betalen, volgende kaart bekijken, wisselen als die dichterbij ligt
       // (zie botWantsReorderPeek in 95-simulate.js) — ook betaald als wisselen niets oplevert
-      if (!targetSwapped && !energyActionUsed && botStrategyNow(graph, player) === 'reorder' && player.energy >= ENERGY_ACTIONS.reorder.cost
+      if (!energyActionUsed && botStrategyNow(graph, player) === 'reorder' && player.energy >= ENERGY_ACTIONS.reorder.cost
           && botWantsReorderPeek(graph, shim, player.pos)){
         player.energy -= ENERGY_ACTIONS.reorder.cost;
         player.actionUses++;
@@ -1338,10 +1342,6 @@ async function runWalkSimulation(){
         const swapped = energyReorderTarget(graph, shim, player.pos);
         if (swapped === null){
           walkLog(`${player.name} bekijkt met <b>Herprioritering</b> zijn volgende opdracht en houdt ${before}.`, null, player);
-        } else if (player.reorderBlocked){
-          player.reorderBlocked = false;
-          applyReorderSwap(shim);
-          walkLog(`${player.name}'s Herprioritering wordt gesaboteerd door <b>Signaalstoring</b>.`, null, player);
         } else {
           targetLabel = swapped;
           walkLog(`${player.name} haalt met <b>Herprioritering</b> ${swapped} naar voren (was ${before}).`, null, player);
@@ -1401,14 +1401,9 @@ async function runWalkSimulation(){
         return true;
       }
 
-      // Noodbarrière geldt voor deze ENE beurt en verdwijnt daarna vanzelf, ongeacht of de
-      // speler er daadwerkelijk tegenaan liep.
-      const barrierCellThisTurn = player.barrierCell;
-      player.barrierCell = null;
       const occupiedNow = () => {
         const occ = new Set();
         for (const other of players) if (other.idx !== pIdx && !walkIsIn(other)) occ.add(other.pos);
-        if (barrierCellThisTurn !== null) occ.add(barrierCellThisTurn);
         return occ;
       };
 
@@ -1416,20 +1411,21 @@ async function runWalkSimulation(){
       // kaart), dezelfde keuze als in simulateOneGame (botPreRollMove in 95-simulate.js). Die
       // verplaatsing wordt eerst afgespeeld; een sprong die precies op de opdracht landt
       // beëindigt de beurt, anders gooit de speler daarna vanaf zijn nieuwe plek.
-      let move, d1 = 0, d2 = 0, d3 = null, roll = 0, allowUturn = false, rollPenalty = 0;
+      let move, d1 = 0, d2 = 0, d3 = null, roll = 0, rollPenalty = 0;
       const pre = botPreRollMove(graph, player, occupiedNow(), targets, !energyActionUsed, !cardActionUsed);
       if (pre){
         const namen = ['noorden', 'oosten', 'zuiden', 'westen'];
-        if (pre.kind === 'bootsCard'){
-          useActionCard(player, 'boots', deck);
-          cardActionUsed = true; usedCardId = 'boots';
+        if (pre.kind === 'bootsCard' || pre.kind === 'portalCard'){
+          usedCardId = pre.kind === 'bootsCard' ? 'boots' : 'portalkey';
+          useActionCard(player, usedCardId, deck);
+          cardActionUsed = true;
         } else {
           player.energy -= ENERGY_ACTIONS[pre.kind].cost;
           player.actionUses++;
           energyActionUsed = true; usedEnergyAction = pre.kind;
           statsUseEnergy(player, pre.kind);
         }
-        if (pre.kind === 'portal'){
+        if (preIsPortal(pre)){
           const placed = portalPlace(graph, pre.shot.key, pre.shot.color, pIdx);
           walkLog(walkPortalShotText(player.name, pre.shot, placed.stolen), null, player);
           await walkPortalShotFx(graph, pre.shot.path, pre.shot.color, placed.from, walkSpeed().stepMs < 140);
@@ -1444,7 +1440,7 @@ async function runWalkSimulation(){
         }
         bank.limit = pre.bankedCount;
         if (!await walkPath(pre.path, true)) return;
-        if (pre.kind !== 'jump' && pre.kind !== 'portal') player.stats.dashSteps += pre.path.length - 1;
+        if (pre.kind !== 'jump' && !preIsPortal(pre)) player.stats.dashSteps += pre.path.length - 1;
       }
       const rollTargets = pre ? targets.slice(pre.bankedCount) : targets;
       if (pre && (pre.endsTurn || player.completed + pre.bankedCount >= SIM_QUESTS_TO_WIN)){
@@ -1485,17 +1481,31 @@ async function runWalkSimulation(){
           player.rollPenalty = 0;
           walkLog(`${player.name} verliest ${rollPenalty} stappen door <b>Stroomonderbreking</b> → ${roll}.`, null, player);
         }
-        if (!cardActionUsed && player.cards.includes('fastlane')){
-          allowUturn = true;
-          useActionCard(player, 'fastlane', deck);
-          cardActionUsed = true; usedCardId = 'fastlane';
-        }
         renderWalkDice(d1, d2, energyRoll, false, d3, roll, { key: `auto|${turn}|${pIdx}|${d1}${d2}${d3}`, spinMs: walkSpeed().stepMs < 140 ? 0 : DICE_SPIN_SHORT_MS });
         if (aborted()) return;
         await walkTick(Math.min(500, walkSpeed().rollMs) + (walkSpeed().stepMs < 140 ? 0 : DICE_SPIN_SHORT_MS));
         if (aborted()) return;
 
-        let rollMove = resolveMove(graph, player.pos, roll, occupiedNow(), rollTargets, rand, undefined, allowUturn);
+        let rollMove = resolveMove(graph, player.pos, roll, occupiedNow(), rollTargets, rand);
+        // Zelf kiezen: één steen een andere waarde geven als dat duidelijk beter uitkomt (zie
+        // botPickDieValue in 95-simulate.js)
+        if (!rollMove.bankedQuest && !cardActionUsed && player.cards.includes('pick')){
+          const vals = d3 ? [d1, d2, d3] : [d1, d2];
+          const pk = botPickDieValue(graph, player.pos, vals, rollPenalty, occupiedNow(), rollTargets, rand, rollMove);
+          if (pk){
+            const was = vals[pk.idx];
+            if (pk.idx === 0) d1 = pk.value; else if (pk.idx === 1) d2 = pk.value; else d3 = pk.value;
+            roll = pk.roll;
+            rollMove = pk.move;
+            useActionCard(player, 'pick', deck);
+            cardActionUsed = true; usedCardId = 'pick';
+            walkLog(`${player.name} gebruikt <b>Zelf kiezen</b>: een ${was} wordt een ${pk.value} → ${roll} stappen.`, null, player);
+            renderWalkDice(d1, d2, energyRoll, false, d3, roll, { key: `auto|${turn}|${pIdx}|pk|${d1}${d2}${d3}`, spinMs: 0 });
+            if (aborted()) return;
+            await walkTick(Math.min(500, walkSpeed().rollMs));
+            if (aborted()) return;
+          }
+        }
         // Koerscorrectie: tegenvallende worp overdoen (zie simulateOneGame voor de drempel)
         const dice = d3 ? 3 : 2;
         if (!rollMove.bankedQuest && !cardActionUsed && player.cards.includes('reroll') && roll < dice * 3.5){
@@ -1511,12 +1521,19 @@ async function runWalkSimulation(){
           if (aborted()) return;
           await walkTick(Math.min(500, walkSpeed().rollMs) + (walkSpeed().stepMs < 140 ? 0 : DICE_SPIN_SHORT_MS));
           if (aborted()) return;
-          rollMove = resolveMove(graph, player.pos, roll, occupiedNow(), rollTargets, rand, undefined, allowUturn);
+          rollMove = resolveMove(graph, player.pos, roll, occupiedNow(), rollTargets, rand);
+        }
+        // Zonnezeil: energie gelijk aan de laagste loopsteen, als er ruimte is
+        if (!cardActionUsed && player.cards.includes('solar') && player.energy + pendingEnergy < ENERGY_MAX){
+          const g = simGainEnergy(player, solarGain(d3 ? [d1, d2, d3] : [d1, d2]));
+          useActionCard(player, 'solar', deck);
+          cardActionUsed = true; usedCardId = 'solar';
+          walkLog(`${player.name} gebruikt <b>Zonnezeil</b>: +${g.gained} energie.`, null, player);
         }
         // fase 5: Blinde Vlek (kaart) rekent een geblokkeerde worp opnieuw uit, door
         // tegenstanders heen maar niet erop eindigend (zie simulateOneGame)
         if (!rollMove.bankedQuest && !cardActionUsed && player.cards.includes('blind') && rollMove.wasBlocked){
-          const retry = resolveMove(graph, player.pos, roll, SIM_EMPTY_SET, rollTargets, rand, occupiedNow(), allowUturn);
+          const retry = resolveMove(graph, player.pos, roll, SIM_EMPTY_SET, rollTargets, rand, occupiedNow());
           if (retry && retry.key !== rollMove.key){
             rollMove = retry;
             useActionCard(player, 'blind', deck);
@@ -1530,13 +1547,10 @@ async function runWalkSimulation(){
         player.stats.walkSteps += rollMove.path.length - 1 - pathPortalJumps(graph, rollMove.path);
         move = mergePreRollMove(pre, rollMove);
       }
-      // laatst gelopen richting onthouden — Terugtrekbevel duwt je daar weer langs terug
-      const stepDir = lastStepDirection(graph, move.path);
-      if (stepDir !== -1) player.lastDir = stepDir;
       // de energiesteen van deze beurt telt nu pas bij: volgende beurt uit te geven
       const energyGain = pendingEnergy ? simGainEnergy(player, pendingEnergy) : { gained: 0, wasted: 0 };
 
-      const preNote = !pre ? '' : pre.kind === 'jump' ? '⚡ sprong + ' : pre.kind === 'portal' ? '◎ portaal + ' : '🥾 sprint + ';
+      const preNote = !pre ? '' : pre.kind === 'jump' ? '⚡ sprong + ' : preIsPortal(pre) ? '◎ portaal + ' : '🥾 sprint + ';
       const rollText = roll ? preNote + walkRollText(d1, d2, d3, roll)
         : pre.kind === 'jump' ? '⚡ Noodtransport' : `🥾 ${pre.path.length - 1} vakjes rechtdoor`;
       // beide kunnen nu tegelijk waar zijn (energie-actie EN kaart zijn losse sloten per beurt),

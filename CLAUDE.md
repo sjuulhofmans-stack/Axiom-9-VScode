@@ -95,7 +95,7 @@ aangeroepen (functiedeclaraties worden gehoist, `const`/`let` niet).
 | het tabblad Multiplayer (deelt #tabWalk met Spelen) | `80-controls.js` (`switchTab`, tab `multi`) |
 | de namen van de bots (alle modi)             | `96-walk.js` (`BOT_NAMES`, `pickBotNames`) |
 | het kristalvakje van een gang verplaatsen | tegel-editor in de tool (of `src/data/tiles.json`, labels `4.1`–`4.10`) |
-| een kristal toevoegen / tekst of moment aanpassen | `95-simulate.js`: `ACTION_CARDS` (name/text/when/hint) + `ACTION_CARD_TINTS` + `ACTION_CARD_ICONS` |
+| een kristal toevoegen / tekst of moment aanpassen | `95-simulate.js`: `ACTION_CARDS` (name/text/when/hint) + `ACTION_CARD_TINTS` + `ACTION_CARD_ICONS`; hoeveel er in de stapel zitten in `ACTION_CARD_COPIES` (standaard 2). Daarna de bot-keuze in alle drie de modi (simulateOneGame, 96-walk.js, soloResolveBotTurn) en de mens in `soloPlayCard`/`soloCardBlockReason` (97-solo.js) |
 | hoe een kristal, de kluis of het oprapen eruitziet | `96c-crystals.js` + het kristallen-blok onderaan `styles.css` |
 | de dobbelstenen, de stappenteller of de energiebolletjes | `96d-dice.js` + het dobbelstenen-blok onderaan `styles.css` |
 | de kaders/vlakken tijdens een potje ("zwevende kolommen", gekozen variant 5 uit 6, 2026-10) | blok `SPEELSCHERM "ZWEVENDE KOLOMMEN"` onderaan `styles.css`: spelerskaarten, beide zijkolommen, bord en chat elk één kaart (`--panel`, ronde hoeken, zachte schaduw) op `#070a0e`, alles binnenin plat. Randen houden hun DIKTE (alleen kleur transparent), zodat alle gemeten maten gelijk blijven — gemeten 1920×960 en 1440×780: identiek aan vóór de wijziging |
@@ -150,7 +150,22 @@ aangeroepen (functiedeclaraties worden gehoist, `const`/`let` niet).
   (labels `2.1`–`2.9`); wie als eerste 6 opdrachten voltooit wint. Draait altijd
   op de indeling die op dat moment in de tool staat.
 - **Naam op het scherm: "kristal(len)"**, niet meer "actiekaart" (sinds 2026-10; de speler
-  bewaart ze in zijn "kluis", max 3). In de code heten ze nog `ACTION_CARDS`, `p.cards`,
+  bewaart ze in zijn "kluis", max 3).
+  **De set (2026-10, gekozen door de maker)**: 15 soorten, van elk 2, Portaalsleutel 5 = 33.
+  Beweging: Zwaartekracht-laarzen, Stuwlading, Koerscorrectie. Energie: Noodrantsoen,
+  Condensator, Energielek (pak 2 van een ander), Dubbele steen (2 energiestenen), Zonnezeil
+  (energie = laagste loopsteen). Nut: Blinde Vlek, Portaalsleutel (gratis Portaalkanon, één
+  portaalschot per beurt), Zelf kiezen (één loopsteen een waarde naar keuze; mens kiest in het
+  kristalvak, fase 'die-pick', multiplayer-intent 'pickDie'). Verstoring: Kortsluiting,
+  Duwstoot, Vergrendeling, Stroomonderbreking. **Weggehaald, niet terugzetten zonder de maker**:
+  Snelroute, Herkalibratie, Kristalruil, Vooruitblik, Prioriteitspas, Noodbarrière,
+  Terugtrekbevel (= dubbel met Duwstoot), Signaalstoring. Bot-keuzes voor de nieuwe zitten in
+  gedeelde functies in 95-simulate.js (`pickEnergyLeakTarget`, `botWantsTwinEnergy`,
+  `botPickDieValue`; Portaalsleutel via `botPreRollMove` als kind 'portalCard').
+  Meting: de simulatie toont per kristal "Wint wie hem speelt" (25% = gemiddeld, >31% te sterk,
+  <19% zwak). Eerste meting (2000 potjes): alle 15 tussen 22,7 en 27,7%.
+  Kortsluiting op een mens deed tot 2026-10 niets (alleen bots misten hun steen); nu ook voor de
+  mens, in `soloRollEnergyForTurn`. In de code heten ze nog `ACTION_CARDS`, `p.cards`,
   `actionCells` enz. — bewust niet hernoemd. Nieuwe zichtbare tekst dus altijd "kristal".
   **Ontwerp** (`96c-crystals.js`): een langgerekte zeshoek, rand in de kleur van de soort
   (`ACTION_CARD_TINTS`), bovenin het moment, icoon, naam, één zin (`text`), onderin de soort.
@@ -528,10 +543,8 @@ Check minimaal:
 
 ## Nog te doen
 
-- De 5e energie-actie is het **Portaalkanon** geworden (zie Portalen hierboven). Nog los te
-  beslissen: een **portaalkristal** als tweede manier om aan een portaal te komen (in de analyse
-  even sterk als de sterkste bestaande kristallen, maar niet samen met de energie-actie gemeten).
-  Andere ideeën die nog niet gemeten konden worden omdat bots ze niet zinnig spelen: een schild
+- De 5e energie-actie is het **Portaalkanon** geworden (zie Portalen hierboven); het
+  portaalkristal is er sinds 2026-10 als **Portaalsleutel**. Andere ideeën die nog niet gemeten konden worden omdat bots ze niet zinnig spelen: een schild
   tegen de volgende hinderkaart, of een energieversperring op een gang naar keuze.
 
 - Elke opdracht (2.1–2.9) heeft nu een naam (`QUEST_NAMES` in `10-rules.js`,
