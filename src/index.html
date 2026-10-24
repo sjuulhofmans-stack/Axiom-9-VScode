@@ -207,19 +207,16 @@
           <button id="btnSimulate" class="primary sim-go">Draai simulatie</button>
         </div>
         <!-- "Aan het simuleren"-vakje: de "Datastroom" (gekozen variant 3 uit 8, 2026-10): cijfers
-             regenen naar beneden en stapelen zich op tot een staafdiagram (simStream in
-             95-simulate.js), eronder de aftellende tijd (createProgressLoader in 80-controls.js),
-             de potjesteller en Stoppen. Ligt tijdens het rekenen óver de (lege) uitslag
+             "Tijdring": zwart gat met 60 streepjes die doven en de resttijd in de kern (simStream
+             in 95-simulate.js), eronder de potjesteller en Stoppen. Ligt tijdens het rekenen óver de (lege) uitslag
              en faadt bij klaar uit terwijl de uitslag infaadt — zie runSimulationBatch.
              #simStatus staat bewust BINNEN .sim-stage: daarbuiten (erboven) duwde de melding
              "✓ Klaar in …" het nog zichtbare vakje bij het uitfaden een regel omlaag. -->
         <div class="sim-stage" id="simStage">
           <div id="simStatus" class="reach-status"></div>
           <div class="sim-loader" id="simLoader">
-            <div class="sim-stream" id="simStream" aria-hidden="true"></div>
+            <div class="sim-ring" id="simRing" aria-hidden="true"></div>
             <div class="sim-cap">
-              <b class="gen-title">Aan het simuleren<span class="gen-dots"><i>.</i><i>.</i><i>.</i></span></b>
-              <span class="gen-sub gen-eta">even geduld…</span>
               <span class="gen-sub sim-loader-count" id="simLoaderCount"></span>
               <button type="button" id="btnSimStop" class="ghost sim-stop">Stoppen</button>
             </div>

@@ -335,14 +335,13 @@ Check minimaal:
    weergave `simCounterRender`/`simCountSet` in 95-simulate.js, opmaak `.sim-*` bovenin styles.css.
    "Draai simulatie" → 4 startposities laten allemaal winst
    zien, "vastgelopen potjes" is 0 of bijna 0. Tijdens het rekenen staat er een
-   "Aan het simuleren"-vakje met de **datastroom** (gekozen variant 3 uit 8, 2026-10; `simStream`
-   in 95-simulate.js, blok `.sim-stream` in styles.css): cijfers regenen naar beneden en stapelen
-   zich op tot een staafdiagram dat vol is als de simulatie klaar is (de vorm is sfeer, geen
-   uitslag). Alleen Web Animations/transitions op transform/opacity, want de simulatie rekent in
-   brokken van 30 ms op dezelfde draad. Klassen `.sim-stack`/`.sim-drop` staan onder `.sim-stream`:
-   `.sim-bar` en `.sim-col` bestonden al (uitslag) en maakten de staven onzichtbaar. Eronder
-   aftellende tijd (`createProgressLoader` in 80-controls.js, sinds 2026-10 zonder ring),
-   potjesteller en "Stoppen"; bij klaar staat het volle diagram nog 0,7 s, dan faadt de uitslag in.
+   "Aan het simuleren"-vakje met de **tijdring** (gekozen 2026-10 via Zwaartekracht → variant 2 uit 20;
+   `simStream` in 95-simulate.js, `#simRing`/`.sim-ring`): zwart gat met gloeiende schijf, deeltjes
+   spiraleren erin, 60 streepjes rond het gat doven met de klok mee (= voortgang) en in de kern staat
+   groot hoeveel seconden het nog duurt (schatting uit verstreken tijd, mag alleen dalen). Alleen Web
+   Animations/transitions op transform/opacity, want de simulatie rekent in brokken van 30 ms op
+   dezelfde draad. Eronder alleen potjesteller en "Stoppen" (geen titel/tijdregel meer); bij klaar
+   staat er 0,7 s een vinkje in de kern, dan faadt de uitslag in.
 7. Onderaan de simulatie: tabel "koudste tegels" — geen enkele tegel mag op
    0,0% verkeer staan. Gebeurt dat toch, dan is er een dode lus ontstaan en
    klopt `deadTileCount` in `70-generator.js` niet meer.

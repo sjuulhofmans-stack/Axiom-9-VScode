@@ -1875,104 +1875,111 @@ function simCountStep(dir, size = SIM_COUNT_STEP){
   });
   simCounterRender();
 }
-// ---------- "Datastroom" in het simulatievak (gekozen variant 3 uit 8, 2026-10) ----------
-// Kolommen cijfers regenen naar beneden; een deel ervan "landt" en stapelt zich op tot een
-// staafdiagram dat vol is als de simulatie klaar is (hoeveel er al liggen = de voortgang). De vorm
-// is elke keer anders en zegt niets over de uitslag: het is sfeer. Alles beweegt via Web Animations
-// en transitions op transform/opacity, zodat de browser het afspeelt terwijl runSimulationBatch in
-// brokken van 30 ms rekent (zie het blok in styles.css). Opmeten gebeurt één keer, bij de start.
-const SIM_STREAM_CELL = 16;       // = de 16px in .sim-stream/.sim-stack/.sim-drop (styles.css)
-const SIM_STREAM_DONE_MS = 700;   // na het laatste brok: het volle diagram nog even in beeld
+// ---------- "Tijdring" in het simulatievak (gekozen: Zwaartekracht → variant 2 "Tijdring", 2026-10) ----------
+// Een zwart gat met een gloeiende schijf; deeltjes spiraleren erin. Zestig streepjes rond het gat
+// doven met de klok mee naarmate de simulatie vordert, en in de zwarte kern staat groot hoeveel
+// seconden het nog duurt (bij elke wissel wordt het oude getal het gat in gezogen). Gebruikerswens:
+// "goed zien hoelang het nog duurt". Alles beweegt via Web Animations/transitions op transform/
+// opacity, zodat de browser het afspeelt terwijl runSimulationBatch in brokken van 30 ms rekent.
+// Opmeten gebeurt één keer, bij de start.
+const SIM_STREAM_DONE_MS = 700;   // na het laatste brok: de lege ring + vinkje nog even in beeld
+const SIM_RING_TICKS = 60;
 const simStream = (() => {
-  const root = document.getElementById('simStream');
+  const root = document.getElementById('simRing');
   if (!root) return null;
-  const GL = '0123456789ABCDEF', C = SIM_STREAM_CELL, TRAIL = 7;
-  let cols = 0, rows = 0, H = 0, tgt = [], bars = [], pend = [], barEls = [];
-  let total = 0, landed = 0, inflight = 0, rainTimer = null, run = 0, done = false;
-  const glyph = () => GL[Math.floor(Math.random() * GL.length)];
-  // kleur per plek in de kolom: bovenste cijfer bijna wit, naar onder via blauw naar paars
-  const RAMP = [[234, 249, 255], [143, 224, 255], [79, 184, 224], [124, 92, 255]];
-  function color(t){
-    const x = Math.min(.999, t) * (RAMP.length - 1), i = Math.floor(x), f = x - i;
-    const c = RAMP[i].map((v, k) => Math.round(v + (RAMP[i + 1][k] - v) * f));
-    return `rgba(${c[0]},${c[1]},${c[2]},${(.95 - t * .45).toFixed(2)})`;
+  const AM = '#ffb545', HOT = '#fff1dc';
+  let ticks = [], diskEl = null, numBox = null, numEl = null, numCur = null, spawnTimer = null;
+  let cx = 0, cy = 0, r = 0, R0 = 0, run = 0, t0 = 0, shownSec = Infinity, darkTicks = -1;
+  const mk = (parent, css, html) => { const e = document.createElement('div'); e.style.cssText = css; if (html != null) e.textContent = html; parent.appendChild(e); return e; };
+  // deeltje dat in een spiraal naar binnen valt (draaiende arm + deeltje dat naar het midden schuift)
+  function particle(){
+    const arm = mk(root, `position:absolute;left:${cx}px;top:${cy}px;width:0;height:0`);
+    const d = mk(arm, `position:absolute;left:-2px;top:-2px;width:4px;height:4px;border-radius:50%;background:${Math.random() < .5 ? HOT : AM}`);
+    const a = Math.random() * 360, dur = 1400 + Math.random() * 600, ease = 'cubic-bezier(.4,0,1,1)';
+    arm.animate([{ transform:`rotate(${a}deg)` }, { transform:`rotate(${a + 300}deg)` }], { duration:dur, easing:ease });
+    d.animate([
+      { transform:`translateX(${R0 * .95}px)`, opacity:0 },
+      { transform:`translateX(${R0 * .5}px)`, opacity:1, offset:.4 },
+      { transform:`translateX(${r * .9}px) scale(.4)`, opacity:0 },
+    ], { duration:dur, easing:ease }).onfinish = () => arm.remove();
   }
-  // een staaf is een vaste kolom cijfers die omhoog schuift: bars[c] cijfers in beeld
-  function setBar(c){ barEls[c].style.transform = `translateY(${((rows - bars[c]) / rows * 100).toFixed(3)}%)`; }
-  function drop(c, land){
-    // vak niet zichtbaar bij de start (bv. ander tabblad): dan geen regen, anders deelt de
-    // snelheid door 0 en weigert animate() de duur (gooide de hele simulatie om)
-    if (!H || !cols) return;
-    const el = document.createElement('span');
-    el.className = 'sim-drop';
-    el.textContent = Array.from({ length: TRAIL }, glyph).join('\n');
-    root.appendChild(el);
-    const x = c * C, y0 = -TRAIL * C - Math.random() * H * 0.3;
-    let y1;
-    if (land){ y1 = H - (bars[c] + pend[c]) * C - TRAIL * C; pend[c]++; inflight++; }
-    else y1 = H * (0.25 + Math.random() * 0.35) - TRAIL * C;
-    const speed = (land ? 0.35 + Math.random() * 0.35 : 0.25 + Math.random() * 0.3) * H / 1000;   // px per ms
-    const at = (y, o) => ({ transform: `translate(${x}px, ${y.toFixed(1)}px)`, opacity: o });
-    const kf = land ? [at(y0, 1), at(y1, 1)] : [at(y0, 1), { ...at(y0 + (y1 - y0) * 0.7, 1), offset: 0.7 }, at(y1, 0)];
-    const me = run;
-    el.animate(kf, { duration: Math.max(300, (y1 - y0) / speed), easing: 'linear' }).onfinish = () => {
-      el.remove();
-      if (!land || me !== run) return;
-      pend[c]--; inflight--;
-      if (!done){ bars[c]++; landed++; setBar(c); }
-    };
+  // groot getal in de kern; het oude wordt weggedraaid het gat in
+  function setNum(v){
+    if (v === numCur || !numBox) return;
+    numCur = v;
+    const old = numEl;
+    numEl = mk(numBox, 'position:absolute;inset:0;display:grid;place-items:center;will-change:transform,opacity', v);
+    numEl.animate([{ opacity:0, transform:'scale(1.5)' }, { opacity:1, transform:'scale(1)' }], { duration:320, easing:'ease-out' });
+    if (old) old.animate([{ opacity:1, transform:'scale(1) rotate(0)' }, { opacity:0, transform:'scale(.1) rotate(220deg)' }],
+      { duration:380, easing:'ease-in', fill:'forwards' }).onfinish = () => old.remove();
   }
-  function clearDrops(){ root.querySelectorAll('.sim-drop').forEach(el => el.remove()); }
+  // de eerste `frac` van de streepjes (vanaf boven, met de klok mee) is gedoofd
+  function setTicks(frac){
+    const dark = Math.min(SIM_RING_TICKS, Math.floor(frac * SIM_RING_TICKS));
+    if (dark === darkTicks) return;
+    for (let k = 0; k < SIM_RING_TICKS; k++) ticks[k].style.opacity = k < dark ? .1 : 1;
+    darkTicks = dark;
+  }
 
   function start(){
     stop();
-    run++; done = false; landed = 0; inflight = 0;
-    clearDrops();
-    H = root.clientHeight;
-    cols = Math.max(1, Math.floor(root.clientWidth / C));
-    rows = Math.max(4, Math.min(15, Math.floor(H / C) - 1));
-    const ph = Math.random() * 6;
-    tgt = Array.from({ length: cols }, (_, i) => Math.max(1, Math.round(Math.min(1, Math.max(0.08,
-      0.35 + 0.3 * Math.sin(i * 0.28 + ph) + 0.25 * Math.sin(i * 0.11 - ph * 0.7) + (Math.random() - 0.5) * 0.12)) * rows)));
-    total = tgt.reduce((a, b) => a + b, 0);
-    bars = new Array(cols).fill(0); pend = new Array(cols).fill(0);
-    let html = '';
-    for (let c = 0; c < cols; c++){
-      let cells = '';
-      for (let k = 0; k < rows; k++) cells += `<b style="color:${color(k / (rows - 1))}">${glyph()}</b>`;
-      html += `<div class="sim-stack" style="left:${c * C}px;height:${rows * C}px"><i style="transform:translateY(100%)">${cells}</i></div>`;
+    run++;
+    root.innerHTML = '';
+    const W = root.clientWidth, H = root.clientHeight;
+    // vak niet zichtbaar bij de start (bv. ander tabblad): dan niets tekenen
+    if (!W || !H){ ticks = []; numBox = null; return; }
+    cx = W / 2; cy = H / 2; R0 = Math.min(W, H) * .45; r = R0 * .3;
+    t0 = performance.now(); shownSec = Infinity; numCur = null; numEl = null; darkTicks = -1;
+    // gloeiende schijf: buitenste laag schaalt, binnenste draait
+    const S = r * 5.2;
+    diskEl = mk(root, `position:absolute;left:${cx - S / 2}px;top:${cy - S / 2}px;width:${S}px;height:${S}px;transform:scale(.85);transition:transform .6s ease`);
+    const spin = mk(diskEl, `position:absolute;inset:0;border-radius:50%;
+      background:conic-gradient(from 0deg, ${AM}00, ${AM}cc, ${HOT}, ${AM}00 40%, ${AM}88 70%, ${AM}00);
+      -webkit-mask:radial-gradient(circle, transparent 38%, #000 40%, #000 52%, transparent 70%);
+      mask:radial-gradient(circle, transparent 38%, #000 40%, #000 52%, transparent 70%)`);
+    spin.animate([{ transform:'rotate(0)' }, { transform:'rotate(360deg)' }], { duration:2600, iterations:Infinity });
+    ticks = [];
+    for (let k = 0; k < SIM_RING_TICKS; k++){
+      ticks.push(mk(root, `position:absolute;left:${cx - 1.5}px;top:${cy - R0}px;width:3px;height:${R0 * .12}px;border-radius:2px;background:${AM};
+        transform-origin:1.5px ${R0}px;transform:rotate(${k * 360 / SIM_RING_TICKS}deg);transition:opacity .3s`));
     }
-    root.innerHTML = html;
-    barEls = [...root.querySelectorAll('.sim-stack > i')];
-    // sfeerregen die niet landt (vervaagt halverwege)
-    rainTimer = setInterval(() => { if (root.childElementCount < cols + 30) drop(Math.floor(Math.random() * cols), false); }, 140);
+    mk(root, `position:absolute;left:${cx - r}px;top:${cy - r}px;width:${2 * r}px;height:${2 * r}px;border-radius:50%;background:#000;
+      box-shadow:0 0 0 2px #ffcf9a55, 0 0 18px #ffcf9a44`);
+    numBox = mk(root, `position:absolute;left:${cx - r}px;top:${cy - r}px;width:${2 * r}px;height:${2 * r}px;
+      font-family:var(--font-display);font-weight:700;font-size:${Math.round(r * 1.05)}px;line-height:1;color:#fff;font-variant-numeric:tabular-nums`);
+    setTicks(0);
+    setNum('…');
+    spawnTimer = setInterval(particle, 70);
   }
-  // frac = gedaan/totaal; er vallen zoveel landers dat het diagram precies meegroeit
+  // frac = gedaan/totaal. De seconden zijn een schatting (verstreken tijd / frac); het getal mag
+  // alleen dalen (de schatting schommelt per brok) en staat op 1 tot het echt klaar is.
   function progress(frac){
-    if (done || !cols) return;
-    const need = Math.round(frac * total) - landed - inflight;
-    for (let n = 0; n < Math.min(need, 8); n++){
-      const open = [];
-      for (let c = 0; c < cols; c++) if (bars[c] + pend[c] < tgt[c]) open.push(c);
-      if (!open.length) break;
-      drop(open[Math.floor(Math.random() * open.length)], true);
-    }
+    if (!numBox) return;
+    setTicks(frac);
+    if (frac < .02) return;
+    const elapsed = performance.now() - t0;
+    const left = Math.max(1, Math.ceil(elapsed / frac * (1 - frac) / 1000));
+    shownSec = Math.min(shownSec, left);
+    setNum(String(shownSec));
   }
   function complete(){
-    done = true;
-    for (let c = 0; c < cols; c++){ bars[c] = tgt[c]; setBar(c); }
+    if (!numBox) return;
+    setTicks(1);
+    setNum('✓');
+    if (diskEl) diskEl.style.transform = 'scale(1)';
   }
-  // pas na het uitfaden de vallende cijfers weghalen (anders verdwijnen ze zichtbaar)
+  // pas na het uitfaden de deeltjes weghalen (anders verdwijnen ze zichtbaar)
   function stop(){
-    clearInterval(rainTimer); rainTimer = null;
+    clearInterval(spawnTimer); spawnTimer = null;
     const me = run;
-    setTimeout(() => { if (me === run) clearDrops(); }, GEN_FADE_MS);
+    setTimeout(() => { if (me === run) root.innerHTML = ''; }, GEN_FADE_MS);
   }
   return { start, progress, complete, stop };
 })();
 
-// "Aan het simuleren"-vakje: de datastroom hierboven + aftellende tijd (createProgressLoader in
-// 80-controls.js); vervangt de oude voortgangsbalk en later de ring met radar (gebruikerswens)
+// "Aan het simuleren"-vakje: de tijdring hierboven (met de resttijd in de kern), de potjesteller en
+// Stoppen; vervangt de oude voortgangsbalk, de ring met radar en de datastroom (gebruikerswens).
+// createProgressLoader (80-controls.js) blijft aan voor start/stop; er is geen .gen-eta meer.
 const simStageEl = document.getElementById('simStage');
 const simLoaderEl = document.getElementById('simLoader');
 const simLoaderCountEl = document.getElementById('simLoaderCount');
@@ -2718,7 +2725,7 @@ function runSimulationBatch(){
       if (runId !== simRunId) return;
 
       const elapsedMs = performance.now() - t0;
-      // het diagram afmaken en even laten staan, en het vakje minstens helemaal laten infaden;
+      // de ring afmaken (vinkje) en even laten staan, en het vakje minstens helemaal laten infaden;
       // dan de uitslag (nog onzichtbaar) opbouwen, en pas daarna overfaden
       simLoader && simLoader.complete();
       if (simStream) simStream.complete();
