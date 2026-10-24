@@ -311,20 +311,14 @@
 
   /* ---------- "Sterrenbeeld" in het genereer-vakje (genNet in 80-controls.js) ----------
      Gekozen variant 8 uit 8 (2026-10). .gen-net ligt precies over #board (JS zet left/top/width/
-     height); zonder meting staat hij gecentreerd. .gen-net-vis is het netwerk zelf: tijdens het laden
-     op 80% en iets omhoog (ruimte voor de tekst eronder), bij .is-reveal zoomt het naar bordgrootte
-     en faadt de echte kaart erover in. ALLES alleen transform/opacity: de generator rekent in brokken
+     height); zonder meting staat hij gecentreerd. .gen-net-vis is het netwerk zelf: van begin tot eind
+     precies even groot als het bord (geen tekst eronder, geen zoom; gebruikerswens 2026-10), daarna
+     faadt de echte kaart erover in. ALLES alleen transform/opacity: de generator rekent in brokken
      op dezelfde draad, alleen die animaties blijven dan vloeiend. Lijnen = een div die schaalt
      (scaleX/scaleY), kleuren = lagen die in opacity wisselen. */
   .gen-net{position:absolute; left:50%; top:50%; width:min(90%, 860px); aspect-ratio:5/4; translate:-50% -50%;}
   .gen-net.is-placed{translate:none;}
-  .gen-net-vis{position:absolute; inset:0; transform:translateY(-7%) scale(.8); transition:transform .7s cubic-bezier(.2,.7,.2,1); will-change:transform;}
-  .gen-net.is-reveal .gen-net-vis{transform:none;}
-  .gen-net-cap{
-    position:absolute; left:0; right:0; bottom:1%; display:flex; flex-direction:column; align-items:center; gap:10px;
-    transition:opacity .4s;
-  }
-  .gen-net.is-reveal .gen-net-cap{opacity:0;}
+  .gen-net-vis{position:absolute; inset:0;}
   .gen-net-tile{position:absolute; width:20%; height:25%;}
   .gen-net-tile::before{content:''; position:absolute; inset:5%; border:1px solid rgba(79,184,224,.1); border-radius:3px;}
   /* naad tussen twee sterren: .is-h van links naar rechts, .is-v van boven naar onder; .is-rev groeit

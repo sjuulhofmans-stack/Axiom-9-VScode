@@ -292,9 +292,9 @@ Check minimaal:
    faadt uit, in het bordvak verschijnt het **sterrenbeeld** (gekozen variant 8 uit 8, 2026-10;
    `genNet` in 80-controls.js, blok `.gen-net` in styles.css): één ster per tegelplek, precies
    over het bord gelegd (`genNetPlace`). Verbindingen groeien mee met de voortgang, soms een rode
-   lijn die terugtrekt (terugsporen), eronder "Aan het genereren" + aftellende tijd. Klaar → golf
-   vanaf Hibernatie op de nieuwe kaart, sterren blauw (kamer) / paars (gang), netwerk zoomt naar
-   bordgrootte, daarna faadt de nieuwe kaart in (0,9 s, GEN_FADE_MS). Alleen transform/opacity
+   lijn die terugtrekt (terugsporen). Geen tekst eronder en geen zoom: het netwerk is van begin tot
+   eind precies even groot als het bord (gebruikerswens 2026-10). Klaar → golf vanaf Hibernatie op
+   de nieuwe kaart, sterren blauw (kamer) / paars (gang), daarna faadt de nieuwe kaart in (0,9 s, GEN_FADE_MS). Alleen transform/opacity
    (de generator rekent op dezelfde draad). Onder de knoppen
    staat normaal niets; alleen bij een fout (mislukte indeling, kan niet draaien/wisselen)
    een korte rode melding. Niets verschuift tijdens het genereren.

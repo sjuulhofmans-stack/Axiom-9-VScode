@@ -61,10 +61,11 @@ function createProgressLoader(root){
 // trekken verbindingen (de naden) zich over het bord; hoeveel er al liggen = de voortgang. Af en toe
 // schiet er een rode lijn uit die weer terugtrekt: de solver die terugspoort. Klaar → alles verbonden,
 // een golf door het netwerk vanaf waar Hibernatie op de NIEUWE kaart ligt, sterren kleuren naar kamer
-// (blauw) / gang (paars), het netwerk zoomt in tot bordgrootte en de echte kaart faadt erover in.
+// (blauw) / gang (paars) en de echte kaart faadt erover in. Het netwerk is van begin tot eind even
+// groot als het bord (geen zoom, geen tekst eronder; gebruikerswens 2026-10).
 // Alleen transform/opacity (zie het blok in styles.css). Zonder #genNet doet alles niets.
 const GEN_NET_DONE_MS = 650;   // na het laatste brok: lijnen vol + begin van de golf
-const GEN_NET_ZOOM_MS = 700;   // = transitie van .gen-net-vis bij .is-reveal
+const GEN_NET_ZOOM_MS = 700;   // na de golf nog even het volle netwerk laten staan
 const genNet = (() => {
   const root = document.getElementById('genNet');
   const vis = root && root.querySelector('.gen-net-vis');
@@ -167,8 +168,8 @@ function genNetPlace(){
 
 // ---------- "Aan het genereren"-vakje (index.html, #genOverlay) ----------
 // Tijdens het genereren (én bij het openen, vóórdat er een kaart is) faadt de kaart rustig uit en
-// verschijnt het sterrenbeeld (genNet, hierboven) met eronder de aftellende tijd. Klaar → het
-// netwerk zoomt in, faadt uit en de nieuwe kaart faadt in. De losse voortgangsbalk rechts is weg.
+// verschijnt het sterrenbeeld (genNet, hierboven) op bordgrootte. Klaar → het netwerk faadt uit en
+// de nieuwe kaart faadt in. De losse voortgangsbalk rechts is weg.
 const genOverlayEl = document.getElementById('genOverlay');
 const mapBoardPanelEl = document.querySelector('.map-board-panel');
 const genLoader = createProgressLoader(genOverlayEl);
@@ -210,7 +211,7 @@ async function applyGeneratedLayout(seed){
   });
   if (runId !== simRunId){ return; } // verouderd: bord is inmiddels iets anders geworden
   // netwerk afmaken (golf), en de oude kaart moet helemaal uitgefaded zijn vóórdat de nieuwe erin
-  // komt — wachten op wat het langst duurt; daarna zoomt het netwerk in tot bordgrootte
+  // komt — wachten op wat het langst duurt; daarna staat het volle netwerk nog even
   genLoader.complete();
   if (genNet) genNet.complete(generated);
   const waited = performance.now() - t0;
