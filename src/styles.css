@@ -3940,14 +3940,28 @@
   .walk-solo-panel .energy-pick-list:not(.is-grid) .energy-pick{padding:3px 10px;}
   .walk-solo-panel .energy-pick-head{margin:0;}
 
-  /* ================= SPEELSCHERM "ZWEVENDE KOLOMMEN" (gekozen variant 5 uit 6, 2026-10) =================
-     Gebruikerswens: rustiger beeld zonder de indeling te veranderen. Tijdens een potje
-     (body.is-playing, alle 3 de modi): spelerskaarten, beide zijkolommen en het bord zijn elk één
-     losse kaart (egaal --panel, ronde hoeken, zachte schaduw) op een donkere ondergrond; alles
-     daarbinnen is plat. BELANGRIJK: alle randen houden hun DIKTE, alleen de kleur wordt
-     transparent — zo blijven de gemeten maten (bord 711px, --wcell, energievak 300px, enz.) exact
-     gelijk. Geen extra padding/gap toevoegen zonder opnieuw te meten. */
-  body.is-playing{background:#070a0e;}
+  /* ================= "ZWEVENDE KOLOMMEN" OP DE HELE PAGINA (gekozen variant 5 uit 6, 2026-10) =================
+     Eerst alleen tijdens een potje, sinds 2026-10 voor ALLES (gebruikerswens: overal dezelfde stijl
+     als het spel). Donkere egale ondergrond (#070a0e, via --page-bg, dus ook de kop); elk vak
+     (.panel, pop-ups, spelerskaarten, beide zijkolommen, bord, chat) is één losse kaart: egaal
+     --panel, ronde hoeken, zachte schaduw, geen rand en geen amber lijntje bovenin; alles daarbinnen
+     plat. BELANGRIJK: alle randen houden hun DIKTE, alleen de kleur wordt transparent — zo blijven
+     de gemeten maten (bord 711px, --wcell, energievak 300px, enz.) exact gelijk. Geen extra
+     padding/gap toevoegen zonder opnieuw te meten.
+     Tijdens een potje is #walkPanel zelf onzichtbaar (de kolommen erin zijn de kaarten, regels met
+     body.is-playing hieronder: die vakken bestaan alleen tijdens een potje); in de lobby is het
+     gewoon een kaart. */
+  :root{--page-bg:#070a0e;}
+  .panel, .card-panel, .editor-panel, .walk-confirm-panel{
+    background:var(--panel); border-color:transparent; border-radius:12px;
+    box-shadow:0 14px 34px -16px #000, inset 0 1px 0 rgba(255,255,255,.04);
+  }
+  .panel::before{display:none;}
+  /* bord in de generator: het stalen kader wordt plat in de kaartkleur (rand blijft 10px dik);
+     de kaart eromheen is .map-board-panel zelf */
+  .map-board-panel .board-outer{
+    background:var(--panel); border-color:var(--panel); outline:none; box-shadow:none;
+  }
   body.is-playing #walkPanel{background:transparent; border-color:transparent; box-shadow:none;}
   body.is-playing #walkPanel::before{display:none;}
   /* spelerskaarten: losse kaart, de kleurstreep links wordt de stip; wie aan zet is krijgt een
@@ -4016,8 +4030,8 @@
   #mpRoomLayout.is-room .mp-room > .mp-room-code,
   #mpRoomLayout.is-room .mp-room > .mp-seats{display:none;}
   #mpRoomLayout.is-room > .mp-room-info{
-    background:linear-gradient(180deg, var(--panel), var(--panel-2)); border:1px solid var(--line);
-    border-radius:6px; padding:14px; overflow:visible;
+    background:var(--panel); border:1px solid transparent; border-radius:12px; padding:14px; overflow:visible;
+    box-shadow:0 14px 34px -16px #000, inset 0 1px 0 rgba(255,255,255,.04);   /* = .panel (zwevende kolommen) */
   }
   #mpRoomLayout.is-room .mp-room-bottom{margin-top:0;}
 
