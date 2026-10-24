@@ -37,6 +37,7 @@
          in 80-controls.js. -->
     <button class="tab-btn" id="tabBtnMulti" data-tab="multi" role="tab" aria-selected="false">Multiplayer</button>
     <button class="tab-btn" id="tabBtnCards" data-tab="cards" role="tab" aria-selected="false">Speelkaarten</button>
+    <button class="tab-btn" id="tabBtnRules" data-tab="rules" role="tab" aria-selected="false">Spelregels</button>
     <!-- Het tabblad heette eerst ook "Zelf spelen", net als de modusknop erin — verwarrend, want
          daar zit ook Automatisch (waar je juist niet zelf speelt). Nu "Spelen".
          "Nieuw potje": alleen relevant op tabblad "Spelen" tijdens de modus Zelf spelen —
@@ -676,6 +677,23 @@
       </div>
     </div>
     </div>
+
+  <!-- Spelregels: inhoud + animaties worden bij het eerste openen opgebouwd (98c-rules.js) -->
+  <div id="tabRules" class="tab-panel" role="tabpanel" hidden>
+    <div class="rules-layout">
+      <nav class="panel rules-nav" aria-label="Hoofdstukken">
+        <p class="rules-nav-title">Spelregels</p>
+        <div id="rulesNav" style="display:contents"></div>
+      </nav>
+      <div class="rules-main">
+        <div class="panel rules-intro">
+          <h2>Spelregels</h2>
+          <p class="hint">Alles wat je moet weten, van het opbouwen van het bord tot het einde van het potje. Bij een deel van de regels zie je rechts kort wat er gebeurt.</p>
+        </div>
+        <div id="rulesContent" class="rules-main"></div>
+      </div>
+    </div>
+  </div>
 
   <div id="tabCards" class="tab-panel" role="tabpanel" hidden>
     <div class="panel">

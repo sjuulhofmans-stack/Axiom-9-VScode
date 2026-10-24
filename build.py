@@ -46,6 +46,7 @@ JS_ORDER = [
     "97-solo.js",
     "98-cards.js",
     "98b-avatar.js",
+    "98c-rules.js",
     "99-multiplayer.js",
 ]
 
@@ -91,7 +92,8 @@ def build_chants() -> dict:
 
 def build() -> pathlib.Path:
     template = read(SRC / "index.html")
-    css = read(SRC / "styles.css")
+    # rules.css = opmaak van het tabblad Spelregels, los gehouden van de grote styles.css
+    css = read(SRC / "styles.css") + chr(10) + read(SRC / "rules.css")
     logo = read(SRC / "assets" / "logo.b64").strip()
     bigdaddy = read(SRC / "assets" / "bigdaddy.b64").strip()
     # los lijf + los wiel (i.p.v. één vlakke afbeelding), zodat het wiel apart kan ronddraaien —
@@ -161,6 +163,6 @@ if __name__ == "__main__":
     kb = out.stat().st_size / 1024
     code_kb = sum(
         (SRC / "js" / n).stat().st_size for n in JS_ORDER
-    ) / 1024 + (SRC / "styles.css").stat().st_size / 1024
+    ) / 1024 + (SRC / "styles.css").stat().st_size / 1024 + (SRC / "rules.css").stat().st_size / 1024
     n_chants = len(build_chants())
     print(f"Gebouwd: {out}  ({kb:.0f} KB, waarvan {code_kb:.0f} KB code, {n_chants} taunts)")

@@ -4180,6 +4180,268 @@
     #walkSoloPanel .energy-pick-list.is-actions .energy-pick-icon svg{width:13px; height:13px;}
   }
 
+
+  /* ===================== TABBLAD SPELREGELS (98c-rules.js) =====================
+     Los bestand, door build.py achter styles.css geplakt. Links een inhoudsopgave die blijft
+     staan, in het midden de hoofdstukken; een hoofdstuk met animatie is twee kolommen (tekst |
+     scène). De scènes bewegen alleen via Web Animations op transform/opacity. */
+  .rules-layout{display:grid; grid-template-columns:220px minmax(0, 1fr); gap:18px; align-items:start;}
+  .rules-nav{position:sticky; top:96px; display:flex; flex-direction:column; gap:2px; padding:12px;}
+  .rules-nav-title{font-size:12px; letter-spacing:.14em; text-transform:uppercase; color:var(--text-dim); margin:0 0 8px 6px;}
+  .rules-nav a{
+    display:flex; align-items:center; gap:10px; padding:7px 8px; border-radius:6px;
+    color:var(--text-dim); text-decoration:none; font-size:15px; letter-spacing:.02em;
+    transition:background .2s, color .2s;
+  }
+  .rules-nav a span{
+    flex:0 0 22px; height:22px; border-radius:50%; display:grid; place-items:center;
+    font-family:var(--font-mono); font-size:11px; border:1px solid var(--line); color:var(--text-dim);
+  }
+  .rules-nav a:hover{background:var(--panel-2); color:var(--text);}
+  .rules-nav a.active{background:var(--panel-2); color:var(--text);}
+  .rules-nav a.active span{border-color:var(--amber); color:var(--amber);}
+
+  .rules-main{display:flex; flex-direction:column; gap:14px; min-width:0;}
+  .rules-intro h2{margin-bottom:4px;}
+  .rules-section{
+    background:var(--panel); border:1px solid var(--line-dim); border-radius:12px;
+    padding:20px 22px; scroll-margin-top:96px;
+  }
+  .rules-section.has-scene{display:grid; grid-template-columns:minmax(0, 1fr) 340px; gap:24px; align-items:start;}
+  .rules-text h3{
+    display:flex; align-items:center; gap:12px; margin:0 0 12px;
+    font-size:22px; letter-spacing:.04em; text-transform:uppercase; color:var(--text);
+  }
+  .rules-num{
+    flex:0 0 30px; height:30px; border-radius:8px; display:grid; place-items:center;
+    background:rgba(255,181,69,.12); color:var(--amber); font-family:var(--font-mono); font-size:14px;
+  }
+  .rules-list, .rules-steps, .rules-when, .rules-energy{margin:0; padding:0; list-style:none; display:flex; flex-direction:column; gap:8px;}
+  .rules-list li, .rules-when li{position:relative; padding-left:20px; font-size:17px; line-height:1.4; color:var(--text);}
+  .rules-list li::before, .rules-when li::before{
+    content:''; position:absolute; left:4px; top:.6em; width:7px; height:7px; border-radius:2px;
+    background:var(--amber); transform:rotate(45deg);
+  }
+  .rules-list b, .rules-steps b, .rules-when b{color:#fff; font-weight:600;}
+  .rules-steps{counter-reset:rstep; margin-bottom:12px;}
+  .rules-steps li{
+    counter-increment:rstep; position:relative; padding:9px 12px 9px 48px; font-size:17px; line-height:1.4;
+    background:var(--panel-2); border-radius:8px;
+  }
+  .rules-steps li::before{
+    content:counter(rstep); position:absolute; left:12px; top:50%; transform:translateY(-50%);
+    width:24px; height:24px; border-radius:50%; display:grid; place-items:center;
+    background:var(--amber); color:#14100a; font-family:var(--font-mono); font-size:13px; font-weight:700;
+  }
+  .rules-tip{margin:14px 0 0; padding:9px 12px; border-left:3px solid var(--quest); background:rgba(79,184,224,.07);
+    border-radius:0 6px 6px 0; font-size:15px; color:var(--text);}
+  .rules-note{margin:0 0 8px; font-size:15px; color:var(--text-dim);}
+  .rules-sub{margin:20px 0 8px; font-size:15px; letter-spacing:.12em; text-transform:uppercase; color:var(--text-dim);}
+  .rules-energy{margin-top:10px;}
+  .rules-energy-row{display:flex; gap:12px; align-items:flex-start; padding:9px 12px; background:var(--panel-2); border-radius:8px; font-size:16px; line-height:1.4;}
+  .rules-energy-row b{color:#fff;}
+  .rules-cost{
+    flex:0 0 auto; min-width:42px; text-align:center; padding:2px 8px; border-radius:999px;
+    background:rgba(85,214,138,.12); color:var(--start); font-family:var(--font-mono); font-size:13px; font-weight:700;
+  }
+  .rules-cost::after{content:' ⚡'; font-size:11px;}
+
+  .rules-crystals{display:grid; grid-template-columns:repeat(auto-fill, minmax(320px, 1fr)); gap:12px;}
+  .rules-crystal-group{background:var(--panel-2); border-radius:8px; padding:10px 12px; border-top:3px solid var(--tint);}
+  .rules-crystal-cat{font-size:13px; letter-spacing:.14em; text-transform:uppercase; color:var(--tint); margin-bottom:6px;}
+  .rules-crystal-row{
+    display:grid; grid-template-columns:14px minmax(0, 1fr) auto; column-gap:8px; row-gap:1px;
+    padding:6px 0; border-top:1px solid var(--line-dim); align-items:center;
+  }
+  .rules-crystal-row:first-of-type{border-top:0;}
+  .rules-hex{width:12px; height:14px; background:var(--tint); clip-path:polygon(50% 0, 100% 25%, 100% 75%, 50% 100%, 0 75%, 0 25%);}
+  .rules-crystal-name{font-size:16px; color:#fff;}
+  .rules-crystal-when{font-family:var(--font-mono); font-size:10.5px; color:var(--text-dim); text-transform:uppercase; letter-spacing:.04em;}
+  .rules-crystal-text{grid-column:2 / 4; font-size:14.5px; color:var(--text-dim); line-height:1.35;}
+
+  /* ---------- scènes ---------- */
+  .rules-stage{
+    position:sticky; top:96px; height:300px; border-radius:10px; overflow:hidden;
+    background:radial-gradient(ellipse at 50% 30%, #16212d 0%, #0b1016 75%); border:1px solid var(--line-dim);
+    display:flex; flex-direction:column;
+  }
+  .rules-scene{flex:1; position:relative; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:16px; padding:14px;}
+  .rules-cap{position:relative; height:42px; flex:0 0 42px; border-top:1px solid var(--line-dim); background:rgba(0,0,0,.25);}
+  .rules-cap-line{position:absolute; inset:0; display:grid; place-items:center; padding:0 10px; text-align:center;
+    font-size:15px; letter-spacing:.03em; color:var(--text); opacity:0; will-change:opacity;}
+
+  /* raster */
+  .rg{position:relative; flex:0 0 auto;}
+  .rg-cell{position:absolute; width:var(--rc); height:var(--rc); background:#26364a; box-shadow:inset 0 0 0 1px #0b1016;}
+  .rg-cell.is-door{background:#34495f;}
+  .rg-cell.is-quest{background:rgba(79,184,224,.35); box-shadow:inset 0 0 0 2px var(--quest);}
+  .rg-cell.is-crystal i{
+    position:absolute; inset:22%; background:var(--actioncell);
+    clip-path:polygon(50% 0, 100% 25%, 100% 75%, 50% 100%, 0 75%, 0 25%); will-change:opacity;
+  }
+  .rg-pawn{position:absolute; left:0; top:0; z-index:3; will-change:transform, opacity;}
+  .rg-pawn i{position:absolute; inset:16%; border-radius:50%; background:var(--pc);
+    box-shadow:0 0 0 2px rgba(0,0,0,.55), 0 0 10px var(--pc);}
+  .rs-step{position:absolute; display:grid; place-items:center; font-family:var(--font-mono); font-size:12px;
+    color:var(--amber); z-index:2; opacity:0; will-change:transform, opacity;}
+  .rs-blocked{position:absolute; z-index:4; border-radius:50%; box-shadow:0 0 0 2px var(--danger), 0 0 12px var(--danger); opacity:0; will-change:opacity;}
+  .rs-roll{position:absolute; top:12px; right:12px; display:flex; gap:5px; align-items:center; opacity:0; will-change:transform, opacity;}
+  .rs-roll-sum{font-family:var(--font-mono); font-size:15px; color:var(--amber); margin-left:3px;}
+
+  /* dobbelsteen */
+  .rules-die{width:26px; height:26px; border-radius:5px; background:#e9eef3; display:grid; grid-template-columns:repeat(3, 1fr);
+    padding:3px; gap:1px; box-shadow:0 2px 0 #9aa6b2;}
+  .rules-die i{border-radius:50%; margin:1px;}
+  .rules-die i.on{background:#151b22;}
+  .rules-die.is-q{display:grid; place-items:center; grid-template-columns:1fr; background:#26323f; box-shadow:none;
+    color:var(--text-dim); font-family:var(--font-mono); font-size:14px;}
+
+  /* doel: zeshoekjes */
+  .rs-hexrow{display:flex; gap:8px;}
+  .rs-hex{position:relative; width:36px; height:40px;}
+  .rs-hexrow.is-small .rs-hex{width:24px; height:27px;}
+  .rs-hex svg{width:100%; height:100%; display:block;}
+  .rs-hex > svg polygon{fill:none; stroke:var(--line); stroke-width:3;}
+  .rs-hex-fill{position:absolute; inset:0; opacity:0; will-change:transform, opacity;}
+  .rs-hex-fill svg polygon{fill:var(--start); stroke:var(--start-glow); stroke-width:2;}
+  .rs-hex-fill b{position:absolute; inset:0; display:grid; place-items:center; color:#0b1712; font-size:16px;}
+  .rs-hexrow.is-small .rs-hex-fill b{font-size:11px;}
+  .rs-win{font-size:30px; letter-spacing:.12em; text-transform:uppercase; color:var(--amber); font-weight:700;
+    opacity:0; will-change:transform, opacity;}
+
+  /* bord opbouwen */
+  .rs-board{position:relative;}
+  .rs-tile{position:absolute; border-radius:5px; background:#1b2733; border:1px solid var(--tile-line);
+    display:grid; place-items:center; opacity:0; will-change:transform, opacity;}
+  .rs-tile span{font-family:var(--font-mono); font-size:12px; color:var(--text-dim); position:relative; z-index:1;}
+  .rs-tile-corner, .rs-tile-inner{position:absolute; inset:-1px; border-radius:5px; opacity:0; will-change:opacity;}
+  .rs-tile-corner{box-shadow:inset 0 0 0 2px var(--amber); background:rgba(255,181,69,.16);}
+  .rs-tile-inner{box-shadow:inset 0 0 0 2px var(--start); background:rgba(85,214,138,.14);}
+  .rs-hib{position:absolute; z-index:2; border-radius:5px; background:#21573a; border:2px solid var(--start-glow);
+    display:grid; grid-template-columns:1fr 1fr; padding:9px; gap:6px; opacity:0; will-change:transform, opacity;}
+  .rs-hib i{border-radius:50%; background:var(--start-glow);}
+
+  /* doorgangen */
+  .rs-tile-outline{position:absolute; border:1px dashed rgba(76,120,178,.6); pointer-events:none;}
+  .rs-door-glow{position:absolute; inset:0; background:var(--amber); opacity:0; will-change:opacity;}
+  .rs-seam{position:absolute; border-radius:3px; box-shadow:0 0 0 2px var(--start), 0 0 14px var(--start); opacity:0; will-change:opacity; z-index:2;}
+  .rs-bad{position:absolute; display:grid; place-items:center; color:var(--danger); font-size:14px; font-weight:700; z-index:3;
+    opacity:0; will-change:transform, opacity;}
+
+  /* wie begint */
+  .rs-open, .rs-turn{position:relative; width:290px;}
+  .rs-open-row{position:absolute; left:0; right:0; height:40px; display:flex; align-items:center; gap:10px;
+    padding:0 10px; background:var(--panel-2); border-radius:8px; will-change:transform;}
+  .rs-dot{width:12px; height:12px; border-radius:50%; flex:0 0 12px;}
+  .rs-open-name{width:52px; font-size:16px; color:#fff;}
+  .rs-open-dice{display:flex; gap:5px;}
+  .rs-die-slot{position:relative; width:26px; height:26px;}
+  .rs-die-slot > *{position:absolute; inset:0;}
+  .rs-die-slot .rules-die:not(.is-q){opacity:0; will-change:transform, opacity;}
+  .rs-open-sum{position:relative; width:28px; height:26px;}
+  .rs-sum-val{position:absolute; inset:0; display:grid; place-items:center; font-family:var(--font-mono); font-size:16px; color:var(--amber);
+    opacity:0; will-change:transform, opacity;}
+  .rs-open-tag{margin-left:auto; padding:2px 9px; border-radius:999px; background:rgba(79,184,224,.15); color:var(--quest);
+    font-size:13px; letter-spacing:.04em; opacity:0; will-change:transform, opacity; white-space:nowrap;}
+  .rs-open-tag.is-gold{background:rgba(255,181,69,.18); color:var(--amber);}
+
+  /* je beurt */
+  .rs-turn-hl{position:absolute; left:0; right:0; top:0; border-radius:8px; box-shadow:inset 0 0 0 2px var(--amber);
+    background:rgba(255,181,69,.08); will-change:transform; z-index:2;}
+  .rs-turn-row{position:absolute; left:0; right:0; display:flex; align-items:center; gap:12px; padding:0 12px;
+    background:var(--panel-2); border-radius:8px;}
+  .rs-turn-row b{display:block; font-size:17px; color:#fff;}
+  .rs-turn-row small{display:block; font-size:13px; color:var(--text-dim);}
+  .rs-turn-n{flex:0 0 24px; height:24px; border-radius:50%; display:grid; place-items:center; background:var(--amber);
+    color:#14100a; font-family:var(--font-mono); font-size:13px; font-weight:700;}
+  .rs-turn-ico{position:absolute; right:12px; display:flex; align-items:center; gap:4px; z-index:3;
+    font-family:var(--font-mono); font-size:16px; color:var(--amber); will-change:transform, opacity;}
+  .rs-turn-dice .rules-die{width:20px; height:20px; padding:2px;}
+
+  /* opdracht */
+  .rs-done{position:absolute; z-index:4; display:grid; place-items:center; background:var(--start); color:#0b1712;
+    font-size:18px; font-weight:700; opacity:0; will-change:transform, opacity;}
+  .rs-plus{position:absolute; z-index:5; display:grid; place-items:center; width:auto !important; white-space:nowrap;
+    font-size:13px; color:var(--actioncell-glow); opacity:0; will-change:transform, opacity; margin-left:-14px;}
+
+  /* energie */
+  .rs-edie{position:relative; width:58px; height:58px; border-radius:12px; background:#123222; border:2px solid var(--start);}
+  .rs-edie-face{position:absolute; inset:0; display:grid; place-items:center; opacity:0; will-change:opacity;
+    font-family:var(--font-mono); font-size:28px; font-weight:700; color:var(--start-glow);}
+  .rs-edie-bolt{position:absolute; right:3px; top:1px; font-size:11px; color:var(--start);}
+  .rs-ebar{display:flex; align-items:center; gap:0;}
+  .rs-enode{position:relative; width:14px; height:14px; border-radius:50%; background:#1a2530; border:2px solid #2d3d4c; margin-right:8px;}
+  .rs-enode:last-child{margin-right:0;}
+  .rs-enode-lit{position:absolute; inset:-2px; border-radius:50%; background:var(--start); box-shadow:0 0 8px var(--start); will-change:opacity;}
+  .rs-enum{position:absolute; right:16px; top:14px; width:32px; height:30px;}
+  .rs-enum-v{position:absolute; inset:0; display:grid; place-items:center; font-family:var(--font-mono); font-size:22px; color:var(--start-glow); opacity:0; will-change:opacity;}
+  .rs-eact{padding:6px 12px; border-radius:8px; background:var(--panel-2); border:1px solid var(--start); font-size:15px; color:var(--text);
+    opacity:0; will-change:transform, opacity;}
+  .rs-eact b{color:#fff;}
+
+  /* portalen */
+  .rs-portal{position:absolute; z-index:2; --pcol:#3fa9ff;}
+  .rs-portal.is-red{--pcol:#ff5d5d;}
+  .rs-portal i{position:absolute; inset:2px; border-radius:50%; border:3px solid var(--pcol);
+    background:radial-gradient(circle, transparent 35%, color-mix(in srgb, var(--pcol) 45%, transparent) 100%); will-change:opacity;}
+  .rs-stop{position:absolute; z-index:5; display:grid; place-items:center; width:auto !important; margin-top:-22px; margin-left:-4px;
+    padding:0 6px; height:18px !important; border-radius:999px; background:var(--amber); color:#14100a; font-size:12px; font-weight:700;
+    opacity:0; will-change:transform, opacity;}
+  .rs-lost{position:absolute; top:18px; left:14px; font-family:var(--font-mono); font-size:12px; color:var(--danger); opacity:0; will-change:transform, opacity;}
+
+  /* kristallen */
+  .rs-vault{display:flex; gap:6px; height:34px; margin-bottom:26px;}   /* 26px: zie dy in de scène crystal */
+  .rs-crys{gap:0;}
+  .rs-slot{position:relative; width:34px; height:34px;}
+  .rs-slot svg, .rs-fly svg, .rs-slot-fill svg{width:100%; height:100%; display:block;}
+  .rs-slot > svg polygon{fill:none; stroke:var(--line); stroke-width:2.5; stroke-dasharray:4 3;}
+  .rs-slot-fill{position:absolute; inset:0; opacity:0; will-change:transform, opacity;}
+  .rs-slot-fill svg polygon, .rs-fly svg polygon{fill:var(--actioncell); stroke:var(--actioncell-glow); stroke-width:2;}
+  .rs-fly{position:absolute; z-index:5; padding:5px; opacity:0; will-change:transform, opacity;}
+  .rs-no{position:absolute; z-index:4; display:grid; place-items:center; font-size:16px; font-weight:700;
+    color:#fff; background:rgba(255,93,93,.55); box-shadow:inset 0 0 0 2px var(--danger); opacity:0; will-change:transform, opacity;}
+
+  /* einde */
+  .rs-end{display:flex; flex-direction:column; gap:7px; width:290px;}
+  .rs-end-row{height:36px; display:flex; align-items:center; gap:10px; padding:0 10px; background:var(--panel-2); border-radius:8px;}
+  .rs-end-pips{display:flex; gap:5px;}
+  .rs-pip{position:relative; width:14px; height:14px; border-radius:3px; background:#1a2530; border:1px solid #2d3d4c;}
+  .rs-pip-lit{position:absolute; inset:-1px; border-radius:3px; opacity:0; will-change:opacity;}
+
+  @media (max-width: 1100px){
+    .rules-section.has-scene{grid-template-columns:1fr;}
+    .rules-stage{position:relative; top:0; max-width:420px; width:100%;}
+  }
+  @media (max-width: 820px){
+    .rules-layout{grid-template-columns:1fr;}
+    .rules-nav{position:relative; top:0; flex-direction:row; flex-wrap:wrap;}
+    .rules-nav-title{width:100%;}
+    .rules-section{padding:16px;}
+  }
+
+  /* ---------- kop: ruimte voor een 6e tabblad ----------
+     Met Spelregels erbij liep "MAP GENERATOR" onder het eerste tabblad door (gemeten op 1920
+     breed). De tabbladen zijn daarom iets compacter; de opmaak zelf staat in styles.css. */
+  header .tab-btn{padding:11px 15px; letter-spacing:.11em;}
+  header .tab-bar{gap:5px; padding:0 22px;}
+  @media (max-width: 1700px){
+    header .tab-btn{padding:9px 10px; letter-spacing:.08em;}
+    header .tab-bar{gap:4px; padding:0 14px;}
+    h1.spaced-title{letter-spacing:.24em;}
+    .title-block{padding-right:18px;}
+  }
+
+  .rules-when li{display:flex; align-items:baseline; gap:10px; padding-left:0;}
+  .rules-when li::before{display:none;}
+  .rules-when-pill{flex:0 0 132px; text-align:center; padding:2px 8px; border-radius:999px; background:var(--panel-2);
+    border:1px solid var(--line); font-family:var(--font-mono); font-size:11px; text-transform:uppercase; letter-spacing:.05em; color:var(--text);}
+  @media (max-width: 1500px){
+    header .tab-btn{padding:9px 8px; letter-spacing:.06em;}
+    /* titel ietsje krapper, anders liep hij net over de lijn naar de tabbladen (gemeten op 1477 breed) */
+    h1.spaced-title{letter-spacing:.17em;}
+    .title-block{gap:12px; padding-right:16px;}
+  }
+
 </style>
 </head>
 <body>
@@ -4211,6 +4473,7 @@
          in 80-controls.js. -->
     <button class="tab-btn" id="tabBtnMulti" data-tab="multi" role="tab" aria-selected="false">Multiplayer</button>
     <button class="tab-btn" id="tabBtnCards" data-tab="cards" role="tab" aria-selected="false">Speelkaarten</button>
+    <button class="tab-btn" id="tabBtnRules" data-tab="rules" role="tab" aria-selected="false">Spelregels</button>
     <!-- Het tabblad heette eerst ook "Zelf spelen", net als de modusknop erin — verwarrend, want
          daar zit ook Automatisch (waar je juist niet zelf speelt). Nu "Spelen".
          "Nieuw potje": alleen relevant op tabblad "Spelen" tijdens de modus Zelf spelen —
@@ -4850,6 +5113,23 @@
       </div>
     </div>
     </div>
+
+  <!-- Spelregels: inhoud + animaties worden bij het eerste openen opgebouwd (98c-rules.js) -->
+  <div id="tabRules" class="tab-panel" role="tabpanel" hidden>
+    <div class="rules-layout">
+      <nav class="panel rules-nav" aria-label="Hoofdstukken">
+        <p class="rules-nav-title">Spelregels</p>
+        <div id="rulesNav" style="display:contents"></div>
+      </nav>
+      <div class="rules-main">
+        <div class="panel rules-intro">
+          <h2>Spelregels</h2>
+          <p class="hint">Alles wat je moet weten, van het opbouwen van het bord tot het einde van het potje. Bij een deel van de regels zie je rechts kort wat er gebeurt.</p>
+        </div>
+        <div id="rulesContent" class="rules-main"></div>
+      </div>
+    </div>
+  </div>
 
   <div id="tabCards" class="tab-panel" role="tabpanel" hidden>
     <div class="panel">
@@ -6888,6 +7168,7 @@ const tabPanels = {
   simulate: document.getElementById('tabSimulate'),
   walk: document.getElementById('tabWalk'),
   cards: document.getElementById('tabCards'),
+  rules: document.getElementById('tabRules'),
 };
 // Zolang een multiplayer-potje loopt (window.mpGameActive, gezet door 99-multiplayer.js) mag
 // je het tabblad "Zelf spelen" niet verlaten — anders loop je zomaar uit je eigen potje weg
@@ -6932,6 +7213,8 @@ function switchTab(name){
   if (panelKey === 'walk' && !walkRunning && !soloGraph) renderWalkBoard();
   // de kamernaam op een opdrachtkaart hangt aan de tegel, dus bij elk openen opnieuw opbouwen
   if (name === 'cards') renderCardsTab();
+  // spelregels: bij het eerste openen opbouwen (98c-rules.js)
+  if (name === 'rules') renderRulesTab();
   // mpRenderLobby() wordt vanuit setWalkMode('multi') aangeroepen (hierboven, bij het openen
   // van het tabblad Multiplayer), niet apart hiervandaan.
 }
@@ -17381,6 +17664,676 @@ function avatarRowHtml(seats, total, myPeerId){
   }
   return html;
 }
+
+
+// ===== 98c-rules.js =====
+// ===================== TABBLAD SPELREGELS =====================
+// Alle spelregels kort op een rij, van het opbouwen van het bord tot het einde van het potje.
+// Bij een deel van de hoofdstukken staat rechts een kleine animatie die laat zien wat de regel
+// betekent. Opmaak: src/rules.css (los bestand, door build.py achter styles.css geplakt).
+//
+// Waar het kan komt de tekst uit de spelgegevens zelf, zodat de regels niet achterlopen:
+//   - energie-acties + prijs uit ENERGY_ACTIONS (95-simulate.js), op prijs gesorteerd
+//   - kristallen uit ACTION_CARDS / ACTION_CARD_TINTS / CRYSTAL_WHEN / CRYSTAL_CATS
+//   - getallen uit ENERGY_DIE_FACES, ENERGY_MAX, ACTION_CARD_HAND_MAX, SIM_QUESTS_TO_WIN
+// Nieuwe energie-actie of nieuw kristal? Dan staat hij hier vanzelf bij. Een eigen korte zin
+// voor een energie-actie zet je in RULES_ENERGY_TEXT (anders wordt `hint` gebruikt).
+//
+// Animaties: alleen Web Animations op transform/opacity (zie "Prestatie" in CLAUDE.md), elke
+// scène is één lus van vaste duur. Ze lopen alleen als de scène in beeld is (IntersectionObserver)
+// en het tabblad open staat; anders staan ze stil. Opgebouwd bij het eerste openen van het tabblad.
+
+const RULES_ENERGY_TEXT = {
+  boost:   'Gooi deze beurt met 3 loopstenen in plaats van 2.',
+  reorder: 'Bekijk je volgende opdracht en kies welke van de twee je eerst doet.',
+  gravity: `Schiet eerst rechtdoor tot een muur of pion, hooguit ${typeof GRAVITY_DASH_STEPS !== 'undefined' ? GRAVITY_DASH_STEPS : 8} vakjes. Kom je op je opdracht, dan stop je daar. Daarna gooi je.`,
+  portal:  'Schiet een portaal rechtdoor tot de muur of tot vóór een pion, en kies welke kleur je verplaatst. Daarna gooi je.',
+  jump:    `Spring eerst vrij naar een vakje binnen ${typeof ENERGY_JUMP_RANGE !== 'undefined' ? ENERGY_JUMP_RANGE : 11} stappen, over pionnen heen. Daarna gooi je.`,
+};
+const RULES_TINT_COLOR = { amber: 'var(--amber)', start: 'var(--start)', quest: 'var(--quest)', danger: 'var(--danger)', dim: 'var(--text-dim)' };
+const RULES_WHEN_TEXT = {
+  pre:   'Aan het begin van je beurt, voordat je dobbelt.',
+  any:   'Voor het dobbelen of erna, zolang je beurt loopt.',
+  start: 'Na het dobbelen, maar voordat je je eerste stap zet.',
+  post:  'Na het dobbelen, ook tussen je stappen door.',
+  auto:  'Je kiest hem niet zelf: het spel biedt hem aan zodra het kan.',
+};
+
+let rulesBuilt = false;
+let rulesScenes = [];          // { stage, anims: Animation[], visible }
+let rulesObserver = null;
+
+// ---------- teksten ----------
+function rulesSections(){
+  const win = typeof SIM_QUESTS_TO_WIN !== 'undefined' ? SIM_QUESTS_TO_WIN : 6;
+  const hand = typeof ACTION_CARD_HAND_MAX !== 'undefined' ? ACTION_CARD_HAND_MAX : 3;
+  const eMax = typeof ENERGY_MAX !== 'undefined' ? ENERGY_MAX : 10;
+  const faces = (typeof ENERGY_DIE_FACES !== 'undefined' ? ENERGY_DIE_FACES : [0, 1, 1, 2, 2, 3]).join(', ');
+  const nCrystalKinds = typeof ACTION_CARD_IDS !== 'undefined' ? ACTION_CARD_IDS.length : 18;
+
+  const energyRows = Object.entries(ENERGY_ACTIONS)
+    .filter(([id]) => id !== 'none')
+    .sort((a, b) => a[1].cost - b[1].cost)
+    .map(([id, a]) => `<li class="rules-energy-row"><span class="rules-cost">${a.cost}</span>
+        <span><b>${a.name}</b> ${RULES_ENERGY_TEXT[id] || (a.hint.charAt(0).toUpperCase() + a.hint.slice(1) + '.')}</span></li>`)
+    .join('');
+
+  return [
+    { id: 'doel', title: 'Doel van het spel', scene: 'goal', html: `
+      <ul class="rules-list">
+        <li>Voltooi als eerste <b>${win} opdrachten</b>.</li>
+        <li>Je speelt met 2 tot 4 spelers. Iedereen heeft een eigen stapel van 9 opdrachten.</li>
+        <li>Je doet je opdrachten één voor één, in de volgorde van je stapel.</li>
+      </ul>` },
+
+    { id: 'bord', title: 'Het bord opbouwen', scene: 'board', html: `
+      <ul class="rules-list">
+        <li>Het bord bestaat uit <b>20 tegels</b> van 8 × 8 vakjes, in 4 rijen van 5. De plekken heten A t/m T.</li>
+        <li>Er zijn <b>10 kamers</b> en <b>10 gangen</b>. Een kamer heeft een opdrachtvakje, een gang een kristalvakje.</li>
+        <li>Je mag elke tegel een kwartslag draaien, zo vaak als je wilt.</li>
+        <li><b>Hibernatie</b> heeft de 4 startvakjes en ligt binnenin: op G, H, I, L, M of N.</li>
+        <li>Op een <b>hoek</b> (A, E, P en T) mag geen doorgang naar de rand van het bord wijzen.</li>
+        <li>Elke doorgang sluit aan op een doorgang van de buurtegel. Er zijn geen doodlopende naden.</li>
+        <li>Alle 20 tegels moeten met elkaar verbonden zijn.</li>
+      </ul>
+      <p class="rules-tip">Tip: het tabblad <b>Speelbord genereren</b> legt zo'n bord automatisch voor je.</p>` },
+
+    { id: 'doorgang', title: 'Doorgangen', scene: 'doors', html: `
+      <ul class="rules-list">
+        <li>Midden op elke zijde van een tegel liggen twee <b>deurvakjes</b>.</li>
+        <li>Zijn ze allebei vloer, dan is die zijde een <b>doorgang</b>. Is er één leeg, dan is het een muur.</li>
+        <li>Liggen twee doorgangen tegen elkaar, dan loop je zo van de ene tegel naar de andere.</li>
+      </ul>` },
+
+    { id: 'klaar', title: 'Klaarzetten', html: `
+      <ul class="rules-list">
+        <li>Iedereen schudt zijn eigen <b>9 opdrachtkaarten</b> en legt ze gedekt neer.</li>
+        <li>Je eerste opdracht blijft geheim tot jij je startvak mag kiezen.</li>
+        <li>De <b>kristallen</b> vormen één gedeelde, geschudde stapel: ${nCrystalKinds} soorten, van elk 2.</li>
+        <li>Leg het <b>blauwe</b> en het <b>rode portaal</b> op twee gewone vakjes, minstens ${typeof PORTAL_START_MIN_DIST !== 'undefined' ? PORTAL_START_MIN_DIST : 16} stappen uit elkaar.</li>
+        <li>Iedereen begint met <b>0 energie</b> en een lege kluis.</li>
+      </ul>` },
+
+    { id: 'begin', title: 'Wie begint?', scene: 'opening', html: `
+      <ul class="rules-list">
+        <li>Iedereen gooit met 2 stenen.</li>
+        <li>Wie het hoogst gooit, kiest als eerste een vrij startvak in Hibernatie. Daarna de rest, van hoog naar laag.</li>
+        <li>Gooien spelers gelijk, dan gooien alleen die spelers opnieuw.</li>
+        <li>De volgorde van kiezen is ook de <b>beurtvolgorde</b> van het hele potje.</li>
+      </ul>
+      <p class="rules-tip">Tip: kies het startvak dat het dichtst bij je eerste opdracht ligt.</p>` },
+
+    { id: 'beurt', title: 'Je beurt', scene: 'turn', html: `
+      <ol class="rules-steps">
+        <li><b>Energie-actie</b> (mag). Kies er hooguit één en zet hem meteen in, vóór je gooit.</li>
+        <li><b>Dobbelen.</b> Gooi de 2 loopstenen en de energiesteen.</li>
+        <li><b>Lopen.</b> Zet precies zoveel stappen als de loopstenen samen aangeven.</li>
+      </ol>
+      <ul class="rules-list">
+        <li>Je mag per beurt hooguit <b>1 kristal</b> spelen of afleggen, op het moment dat op het kristal staat.</li>
+      </ul>` },
+
+    { id: 'bewegen', title: 'Bewegen', scene: 'move', html: `
+      <ul class="rules-list">
+        <li>Je loopt alleen <b>recht</b>: horizontaal of verticaal, nooit schuin.</li>
+        <li>Je loopt <b>precies</b> het gegooide aantal stappen.</li>
+        <li><b>Niet omkeren:</b> je stapt nooit terug naar het vakje waar je net vandaan kwam.</li>
+        <li>Een vakje met een andere pion is <b>bezet</b>. Je kunt er niet op en niet doorheen.</li>
+        <li>Lege vakjes zijn muur. Daar kun je niet in.</li>
+        <li>Loop je vast voordat je stappen op zijn, dan stop je op het laatste vakje dat je haalde.</li>
+      </ul>` },
+
+    { id: 'opdracht', title: 'Opdrachten', scene: 'quest', html: `
+      <ul class="rules-list">
+        <li>Kom je op het opdrachtvakje van je <b>huidige</b> opdracht, dan is die voltooid. Erover lopen telt ook.</li>
+        <li>Je zet stopt daar niet: je loopt met de rest van je stappen gewoon door.</li>
+        <li>Kom je daarbij ook langs je volgende opdracht, dan telt die ook meteen.</li>
+        <li>Voor elke voltooide opdracht krijg je een <b>kristal</b>.</li>
+        <li>Daarna draai je je volgende opdrachtkaart om.</li>
+      </ul>` },
+
+    { id: 'energie', title: 'Energie', scene: 'energy', html: `
+      <ul class="rules-list">
+        <li>De energiesteen heeft de kanten <b>${faces}</b>. Wat je gooit, krijg je erbij.</li>
+        <li>Je hebt hoogstens <b>${eMax} energie</b>. Wat erboven komt, valt weg.</li>
+        <li>Wat je deze beurt gooit, kun je pas <b>volgende beurt</b> uitgeven.</li>
+        <li>Een energie-actie kies je vóór je gooit, hooguit één per beurt:</li>
+      </ul>
+      <ul class="rules-energy">${energyRows}</ul>` },
+
+    { id: 'portaal', title: 'Portalen', scene: 'portal', html: `
+      <ul class="rules-list">
+        <li>Er liggen altijd twee portalen op het bord: een <b>blauwe</b> en een <b>rode</b>. Ze zijn van iedereen.</li>
+        <li>Stap je in een portaal, dan kom je uit het andere en <b>stopt je zet</b> daar. De rest van je worp vervalt.</li>
+        <li>Staat er een pion op een van de twee portalen, dan werkt het paar niet.</li>
+        <li>Met de energie-actie <b>Portaalkanon</b> verplaats je een portaal. Het vliegt rechtdoor tot de muur of tot vóór een pion.</li>
+        <li>Je kiest zelf welke kleur je verplaatst, ook als een ander hem legde.</li>
+        <li>Een portaal landt nooit op een opdracht-, start- of kristalvakje.</li>
+        <li>Noodtransport, de laarzen en duwkaarten gaan gewoon over een portaal heen.</li>
+      </ul>` },
+
+    { id: 'kristal', title: 'Kristallen', scene: 'crystal', html: `
+      <ul class="rules-list">
+        <li>Je krijgt een kristal als je een <b>opdracht voltooit</b>.</li>
+        <li>Loop je over het paarse <b>kristalvakje</b> van een gang, dan krijg je er ook een. Je zet stopt daar niet voor.</li>
+        <li>Kristalvakjes geven hooguit <b>1 kristal per beurt</b>, ook als je er meer passeert.</li>
+        <li>Je kluis houdt hoogstens <b>${hand} kristallen</b>. Is hij vol, dan krijg je niets en blijft het kristal op de stapel.</li>
+        <li>Je mag per beurt hooguit 1 kristal spelen of afleggen.</li>
+        <li>Gebruikte kristallen gaan naar de aflegstapel. Is de stapel op, dan schud je de aflegstapel.</li>
+        <li>Anderen zien alleen hoeveel kristallen je hebt, niet welke.</li>
+      </ul>
+      <h4 class="rules-sub">Wanneer mag een kristal?</h4>
+      <p class="rules-note">Bovenin elk kristal staat het moment:</p>
+      <ul class="rules-when">${Object.entries(CRYSTAL_WHEN).map(([k, label]) =>
+        `<li><span class="rules-when-pill">${label}</span>${RULES_WHEN_TEXT[k] || ''}</li>`).join('')}</ul>
+      <h4 class="rules-sub">Alle kristallen</h4>
+      ${rulesCrystalTable()}` },
+
+    { id: 'einde', title: 'Einde van het potje', scene: 'end', html: `
+      <ul class="rules-list">
+        <li>Wie als eerste ${win} opdrachten voltooit, is <b>1e</b> en gaat van het bord.</li>
+        <li>De anderen spelen door tot alleen de laatste plaats nog over is.</li>
+        <li>Een ronde wordt altijd helemaal uitgespeeld. Haalt iemand anders in dezelfde ronde ook zijn ${win}e opdracht, dan wint wie de meeste energie over heeft.</li>
+        <li>Nog gelijk? Dan telt het aantal kristallen. Is ook dat gelijk, dan delen ze de plaats.</li>
+      </ul>` },
+  ];
+}
+
+function rulesCrystalTable(){
+  const groups = {};
+  for (const id of Object.keys(ACTION_CARDS)){
+    const tint = ACTION_CARD_TINTS[id] || 'dim';
+    (groups[tint] = groups[tint] || []).push(id);
+  }
+  return `<div class="rules-crystals">${Object.keys(CRYSTAL_CATS).filter(t => groups[t]).map(tint => `
+    <div class="rules-crystal-group" style="--tint:${RULES_TINT_COLOR[tint] || 'var(--text-dim)'}">
+      <div class="rules-crystal-cat">${CRYSTAL_CATS[tint]}</div>
+      ${groups[tint].map(id => {
+        const c = ACTION_CARDS[id];
+        return `<div class="rules-crystal-row"><span class="rules-hex"></span>
+          <span class="rules-crystal-name">${c.name}</span>
+          <span class="rules-crystal-when">${CRYSTAL_WHEN[c.when] || ''}</span>
+          <span class="rules-crystal-text">${c.text}</span></div>`;
+      }).join('')}
+    </div>`).join('')}</div>`;
+}
+
+// ---------- opbouw ----------
+function renderRulesTab(){
+  if (!rulesBuilt){
+    rulesBuilt = true;
+    const root = document.getElementById('rulesContent');
+    const nav = document.getElementById('rulesNav');
+    const sections = rulesSections();
+    nav.innerHTML = sections.map((s, i) =>
+      `<a href="#rules-${s.id}" data-rules-id="${s.id}"><span>${i + 1}</span>${s.title}</a>`).join('');
+    root.innerHTML = sections.map((s, i) => `
+      <section class="rules-section${s.scene ? ' has-scene' : ''}" id="rules-${s.id}">
+        <div class="rules-text">
+          <h3><span class="rules-num">${i + 1}</span>${s.title}</h3>
+          ${s.html}
+        </div>
+        ${s.scene ? `<div class="rules-stage" data-scene="${s.scene}"></div>` : ''}
+      </section>`).join('');
+    nav.addEventListener('click', (e) => {
+      const a = e.target.closest('a[data-rules-id]');
+      if (!a) return;
+      e.preventDefault();
+      const target = document.getElementById('rules-' + a.dataset.rulesId);
+      if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+    for (const stage of root.querySelectorAll('.rules-stage')){
+      const build = RULES_SCENES[stage.dataset.scene];
+      let anims = [];
+      try { anims = build ? build(stage) : []; } catch (err){ console.error('Spelregels-animatie', stage.dataset.scene, err); }
+      anims.forEach(a => a.pause());
+      rulesScenes.push({ stage, anims, visible: false });
+    }
+    rulesObserver = new IntersectionObserver((entries) => {
+      for (const en of entries){
+        const sc = rulesScenes.find(s => s.stage === en.target);
+        if (!sc) continue;
+        sc.visible = en.isIntersecting;
+        sc.anims.forEach(a => sc.visible ? a.play() : a.pause());
+      }
+    }, { threshold: 0.15 });
+    rulesScenes.forEach(s => rulesObserver.observe(s.stage));
+    rulesWatchNav(sections);
+  }
+}
+
+// het hoofdstuk dat bovenin beeld staat, licht op in de inhoudsopgave
+function rulesWatchNav(sections){
+  const links = [...document.querySelectorAll('#rulesNav a')];
+  const io = new IntersectionObserver((entries) => {
+    for (const en of entries){
+      if (!en.isIntersecting) continue;
+      const id = en.target.id.replace('rules-', '');
+      links.forEach(l => l.classList.toggle('active', l.dataset.rulesId === id));
+    }
+  }, { rootMargin: '-20% 0px -70% 0px' });
+  sections.forEach(s => { const el = document.getElementById('rules-' + s.id); if (el) io.observe(el); });
+}
+
+// ---------- hulpjes voor de animaties ----------
+function rEl(parent, cls, html = '', style = ''){
+  const el = document.createElement('div');
+  el.className = cls;
+  if (html) el.innerHTML = html;
+  if (style) el.style.cssText = style;
+  parent.appendChild(el);
+  return el;
+}
+// Lus van `dur` ms. `pts` = [[t, waarde], ...] met t tussen 0 en 1: op t springt de eigenschap
+// (met een korte overgang van `ease` lang) naar de nieuwe waarde. Begin- en eindwaarde zijn gelijk
+// aan `start` tenzij een punt dat anders zegt, dus de lus loopt naadloos.
+function rTrack(el, prop, start, pts, dur, ease = 0.02){
+  const frames = [{ offset: 0, [prop]: start }];
+  let cur = start;
+  for (const [t, v] of pts){
+    const t0 = Math.max(frames[frames.length - 1].offset, Math.min(1, t));
+    const t1 = Math.min(1, t0 + ease);
+    frames.push({ offset: t0, [prop]: cur, easing: 'ease-out' });
+    frames.push({ offset: t1, [prop]: v });
+    cur = v;
+  }
+  frames.push({ offset: 1, [prop]: cur });
+  return el.animate(frames, { duration: dur, iterations: Infinity, fill: 'both' });
+}
+// zichtbaar van tIn tot tOut (met een kleine groei bij het verschijnen als pop = true)
+function rShow(el, tIn, tOut, dur, pop = false){
+  const a = [rTrack(el, 'opacity', 0, [[tIn, 1], [tOut, 0]], dur, 0.025)];
+  if (pop) a.push(rTrack(el, 'transform', 'scale(.4)', [[tIn, 'scale(1)'], [tOut + 0.03, 'scale(.4)']], dur, 0.04));
+  return a;
+}
+// pion over een pad van [kolom, rij]-vakjes; translate in % van de pion zelf (= 1 vakje)
+function rWalk(el, path, tStart, tStep, dur){
+  const tf = ([c, r]) => `translate(${c * 100}%, ${r * 100}%)`;
+  const frames = [{ offset: 0, transform: tf(path[0]) }, { offset: tStart, transform: tf(path[0]), easing: 'ease-in-out' }];
+  path.slice(1).forEach((p, i) => frames.push({ offset: Math.min(1, tStart + (i + 1) * tStep), transform: tf(p), easing: 'ease-in-out' }));
+  frames.push({ offset: 1, transform: tf(path[path.length - 1]) });
+  return el.animate(frames, { duration: dur, iterations: Infinity, fill: 'both' });
+}
+// klein vakjesraster: '#' = muur (leeg), '.' = vloer, 'Q' = opdracht, 'C' = kristalvakje
+function rGrid(parent, rows, cell){
+  const g = rEl(parent, 'rg', '', `--rc:${cell}px;width:${rows[0].length * cell}px;height:${rows.length * cell}px`);
+  rows.forEach((row, r) => [...row].forEach((ch, c) => {
+    if (ch === '#') return;
+    const cls = ch === 'Q' ? ' is-quest' : ch === 'C' ? ' is-crystal' : ch === 'D' ? ' is-door' : '';
+    rEl(g, 'rg-cell' + cls, ch === 'C' ? '<i></i>' : '', `left:${c * cell}px;top:${r * cell}px`);
+  }));
+  return g;
+}
+function rAt(parent, cls, c, r, cell, html = ''){
+  return rEl(parent, cls, html, `left:${c * cell}px;top:${r * cell}px;width:${cell}px;height:${cell}px`);
+}
+function rPawn(parent, color, cell){
+  const p = rEl(parent, 'rg-pawn', '<i></i>', `width:${cell}px;height:${cell}px;--pc:${color}`);
+  return p;
+}
+function rCaption(stage, texts, dur){
+  // texts: [[tIn, tOut, tekst], ...] — onder de scène, telkens één zichtbaar
+  const box = rEl(stage, 'rules-cap');
+  const anims = [];
+  for (const [a, b, t] of texts) anims.push(...rShow(rEl(box, 'rules-cap-line', t), a, b, dur));
+  return anims;
+}
+const RULES_HEX = '<svg viewBox="0 0 48 48"><polygon points="24,3 42,13.5 42,34.5 24,45 6,34.5 6,13.5"/></svg>';
+function rDie(parent, value){
+  const pips = { 1: [4], 2: [0, 8], 3: [0, 4, 8], 4: [0, 2, 6, 8], 5: [0, 2, 4, 6, 8], 6: [0, 2, 3, 5, 6, 8] }[value] || [];
+  return rEl(parent, 'rules-die', Array.from({ length: 9 }, (_, i) => `<i${pips.includes(i) ? ' class="on"' : ''}></i>`).join(''));
+}
+
+// ---------- de scènes ----------
+const RULES_SCENES = {
+  // 6 zeshoekjes lopen vol, daarna "Gewonnen"
+  goal(stage){
+    const D = 7000, anims = [];
+    const scene = rEl(stage, 'rules-scene rs-goal');
+    const row = rEl(scene, 'rs-hexrow');
+    for (let i = 0; i < 6; i++){
+      const h = rEl(row, 'rs-hex', RULES_HEX);
+      const fill = rEl(h, 'rs-hex-fill', RULES_HEX + '<b>✓</b>');
+      anims.push(...rShow(fill, 0.08 + i * 0.1, 0.93, D, true));
+    }
+    const win = rEl(scene, 'rs-win', 'Gewonnen!');
+    anims.push(...rShow(win, 0.7, 0.93, D, true));
+    anims.push(...rCaption(stage, [[0.02, 0.66, 'Elke voltooide opdracht vult een vakje'], [0.68, 0.95, 'Als eerste 6 = winnaar']], D));
+    return anims;
+  },
+
+  // 20 tegels vallen op hun plek, hoeken oranje, binnenring groen, Hibernatie landt op H
+  board(stage){
+    const D = 8500, anims = [], S = 44, G = 4;
+    const scene = rEl(stage, 'rules-scene');
+    const grid = rEl(scene, 'rs-board', '', `width:${5 * S + 4 * G}px;height:${4 * S + 3 * G}px`);
+    const letters = 'ABCDEFGHIJKLMNOPQRST';
+    const corners = [0, 4, 15, 19], inner = [6, 7, 8, 11, 12, 13];
+    for (let i = 0; i < 20; i++){
+      const c = i % 5, r = Math.floor(i / 5);
+      const tile = rEl(grid, 'rs-tile', `<span>${letters[i]}</span>`, `left:${c * (S + G)}px;top:${r * (S + G)}px;width:${S}px;height:${S}px`);
+      const t = 0.03 + i * 0.022;
+      anims.push(rTrack(tile, 'opacity', 0, [[t, 1], [0.95, 0]], D, 0.03));
+      anims.push(rTrack(tile, 'transform', 'translateY(-14px) scale(.8)', [[t, 'none'], [0.98, 'translateY(-14px) scale(.8)']], D, 0.04));
+      if (corners.includes(i)) anims.push(...rShow(rEl(tile, 'rs-tile-corner'), 0.52, 0.66, D));
+      if (inner.includes(i)) anims.push(...rShow(rEl(tile, 'rs-tile-inner'), 0.68, 0.93, D));
+    }
+    const hib = rEl(grid, 'rs-hib', '<i></i><i></i><i></i><i></i>', `left:${2 * (S + G)}px;top:${1 * (S + G)}px;width:${S}px;height:${S}px`);
+    anims.push(rTrack(hib, 'opacity', 0, [[0.76, 1], [0.93, 0]], D, 0.03));
+    anims.push(rTrack(hib, 'transform', 'translateY(-30px) scale(1.4)', [[0.76, 'none'], [0.96, 'translateY(-30px) scale(1.4)']], D, 0.05));
+    anims.push(...rCaption(stage, [
+      [0.02, 0.5, '20 tegels in 4 rijen van 5'],
+      [0.52, 0.66, 'Hoeken: geen doorgang naar buiten'],
+      [0.68, 0.95, 'Hibernatie ligt binnenin'],
+    ], D));
+    return anims;
+  },
+
+  // twee tegels: deurvakjes lichten op, de naad wordt een doorgang, een pion loopt erdoor
+  doors(stage){
+    const D = 7500, anims = [], C = 12;
+    const rows = [];
+    for (let r = 0; r < 8; r++){
+      let s = '';
+      for (let c = 0; c < 17; c++){
+        const lc = c, rc = c - 9;
+        let ch = '#';
+        if (c < 8){
+          if (r >= 1 && r <= 6 && lc >= 1 && lc <= 6) ch = '.';
+          if ((r === 3 || r === 4) && lc === 7) ch = 'D';
+          if (r === 0 && (lc === 3 || lc === 4)) ch = 'D';
+        } else if (c > 8){
+          if (r >= 1 && r <= 6 && rc >= 1 && rc <= 6) ch = '.';
+          if ((r === 3 || r === 4) && rc === 0) ch = 'D';
+          if (r === 7 && (rc === 3 || rc === 4)) ch = 'D';
+          if (r === 0 && rc === 3) ch = 'D';   // maar één deurvakje: geen doorgang
+        }
+        s += ch;
+      }
+      rows.push(s);
+    }
+    const scene = rEl(stage, 'rules-scene');
+    const g = rGrid(scene, rows, C);
+    g.classList.add('rs-doors');
+    // tegelranden
+    rEl(g, 'rs-tile-outline', '', `left:0;top:0;width:${8 * C}px;height:${8 * C}px`);
+    rEl(g, 'rs-tile-outline', '', `left:${9 * C}px;top:0;width:${8 * C}px;height:${8 * C}px`);
+    // deurvakjes oplichten
+    g.querySelectorAll('.rg-cell.is-door').forEach(d => anims.push(...rShow(rEl(d, 'rs-door-glow'), 0.08, 0.93, D)));
+    // de doorgang (naad tussen de tegels) wordt groen
+    anims.push(...rShow(rEl(g, 'rs-seam', '', `left:${7 * C}px;top:${3 * C}px;width:${3 * C}px;height:${2 * C}px`), 0.3, 0.93, D));
+    // halve deur rechtsboven: rood
+    anims.push(...rShow(rAt(g, 'rs-bad', 12, 0, C, '✕'), 0.3, 0.93, D, true));
+    const pawn = rPawn(g, 'var(--amber)', C);
+    const path = [[4, 3], [5, 3], [6, 3], [7, 3], [8, 3], [9, 3], [10, 3], [11, 3], [12, 3]];
+    anims.push(rWalk(pawn, path, 0.42, 0.045, D));
+    anims.push(rTrack(pawn, 'opacity', 0, [[0.36, 1], [0.93, 0]], D, 0.03));
+    anims.push(...rCaption(stage, [
+      [0.02, 0.28, 'Twee deurvakjes midden op een zijde'],
+      [0.3, 0.95, 'Beide vloer = doorgang · één leeg = muur'],
+    ], D));
+    return anims;
+  },
+
+  // drie spelers gooien, rijen schuiven naar de nieuwe volgorde
+  opening(stage){
+    const D = 8000, anims = [], H = 46;
+    const scene = rEl(stage, 'rules-scene');
+    const list = rEl(scene, 'rs-open', '', `height:${3 * H}px`);
+    const players = [
+      { name: 'Rood', color: '#ff6b6b', d: [4, 3], to: 1 },
+      { name: 'Blauw', color: '#4fb8e0', d: [6, 5], to: 0 },
+      { name: 'Groen', color: '#55d68a', d: [2, 3], to: 2 },
+    ];
+    players.forEach((p, i) => {
+      const row = rEl(list, 'rs-open-row', `<span class="rs-dot" style="background:${p.color}"></span><span class="rs-open-name">${p.name}</span>`, `top:${i * H}px`);
+      const dice = rEl(row, 'rs-open-dice');
+      p.d.forEach((v, k) => {
+        const slot = rEl(dice, 'rs-die-slot');
+        const q = rEl(slot, 'rules-die is-q', '?');
+        const die = rDie(slot, v);
+        const t = 0.1 + i * 0.09 + k * 0.03;
+        anims.push(rTrack(q, 'opacity', 1, [[t, 0], [0.95, 1]], D));
+        anims.push(...rShow(die, t, 0.93, D, true));
+      });
+      const sum = rEl(row, 'rs-open-sum');
+      anims.push(...rShow(rEl(sum, 'rs-sum-val', String(p.d[0] + p.d[1])), 0.16 + i * 0.09 + 0.03, 0.93, D, true));
+      const tag = rEl(row, 'rs-open-tag', ['1e kiest', '2e', '3e'][p.to]);
+      anims.push(...rShow(tag, 0.66 + p.to * 0.05, 0.93, D, true));
+      const dy = (p.to - i) * H;
+      anims.push(rTrack(row, 'transform', 'none', [[0.48, `translateY(${dy}px)`], [0.95, 'none']], D, 0.12));
+    });
+    anims.push(...rCaption(stage, [
+      [0.02, 0.46, 'Iedereen gooit 2 stenen'],
+      [0.48, 0.95, 'Hoogste kiest als eerste een startvak'],
+    ], D));
+    return anims;
+  },
+
+  // de drie stappen van een beurt, om de beurt uitgelicht
+  turn(stage){
+    const D = 9000, anims = [], H = 56;
+    const scene = rEl(stage, 'rules-scene');
+    const list = rEl(scene, 'rs-turn', '', `height:${3 * H}px`);
+    const hl = rEl(list, 'rs-turn-hl', '', `height:${H - 8}px`);
+    anims.push(rTrack(hl, 'transform', 'translateY(0px)', [[0.33, `translateY(${H}px)`], [0.64, `translateY(${2 * H}px)`], [0.96, 'translateY(0px)']], D, 0.04));
+    const steps = [
+      ['1', 'Energie-actie', 'mag, vóór je gooit'],
+      ['2', 'Dobbelen', '2 loopstenen + energiesteen'],
+      ['3', 'Lopen', 'precies je worp · hooguit 1 kristal'],
+    ];
+    steps.forEach(([n, t, sub], i) => rEl(list, 'rs-turn-row', `<span class="rs-turn-n">${n}</span><span><b>${t}</b><small>${sub}</small></span>`, `top:${i * H}px;height:${H - 8}px`));
+    // kleine illustraties rechts in elke rij
+    const bolt = rEl(list, 'rs-turn-ico', '⚡', `top:${0 * H}px;height:${H - 8}px`);
+    anims.push(rTrack(bolt, 'opacity', 0.25, [[0.04, 1], [0.32, 0.25]], D));
+    const dice = rEl(list, 'rs-turn-ico rs-turn-dice', '', `top:${1 * H}px;height:${H - 8}px`);
+    rDie(dice, 3); rDie(dice, 4);
+    anims.push(rTrack(dice, 'opacity', 0.25, [[0.35, 1], [0.63, 0.25]], D));
+    anims.push(rTrack(dice, 'transform', 'rotate(0deg)', [[0.35, 'rotate(-12deg)'], [0.4, 'rotate(0deg)']], D, 0.03));
+    const feet = rEl(list, 'rs-turn-ico', '7 →', `top:${2 * H}px;height:${H - 8}px`);
+    anims.push(rTrack(feet, 'opacity', 0.25, [[0.66, 1], [0.95, 0.25]], D));
+    anims.push(...rCaption(stage, [[0.02, 0.95, 'Elke beurt in deze volgorde']], D));
+    return anims;
+  },
+
+  // pion loopt 7 stappen, bezet vakje licht rood op
+  move(stage){
+    const D = 9000, anims = [], C = 30;
+    const rows = ['.......', '.##.##.', '.......', '.##.##.', '.......'];
+    const scene = rEl(stage, 'rules-scene');
+    const g = rGrid(scene, rows, C);
+    const path = [[0, 4], [0, 3], [0, 2], [0, 1], [0, 0], [1, 0], [2, 0], [3, 0]];
+    const t0 = 0.16, st = 0.075;
+    // voetstappen 1..7
+    path.slice(1).forEach(([c, r], i) => anims.push(...rShow(rAt(g, 'rs-step', c, r, C, String(i + 1)), t0 + (i + 1) * st, 0.93, D, true)));
+    // tegenstander + rode ring zodra je ernaast staat
+    rAt(g, 'rg-pawn is-static', 1, 2, C, '<i></i>').style.setProperty('--pc', '#4fb8e0');
+    anims.push(...rShow(rAt(g, 'rs-blocked', 1, 2, C), t0 + 2 * st, t0 + 4 * st, D));
+    const pawn = rPawn(g, 'var(--amber)', C);
+    anims.push(rWalk(pawn, path, t0, st, D));
+    anims.push(rTrack(pawn, 'opacity', 0, [[0.04, 1], [0.93, 0]], D));
+    // worp
+    const roll = rEl(scene, 'rs-roll');
+    rDie(roll, 3); rDie(roll, 4);
+    rEl(roll, 'rs-roll-sum', '= 7');
+    anims.push(...rShow(roll, 0.04, 0.93, D, true));
+    anims.push(...rCaption(stage, [
+      [0.02, 0.3, 'Je gooit 7: je loopt precies 7 stappen'],
+      [0.3, 0.46, 'Bezet vakje: daar kun je niet langs'],
+      [0.46, 0.95, 'Alleen recht, nooit schuin of terug'],
+    ], D));
+    return anims;
+  },
+
+  // over het opdrachtvakje heen: vinkje, vakje vult, en de pion loopt door
+  quest(stage){
+    const D = 8000, anims = [], C = 30;
+    const scene = rEl(stage, 'rules-scene');
+    const g = rGrid(scene, ['....Q...'], C);
+    const t0 = 0.14, st = 0.075;
+    const pawn = rPawn(g, 'var(--amber)', C);
+    const path = [[0, 0], [1, 0], [2, 0], [3, 0], [4, 0], [5, 0], [6, 0]];
+    anims.push(rWalk(pawn, path, t0, st, D));
+    anims.push(rTrack(pawn, 'opacity', 0, [[0.04, 1], [0.93, 0]], D));
+    const tHit = t0 + 4 * st;
+    anims.push(...rShow(rAt(g, 'rs-done', 4, 0, C, '✓'), tHit, 0.93, D, true));
+    const plus = rAt(g, 'rs-plus', 4, 0, C, '+1 kristal');
+    anims.push(rTrack(plus, 'opacity', 0, [[tHit + 0.02, 1], [tHit + 0.2, 0]], D, 0.03));
+    anims.push(rTrack(plus, 'transform', 'translateY(0px)', [[tHit + 0.02, 'translateY(-26px)'], [0.97, 'translateY(0px)']], D, 0.2));
+    const row = rEl(scene, 'rs-hexrow is-small');
+    for (let i = 0; i < 6; i++){
+      const h = rEl(row, 'rs-hex', RULES_HEX);
+      const fill = rEl(h, 'rs-hex-fill', RULES_HEX + '<b>✓</b>');
+      if (i < 2) fill.style.opacity = '1';
+      else if (i === 2) anims.push(...rShow(fill, tHit, 0.93, D, true));
+    }
+    anims.push(...rCaption(stage, [
+      [0.02, tHit - 0.01, 'Je gooit 6, je opdracht ligt 4 verder'],
+      [tHit, 0.95, 'Voltooid! En je loopt gewoon door'],
+    ], D));
+    return anims;
+  },
+
+  // energiesteen rolt, twee knooppunten laden op; volgende beurt Stuwstoot (−4)
+  energy(stage){
+    const D = 9500, anims = [];
+    const scene = rEl(stage, 'rules-scene');
+    const die = rEl(scene, 'rs-edie');
+    const faces = [3, 1, 0, 2, 1, 3, 2];
+    faces.forEach((v, i) => {
+      const f = rEl(die, 'rs-edie-face', `<span>${v}</span>`);
+      const tIn = 0.04 + i * 0.03, last = i === faces.length - 1;
+      anims.push(rTrack(f, 'opacity', 0, [[tIn, 1], [last ? 0.93 : tIn + 0.03, 0]], D, 0.005));
+    });
+    rEl(die, 'rs-edie-bolt', '⚡');
+    const bar = rEl(scene, 'rs-ebar');
+    const startLit = 3, gain = 2, cost = 4;
+    for (let i = 0; i < 10; i++){
+      const node = rEl(bar, 'rs-enode');
+      const lit = rEl(node, 'rs-enode-lit');
+      const pts = [];
+      let initial = i < startLit ? 1 : 0;
+      if (i >= startLit && i < startLit + gain) pts.push([0.3 + (i - startLit) * 0.04, 1]);
+      const after = startLit + gain;            // 5 aan
+      if (i < after && i >= after - cost) pts.push([0.66 + (after - 1 - i) * 0.03, 0]);
+      if (i < startLit && i >= after - cost) pts.push([0.95, 1]);
+      anims.push(rTrack(lit, 'opacity', initial, pts, D, 0.02));
+    }
+    const num = rEl(scene, 'rs-enum');
+    [[0, 0.32, '3'], [0.32, 0.68, '5'], [0.68, 0.97, '1']].forEach(([a, b, t]) => {
+      const s = rEl(num, 'rs-enum-v', t);
+      if (a === 0) anims.push(rTrack(s, 'opacity', 1, [[b, 0], [0.97, 1]], D));
+      else anims.push(...rShow(s, a, b, D));
+    });
+    const act = rEl(scene, 'rs-eact', '<b>Stuwstoot</b> −4 · 3 loopstenen');
+    anims.push(...rShow(act, 0.62, 0.93, D, true));
+    anims.push(...rCaption(stage, [
+      [0.02, 0.28, 'De energiesteen rolt: 2'],
+      [0.3, 0.58, '+2 energie, voor je volgende beurt'],
+      [0.6, 0.95, 'Volgende beurt, vóór het gooien: uitgeven'],
+    ], D));
+    return anims;
+  },
+
+  // pion stapt in het blauwe portaal, komt uit het rode en stopt; de rest van de worp vervalt
+  portal(stage){
+    const D = 8500, anims = [], C = 30;
+    const scene = rEl(stage, 'rules-scene');
+    const g = rGrid(scene, ['........', '###.####', '........'], C);
+    const blue = rAt(g, 'rs-portal', 5, 0, C, '<i></i>');
+    const red = rAt(g, 'rs-portal is-red', 2, 2, C, '<i></i>');
+    [blue, red].forEach(p => anims.push(rTrack(p.firstChild, 'opacity', 0.55, [[0.1, 1], [0.2, 0.55], [0.3, 1], [0.4, 0.55], [0.5, 1], [0.95, 0.55]], D, 0.05)));
+    const t0 = 0.14, st = 0.075;
+    const pawn = rPawn(g, 'var(--amber)', C);
+    const path = [[0, 0], [1, 0], [2, 0], [3, 0], [4, 0], [5, 0]];
+    anims.push(rWalk(pawn, path, t0, st, D));
+    const tIn = t0 + 5 * st;          // op het blauwe portaal
+    anims.push(rTrack(pawn, 'opacity', 0, [[0.04, 1], [tIn + 0.02, 0]], D, 0.03));
+    const out = rPawn(g, 'var(--amber)', C);
+    out.style.transform = 'translate(200%, 200%)';
+    anims.push(rTrack(out, 'opacity', 0, [[tIn + 0.05, 1], [0.93, 0]], D, 0.03));
+    anims.push(...rShow(rAt(g, 'rs-stop', 2, 2, C, 'stop'), tIn + 0.08, 0.93, D, true));
+    const roll = rEl(scene, 'rs-roll');
+    rDie(roll, 3); rDie(roll, 5);
+    rEl(roll, 'rs-roll-sum', '= 8');
+    anims.push(...rShow(roll, 0.04, 0.93, D, true));
+    anims.push(...rShow(rEl(scene, 'rs-lost', '3 stappen vervallen'), tIn + 0.1, 0.93, D, true));
+    anims.push(...rCaption(stage, [
+      [0.02, tIn - 0.01, 'Je gooit 8 en loopt naar het blauwe portaal'],
+      [tIn, 0.95, 'Uit het rode portaal: je zet stopt daar'],
+    ], D));
+    return anims;
+  },
+
+  // kristalvakje: kristal vliegt naar de kluis; het tweede vakje geeft niets meer
+  crystal(stage){
+    const D = 8500, anims = [], C = 30;
+    const scene = rEl(stage, 'rules-scene rs-crys');
+    const vault = rEl(scene, 'rs-vault');
+    const slots = [0, 1, 2].map(() => rEl(vault, 'rs-slot', RULES_HEX));
+    const g = rGrid(scene, ['..C...C..'], C);
+    const t0 = 0.14, st = 0.07;
+    const pawn = rPawn(g, 'var(--amber)', C);
+    const path = Array.from({ length: 9 }, (_, i) => [i, 0]);
+    anims.push(rWalk(pawn, path, t0, st, D));
+    anims.push(rTrack(pawn, 'opacity', 0, [[0.04, 1], [0.93, 0]], D));
+    const tHit = t0 + 2 * st, tHit2 = t0 + 6 * st;
+    // vliegend kristal: van vakje 2 naar plek 1 van de kluis (kluis en raster allebei gecentreerd)
+    const fly = rAt(g, 'rs-fly', 2, 0, C, RULES_HEX);
+    // kluis = 3 plekken van 34px met 6px ertussen, 26px boven het raster (zie .rs-vault in rules.css)
+    const gridW = 9 * C, vaultW = 3 * 34 + 2 * 6;
+    const dx = (gridW - vaultW) / 2 + 17 - (2 * C + C / 2), dy = -(26 + 17 + C / 2);
+    anims.push(rTrack(fly, 'opacity', 0, [[tHit, 1], [tHit + 0.16, 0], [0.97, 0]], D, 0.02));
+    anims.push(rTrack(fly, 'transform', 'translate(0px, 0px) scale(1)', [[tHit + 0.01, `translate(${dx}px, ${dy}px) scale(1.25)`], [0.97, 'translate(0px, 0px) scale(1)']], D, 0.15));
+    const got = rEl(slots[0], 'rs-slot-fill', RULES_HEX);
+    anims.push(...rShow(got, tHit + 0.15, 0.93, D, true));
+    // eerste kristalvakje is leeg na het oprapen
+    const firstGem = g.querySelectorAll('.rg-cell.is-crystal i')[0];
+    anims.push(rTrack(firstGem, 'opacity', 1, [[tHit, 0.15], [0.95, 1]], D));
+    // tweede: geeft niets meer deze beurt
+    anims.push(...rShow(rAt(g, 'rs-no', 6, 0, C, '✕'), tHit2, 0.93, D, true));
+    anims.push(...rCaption(stage, [
+      [0.02, tHit - 0.01, 'Over een kristalvakje lopen…'],
+      [tHit, tHit2 - 0.01, '…kristal naar je kluis, en je loopt door'],
+      [tHit2, 0.95, 'Hooguit 1 kristal per beurt van vakjes'],
+    ], D));
+    return anims;
+  },
+
+  // vier spelers lopen vol tot 6; de plaatsen vallen één voor één, de laatste vanzelf
+  end(stage){
+    const D = 9500, anims = [];
+    const scene = rEl(stage, 'rules-scene');
+    const list = rEl(scene, 'rs-end');
+    const players = [
+      { name: 'Rood', color: '#ff6b6b', done: 0.38, rank: '1e' },
+      { name: 'Blauw', color: '#4fb8e0', done: 0.55, rank: '2e' },
+      { name: 'Groen', color: '#55d68a', done: 0.7, rank: '3e' },
+      { name: 'Geel', color: '#ffd84f', done: null, upto: 4, rank: '4e' },
+    ];
+    players.forEach((p) => {
+      const row = rEl(list, 'rs-end-row', `<span class="rs-dot" style="background:${p.color}"></span><span class="rs-open-name">${p.name}</span>`);
+      const pips = rEl(row, 'rs-end-pips');
+      const n = p.done ? 6 : p.upto;
+      const tEnd = p.done || 0.62;
+      for (let i = 0; i < 6; i++){
+        const pip = rEl(pips, 'rs-pip');
+        if (i < n){
+          const lit = rEl(pip, 'rs-pip-lit', '', `background:${p.color}`);
+          anims.push(...rShow(lit, 0.05 + (tEnd - 0.05) * (i + 1) / n, 0.93, D));
+        }
+      }
+      const tag = rEl(row, 'rs-open-tag' + (p.rank === '1e' ? ' is-gold' : ''), p.rank);
+      anims.push(...rShow(tag, p.done || 0.74, 0.93, D, true));
+    });
+    anims.push(...rCaption(stage, [
+      [0.02, 0.37, 'Wie als eerste 6 opdrachten heeft…'],
+      [0.38, 0.72, '…is 1e. De rest speelt door'],
+      [0.74, 0.95, 'Plaats 4 ligt vast: het potje is klaar'],
+    ], D));
+    return anims;
+  },
+};
 
 
 // ===== 99-multiplayer.js =====

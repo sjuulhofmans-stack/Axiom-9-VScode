@@ -32,6 +32,8 @@ komt uit master, dus pas na de push staat de nieuwe versie online.
 src/
   index.html          HTML-skelet met placeholders {{CSS}} {{JS}} {{LOGO}}
   styles.css          alle opmaak (~77 KB)
+  rules.css           opmaak van het tabblad Spelregels (+ de iets compactere tabbladen in de kop);
+                      build.py plakt hem achter styles.css
   assets/logo.b64     logo als base64 — hier zelden iets aan doen
   assets/orbitron900.b64  lettertype Orbitron 900 voor de startanimatie (ingebakken, werkt offline)
   data/tiles.json     de 20 tegels + de vorm van een tegel (pattern)
@@ -60,6 +62,7 @@ src/
     97-solo.js        tabblad "Spelen": modus Zelf spelen, eigen speler besturen tussen bots, energiekaarten
     98-cards.js       tabblad Speelkaarten: vitrine + zoom voor opdrachtkaarten en kristallen
     98b-avatar.js     avatars in de multiplayer-kamer: 5 karakters, 5 brillen, 5 hoedjes (SVG) + editor
+    98c-rules.js      tabblad Spelregels: 12 hoofdstukken (bord opbouwen t/m einde) + kleine animaties
     99-multiplayer.js tabblad "Multiplayer": lobby + peer-to-peer spelen met vrienden (WebRTC)
 build.py              plakt alles tot dist/axiom9.html
 dist/axiom9.html      GEBOUWD — niet handmatig bewerken
@@ -82,6 +85,7 @@ aangeroepen (functiedeclaraties worden gehoist, `const`/`let` niet).
 | kleuren, formaat vakjes, mobiel             | `styles.css`          |
 | de blauwe hoofdknoppen (alle `button.primary`) | `styles.css` (`button.primary`): "glas + hoofdletters", gekozen optie 9 uit 9 (2026-10). Eén stijl én één lettergrootte (13px, ook groot/klein) voor alle 14 + de modusknoppen Automatisch/Zelf spelen (`.walk-mode-btn`); grote knoppen zijn alleen breder/hoger. Geen eigen `font-size` per knop toevoegen (gemeten: overal 13px, niets loopt uit een knop op 1440 en 1920 breed) |
 | een knop toevoegen                          | `index.html` + `80-controls.js` |
+| een spelregel-tekst of -animatie aanpassen  | `98c-rules.js` (`rulesSections` = teksten, `RULES_SCENES` = animaties) + `rules.css`. Energie-acties, kristallen en getallen (6 opdrachten, max. 10 energie, kluis 3, afstand tussen de portalen bij de start) komen uit de spelgegevens, dus die lopen vanzelf mee; een eigen korte zin voor een energie-actie in `RULES_ENERGY_TEXT`. Verander je een spelregel in de code, pas dan ook de tekst hier aan |
 | iets aan de tegel-editor                    | `90-editor.js`        |
 | de spelsimulatie aanpassen                  | `95-simulate.js`      |
 | een energie-actie of de prijs ervan aanpassen | `95-simulate.js` (`ENERGY_ACTIONS`, `botPreRollMove`) + knoppen in `97-solo.js` (`soloRenderActionPanel`/`soloUseEnergyAction`) |
@@ -491,6 +495,13 @@ Check minimaal:
     `statsUseEnergy` (95-simulate.js) — nieuwe plek waar gedobbeld of energie
     uitgegeven wordt? Daar ook die aanroep toevoegen.
 
+15. Tabblad **Spelregels** (sinds 2026-10, `98c-rules.js`): links de hoofdstukken (blijft staan,
+    het hoofdstuk in beeld licht op), rechts bij 10 van de 12 hoofdstukken een animatie die in een lus
+    loopt, alleen als hij in beeld is. Animaties = Web Animations op transform/opacity met een vaste
+    duur per scène (`rTrack`/`rShow`/`rWalk`); niets opvragen uit de opmaak. Check: console leeg, alle
+    scènes bewegen, en de kop met 6 tabbladen overlapt de titel niet (gemeten op 1920, 1730, 1600,
+    1505, 1440, 1366 en 1320 breed).
+
 ## Prestatie (gemeten, niet opnieuw invoeren)
 
 - Geen geanimeerde of veel gebruikte CSS-`filter` (drop-shadow) en geen `:has()` in het speelscherm:
@@ -516,10 +527,6 @@ Check minimaal:
   uitrollen). Niet terug naar CSS-animaties of JS die elk beeldje een positie zet.
 
 ## Nog te doen
-
-- Een eigen tabblad **Spelregels** (later, "als alles perfect is"). De uitlegteksten die
-  eerst onder Automatisch en Zelf spelen stonden (#walkAutoHint/#walkSoloHint, o.a. de
-  volgorde van een beurt) zijn daarom weggehaald uit de lobby; die inhoud hoort straks daar.
 
 - De 5e energie-actie is het **Portaalkanon** geworden (zie Portalen hierboven). Nog los te
   beslissen: een **portaalkristal** als tweede manier om aan een portaal te komen (in de analyse

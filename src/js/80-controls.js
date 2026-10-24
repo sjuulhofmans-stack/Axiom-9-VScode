@@ -321,6 +321,7 @@ const tabPanels = {
   simulate: document.getElementById('tabSimulate'),
   walk: document.getElementById('tabWalk'),
   cards: document.getElementById('tabCards'),
+  rules: document.getElementById('tabRules'),
 };
 // Zolang een multiplayer-potje loopt (window.mpGameActive, gezet door 99-multiplayer.js) mag
 // je het tabblad "Zelf spelen" niet verlaten — anders loop je zomaar uit je eigen potje weg
@@ -365,6 +366,8 @@ function switchTab(name){
   if (panelKey === 'walk' && !walkRunning && !soloGraph) renderWalkBoard();
   // de kamernaam op een opdrachtkaart hangt aan de tegel, dus bij elk openen opnieuw opbouwen
   if (name === 'cards') renderCardsTab();
+  // spelregels: bij het eerste openen opbouwen (98c-rules.js)
+  if (name === 'rules') renderRulesTab();
   // mpRenderLobby() wordt vanuit setWalkMode('multi') aangeroepen (hierboven, bij het openen
   // van het tabblad Multiplayer), niet apart hiervandaan.
 }
