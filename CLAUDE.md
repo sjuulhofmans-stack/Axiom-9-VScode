@@ -270,7 +270,13 @@ aangeroepen (functiedeclaraties worden gehoist, `const`/`let` niet).
   strategieën, via `botStrategyNow` → `botPortalWanted`) als het ≥6 stappen scheelt
   (`botPortalShot`); de Slim-bot alleen als het meer oplevert dan een sprint (`botSmartPick`).
   Bord: `walkPaintPortals`/`walkPortalShotFx`/`walkPortalJumpFx` (96-walk.js), opmaak blok
-  PORTALEN onderaan styles.css (alleen transform/opacity). Zelf spelen: fases `portal-aim`
+  PORTALEN onderaan styles.css (alleen transform/opacity). Uiterlijk gekozen uit 10 + 10
+  varianten (artifact "Axiom-9 Portaalontwerpen", 2026-10): portaal = **ovale poort** (staande
+  ovaal, ademende lichtkern), schot = **komeet** (kop + staart van 6 lichtjes, rechte lijn naar de
+  muur, 2 schokgolven, portaal ploft open), bewust LANGZAAM (gebruikerswens: "zodat je echt goed
+  ziet wat er gebeurt"): 130 ms per vakje, 0,7–1,7 s, op de snelste Automatisch-standen ×0,45
+  (`PORTAL_COMET_MS_PER_CELL`). De komeet meet niets op: elk lichtje is een vakje groot en schuift
+  in % van zichzelf + 1px gap per vakje. Zelf spelen: fases `portal-aim`
   (richting, knop of klik op het bord) en `portal-color`. Multiplayer: `portals` (plek + eigenaar)
   zit in de start én in elke stand (`mpPortalSnapshot`/`mpApplyPortals`), bot-beurten dragen
   `replay.portalShot` (voor/na), intents `portalAim`/`portalColor`.
