@@ -637,7 +637,7 @@
   .sim-stage.is-running > #simResults, .sim-stage.is-running > #simStatus{opacity:0;}
   .sim-stage > #simStatus:not(:empty){margin-bottom:10px;}
   /* Tijdring (gekozen 2026-10; simStream in 95-simulate.js): zwart gat, 60 streepjes die met de klok
-     mee doven, de resttijd groot in de kern. Alles staat absoluut en beweegt via transform/opacity
+     mee opgloeien; geen getal in de kern. Alles staat absoluut en beweegt via transform/opacity
      (Web Animations + transitions): de simulatie rekent in brokken van 30 ms op dezelfde draad, en
      alleen zulke animaties blijven daar vloeiend bij. */
   .sim-ring{position:absolute; left:0; right:0; top:0; bottom:96px; overflow:hidden;}
@@ -4677,7 +4677,7 @@
           <button id="btnSimulate" class="primary sim-go">Draai simulatie</button>
         </div>
         <!-- "Aan het simuleren"-vakje: de "Datastroom" (gekozen variant 3 uit 8, 2026-10): cijfers
-             "Tijdring": zwart gat met 60 streepjes die doven en de resttijd in de kern (simStream
+             "Tijdring": zwart gat met 60 streepjes die opgloeien met de voortgang (simStream
              in 95-simulate.js), eronder de potjesteller en Stoppen. Ligt tijdens het rekenen óver de (lege) uitslag
              en faadt bij klaar uit terwijl de uitslag infaadt — zie runSimulationBatch.
              #simStatus staat bewust BINNEN .sim-stage: daarbuiten (erboven) duwde de melding
@@ -4688,7 +4688,7 @@
             <div class="sim-ring" id="simRing" aria-hidden="true"></div>
             <div class="sim-cap">
               <span class="gen-sub sim-loader-count" id="simLoaderCount"></span>
-              <button type="button" id="btnSimStop" class="ghost sim-stop">Stoppen</button>
+              <button type="button" id="btnSimStop" class="primary sim-stop">Stoppen</button>
             </div>
           </div>
           <div id="simResults"></div>
@@ -9552,19 +9552,18 @@ function simCountStep(dir, size = SIM_COUNT_STEP){
 }
 // ---------- "Tijdring" in het simulatievak (gekozen: Zwaartekracht → variant 2 "Tijdring", 2026-10) ----------
 // Een zwart gat met een gloeiende schijf; deeltjes spiraleren erin. Zestig streepjes rond het gat
-// doven met de klok mee naarmate de simulatie vordert, en in de zwarte kern staat groot hoeveel
-// seconden het nog duurt (bij elke wissel wordt het oude getal het gat in gezogen). Gebruikerswens:
-// "goed zien hoelang het nog duurt". Alles beweegt via Web Animations/transitions op transform/
+// gloeien met de klok mee op naarmate de simulatie vordert (alles aan = klaar). Geen getal in de
+// kern (gebruikerswens 2026-10: eerst wel seconden, weer weggehaald). Alles beweegt via Web Animations/transitions op transform/
 // opacity, zodat de browser het afspeelt terwijl runSimulationBatch in brokken van 30 ms rekent.
 // Opmeten gebeurt één keer, bij de start.
-const SIM_STREAM_DONE_MS = 700;   // na het laatste brok: de lege ring + vinkje nog even in beeld
+const SIM_STREAM_DONE_MS = 700;   // na het laatste brok: de volle ring nog even in beeld
 const SIM_RING_TICKS = 60;
 const simStream = (() => {
   const root = document.getElementById('simRing');
   if (!root) return null;
   const AM = '#ffb545', HOT = '#fff1dc';
-  let ticks = [], diskEl = null, numBox = null, numEl = null, numCur = null, spawnTimer = null;
-  let cx = 0, cy = 0, r = 0, R0 = 0, run = 0, t0 = 0, shownSec = Infinity, darkTicks = -1;
+  let ticks = [], diskEl = null, spawnTimer = null;
+  let cx = 0, cy = 0, r = 0, R0 = 0, run = 0, litTicks = -1;
   const mk = (parent, css, html) => { const e = document.createElement('div'); e.style.cssText = css; if (html != null) e.textContent = html; parent.appendChild(e); return e; };
   // deeltje dat in een spiraal naar binnen valt (draaiende arm + deeltje dat naar het midden schuift)
   function particle(){
@@ -9578,22 +9577,13 @@ const simStream = (() => {
       { transform:`translateX(${r * .9}px) scale(.4)`, opacity:0 },
     ], { duration:dur, easing:ease }).onfinish = () => arm.remove();
   }
-  // groot getal in de kern; het oude wordt weggedraaid het gat in
-  function setNum(v){
-    if (v === numCur || !numBox) return;
-    numCur = v;
-    const old = numEl;
-    numEl = mk(numBox, 'position:absolute;inset:0;display:grid;place-items:center;will-change:transform,opacity', v);
-    numEl.animate([{ opacity:0, transform:'scale(1.5)' }, { opacity:1, transform:'scale(1)' }], { duration:320, easing:'ease-out' });
-    if (old) old.animate([{ opacity:1, transform:'scale(1) rotate(0)' }, { opacity:0, transform:'scale(.1) rotate(220deg)' }],
-      { duration:380, easing:'ease-in', fill:'forwards' }).onfinish = () => old.remove();
-  }
-  // de eerste `frac` van de streepjes (vanaf boven, met de klok mee) is gedoofd
+  // de eerste `frac` van de streepjes (vanaf boven, met de klok mee) gloeit
   function setTicks(frac){
-    const dark = Math.min(SIM_RING_TICKS, Math.floor(frac * SIM_RING_TICKS));
-    if (dark === darkTicks) return;
-    for (let k = 0; k < SIM_RING_TICKS; k++) ticks[k].style.opacity = k < dark ? .1 : 1;
-    darkTicks = dark;
+    if (!ticks.length) return;
+    const lit = Math.min(SIM_RING_TICKS, Math.floor(frac * SIM_RING_TICKS));
+    if (lit === litTicks) return;
+    for (let k = 0; k < SIM_RING_TICKS; k++) ticks[k].style.opacity = k < lit ? 1 : .12;
+    litTicks = lit;
   }
 
   function start(){
@@ -9602,9 +9592,9 @@ const simStream = (() => {
     root.innerHTML = '';
     const W = root.clientWidth, H = root.clientHeight;
     // vak niet zichtbaar bij de start (bv. ander tabblad): dan niets tekenen
-    if (!W || !H){ ticks = []; numBox = null; return; }
+    if (!W || !H){ ticks = []; return; }
     cx = W / 2; cy = H / 2; R0 = Math.min(W, H) * .45; r = R0 * .3;
-    t0 = performance.now(); shownSec = Infinity; numCur = null; numEl = null; darkTicks = -1;
+    litTicks = -1;
     // gloeiende schijf: buitenste laag schaalt, binnenste draait
     const S = r * 5.2;
     diskEl = mk(root, `position:absolute;left:${cx - S / 2}px;top:${cy - S / 2}px;width:${S}px;height:${S}px;transform:scale(.85);transition:transform .6s ease`);
@@ -9620,27 +9610,13 @@ const simStream = (() => {
     }
     mk(root, `position:absolute;left:${cx - r}px;top:${cy - r}px;width:${2 * r}px;height:${2 * r}px;border-radius:50%;background:#000;
       box-shadow:0 0 0 2px #ffcf9a55, 0 0 18px #ffcf9a44`);
-    numBox = mk(root, `position:absolute;left:${cx - r}px;top:${cy - r}px;width:${2 * r}px;height:${2 * r}px;
-      font-family:var(--font-display);font-weight:700;font-size:${Math.round(r * 1.05)}px;line-height:1;color:#fff;font-variant-numeric:tabular-nums`);
     setTicks(0);
-    setNum('…');
     spawnTimer = setInterval(particle, 70);
   }
-  // frac = gedaan/totaal. De seconden zijn een schatting (verstreken tijd / frac); het getal mag
-  // alleen dalen (de schatting schommelt per brok) en staat op 1 tot het echt klaar is.
-  function progress(frac){
-    if (!numBox) return;
-    setTicks(frac);
-    if (frac < .02) return;
-    const elapsed = performance.now() - t0;
-    const left = Math.max(1, Math.ceil(elapsed / frac * (1 - frac) / 1000));
-    shownSec = Math.min(shownSec, left);
-    setNum(String(shownSec));
-  }
+  // frac = gedaan/totaal
+  function progress(frac){ setTicks(frac); }
   function complete(){
-    if (!numBox) return;
     setTicks(1);
-    setNum('✓');
     if (diskEl) diskEl.style.transform = 'scale(1)';
   }
   // pas na het uitfaden de deeltjes weghalen (anders verdwijnen ze zichtbaar)
@@ -9652,7 +9628,7 @@ const simStream = (() => {
   return { start, progress, complete, stop };
 })();
 
-// "Aan het simuleren"-vakje: de tijdring hierboven (met de resttijd in de kern), de potjesteller en
+// "Aan het simuleren"-vakje: de tijdring hierboven, de potjesteller en
 // Stoppen; vervangt de oude voortgangsbalk, de ring met radar en de datastroom (gebruikerswens).
 // createProgressLoader (80-controls.js) blijft aan voor start/stop; er is geen .gen-eta meer.
 const simStageEl = document.getElementById('simStage');
@@ -10400,7 +10376,7 @@ function runSimulationBatch(){
       if (runId !== simRunId) return;
 
       const elapsedMs = performance.now() - t0;
-      // de ring afmaken (vinkje) en even laten staan, en het vakje minstens helemaal laten infaden;
+      // de ring vol laten gloeien en even laten staan, en het vakje minstens helemaal laten infaden;
       // dan de uitslag (nog onzichtbaar) opbouwen, en pas daarna overfaden
       simLoader && simLoader.complete();
       if (simStream) simStream.complete();

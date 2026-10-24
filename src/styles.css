@@ -630,7 +630,7 @@
   .sim-stage.is-running > #simResults, .sim-stage.is-running > #simStatus{opacity:0;}
   .sim-stage > #simStatus:not(:empty){margin-bottom:10px;}
   /* Tijdring (gekozen 2026-10; simStream in 95-simulate.js): zwart gat, 60 streepjes die met de klok
-     mee doven, de resttijd groot in de kern. Alles staat absoluut en beweegt via transform/opacity
+     mee opgloeien; geen getal in de kern. Alles staat absoluut en beweegt via transform/opacity
      (Web Animations + transitions): de simulatie rekent in brokken van 30 ms op dezelfde draad, en
      alleen zulke animaties blijven daar vloeiend bij. */
   .sim-ring{position:absolute; left:0; right:0; top:0; bottom:96px; overflow:hidden;}

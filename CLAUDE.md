@@ -337,11 +337,11 @@ Check minimaal:
    zien, "vastgelopen potjes" is 0 of bijna 0. Tijdens het rekenen staat er een
    "Aan het simuleren"-vakje met de **tijdring** (gekozen 2026-10 via Zwaartekracht → variant 2 uit 20;
    `simStream` in 95-simulate.js, `#simRing`/`.sim-ring`): zwart gat met gloeiende schijf, deeltjes
-   spiraleren erin, 60 streepjes rond het gat doven met de klok mee (= voortgang) en in de kern staat
-   groot hoeveel seconden het nog duurt (schatting uit verstreken tijd, mag alleen dalen). Alleen Web
+   spiraleren erin, 60 streepjes rond het gat gloeien met de klok mee op (= voortgang); géén getal in
+   de kern (eerst seconden, op verzoek weer weg). Alleen Web
    Animations/transitions op transform/opacity, want de simulatie rekent in brokken van 30 ms op
-   dezelfde draad. Eronder alleen potjesteller en "Stoppen" (geen titel/tijdregel meer); bij klaar
-   staat er 0,7 s een vinkje in de kern, dan faadt de uitslag in.
+   dezelfde draad. Eronder alleen potjesteller en "Stoppen" (`button.primary`, zelfde stijl als de
+   andere knoppen); bij klaar staat de volle ring nog 0,7 s, dan faadt de uitslag in.
 7. Onderaan de simulatie: tabel "koudste tegels" — geen enkele tegel mag op
    0,0% verkeer staan. Gebeurt dat toch, dan is er een dode lus ontstaan en
    klopt `deadTileCount` in `70-generator.js` niet meer.
