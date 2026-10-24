@@ -440,3 +440,56 @@ document.querySelectorAll('.board-zoom').forEach(btn => {
     logo.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' '){ e.preventDefault(); reload(); } });
   }
 }
+
+// ---------- keuzevakjes i.p.v. keuzelijsten (gebruikerswens 2026-10) ----------
+// In de lobby van Spelen en bij Spel hosten kies je een optie met losse vakjes i.p.v. een
+// uitklaplijst. De <select> blijft (verborgen) de bron: alle code leest/zet gewoon .value/.disabled
+// en luistert naar 'change'. Een klik op een vakje zet de waarde en stuurt 'change'; een
+// MutationObserver houdt de vakjes gelijk als de code opties hernoemt (Energie-inzet: naam + prijs
+// uit ENERGY_ACTIONS, 96-walk.js) of de keuze uitzet (Beurten van de bots zonder bots).
+function segmentSelect(sel){
+  if (!sel || sel.dataset.seg) return;
+  sel.dataset.seg = '1';
+  const box = document.createElement('div');
+  box.className = 'seg-group';
+  box.setAttribute('role', 'radiogroup');
+  const lbl = sel.id && document.querySelector(`label[for="${sel.id}"]`);
+  if (lbl){
+    if (!lbl.id) lbl.id = sel.id + 'Label';
+    box.setAttribute('aria-labelledby', lbl.id);
+    lbl.removeAttribute('for');   // een label voor een verborgen lijst doet niets
+  }
+  sel.classList.add('seg-source');
+  sel.after(box);
+  function render(){
+    const opts = [...sel.options];
+    const longest = Math.max(...opts.map(o => o.textContent.trim().length));
+    // korte opties (1 speler … 4 spelers) op één rij, lange in twee kolommen
+    const cols = longest <= 10 ? Math.min(opts.length, 4) : Math.min(opts.length, 2);
+    box.style.setProperty('--seg-cols', cols);
+    box.classList.toggle('is-2col', cols === 2);
+    box.replaceChildren(...opts.map(o => {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'seg-btn' + (o.value === sel.value ? ' is-on' : '');
+      b.setAttribute('role', 'radio');
+      b.setAttribute('aria-checked', String(o.value === sel.value));
+      b.dataset.value = o.value;
+      b.disabled = sel.disabled || o.disabled;
+      b.textContent = o.textContent.trim();
+      return b;
+    }));
+  }
+  box.addEventListener('click', (e) => {
+    const b = e.target.closest('.seg-btn');
+    if (!b || b.disabled || b.dataset.value === sel.value) return;
+    sel.value = b.dataset.value;
+    sel.dispatchEvent(new Event('change', { bubbles: true }));
+    render();
+  });
+  sel.addEventListener('change', render);
+  new MutationObserver(render).observe(sel, { attributes: true, attributeFilter: ['disabled'], childList: true, subtree: true, characterData: true });
+  render();
+}
+['walkPlayers', 'walkEnergyMode', 'walkSoloBotView', 'mpHostTotal', 'mpHostFillBots', 'mpHostBotView']
+  .forEach(id => segmentSelect(document.getElementById(id)));

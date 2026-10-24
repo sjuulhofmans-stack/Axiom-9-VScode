@@ -895,6 +895,25 @@
   /* uitgezet keuzeveld (bv. "Beurten van de bots" zonder bots): blijft staan, maar gedimd */
   .walk-lobby-body .field.is-disabled{opacity:.4;}
   .walk-lobby-body .field.is-disabled select{cursor:not-allowed;}
+  /* keuzevakjes i.p.v. keuzelijsten (segmentSelect in 80-controls.js): de <select> blijft verborgen
+     de bron; elk vakje is één optie, het gekozen vakje licht blauw op zoals het actieve tabblad */
+  select.seg-source{display:none;}
+  .seg-group{display:grid; grid-template-columns:repeat(var(--seg-cols, 2), minmax(0, 1fr)); gap:6px;}
+  /* oneven aantal in twee kolommen: het laatste vakje over de hele breedte, niet alleen in een rij */
+  .seg-group.is-2col .seg-btn:last-child:nth-child(odd){grid-column:1 / -1;}
+  .seg-btn{
+    min-height:40px; padding:8px 10px; border-radius:6px; text-align:center;
+    background:var(--panel-2); border:1px solid var(--line-dim); color:var(--text-dim);
+    font-family:var(--font-mono); font-weight:400; font-size:12.5px; line-height:1.25; letter-spacing:0;
+  }
+  .seg-btn:hover:not(:disabled){color:var(--text); border-color:var(--line);}
+  .seg-btn.is-on{
+    color:#eafcff; border-color:var(--quest);
+    background:color-mix(in srgb, var(--quest) 16%, var(--panel-2));
+    box-shadow:0 0 10px color-mix(in srgb, var(--quest) 25%, transparent);
+  }
+  .seg-btn:focus-visible{outline:2px solid var(--quest); outline-offset:2px;}
+  .seg-btn:disabled{cursor:not-allowed;}
   .walk-lobby-body .mp-setup .btn-row, .walk-lobby-body #mpJoinWaiting .btn-row,
   .walk-lobby-body #mpHostRoom .btn-row{justify-content:center;}
   /* (de oude 2-koloms spelerskaartjes van #walkSoloSetupPlayers stonden hier; nu bemanningslijst,
@@ -7318,6 +7337,59 @@ document.querySelectorAll('.board-zoom').forEach(btn => {
     logo.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' '){ e.preventDefault(); reload(); } });
   }
 }
+
+// ---------- keuzevakjes i.p.v. keuzelijsten (gebruikerswens 2026-10) ----------
+// In de lobby van Spelen en bij Spel hosten kies je een optie met losse vakjes i.p.v. een
+// uitklaplijst. De <select> blijft (verborgen) de bron: alle code leest/zet gewoon .value/.disabled
+// en luistert naar 'change'. Een klik op een vakje zet de waarde en stuurt 'change'; een
+// MutationObserver houdt de vakjes gelijk als de code opties hernoemt (Energie-inzet: naam + prijs
+// uit ENERGY_ACTIONS, 96-walk.js) of de keuze uitzet (Beurten van de bots zonder bots).
+function segmentSelect(sel){
+  if (!sel || sel.dataset.seg) return;
+  sel.dataset.seg = '1';
+  const box = document.createElement('div');
+  box.className = 'seg-group';
+  box.setAttribute('role', 'radiogroup');
+  const lbl = sel.id && document.querySelector(`label[for="${sel.id}"]`);
+  if (lbl){
+    if (!lbl.id) lbl.id = sel.id + 'Label';
+    box.setAttribute('aria-labelledby', lbl.id);
+    lbl.removeAttribute('for');   // een label voor een verborgen lijst doet niets
+  }
+  sel.classList.add('seg-source');
+  sel.after(box);
+  function render(){
+    const opts = [...sel.options];
+    const longest = Math.max(...opts.map(o => o.textContent.trim().length));
+    // korte opties (1 speler … 4 spelers) op één rij, lange in twee kolommen
+    const cols = longest <= 10 ? Math.min(opts.length, 4) : Math.min(opts.length, 2);
+    box.style.setProperty('--seg-cols', cols);
+    box.classList.toggle('is-2col', cols === 2);
+    box.replaceChildren(...opts.map(o => {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'seg-btn' + (o.value === sel.value ? ' is-on' : '');
+      b.setAttribute('role', 'radio');
+      b.setAttribute('aria-checked', String(o.value === sel.value));
+      b.dataset.value = o.value;
+      b.disabled = sel.disabled || o.disabled;
+      b.textContent = o.textContent.trim();
+      return b;
+    }));
+  }
+  box.addEventListener('click', (e) => {
+    const b = e.target.closest('.seg-btn');
+    if (!b || b.disabled || b.dataset.value === sel.value) return;
+    sel.value = b.dataset.value;
+    sel.dispatchEvent(new Event('change', { bubbles: true }));
+    render();
+  });
+  sel.addEventListener('change', render);
+  new MutationObserver(render).observe(sel, { attributes: true, attributeFilter: ['disabled'], childList: true, subtree: true, characterData: true });
+  render();
+}
+['walkPlayers', 'walkEnergyMode', 'walkSoloBotView', 'mpHostTotal', 'mpHostFillBots', 'mpHostBotView']
+  .forEach(id => segmentSelect(document.getElementById(id)));
 
 
 // ===== 90-editor.js =====

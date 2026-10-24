@@ -888,6 +888,25 @@
   /* uitgezet keuzeveld (bv. "Beurten van de bots" zonder bots): blijft staan, maar gedimd */
   .walk-lobby-body .field.is-disabled{opacity:.4;}
   .walk-lobby-body .field.is-disabled select{cursor:not-allowed;}
+  /* keuzevakjes i.p.v. keuzelijsten (segmentSelect in 80-controls.js): de <select> blijft verborgen
+     de bron; elk vakje is één optie, het gekozen vakje licht blauw op zoals het actieve tabblad */
+  select.seg-source{display:none;}
+  .seg-group{display:grid; grid-template-columns:repeat(var(--seg-cols, 2), minmax(0, 1fr)); gap:6px;}
+  /* oneven aantal in twee kolommen: het laatste vakje over de hele breedte, niet alleen in een rij */
+  .seg-group.is-2col .seg-btn:last-child:nth-child(odd){grid-column:1 / -1;}
+  .seg-btn{
+    min-height:40px; padding:8px 10px; border-radius:6px; text-align:center;
+    background:var(--panel-2); border:1px solid var(--line-dim); color:var(--text-dim);
+    font-family:var(--font-mono); font-weight:400; font-size:12.5px; line-height:1.25; letter-spacing:0;
+  }
+  .seg-btn:hover:not(:disabled){color:var(--text); border-color:var(--line);}
+  .seg-btn.is-on{
+    color:#eafcff; border-color:var(--quest);
+    background:color-mix(in srgb, var(--quest) 16%, var(--panel-2));
+    box-shadow:0 0 10px color-mix(in srgb, var(--quest) 25%, transparent);
+  }
+  .seg-btn:focus-visible{outline:2px solid var(--quest); outline-offset:2px;}
+  .seg-btn:disabled{cursor:not-allowed;}
   .walk-lobby-body .mp-setup .btn-row, .walk-lobby-body #mpJoinWaiting .btn-row,
   .walk-lobby-body #mpHostRoom .btn-row{justify-content:center;}
   /* (de oude 2-koloms spelerskaartjes van #walkSoloSetupPlayers stonden hier; nu bemanningslijst,

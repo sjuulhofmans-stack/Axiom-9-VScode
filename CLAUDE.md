@@ -87,6 +87,7 @@ aangeroepen (functiedeclaraties worden gehoist, `const`/`let` niet).
 | kleuren, formaat vakjes, mobiel             | `styles.css`          |
 | de blauwe hoofdknoppen (alle `button.primary`) | `styles.css` (`button.primary`): "glas + hoofdletters", gekozen optie 9 uit 9 (2026-10). Eén stijl én één lettergrootte (13px, ook groot/klein) voor alle 14 + de modusknoppen Automatisch/Zelf spelen (`.walk-mode-btn`); grote knoppen zijn alleen breder/hoger. Geen eigen `font-size` per knop toevoegen (gemeten: overal 13px, niets loopt uit een knop op 1440 en 1920 breed) |
 | een knop toevoegen                          | `index.html` + `80-controls.js` |
+| de keuzevakjes in de lobby (Spelen + Spel hosten; waren keuzelijsten) | `segmentSelect` onderaan `80-controls.js` + `.seg-*` in `styles.css`. De `<select>` in index.html blijft verborgen de bron (opties, waarde, disabled); nieuwe keuze = `<select>` toevoegen en het id in de lijst onder `segmentSelect` zetten |
 | een spelregel-tekst of -animatie aanpassen  | `98c-rules.js` (`rulesSections` = teksten, `RULES_SCENES` = animaties) + `rules.css`. Energie-acties, kristallen en getallen (6 opdrachten, max. 10 energie, kluis 3, afstand tussen de portalen bij de start) komen uit de spelgegevens, dus die lopen vanzelf mee; een eigen korte zin voor een energie-actie in `RULES_ENERGY_TEXT`. Verander je een spelregel in de code, pas dan ook de tekst hier aan |
 | iets aan de tegel-editor                    | `90-editor.js`        |
 | de spelsimulatie aanpassen                  | `95-simulate.js`      |
