@@ -1023,6 +1023,8 @@ function mpHostStartGame(){
   soloRoundPos = 0;
   soloTurn = 0;
   soloDeck = buildActionDeck(soloRand);
+  portalSetup(soloGraph, soloRand);   // twee portalen bij de start; gaan mee in elke stand
+  walkPaintPortals(soloGraph);
   crystalResetVault();
   crystalMpReset();
   diceReset();
@@ -1047,6 +1049,8 @@ function mpHostStartGame(){
     players: mpPublicPlayers(soloPlayers),
     turnOrder: soloTurnOrder,
     finishTarget: soloFinishTarget,
+    // plek + eigenaar van het blauwe en het rode portaal (zie PORTALEN in 95-simulate.js)
+    portals: mpPortalSnapshot(),
   });
 
   mp.lastFingerprint = null;
@@ -1058,6 +1062,34 @@ function mpHostStartGame(){
 // ---------- de kaart van de host precies overnemen ----------
 // layout = welke tegel op welke plek, tileRotation = hoe elke tegel gedraaid ligt (10-rules.js),
 // tileLookup = de vakjes van elke tegel (00-data.js, kan via de tegel-editor afwijken).
+// portalen: { cells: [blauw, rood], owner: [idx, idx] } — een kopie, zodat de vingerafdruk van
+// de stand verandert zodra er een portaal verplaatst wordt
+function mpPortalSnapshot(){
+  const P = soloGraph && soloGraph.portals;
+  return P ? { cells: P.cells.slice(), owner: P.owner.slice() } : null;
+}
+// gast: portalen van de host overnemen en tekenen (alleen als er iets veranderd is)
+function mpApplyPortals(portals){
+  if (!portals || !soloGraph) return;
+  const P = soloGraph.portals;
+  if (P && P.cells[0] === portals.cells[0] && P.cells[1] === portals.cells[1]
+      && P.owner[0] === portals.owner[0] && P.owner[1] === portals.owner[1]) return;
+  const moved = P ? [0, 1].filter(c => P.cells[c] !== portals.cells[c] && portals.cells[c] >= 0) : [];
+  soloGraph.portals = { cells: portals.cells.slice(), owner: portals.owner.slice() };
+  walkPaintPortals(soloGraph);
+  // een mens schoot een portaal: bij de gast ploft het nieuwe open (de vlucht zelf zag hij niet)
+  for (const c of moved) walkPortalBurst(soloGraph, portals.cells[c], c, true);
+}
+// gast: stapte de speler aan zet net door een portaal? Dan dezelfde flits als bij de host.
+let mpPortalFxSeen = '';
+function mpPortalJumpFxFromState(move){
+  if (!move || !move.path || move.path.length < 2 || !soloGraph) return;
+  const n = move.path.length, a = move.path[n - 2], b = move.path[n - 1];
+  const key = `${soloTurn}|${n}|${b}`;
+  if (key === mpPortalFxSeen || !portalIsJump(soloGraph, a, b)) return;
+  mpPortalFxSeen = key;
+  walkPortalJumpFx(soloGraph, a, b);
+}
 function mpTileRotationSnapshot(){
   const rot = {};
   for (let tid = 1; tid <= 20; tid++) rot[tid] = tileRotation[tid] || 0;
@@ -1084,6 +1116,8 @@ function mpApplyHostMap(payload){
 function mpClientOnStart(payload){
   mpApplyHostMap(payload);
   soloGraph = buildSimGraph();
+  walkClearPortals();
+  mpApplyPortals(payload.portals);
   // wegwerp-RNG, puur zodat toevallige UI-filters die soloRand aanraken (bv. soloCardBlockReason
   // op een Duwstoot-kaart in de eigen hand) niet crashen — het RESULTAAT wordt hier nooit
   // vertrouwd; alleen de host speelt het potje echt uit en zendt de uitkomsten.
@@ -1274,6 +1308,8 @@ function mpBroadcastState(){
     // stand, alleen voor de vingerafdruk (zo telt ook een geruild kristal als wijziging)
     soloPlayers, soloActiveIdx, soloPhase, soloTurn, soloTargetKey, soloMove,
     soloBootsOptions, soloCurrentLegalMoves, soloRoundPos, soloTurnOrder,
+    soloPortalOptions, soloPortalAim,
+    portals: mpPortalSnapshot(),   // plek + eigenaar van beide portalen: elke gast ziet hetzelfde
     soloBankCountThisTurn, soloAllowUturn, soloPendingBoost, soloUsedBoots, soloUsedJump,
     soloTargetSwapped, soloUsedEnergyId, soloUsedCardId, soloDiscardedCardId,
     soloEnergyRoll, soloEnergyGain, soloBlindOfferAvailable, soloLockedThisTurn,
@@ -1340,6 +1376,9 @@ function mpApplyState(payload){
   soloTargetKey = payload.soloTargetKey;
   soloMove = payload.soloMove;
   soloBootsOptions = payload.soloBootsOptions;
+  soloPortalOptions = payload.soloPortalOptions || [];
+  soloPortalAim = payload.soloPortalAim || null;
+  mpApplyPortals(payload.portals);
   soloCurrentLegalMoves = payload.soloCurrentLegalMoves;
   soloRoundPos = payload.soloRoundPos;
   soloTurnOrder = payload.soloTurnOrder;
@@ -1382,6 +1421,7 @@ function mpApplyState(payload){
 
   // eigen worp: de energiebalk laten wachten op de bolletjes, vóórdat hij hieronder getekend wordt
   diceMaybeHold();
+  mpPortalJumpFxFromState(soloMove);
   paintWalkPawns(soloGraph, soloPlayers, soloActiveIdx);
   renderWalkScore(soloPlayers, soloActiveIdx);
   renderSoloMeta(soloMove ? soloMove.stepsLeft : undefined);
@@ -1521,6 +1561,8 @@ const MP_INTENT_HANDLERS = {
   discardCard: (a) => soloDiscardCard(a.id),
   resolveTarget: (a) => soloResolveTargetCard(a.cardId, a.targetIdx),
   resolveBoots: (a) => soloResolveBoots(a.dir),
+  portalAim: (a) => soloResolvePortalAim(a.dir),
+  portalColor: (a) => soloResolvePortalColor(a.color),
   reorderChoice: (a) => soloResolveReorder(!!a.swap),
   jumpClick: (a) => soloHandleJumpClick(a.key),
   blindOffer: (a) => soloResolveBlindOffer(a.yes),

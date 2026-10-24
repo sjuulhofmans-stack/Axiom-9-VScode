@@ -4119,3 +4119,56 @@
     margin:calc(var(--sz) * -.6) 0 0 calc(var(--sz) * -.6); border-radius:50%;
     border:3px solid var(--pc); opacity:0; will-change:transform, opacity;
   }
+
+  /* ---------- PORTALEN (Portaalkanon, 5e energie-actie, 2026-10) ----------
+     Een ring per portaal als kind van het vakje (walkPaintPortals in 96-walk.js): blauw en rood.
+     Alleen transform/opacity beweegt (Prestatie in CLAUDE.md): de draaikolk draait, de gloed pulst
+     in opacity. Het schot (.walk-portal-beam) en de flits (.walk-portal-burst) zijn Web Animations
+     op transform/opacity. pointer-events:none: klikken gaan gewoon naar het vakje. */
+  #walkBoard .cell.has-portal, #walkBoard .cell.has-portal-fx{position:relative;}
+  .walk-portal{
+    --pcol:#3fa9ff; --pglow:rgba(63,169,255,.55);
+    position:absolute; inset:-14% -4%; border-radius:50%; pointer-events:none; z-index:5;
+    border:2px solid var(--pcol); box-shadow:0 0 6px var(--pglow), inset 0 0 4px var(--pglow);
+    background:radial-gradient(closest-side, rgba(0,0,0,.65), rgba(0,0,0,.2) 70%, transparent);
+    overflow:hidden;
+  }
+  .walk-portal.is-red{--pcol:#ff5a4e; --pglow:rgba(255,90,78,.55);}
+  .walk-portal b{
+    position:absolute; inset:8%; border-radius:50%;
+    background:conic-gradient(from 0deg, transparent 0 20%, var(--pcol) 30%, transparent 45% 70%, var(--pcol) 80%, transparent 95%);
+    opacity:.75; animation:portalSwirl 2.6s linear infinite; will-change:transform;
+  }
+  .walk-portal::after{
+    content:''; position:absolute; inset:0; border-radius:50%;
+    background:radial-gradient(closest-side, var(--pglow), transparent);
+    animation:portalGlow 1.9s ease-in-out infinite; will-change:opacity;
+  }
+  @keyframes portalSwirl{ to{ transform:rotate(360deg); } }
+  @keyframes portalGlow{ 0%,100%{ opacity:.25; } 50%{ opacity:.8; } }
+  /* staat er een pion op het portaal, dan blijft de pion zichtbaar: ring iets lichter */
+  #walkBoard .cell.walk-pawn > .walk-portal{opacity:.7;}
+  .walk-portal-burst, .walk-portal-beam{
+    position:absolute; inset:0; border-radius:50%; pointer-events:none; z-index:8; opacity:0;
+    will-change:transform, opacity;
+  }
+  .walk-portal-burst{border:2px solid #8fd2ff; box-shadow:0 0 8px #3fa9ff;}
+  .walk-portal-burst.is-red{border-color:#ffb0a6; box-shadow:0 0 8px #ff5a4e;}
+  .walk-portal-beam{inset:22%; background:radial-gradient(closest-side, #eaf6ff, #3fa9ff 60%, transparent);}
+  .walk-portal-beam.is-red{background:radial-gradient(closest-side, #fff0ee, #ff5a4e 60%, transparent);}
+  /* kleurkeuze bij het Portaalkanon: het icoontje in de kleur van het portaal */
+  #walkSoloPanel .energy-pick.portal-pick .energy-pick-icon{color:#8fd2ff; background:rgba(63,169,255,.16); box-shadow:inset 0 0 0 1px rgba(63,169,255,.6);}
+  #walkSoloPanel .energy-pick.portal-pick.is-red .energy-pick-icon{color:#ffb0a6; background:rgba(255,90,78,.16); box-shadow:inset 0 0 0 1px rgba(255,90,78,.6);}
+  /* Vijf energie-acties (sinds het Portaalkanon) in hetzelfde vaste vak: de rijen iets krapper,
+     zodat de lijst even hoog blijft als met vier (zie .walk-solo-panel). */
+  #walkSoloPanel .energy-pick-list.is-actions{gap:4px;}
+  #walkSoloPanel .energy-pick-list.is-actions .energy-pick{min-height:39px; padding:2px 12px 2px 6px;}
+  #walkSoloPanel .energy-pick-list.is-actions .energy-pick-icon{width:30px; height:30px;}
+  #walkSoloPanel .energy-pick-list.is-actions .energy-pick-icon svg{width:18px; height:18px;}
+  #walkSoloPanel .energy-pick-list.is-actions .energy-pick-text span{line-height:1.25;}
+  @media (max-height: 865px), (max-width: 1630px){
+    #walkSoloPanel .energy-pick-list.is-actions{gap:2px;}
+    #walkSoloPanel .energy-pick-list.is-actions .energy-pick{min-height:23px; padding:1px 10px 1px 3px;}
+    #walkSoloPanel .energy-pick-list.is-actions .energy-pick-icon{width:20px; height:20px;}
+    #walkSoloPanel .energy-pick-list.is-actions .energy-pick-icon svg{width:13px; height:13px;}
+  }

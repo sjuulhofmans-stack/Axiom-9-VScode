@@ -268,6 +268,7 @@ function renderWalkBoard(){
   if (!walkCellEls) walkCellEls = buildWalkBoard();
   // het bord wordt hier van nul opgebouwd; alleen aangeroepen buiten een lopend potje om
   clearWalkTarget();
+  walkClearPortals();
   walkScoreOrder = null;
   walkPaintedPawns = [];
   for (let R = 0; R < TILE_ROWS*TILE_H; R++){
@@ -318,6 +319,91 @@ function renderWalkBoard(){
 
 function walkCellDiv(graph, key){
   return walkCellEls[Math.floor(key / graph.W)][key % graph.W];
+}
+
+// ---------- portalen op het bord (zie PORTALEN in 95-simulate.js) ----------
+// Twee vaste elementjes (blauw, rood) die als kind in het vakje van hun portaal hangen; verplaatsen
+// = ander vakje. Alles beweegt alleen in transform/opacity (Prestatie in CLAUDE.md), en er wordt
+// niets opgemeten: het schot is een lichtje dat vakje voor vakje over de vlucht springt.
+const walkPortalEls = [null, null];
+function walkPortalEl(color){
+  if (!walkPortalEls[color]){
+    const el = document.createElement('i');
+    el.className = 'walk-portal ' + (color ? 'is-red' : 'is-blue');
+    el.innerHTML = '<b></b>';
+    el.title = color ? 'Rood portaal' : 'Blauw portaal';
+    walkPortalEls[color] = el;
+  }
+  return walkPortalEls[color];
+}
+function walkPaintPortals(graph){
+  const P = graph && graph.portals;
+  for (let color = 0; color < 2; color++){
+    const el = walkPortalEl(color);
+    const key = P ? P.cells[color] : -1;
+    const old = el.parentNode;
+    if (key < 0 || key === undefined){
+      if (old){ old.classList.remove('has-portal'); el.remove(); }
+      continue;
+    }
+    const cell = walkCellDiv(graph, key);
+    if (old === cell) continue;
+    if (old && !old.querySelector('.walk-portal:not(.is-' + (color ? 'red' : 'blue') + ')')) old.classList.remove('has-portal');
+    cell.classList.add('has-portal');
+    cell.appendChild(el);
+  }
+}
+function walkClearPortals(){
+  for (const el of walkPortalEls){
+    if (el && el.parentNode){ el.parentNode.classList.remove('has-portal'); el.remove(); }
+  }
+}
+// kort effectje in een vakje (wordt na afloop weer weggehaald)
+function walkPortalBurst(graph, key, color, big){
+  const cell = walkCellDiv(graph, key);
+  const fx = document.createElement('i');
+  fx.className = 'walk-portal-burst ' + (color ? 'is-red' : 'is-blue');
+  cell.classList.add('has-portal-fx');
+  cell.appendChild(fx);
+  const a = fx.animate([
+    { transform: 'scale(.3)', opacity: 1 },
+    { transform: `scale(${big ? 3.2 : 2.2})`, opacity: 0 },
+  ], { duration: big ? 520 : 380, easing: 'cubic-bezier(.2,.7,.3,1)' });
+  a.onfinish = () => { fx.remove(); if (!cell.querySelector('.walk-portal-burst')) cell.classList.remove('has-portal-fx'); };
+}
+// het schot: een lichtje springt van vakje naar vakje over de vlucht, het oude portaal van die
+// kleur implodeert en het nieuwe ploft open. Geeft een Promise die klaar is als het portaal ligt.
+function walkPortalShotFx(graph, path, color, fromKey, fast){
+  const stepMs = fast ? 12 : 32;
+  return new Promise(resolve => {
+    if (fromKey >= 0 && fromKey !== undefined) walkPortalBurst(graph, fromKey, color, false);
+    path.slice(1).forEach((k, i) => {
+      const cell = walkCellDiv(graph, k);
+      const dot = document.createElement('i');
+      dot.className = 'walk-portal-beam ' + (color ? 'is-red' : 'is-blue');
+      cell.classList.add('has-portal-fx');
+      cell.appendChild(dot);
+      const a = dot.animate([
+        { transform: 'scale(.2)', opacity: 0 },
+        { transform: 'scale(1)', opacity: 1, offset: .3 },
+        { transform: 'scale(.4)', opacity: 0 },
+      ], { duration: 260, delay: i * stepMs, easing: 'ease-out' });
+      a.onfinish = () => { dot.remove(); if (!cell.querySelector('.walk-portal-beam, .walk-portal-burst')) cell.classList.remove('has-portal-fx'); };
+    });
+    setTimeout(resolve, Math.max(0, path.length - 1) * stepMs + 120);
+  });
+}
+// door een portaal gestapt: flits bij de ingang en bij de uitgang
+function walkPortalJumpFx(graph, entry, exit){
+  const P = graph.portals;
+  const colorOf = k => P && P.cells[1] === k ? 1 : 0;
+  walkPortalBurst(graph, entry, colorOf(entry), false);
+  walkPortalBurst(graph, exit, colorOf(exit), true);
+}
+// logregel voor een schot
+function walkPortalShotText(name, shot, stolen){
+  const namen = ['noorden', 'oosten', 'zuiden', 'westen'];
+  return `${name} schiet met het <b>Portaalkanon</b> het ${PORTAL_NAMES[shot.color]} portaal naar het ${namen[shot.dir]}${stolen ? ' — dat lag er van een ander' : ''}.`;
 }
 
 // ---------- doel aanwijzen ----------
@@ -1055,6 +1141,8 @@ async function runWalkSimulation(){
   walkScoreOrder = players.map(p => p.idx);
   const finishTarget = simFinishTarget(playerCount);
   const deck = buildActionDeck(rand);   // één gedeelde stapel voor dit potje
+  portalSetup(graph, rand);             // twee portalen liggen al bij de start
+  walkPaintPortals(graph);
 
   // eerst dobbelen wie begint, dan kiest iedereen in die volgorde een startpositie — die volgorde
   // is meteen de beurtvolgorde van het potje
@@ -1288,6 +1376,9 @@ async function runWalkSimulation(){
           leaving.style.setProperty('--pc', player.color);
           leaving.classList.add('walk-trail');
           if (special) leaving.classList.add('walk-jump');
+          // door een portaal (twee vakjes die niet naast elkaar liggen): flits, geen stap op de teller
+          const viaPortal = portalIsJump(graph, path[i - 1], path[i]);
+          if (viaPortal) walkPortalJumpFx(graph, path[i - 1], path[i]);
           player.pos = path[i];
           walkAdvanceShownTarget(graph, bank, player.pos, player.color, occupiedNow(), true);
           // actiekaartvakje (gang): onderbreekt de zet niet, levert hooguit 1x per beurt een
@@ -1303,9 +1394,9 @@ async function runWalkSimulation(){
             if (reward.drawn || reward.handFull) crystalFxAnon(player.pos, player, !reward.drawn, walkSpeed().stepMs < 140, graph);
           }
           paintWalkPawns(graph, players, pIdx);
-          if (!special) diceProgressStep();
+          if (!special && !viaPortal) diceProgressStep();
           renderWalkMeta({ player, turn, stepsLeft: path.length - 1 - i });
-          await walkTick(walkSpeed().stepMs);
+          await walkTick(walkSpeed().stepMs * (viaPortal ? 2 : 1));
         }
         return true;
       }
@@ -1338,7 +1429,14 @@ async function runWalkSimulation(){
           energyActionUsed = true; usedEnergyAction = pre.kind;
           statsUseEnergy(player, pre.kind);
         }
-        if (pre.kind === 'jump'){
+        if (pre.kind === 'portal'){
+          const placed = portalPlace(graph, pre.shot.key, pre.shot.color, pIdx);
+          walkLog(walkPortalShotText(player.name, pre.shot, placed.stolen), null, player);
+          await walkPortalShotFx(graph, pre.shot.path, pre.shot.color, placed.from, walkSpeed().stepMs < 140);
+          if (aborted()) return;
+          walkPaintPortals(graph);
+          walkPortalBurst(graph, pre.shot.key, pre.shot.color, true);
+        } else if (pre.kind === 'jump'){
           walkLog(`${player.name} springt met <b>Noodtransport</b> ${pre.path.length - 1} vakjes${pre.endsTurn ? ', precies op zijn opdracht' : ''}.`, null, player);
         } else {
           const dir = lastStepDirection(graph, pre.path);
@@ -1346,7 +1444,7 @@ async function runWalkSimulation(){
         }
         bank.limit = pre.bankedCount;
         if (!await walkPath(pre.path, true)) return;
-        if (pre.kind !== 'jump') player.stats.dashSteps += pre.path.length - 1;
+        if (pre.kind !== 'jump' && pre.kind !== 'portal') player.stats.dashSteps += pre.path.length - 1;
       }
       const rollTargets = pre ? targets.slice(pre.bankedCount) : targets;
       if (pre && (pre.endsTurn || player.completed + pre.bankedCount >= SIM_QUESTS_TO_WIN)){
@@ -1429,7 +1527,7 @@ async function runWalkSimulation(){
         bank.limit = (pre ? pre.bankedCount : 0) + rollMove.bankedCount;
         if (!await walkPath(rollMove.path, false)) return;
         diceProgressDone();
-        player.stats.walkSteps += rollMove.path.length - 1;
+        player.stats.walkSteps += rollMove.path.length - 1 - pathPortalJumps(graph, rollMove.path);
         move = mergePreRollMove(pre, rollMove);
       }
       // laatst gelopen richting onthouden — Terugtrekbevel duwt je daar weer langs terug
@@ -1438,7 +1536,7 @@ async function runWalkSimulation(){
       // de energiesteen van deze beurt telt nu pas bij: volgende beurt uit te geven
       const energyGain = pendingEnergy ? simGainEnergy(player, pendingEnergy) : { gained: 0, wasted: 0 };
 
-      const preNote = !pre ? '' : pre.kind === 'jump' ? '⚡ sprong + ' : '🥾 sprint + ';
+      const preNote = !pre ? '' : pre.kind === 'jump' ? '⚡ sprong + ' : pre.kind === 'portal' ? '◎ portaal + ' : '🥾 sprint + ';
       const rollText = roll ? preNote + walkRollText(d1, d2, d3, roll)
         : pre.kind === 'jump' ? '⚡ Noodtransport' : `🥾 ${pre.path.length - 1} vakjes rechtdoor`;
       // beide kunnen nu tegelijk waar zijn (energie-actie EN kaart zijn losse sloten per beurt),

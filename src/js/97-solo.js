@@ -311,7 +311,8 @@ let soloFinishTarget = 1;
 let soloActiveIdx = -1;       // wie van soloPlayers nu interactief aan zet is (mens)
 let soloTargetKey = null;
 // 'idle' | 'choose-action' | 'target-pick' | 'blind-offer' |
-// 'rolling' | 'moving' | 'boots-direction' | 'reorder-peek' | 'jump-target' | 'game-over'
+// 'rolling' | 'moving' | 'boots-direction' | 'reorder-peek' | 'jump-target' | 'portal-aim' |
+// 'portal-color' | 'game-over'
 // Beurtvolgorde: 'choose-action' = energie-actie kiezen (of overslaan) — vóór het dobbelen, direct
 // ingezet. Dan 'rolling' = dobbelen. Dan 'moving' = stappen zetten; kaarten spelen/afleggen kan op
 // elk moment tijdens 'moving' (via de kaartkluis, zie soloRefreshCardVault), vóór of tussen de stappen door, hooguit
@@ -342,6 +343,8 @@ let soloActionCellDrawnThisTurn = false;  // hooguit 1 beloningskaart per beurt 
 // het einde van de beurt "onderweg naar X" moet loggen of gewoon stil mag afronden
 let soloBankCountThisTurn = 0;
 let soloBootsOptions = [];
+let soloPortalOptions = [];      // Portaalkanon: { dir, key, path }[] (fase 'portal-aim')
+let soloPortalAim = null;        // gekozen richting, wacht op de kleur (fase 'portal-color')
 let soloCurrentLegalMoves = [];  // { key, dir }[] — de opties die het richtingskruis nu toont
 let soloBlindOfferAvailable = false; // deze stap geblokkeerd door een tegenstander + Blinde Vlek in de hand
 
@@ -465,6 +468,7 @@ if (walkBoardEl){
     if (soloPhase === 'moving') soloHandleMoveClick(key);
     else if (soloPhase === 'jump-target') soloHandleJumpClick(key);
     else if (soloPhase === 'boots-direction') soloHandleDashCellClick(key);
+    else if (soloPhase === 'portal-aim') soloHandlePortalAimClick(key);
     else if (soloPhase === 'opening-pick') soloOpeningPick(key);
   });
 }
@@ -472,6 +476,9 @@ if (walkBoardEl){
 // welke vervolgstappen mag je zetten vanaf `pos`, gegeven de richting van je vorige stap
 // (-1 = eerste stap van de beurt, geen beperking) — zelfde geen-U-turn-regel als resolveMove().
 // `occupied` sluit vakjes uit waar een andere nog-meespelende speler op staat (blokkeren).
+// Een portaal naast je is gewoon een klikbaar vakje; `portal` = waar je dan uitkomt (je zet stopt
+// daar, zie PORTALEN in 95-simulate.js). Bezet de uitgang of staat er een pion op een portaal,
+// dan werkt het paar niet en is het een gewoon vakje.
 function soloLegalNextCells(graph, pos, lastDir, occupied){
   const neigh = graph.adjKey[pos], dirs = graph.adjDir[pos];
   const out = [];
@@ -479,7 +486,8 @@ function soloLegalNextCells(graph, pos, lastDir, occupied){
     const d = dirs[j];
     if (!soloAllowUturn && lastDir !== -1 && d === (lastDir + 2) % 4) continue;
     if (occupied && occupied.has(neigh[j])) continue;
-    out.push({ key: neigh[j], dir: d });
+    const exit = graph.portals ? portalExitFor(graph, neigh[j], soloOccupied()) : -1;
+    out.push(exit >= 0 ? { key: neigh[j], dir: d, portal: exit } : { key: neigh[j], dir: d });
   }
   return out;
 }
@@ -850,6 +858,8 @@ const ENERGY_ACTION_ICONS = {
   reorder: 'M7 20V4M3 8l4-4 4 4M17 4v16M13 16l4 4 4-4',
   gravity: 'M3 8h6M2 12h7M3 16h6M12 12h9M17 8l4 4-4 4',
   jump: 'M4 18c2.5-9 13.5-9 16 0M16 15.5l4 2.5 1.5-4.5M4 18h3',
+  // portaalkanon: twee ovale portalen met een schot ertussen
+  portal: 'M6.5 6c2 0 3 2.7 3 6s-1 6-3 6-3-2.7-3-6 1-6 3-6zM17.5 6c2 0 3 2.7 3 6s-1 6-3 6-3-2.7-3-6 1-6 3-6zM9.5 12h5M12.5 10l2 2-2 2',
 };
 // De 'choose-action'-fase toont ALLEEN de energie-acties — die moet je immers vóór het dobbelen
 // inzetten. De meeste kaarten spelen/afleggen kan pas ná het dobbelen, vóór of tijdens het
@@ -863,13 +873,14 @@ function soloRenderActionPanel(){
   // spiegel van de check aan de kaart-kant in soloCardBlockReason (allebei een gratis 3e steen).
   const boostcellUsed = soloUsedCardId === 'boostcell';
   // volgorde oplopend op kosten (gebruikerswens: de goedkoopste actie bovenaan)
-  const ids = ['boost', 'reorder', 'gravity', 'jump'].sort((a, b) => ENERGY_ACTIONS[a].cost - ENERGY_ACTIONS[b].cost);
+  const ids = ['boost', 'reorder', 'gravity', 'portal', 'jump'].sort((a, b) => ENERGY_ACTIONS[a].cost - ENERGY_ACTIONS[b].cost);
   // waarom kan een actie nu niet (naast te weinig energie)? Zelfde paren als in de simulatie:
   // Stuwlading/Stuwstoot en de laarzen-kaart/-actie sluiten elkaar uit.
   const blockReason = (id) => {
     if (id === 'boost' && boostcellUsed) return 'je hebt deze beurt al Stuwlading gespeeld';
     if (id === 'gravity' && soloUsedBoots) return 'je hebt deze beurt al gesprint';
     if (id === 'gravity' && !soloDashOptions().length) return 'in geen enkele richting ruimte';
+    if (id === 'portal' && !soloPortalCannonNow().length) return 'in geen enkele richting ruimte';
     return undefined;
   };
   const locked = (id) => p.energy < ENERGY_ACTIONS[id].cost || !!blockReason(id);
@@ -903,6 +914,8 @@ if (walkSoloActionsEl){
     // Herprioritering-keuze
     if (soloPhase === 'choose-action' && btn.dataset.energy) soloUseEnergyAction(btn.dataset.energy);
     else if (soloPhase === 'boots-direction' && btn.dataset.dashDir !== undefined) soloResolveBoots(parseInt(btn.dataset.dashDir, 10));
+    else if (soloPhase === 'portal-aim' && btn.dataset.portalDir !== undefined) soloResolvePortalAim(parseInt(btn.dataset.portalDir, 10));
+    else if (soloPhase === 'portal-color' && btn.dataset.portalColor !== undefined) soloResolvePortalColor(parseInt(btn.dataset.portalColor, 10));
     else if (soloPhase === 'reorder-peek' && btn.dataset.reorder) soloResolveReorder(btn.dataset.reorder === 'swap');
   });
 }
@@ -958,7 +971,7 @@ function soloCardBlockReason(id){
   const when = ACTION_CARDS[id].when;
   // midden in een keuze (richting, doelwit, opdracht, Blinde Vlek, sprongdoel): eerst die afmaken —
   // de kluis staat er nu altijd bij, dus anders stond hier misleidend "pas na het dobbelen"
-  if (['boots-direction', 'target-pick', 'reorder-peek', 'blind-offer', 'jump-target'].includes(soloPhase)) return 'maak eerst je keuze af';
+  if (['boots-direction', 'target-pick', 'reorder-peek', 'blind-offer', 'jump-target', 'portal-aim', 'portal-color'].includes(soloPhase)) return 'maak eerst je keuze af';
   // Blinde Vlek is puur reactief: die krijg je vanzelf aangeboden op het moment dat je zet
   // daadwerkelijk op een tegenstander stukloopt (zie soloOfferBlindSpot)
   if (when === 'auto') return 'wordt vanzelf aangeboden zodra je route geblokkeerd raakt';
@@ -1010,6 +1023,12 @@ function soloRefreshCardVault(){
     soloClearCardActionsPanel();
   }
   if (!walkCardVaultEl) return;
+  // Multiplayer: altijd je eigen kluis (mpRefreshCardVault). Hier viel een gast die een bot-beurt
+  // naspeelde anders terug op de vorige speler aan zet — een andere mens, van wie hij de
+  // kristallen niet mag zien (null) — en liep de kluis vast (gevonden met de host+gast-test).
+  // window.mpGameActive en niet `mp`: deze functie loopt ook al tijdens het laden, vóór
+  // 99-multiplayer.js `mp` heeft aangemaakt (dan brak het laden af).
+  if (window.mpGameActive){ mpRefreshCardVault(); return; }
   const owner = soloVaultOwner();
   if (!owner || owner.rank || soloPhase === 'idle' || soloPhase === 'game-over'){
     walkCardVaultEl.hidden = true;
@@ -1348,7 +1367,88 @@ function soloUseEnergyAction(id){
     soloEnterDashDirection('energy');
   } else if (id === 'jump'){
     soloEnterJumpTarget();
+  } else if (id === 'portal'){
+    soloEnterPortalAim();
   }
+}
+
+// ---------- Portaalkanon: richting kiezen, dan welke kleur ----------
+// Energie-actie (zie PORTALEN in 95-simulate.js). Eerst een richting (knop, of klik op het vakje
+// waar het portaal landt), dan blauw of rood. De keuzes staan in het actiepaneel, dat in
+// multiplayer meegaat naar de gast (ownerUi.actionsHtml); de klikken lopen via mpIntercept.
+function soloPortalCannonNow(){
+  return soloGraph && soloGraph.portals ? portalCannonOptions(soloGraph, solo().pos, soloOccupied()) : [];
+}
+const SOLO_DIR_NAMES = ['Noord', 'Oost', 'Zuid', 'West'];
+function soloEnterPortalAim(){
+  const p = solo();
+  soloPortalOptions = soloPortalCannonNow();
+  soloPortalAim = null;
+  soloPhase = 'portal-aim';
+  soloHideStepCounter();
+  btnWalkSoloSkip.hidden = true;
+  btnWalkSoloRoll.hidden = true;
+  soloRefreshCardVault();
+  soloMarkClickable(soloGraph, soloPortalOptions.map(o => o.key));
+  walkLog(`Je zet het <b>Portaalkanon</b> in (−${ENERGY_ACTIONS.portal.cost}) — kies een richting, op het bord of hieronder.`, null, p);
+  walkSoloActionsEl.innerHTML =
+    `<p class="hint energy-pick-head">Waar schiet je het <b>portaal</b> heen?</p>` +
+    `<div class="energy-pick-list is-grid">` + soloPortalOptions.map(o =>
+      `<button type="button" class="energy-pick walk-pulse-affordable" data-portal-dir="${o.dir}">
+        <span class="energy-pick-cost">${o.path.length - 1}</span>
+        <span class="energy-pick-text"><b>${SOLO_DIR_NAMES[o.dir]}</b><span>${o.path.length - 1} vakjes ver</span></span>
+      </button>`).join('') +
+    `</div>`;
+  for (const el of walkSoloActionsEl.querySelectorAll('.walk-pulse-affordable')) syncPulse(el);
+}
+function soloHandlePortalAimClick(key){
+  const opt = soloPortalOptions.find(o => o.key === key);
+  if (opt) soloResolvePortalAim(opt.dir);
+}
+// wie legde dit portaal? (voor de kleurkeuze: verplaats je je eigen, dat van een ander, of een nieuw)
+function soloPortalOwnerText(color){
+  const owner = soloGraph.portals.owner[color];
+  if (owner < 0) return 'ligt er sinds de start';
+  if (owner === solo().idx) return 'heb jij gelegd';
+  const q = soloPlayers[owner];
+  return q ? `gelegd door ${q.name}` : 'gelegd door een ander';
+}
+function soloResolvePortalAim(dir){
+  if (soloPhase !== 'portal-aim') return;
+  const opt = soloPortalOptions.find(o => o.dir === dir);
+  if (!opt) return;
+  if (mpIntercept('portalAim', { dir })) return;
+  soloClearClickable();
+  soloPortalAim = opt;
+  soloPhase = 'portal-color';
+  walkSoloActionsEl.innerHTML =
+    `<p class="hint energy-pick-head">Welk portaal verplaats je naar het <b>${SOLO_DIR_NAMES[dir].toLowerCase()}en</b>?</p>` +
+    `<div class="energy-pick-list">` + [0, 1].map(c =>
+      `<button type="button" class="energy-pick walk-pulse-affordable portal-pick is-${c ? 'red' : 'blue'}" data-portal-color="${c}">
+        <span class="energy-pick-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.5c3.2 0 5 3.8 5 8.5s-1.8 8.5-5 8.5-5-3.8-5-8.5 1.8-8.5 5-8.5zM12 8.5c1.2 0 2 1.6 2 3.5s-.8 3.5-2 3.5-2-1.6-2-3.5.8-3.5 2-3.5z" fill="currentColor" fill-opacity=".25"></path></svg></span>
+        <span class="energy-pick-text"><b>${c ? 'Rood' : 'Blauw'} verplaatsen</b><span>${soloPortalOwnerText(c)}</span></span>
+      </button>`).join('') +
+    `</div>`;
+  for (const el of walkSoloActionsEl.querySelectorAll('.walk-pulse-affordable')) syncPulse(el);
+}
+function soloResolvePortalColor(color){
+  if (soloPhase !== 'portal-color' || !soloPortalAim || (color !== 0 && color !== 1)) return;
+  if (mpIntercept('portalColor', { color })) return;
+  const p = solo(), shot = soloPortalAim;
+  const placed = portalPlace(soloGraph, shot.key, color, p.idx);
+  soloPortalAim = null;
+  soloPortalOptions = [];
+  if (p.stats) p.stats.portalShots = (p.stats.portalShots || 0) + 1;
+  walkLog(`Je schiet het ${PORTAL_NAMES[color]} portaal naar het ${SOLO_DIR_NAMES[shot.dir].toLowerCase()}en${placed.stolen ? ' — dat lag er van een ander' : ''}.`, null, p);
+  // het schot is puur beeld: de stand loopt meteen door naar de worp (in multiplayer verwerkt de
+  // host dit binnen het intent, een wachtende Promise zou daar buiten mpIntercept vallen)
+  const graph = soloGraph;
+  walkPortalShotFx(graph, shot.path, color, placed.from, false).then(() => {
+    if (graph !== soloGraph) return;
+    walkPaintPortals(graph);
+    walkPortalBurst(graph, shot.key, color, true);
+  });
+  soloProceedToRoll();
 }
 
 // ---------- actiekaartvakje (gang): loop je erover, dan trek je een beloningskaart ----------
@@ -1853,6 +1953,27 @@ function soloHandleMoveClick(key){
   const leaving = walkCellDiv(soloGraph, p.pos);
   leaving.style.setProperty('--pc', p.color);
   leaving.classList.add('walk-trail');
+  // door een portaal: je komt uit het andere en je zet stopt daar, de rest van de worp vervalt
+  if (match.portal !== undefined){
+    const entry = key, exit = match.portal;
+    const colorIn = soloGraph.portals.cells[1] === entry ? 1 : 0;
+    walkCellDiv(soloGraph, entry).style.setProperty('--pc', p.color);
+    walkCellDiv(soloGraph, entry).classList.add('walk-trail', 'walk-jump');
+    walkPortalJumpFx(soloGraph, entry, exit);
+    p.pos = exit;
+    soloMove.lastDir = -1;
+    soloMove.path.push(entry, exit);
+    soloMove.viaPortal = true;
+    const rest = soloMove.stepsLeft - 1;
+    soloMove.stepsLeft = 0;
+    if (p.stats){ p.stats.walkSteps++; p.stats.portalJumps = (p.stats.portalJumps || 0) + 1; }
+    walkLog(`Je stapt in het ${PORTAL_NAMES[colorIn]} portaal en komt uit bij het ${PORTAL_NAMES[1 - colorIn]}${rest > 0 ? ` — je zet stopt hier, ${rest} ${rest === 1 ? 'stap vervalt' : 'stappen vervallen'}` : ''}.`, null, p);
+    paintWalkPawns(soloGraph, soloPlayers, p.idx);
+    soloClearClickable();
+    if (soloBankCountThisTurn > 0) soloEndMoveAlreadyBanked();
+    else soloFinishTurn(false);
+    return;
+  }
   p.pos = key;
   soloMove.lastDir = match.dir;
   solo().lastDir = match.dir;   // Terugtrekbevel duwt je langs deze richting terug
@@ -1940,7 +2061,8 @@ function soloFinishTurn(banked){
       return;
     }
   } else {
-    const extra = (roll && stepsUsed < roll) ? ` — kon maar ${stepsUsed} stappen zetten (doodlopend)` : '';
+    const extra = soloMove.viaPortal ? ' — door het portaal'
+      : (roll && stepsUsed < roll) ? ` — kon maar ${stepsUsed} stappen zetten (doodlopend)` : '';
     walkLog(`Beurt ${soloTurn}: <b>${rollText}</b>${walkEnergyNote(soloEnergyRoll, soloEnergyGain, p)}${turnNote} → onderweg naar ${targetLabel}${extra}`, null, p);
   }
   renderWalkScore(soloPlayers, soloActiveIdx);
@@ -1963,6 +2085,8 @@ function soloBeginHumanTurn(pIdx){
   soloPendingBoost = false;
   soloUsedBoots = false;      // betekent nu: deze beurt al gesprint (kaart of energie)
   soloBootsOptions = [];
+  soloPortalOptions = [];
+  soloPortalAim = null;
   soloDashSource = null;
   soloDashSteps = 0;
   soloUsedJump = false;
@@ -2185,6 +2309,7 @@ function soloResolveBotTurn(player){
   // losse paden worden bewaard voor het zichtbaar naspelen (soloAnimateBotTurn).
   let move, roll = 0, d1 = 0, d2 = 0, d3 = null, allowUturn = false, rollPenalty = 0, rollMove = null;
   const pre = botPreRollMove(soloGraph, player, occupied, targets, !energyActionUsed, !cardActionUsed);
+  let portalShot = null;   // voor het naspelen: het schot + hoe de portalen er vóór lagen
   if (pre){
     if (pre.kind === 'bootsCard'){
       useActionCard(player, 'boots', soloDeck); cardActionUsed = true;
@@ -2192,9 +2317,23 @@ function soloResolveBotTurn(player){
       player.energy -= ENERGY_ACTIONS[pre.kind].cost; player.actionUses++; energyActionUsed = true;
       statsUseEnergy(player, pre.kind);
     }
-    walkLog(pre.kind === 'jump'
-      ? `${player.name} springt met <b>Noodtransport</b> ${pre.path.length - 1} vakjes${pre.endsTurn ? ', precies op zijn opdracht' : ''}.`
-      : `${player.name} schiet met <b>Zwaartekracht-laarzen</b>${pre.kind === 'bootsCard' ? ' (kristal)' : ''} ${pre.path.length - 1} vakjes rechtdoor.`, null, player);
+    if (pre.kind === 'portal'){
+      const before = { cells: soloGraph.portals.cells.slice(), owner: soloGraph.portals.owner.slice() };
+      const placed = portalPlace(soloGraph, pre.shot.key, pre.shot.color, pIdx);
+      portalShot = { path: pre.shot.path, key: pre.shot.key, color: pre.shot.color, from: placed.from, before,
+                     after: { cells: soloGraph.portals.cells.slice(), owner: soloGraph.portals.owner.slice() } };
+      if (player.stats) player.stats.portalShots = (player.stats.portalShots || 0) + 1;
+      walkLog(walkPortalShotText(player.name, pre.shot, placed.stolen), null, player);
+      // meteen afgehandeld (geen naspelen): portalen nu tekenen
+      if (soloBotViewSpeed === null){
+        walkPaintPortals(soloGraph);
+        walkPortalBurst(soloGraph, pre.shot.key, pre.shot.color, true);
+      }
+    } else {
+      walkLog(pre.kind === 'jump'
+        ? `${player.name} springt met <b>Noodtransport</b> ${pre.path.length - 1} vakjes${pre.endsTurn ? ', precies op zijn opdracht' : ''}.`
+        : `${player.name} schiet met <b>Zwaartekracht-laarzen</b>${pre.kind === 'bootsCard' ? ' (kristal)' : ''} ${pre.path.length - 1} vakjes rechtdoor.`, null, player);
+    }
   }
   const rollFrom = pre ? pre.key : player.pos;
   const rollTargets = pre ? targets.slice(pre.bankedCount) : targets;
@@ -2237,8 +2376,15 @@ function soloResolveBotTurn(player){
     }
     move = mergePreRollMove(pre, rollMove);
   }
-  if (pre && pre.kind !== 'jump') player.stats.dashSteps += pre.path.length - 1;
-  if (rollMove) player.stats.walkSteps += rollMove.path.length - 1;
+  if (pre && pre.kind !== 'jump' && pre.kind !== 'portal') player.stats.dashSteps += pre.path.length - 1;
+  if (rollMove){
+    const jumps = pathPortalJumps(soloGraph, rollMove.path);
+    player.stats.walkSteps += rollMove.path.length - 1 - jumps;
+    if (jumps){
+      player.stats.portalJumps = (player.stats.portalJumps || 0) + jumps;
+      walkLog(`${player.name} stapt door een portaal.`, null, player);
+    }
+  }
   const stepDir = lastStepDirection(soloGraph, move.path);
   if (stepDir !== -1) player.lastDir = stepDir;
 
@@ -2281,8 +2427,9 @@ function soloResolveBotTurn(player){
   renderWalkScore(soloPlayers, -1);
   return { startPos, d1, d2, d3, roll, energyRoll, targetLabel, targetKey, bank,
            // verplaatsing vóór de worp (sprong/sprint) en de gelopen worp, los, voor het naspelen
-           prePath: pre ? pre.path : null, preBanked: pre ? pre.bankedCount : 0,
-           rollPath: rollMove ? rollMove.path : null, rollBanked: rollMove ? rollMove.bankedCount : 0 };
+           prePath: pre && pre.kind !== 'portal' ? pre.path : null, preBanked: pre ? pre.bankedCount : 0,
+           rollPath: rollMove ? rollMove.path : null, rollBanked: rollMove ? rollMove.bankedCount : 0,
+           portalShot };
 }
 
 // ---------- bot-beurt zichtbaar naspelen (lobby-optie "Beurten van de bots") ----------
@@ -2317,6 +2464,12 @@ async function soloAnimateBotTurn(player, replay, logNodes, runId){
   soloRefreshCardVault();
 
   player.pos = replay.startPos;
+  // portaalschot: eerst de portalen zoals ze vóór deze beurt lagen (bij de host liggen ze al op
+  // hun nieuwe plek, bij een gast nog niet)
+  if (replay.portalShot && soloGraph.portals){
+    soloGraph.portals = { cells: replay.portalShot.before.cells.slice(), owner: replay.portalShot.before.owner.slice() };
+    walkPaintPortals(soloGraph);
+  }
   if (replay.targetKey !== undefined) markWalkTarget(soloGraph, replay.targetLabel, replay.targetKey, player.color);
   renderWalkScore(replayScoreBefore || soloPlayers, pIdx);
   renderWalkMeta({ player, turn: soloTurn });
@@ -2332,19 +2485,31 @@ async function soloAnimateBotTurn(player, replay, logNodes, runId){
       leaving.style.setProperty('--pc', player.color);
       leaving.classList.add('walk-trail');
       if (special) leaving.classList.add('walk-jump');
+      const viaPortal = portalIsJump(soloGraph, path[i - 1], path[i]);
+      if (viaPortal) walkPortalJumpFx(soloGraph, path[i - 1], path[i]);
       player.pos = path[i];
       walkAdvanceShownTarget(soloGraph, bank, player.pos, player.color, othersOcc, false);
       paint();
       soloReplayCrystals(replay, player.pos);
-      if (!special) diceProgressStep();
-      await walkSleep(sp.stepMs);
+      if (!special && !viaPortal) diceProgressStep();
+      await walkSleep(sp.stepMs * (viaPortal ? 2 : 1));
       if (!alive()) return false;
     }
     return true;
   };
 
-  // 1. sprong/sprint vóór de worp (Noodtransport of Zwaartekracht-laarzen)
+  // 1. sprong/sprint vóór de worp (Noodtransport of Zwaartekracht-laarzen), of het portaalschot
   if (replay.prePath && !await walkSeg(replay.prePath, true, replay.preBanked)) return false;
+  if (replay.portalShot){
+    const s = replay.portalShot;
+    await walkPortalShotFx(soloGraph, s.path, s.color, s.from, sp.stepMs < 140);
+    if (!alive()) return false;
+    soloGraph.portals = { cells: s.after.cells.slice(), owner: s.after.owner.slice() };
+    walkPaintPortals(soloGraph);
+    walkPortalBurst(soloGraph, s.key, s.color, true);
+    await walkSleep(Math.min(300, sp.stepMs * 2));
+    if (!alive()) return false;
+  }
   // 2. dobbelen — of niet, als de sprong/sprint de beurt al afmaakte
   if (replay.roll){
     const shakeSteps = Math.max(1, Math.round(sp.rollMs / 90));
@@ -2544,6 +2709,9 @@ const SOLO_STATS_GROUPS = [
     { label: 'Ingezet', best: 'max', get: p => p.actionUses || 0 },
     { label: 'Energie verbruikt', best: 'max', get: p => p.stats.energyGained - p.energy },
     { label: 'Gemiddeld per actie', get: p => perOf(p.stats.energyGained - p.energy, p.actionUses || 0), fmt: v => v ? nl(v, 1) : '—' },
+    // één rij (de groep blijft zo 4 hoog, net als de rest: de pop-up past zonder scrollen)
+    { label: 'Portalen geschoten / door gestapt', get: p => (p.stats.portalShots || 0) * 1000 + (p.stats.portalJumps || 0),
+      fmt: v => `${Math.floor(v / 1000)} / ${v % 1000}` },
   ]},
   { title: 'Kristallen', rows: [
     { label: 'Opgeraapt', best: 'max', get: p => p.stats.cardsPlayed + p.stats.cardsDiscarded + p.cards.length },
@@ -2611,7 +2779,7 @@ if (walkStatsBodyEl){
 // ---------- grafieken in de statistieken (SVG, met de hand getekend: geen library nodig) ----------
 // Gegevens komen uit newPlayerStats (95-simulate.js): hist (stand bij het begin van elke eigen
 // beurt), rolls (som van de 2 loopstenen), energyUse en cardUse, plus walkSteps/dashSteps.
-const STATS_ENERGY_COLORS = { boost: '#ffb545', reorder: '#4fb8e0', gravity: '#b98cff', jump: '#55d68a' };
+const STATS_ENERGY_COLORS = { boost: '#ffb545', reorder: '#4fb8e0', gravity: '#b98cff', portal: '#ff6b5d', jump: '#55d68a' };
 // genoeg verschillende tinten voor alle 18 actiekaarten (met 8 deelden sommige kaarten een kleur)
 const STATS_CARD_PALETTE = ['#4fb8e0', '#ffb545', '#b98cff', '#55d68a', '#ff7a45', '#ff4fd8', '#e6e15a', '#8fa3b8',
   '#2f7fff', '#c46b2b', '#7a5cff', '#1fb39a', '#ff9db0', '#a3d65c', '#d4a4ff', '#5ad1e6', '#b8865a', '#e85d5d'];
@@ -3283,6 +3451,8 @@ function startSoloGame(){
   soloRoundPos = 0;
   soloTurn = 0;
   soloDeck = buildActionDeck(soloRand);
+  portalSetup(soloGraph, soloRand);   // twee portalen liggen al bij de start
+  walkPaintPortals(soloGraph);
   crystalResetVault();
   diceReset();
 

@@ -85,6 +85,7 @@ aangeroepen (functiedeclaraties worden gehoist, `const`/`let` niet).
 | iets aan de tegel-editor                    | `90-editor.js`        |
 | de spelsimulatie aanpassen                  | `95-simulate.js`      |
 | een energie-actie of de prijs ervan aanpassen | `95-simulate.js` (`ENERGY_ACTIONS`, `botPreRollMove`) + knoppen in `97-solo.js` (`soloRenderActionPanel`/`soloUseEnergyAction`) |
+| iets aan de portalen (regels, bot-keuze, hoe ze eruitzien) | regels + bot: blok PORTALEN in `95-simulate.js`; bord/animatie: `walkPaintPortals` e.v. in `96-walk.js` + blok PORTALEN onderaan `styles.css`; keuze van de mens: `soloEnterPortalAim` e.v. in `97-solo.js` |
 | iets aan "Spelen" → Automatisch (pion, tempo) | `96-walk.js`   |
 | de modus-schakelaar zelf (Automatisch/Zelf spelen) | `97-solo.js` (`setWalkMode`) |
 | het tabblad Multiplayer (deelt #tabWalk met Spelen) | `80-controls.js` (`switchTab`, tab `multi`) |
@@ -232,6 +233,38 @@ aangeroepen (functiedeclaraties worden gehoist, `const`/`let` niet).
   kiest aan het begin van elke eigen beurt zelf een actie of spaart (`botStrategyNow`/
   `botSmartPick` in 95-simulate.js); alle strategie-checks lopen via `botStrategyNow`. Zit
   bewust niet in `ENERGY_STRATEGIES` (de batch-simulatie meet de vaste strategieën).
+- **Portalen / Portaalkanon** (5e energie-actie, prijs 7, 2026-10; blok PORTALEN in
+  `95-simulate.js`). Er liggen altijd een blauw en een rood portaal op het bord, gedeeld door
+  iedereen; bij de start al, ≥16 stappen uit elkaar (`portalSetup`). Kanon = vóór de worp een
+  richting kiezen, het portaal vliegt rechtdoor tot de muur of vóór een pion en landt op het
+  verste gewone vakje (nooit op opdracht/start/kristal of het andere portaal), daarna kies je
+  welke kleur je verplaatst; de andere blijft liggen, ook als een ander hem legde (stelen).
+  Stap je in een portaal, dan kom je uit het andere en **stopt je zet** (instappen = 1 stap, de
+  rest vervalt). Pion op een portaal = het paar werkt niet. Noodtransport, laarzen en duwkaarten
+  negeren portalen. Techniek: `adjKey` blijft het gewone bord; alleen `resolveMove` (stop-regel,
+  `pickPortalEnd`), `simBfsDistances` (A en B tellen als één vakje; `noPortal` voor Noodtransport)
+  en `soloLegalNextCells` (mens) kijken naar `graph.portals = { cells: [blauw, rood], owner }`.
+  Een pad door een portaal bevat ingang én uitgang (twee vakjes die niet naast elkaar liggen =
+  `portalIsJump`); tel die stap niet als gelopen vakje. **Elke bot mag schieten** (ook vaste
+  strategieën, via `botStrategyNow` → `botPortalWanted`) als het ≥6 stappen scheelt
+  (`botPortalShot`); de Slim-bot alleen als het meer oplevert dan een sprint (`botSmartPick`).
+  Bord: `walkPaintPortals`/`walkPortalShotFx`/`walkPortalJumpFx` (96-walk.js), opmaak blok
+  PORTALEN onderaan styles.css (alleen transform/opacity). Zelf spelen: fases `portal-aim`
+  (richting, knop of klik op het bord) en `portal-color`. Multiplayer: `portals` (plek + eigenaar)
+  zit in de start én in elke stand (`mpPortalSnapshot`/`mpApplyPortals`), bot-beurten dragen
+  `replay.portalShot` (voor/na), intents `portalAim`/`portalColor`.
+  **Gekozen na een analyse van 44 varianten × 10.000 potjes** (artifact "Axiom-9 Portalen"):
+  doorlopen na een portaal = te sterk (potjes 6–11% korter, tot 10% van de opdrachten via een
+  portaal); vrij plaatsen binnen 10 = te veel controle; vast of zwervend = puur toeval; "niet bij
+  een opdracht" deed bijna niets. Nagemeten na het inbouwen (4 borden × 10.000, elke bot mag
+  schieten), winst% Stuwstoot / Herprioritering / laarzen / Noodtransport:
+  zonder portaal 24,7 / 23,8 / 25,8 / 25,6 (85,8 beurten) · prijs 6: 22,9 / 25,3 / 23,6 / 28,1
+  (Noodtransport te sterk) · **prijs 7: 23,8 / 25,2 / 24,7 / 26,4** (82,9 beurten, −3,4%) ·
+  prijs 8: 23,7 / 24,9 / 24,9 / 26,5. Bij 7: 2,6 schoten per potje, 27% gestolen, 3,0% van de
+  opdrachten in een beurt met een sprong, meeste teleporteerder wint 16,6%. Slim-bots: 1,1
+  schoten per potje bij 7; een Slim-bot zónder portaal wint 24,7% tegen drie mét (geen merkbaar
+  voordeel); laarzen-gebruik zakt van 8,2 naar 6,3 per potje. Speeltest met mensen nog te doen:
+  wordt er gestolen, voelt 7 te duur (dan eerst 6, niet lager), worden potjes niet te kort.
 - **Begin van een potje** (Zelf spelen, Multiplayer én Automatisch): in de lobby
   kies je géén startpositie meer, je ziet alleen spelers en namen. Het potje
   begint met dobbelen (2 stenen, geen energiesteen) wie begint; de hoogste kiest
@@ -387,8 +420,14 @@ Check minimaal:
     rechts Voltooid / Energie / Kaarten; "aan zet" en de eindplaats als tabje op
     de rand. Verandert de hoogte boven/onder het bord, pas dan de 300px in
     `--wcell` (styles.css) aan.
-12. Zelf spelen → energie-paneel toont 4 acties op prijs (Stuwstoot 4,
-    Herprioritering 4, Zwaartekracht-laarzen 5, Noodtransport 10).
+12. Zelf spelen → energie-paneel toont 5 acties op prijs (Stuwstoot 4,
+    Herprioritering 4, Zwaartekracht-laarzen 5, Portaalkanon 7, Noodtransport 10), in hetzelfde
+    vaste vak (gemeten: 1920×960 nog 40px ruimte, 1440×780 nog 24px). Op het bord liggen een
+    blauwe en een rode portaalring; Portaalkanon → richting (knop of klik) → kleur ("ligt er sinds
+    de start" / "gelegd door X") → lichtspoor + nieuw portaal, daarna gooi je. Loop je in een
+    portaal: flits, je komt uit het andere en je zet stopt. Simulatie → blok "Portalen" met
+    schoten/gestolen/sprongen en twee oordelen (opdrachten via portaal ≤5%, meeste
+    teleporteerder wint ≤30%).
     Herprioritering laat je huidige én volgende opdracht zien en vraagt welke
     eerst; de laarzen tonen de richtingen als knoppen én omrand op het bord, en
     daarna gooi je gewoon. De kaart Zwaartekracht-laarzen kan alleen vóór het
@@ -482,9 +521,11 @@ Check minimaal:
   eerst onder Automatisch en Zelf spelen stonden (#walkAutoHint/#walkSoloHint, o.a. de
   volgorde van een beurt) zijn daarom weggehaald uit de lobby; die inhoud hoort straks daar.
 
-- Een **5e energie-actie** (later te bedenken). Ideeën die nog niet gemeten
-  konden worden omdat bots ze niet zinnig spelen: een schild tegen de volgende
-  hinderkaart, of een energieversperring op een gang naar keuze.
+- De 5e energie-actie is het **Portaalkanon** geworden (zie Portalen hierboven). Nog los te
+  beslissen: een **portaalkristal** als tweede manier om aan een portaal te komen (in de analyse
+  even sterk als de sterkste bestaande kristallen, maar niet samen met de energie-actie gemeten).
+  Andere ideeën die nog niet gemeten konden worden omdat bots ze niet zinnig spelen: een schild
+  tegen de volgende hinderkaart, of een energieversperring op een gang naar keuze.
 
 - Elke opdracht (2.1–2.9) heeft nu een naam (`QUEST_NAMES` in `10-rules.js`,
   zichtbaar in het paneel "Opdrachten" en in de simulatie-uitslag) zodat de

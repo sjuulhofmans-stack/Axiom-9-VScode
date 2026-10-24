@@ -127,6 +127,8 @@ const SIM_HISTOGRAM_BINS = 12;
 //   4  Herprioritering        bekijk je volgende opdrachtkaart en kies of je wisselt
 //   5  Zwaartekracht-laarzen  eerst tot 8 vakjes rechtdoor (tot een muur/pion/je opdracht), dan gooien
 //  10  Noodtransport          eerst vrij springen tot 11 vakjes, dan gooien
+//   7  Portaalkanon           schiet het blauwe of rode portaal rechtdoor tot de muur, dan gooien
+//                             (5e actie, 2026-10; zie het blok PORTALEN verderop)
 //
 // Controlemeting na de laatste twee bijstellingen (Noodtransport 13 → 11, laarzen stoppen op je
 // opdracht), 4 borden × 4000 potjes: 24,8 / 24,6 / 25,5 / 25,1 (±0,7), 0 vastgelopen.
@@ -207,6 +209,8 @@ const ENERGY_ACTIONS = {
              note: `Kies een richting: je schiet rechtdoor tot een muur of pion, hooguit ${GRAVITY_DASH_STEPS} vakjes. Kom je op je opdracht, dan telt die en stop je daar. Daarna gooi je gewoon vanaf je nieuwe plek.` },
   jump:    { cost: 10, name: 'Noodtransport',   hint: `spring vrij tot ${ENERGY_JUMP_RANGE} vakjes, dan gooien`,
              note: 'Geen geen-U-turn-regel en je springt over pionnen heen. Land je op je opdracht, dan is je beurt klaar; anders gooi je daarna gewoon vanaf je nieuwe plek. Kost je hele voorraad.' },
+  portal:  { cost: 7,  name: 'Portaalkanon',    hint: 'schiet een portaal tot de muur, dan gooien',
+             note: 'Kies een richting: het portaal vliegt rechtdoor tot de muur of tot vóór een pion. Daarna kies je of je het blauwe of het rode verplaatst. Stapt iemand in een portaal, dan komt hij uit het andere en stopt zijn zet daar. Staat er een pion op een portaal, dan werkt het paar niet.' },
   none:    { cost: 0,  name: 'Geen energie',    hint: 'spaart, geeft nooit uit',
              note: 'Doet niets — de handmatige "overslaan"-keuze voor de mens. Zit niet in de bot-strategieën: een speler die een heel potje nooit energie uitgeeft komt in de praktijk niet voor, dus die zou de simulatiecijfers (met name het plafondverlies) alleen maar vertekenen.' },
 };
@@ -234,7 +238,7 @@ function pickEnergyStrategies(rand){
 function resolveEnergyJump(graph, fromKey, range, targetKey, occupiedSet){
   // 1. alles binnen bereik verzamelen. Dit moet compleet zijn vóór de tweede BFS, want die
   //    overschrijft de gedeelde afstandsbuffer.
-  const stampFrom = simBfsDistances(graph, fromKey);
+  const stampFrom = simBfsDistances(graph, fromKey, true);   // niet door een portaal
   const near = new Map();
   for (let k = 0; k < graph.N; k++){
     const d = simDistLookup(stampFrom, k);
@@ -245,7 +249,7 @@ function resolveEnergyJump(graph, fromKey, range, targetKey, occupiedSet){
   if (near.has(targetKey) && !occupiedSet.has(targetKey)){
     dest = targetKey;
   } else {
-    const stampTarget = simBfsDistances(graph, targetKey);
+    const stampTarget = simBfsDistances(graph, targetKey, true);
     let best = Infinity;
     for (const k of near.keys()){
       if (occupiedSet.has(k)) continue;
@@ -297,6 +301,169 @@ function botWantsReorderPeek(graph, player, fromKey){
   return dCur > REORDER_PEEK_THRESHOLD;
 }
 
+// ---------- PORTALEN: de 5e energie-actie "Portaalkanon" (2026-10) ----------
+// Er liggen altijd twee portalen op het bord, een blauwe (0) en een rode (1), gedeeld door alle
+// spelers. Bij de start liggen ze al, op twee willekeurige gewone vakjes die minstens
+// PORTAL_START_MIN_DIST stappen uit elkaar liggen: met maar één portaal gebeurt er niets, dus wie
+// als eerste een portaal legde zou anders voor niets betalen.
+// Regels (gekozen na de analyse "Axiom-9 Portalen": 44 varianten × 10.000 potjes):
+//   - Portaalkanon (energie-actie, vóór de worp): kies een richting; het portaal vliegt rechtdoor
+//     tot de muur of tot vóór een pion en landt op het verste gewone vakje van die lijn (nooit op
+//     een opdracht-, start- of kristalvakje, nooit op het andere portaal). Kies dan welke kleur je
+//     verplaatst; de andere blijft liggen, ook als een ander hem legde ("stelen").
+//   - Stap je bij een gewone worp in een portaal, dan kom je uit het andere en STOPT je zet daar.
+//     Instappen kost één stap, de rest van de worp vervalt. Doorlopen bleek te sterk: potjes 6–11%
+//     korter en tot 10% van de opdrachten via een portaal (stoppen: 2–4% korter, 3–4%).
+//   - Staat er een andere pion op een van de twee portalen, dan werkt het paar niet en is het
+//     andere portaalvakje een gewoon vakje.
+//   - Noodtransport, de laarzen en de duwkaarten negeren portalen (je gaat er gewoon overheen).
+// Prijs 7: zolang iedereen het mag (zoals in het echte spel) is het een extra uitgave voor wie
+// energie over heeft. Bij 5 werd Noodtransport (de spaarder) 28%; bij 7 liggen de andere vier
+// acties tussen 23,4 en 26,3% (4 borden × 10.000 potjes, alle bots mogen schieten).
+// Nagemeten na het inbouwen (deze code, 4 borden × 10.000), Stuwstoot / Herpr. / laarzen / Noodtr.:
+//   zonder portaal  24,7 / 23,8 / 25,8 / 25,6   85,8 beurten
+//   prijs 6         22,9 / 25,3 / 23,6 / 28,1   Noodtransport (de spaarder) te sterk
+//   prijs 7         23,8 / 25,2 / 24,7 / 26,4   82,9 beurten (−3,4%)  ← gekozen
+//   prijs 8         23,7 / 24,9 / 24,9 / 26,5   maar dan schiet de Slim-bot nog maar 0,6× per potje
+// Slim-bots bij 7: 1,1 schot per potje; een Slim-bot zonder portaal wint 24,7% tegen drie mét.
+// Techniek: de buurlijst (adjKey) blijft het gewone bord. Alleen resolveMove (de stop-regel),
+// simBfsDistances (A en B zijn één vakje voor de afstand) en de stappen van de mens
+// (soloLegalNextCells in 97-solo.js) kijken naar graph.portals — zo gaan sprongen, sprints en
+// duwkaarten vanzelf niet door een portaal.
+const PORTAL_START_MIN_DIST = 16;
+// Een bot schiet alleen als het hem minstens zoveel stappen scheelt naar zijn huidige opdracht
+// (gemeten: dan levert een schot gemiddeld ±14 stappen op)
+const PORTAL_BOT_MIN_GAIN = 6;
+const PORTAL_NAMES = ['blauwe', 'rode'];
+// zet graph.portals = { cells: [blauw, rood], owner: [-1, -1] } voor een nieuw potje
+function portalSetup(graph, rand){
+  const normal = portalNormalCells(graph);
+  let a = -1, b = -1;
+  for (let t = 0; t < 400 && b < 0; t++){
+    a = normal[Math.floor(rand() * normal.length)];
+    const d = portalBaseBfs(graph, a);
+    const far = normal.filter(k => d[k] >= PORTAL_START_MIN_DIST);
+    if (far.length) b = far[Math.floor(rand() * far.length)];
+  }
+  graph.portals = { cells: [a, b], owner: [-1, -1] };
+  return graph.portals;
+}
+// mag hier een portaal liggen? gewone, loopbare vakjes zonder label
+function portalCellAllowed(graph, k){
+  if (k < 0 || !graph.adjKey[k]) return false;
+  if (graph.actionCells.has(k)) return false;
+  if (!graph._portalSpecial){
+    graph._portalSpecial = new Set([...Object.values(graph.questCells), ...Object.values(graph.startCells)]);
+  }
+  return !graph._portalSpecial.has(k);
+}
+function portalNormalCells(graph){
+  const out = [];
+  for (let k = 0; k < graph.N; k++) if (portalCellAllowed(graph, k)) out.push(k);
+  return out;
+}
+// eigen BFS over het gewone bord (eigen array, raakt de gedeelde simBfs-buffers niet)
+function portalBaseBfs(graph, from){
+  const d = new Int16Array(graph.N).fill(-1);
+  d[from] = 0;
+  const q = [from];
+  for (let qi = 0; qi < q.length; qi++){
+    const c = q[qi], nb = graph.adjKey[c];
+    for (let j = 0; j < nb.length; j++){ const n = nb[j]; if (d[n] === -1){ d[n] = d[c] + 1; q.push(n); } }
+  }
+  return d;
+}
+// Stap je op vakje `k`: kom je dan uit een portaal, en waar? Geeft het andere portaal terug, of
+// -1 (geen portaal, het andere ligt er nog niet, of er staat een pion op een van de twee).
+// `occ` en `occ2` zijn bezette vakjes (occ2 = Blinde Vlek: wel doorheen, niet op eindigen).
+function portalExitFor(graph, k, occ, occ2){
+  const P = graph.portals;
+  if (!P) return -1;
+  const a = P.cells[0], b = P.cells[1];
+  if (a < 0 || b < 0 || (k !== a && k !== b)) return -1;
+  if (occ && (occ.has(a) || occ.has(b))) return -1;
+  if (occ2 && (occ2.has(a) || occ2.has(b))) return -1;
+  return k === a ? b : a;
+}
+// Portaalkanon: per richting waar het portaal landt — rechtdoor over het gewone bord tot een muur
+// of vóór een pion, op het verste vakje waar een portaal mag liggen. `path` = de vlucht.
+function portalCannonOptions(graph, fromKey, occupied){
+  const P = graph.portals, out = [];
+  for (let dir = 0; dir < 4; dir++){
+    let cur = fromKey, land = -1, landAt = 0;
+    const path = [fromKey];
+    while (true){
+      const nb = graph.adjKey[cur], ds = graph.adjDir[cur];
+      let nx = -1;
+      for (let j = 0; j < ds.length; j++) if (ds[j] === dir){ nx = nb[j]; break; }
+      if (nx === -1 || (occupied && occupied.has(nx))) break;
+      cur = nx; path.push(cur);
+      if (portalCellAllowed(graph, cur) && !(P && P.cells.includes(cur))){ land = cur; landAt = path.length; }
+    }
+    if (land >= 0) out.push({ dir, key: land, path: path.slice(0, landAt) });
+  }
+  return out;
+}
+// legt portaal `color` (0 blauw, 1 rood) op `key`; zegt of je er een van een ander verplaatste
+function portalPlace(graph, key, color, ownerIdx){
+  const P = graph.portals;
+  const prevOwner = P.owner[color];
+  const from = P.cells[color];
+  P.cells[color] = key;
+  P.owner[color] = ownerIdx;
+  return { from, stolen: prevOwner >= 0 && prevOwner !== ownerIdx };
+}
+// Bot: het beste schot (richting + kleur) voor zijn huidige opdracht, of null. Via een paar (a, b)
+// is de afstand min(d(jij,a) + d(b,doel), d(jij,b) + d(a,doel)), over het gewone bord.
+function botPortalShot(graph, player, occupied, targets){
+  const P = graph.portals, t = targets && targets[0];
+  if (!P || t === undefined) return null;
+  const opts = portalCannonOptions(graph, player.pos, occupied);
+  if (!opts.length) return null;
+  const dS = portalBaseBfs(graph, player.pos), dT = portalBaseBfs(graph, t);
+  const far = 1e9;
+  const via = (a, b) => (a < 0 || b < 0 || dS[a] < 0 || dT[b] < 0 || dS[b] < 0 || dT[a] < 0) ? far
+    : Math.min(dS[a] + dT[b], dS[b] + dT[a]);
+  const pa = P.cells[0], pb = P.cells[1];
+  const direct = dS[t] < 0 ? far : dS[t];
+  const blocked = occupied && (occupied.has(pa) || occupied.has(pb));
+  const dNow = Math.min(direct, blocked ? far : via(pa, pb));
+  let best = null;
+  for (const o of opts){
+    for (let color = 0; color < 2; color++){
+      const keep = P.cells[1 - color];
+      if (keep < 0 || (occupied && occupied.has(keep))) continue;
+      const gain = dNow - Math.min(direct, via(o.key, keep));
+      if (!best || gain > best.gain) best = { dir: o.dir, key: o.key, path: o.path, color, gain };
+    }
+  }
+  return best && best.gain >= PORTAL_BOT_MIN_GAIN ? best : null;
+}
+// Hoeveel portaalsprongen zitten er in een pad? Twee opeenvolgende vakjes die niet naast elkaar
+// liggen = door een portaal. Voor de statistiek en de animatie.
+function pathPortalJumps(graph, path){
+  let n = 0;
+  for (let i = 1; i < path.length; i++) if (portalIsJump(graph, path[i - 1], path[i])) n++;
+  return n;
+}
+function portalIsJump(graph, a, b){
+  return Math.abs(Math.floor(a / graph.W) - Math.floor(b / graph.W)) + Math.abs(a % graph.W - b % graph.W) > 1;
+}
+// Wil een bot deze beurt een portaal schieten? Ook bots met een vaste strategie doen het als het
+// loont: in het echte spel mag iedereen elke energie-actie kiezen. Eén keer per beurt uitgerekend.
+function botPortalWanted(graph, player){
+  if (!graph.portals || player.noPortal || player.energy < ENERGY_ACTIONS.portal.cost) return false;
+  const key = `${player.ownTurns || 0}/${player.myTurn || 0}/${player.pos}/${player.energy}/${player.nextIdx}`;
+  if (player._portalKey !== key){
+    player._portalKey = key;
+    const deck = player.order || player.deck;
+    const targets = [];
+    for (let i = player.nextIdx; i < deck.length; i++) if (deck[i] != null) targets.push(graph.questCells[deck[i]]);
+    player._portalWant = !!botPortalShot(graph, player, null, targets);
+  }
+  return player._portalWant;
+}
+
 // ---------- strategie "Slim": de bot kiest elke beurt zelf ----------
 // Gebruikerswens: niet één vaste energie-actie per bot, maar een bot die nadenkt of hij nu iets
 // uitgeeft of spaart. Aan het begin van elke eigen beurt kiest hij één actie (of geen) en speelt
@@ -313,7 +480,8 @@ function botWantsReorderPeek(graph, player, fromKey){
 // Zit bewust NIET in ENERGY_STRATEGIES (de batch-simulatie meet de vaste strategieën tegen
 // elkaar); te kiezen bij Automatisch → Energie-inzet → "iedereen slim".
 function botStrategyNow(graph, player){
-  if (player.strategy !== 'smart') return player.strategy;
+  // vaste strategie: wel een portaal als dat loont ("niemand geeft uit" blijft niets uitgeven)
+  if (player.strategy !== 'smart') return player.strategy !== 'none' && botPortalWanted(graph, player) ? 'portal' : player.strategy;
   const turnKey = `${player.ownTurns || 0}/${player.myTurn || 0}`;
   if (player._smartKey !== turnKey){
     player._smartKey = turnKey;
@@ -340,6 +508,13 @@ function botSmartPick(graph, player){
       dashGain = dash.bankedCount > 0 ? d
         : d - simDistLookup(simBfsDistances(graph, targetKey), dash.key);
     }
+  }
+  // portaal: alleen als het meer oplevert dan een sprint (en de drempel van botPortalShot haalt)
+  if (E >= ENERGY_ACTIONS.portal.cost && !player.noPortal && graph.portals){
+    const targets = [];
+    for (let i = player.nextIdx; i < deck.length; i++) if (deck[i] != null) targets.push(graph.questCells[deck[i]]);
+    const shot = botPortalShot(graph, player, null, targets);
+    if (shot && shot.gain > dashGain) return 'portal';
   }
   if (dashGain >= 5) return 'gravity';
   const saving = d > 12 && E >= 7 && E < ENERGY_ACTIONS.jump.cost;
@@ -625,6 +800,12 @@ function botPickGravityDash(graph, fromKey, occupied, targets){
 function botPreRollMove(graph, player, occupied, targets, canEnergy, canCard){
   const targetKey = targets[0];
   if (targetKey === undefined) return null;
+  // Portaalkanon: geen verplaatsing (pad = alleen je eigen vakje), wel een schot. De aanroeper
+  // betaalt en legt het portaal (portalPlace) vóórdat hij de worp uitrekent.
+  if (canEnergy && botStrategyNow(graph, player) === 'portal' && player.energy >= ENERGY_ACTIONS.portal.cost){
+    const shot = botPortalShot(graph, player, occupied, targets);
+    if (shot) return { kind: 'portal', shot, path: [player.pos], key: player.pos, bankedCount: 0, wasBlocked: false, endsTurn: false };
+  }
   if (canEnergy && botStrategyNow(graph, player) === 'jump' && player.energy >= ENERGY_ACTIONS.jump.cost){
     const stamp = simBfsDistances(graph, targetKey);
     if (simDistLookup(stamp, player.pos) > JUMP_BOT_MIN_DIST){
@@ -848,13 +1029,25 @@ function buildSimGraph(){
 // heuristiek om onder de DP-bereikbare eindcellen de beste te kiezen. Schrijft in de
 // gedeelde simBfsDist/simBfsStampArr-buffers; geeft het stempel terug waarmee de
 // caller via simDistLookup() alleen de cellen leest die in DEZE aanroep bezocht zijn.
-function simBfsDistances(graph, fromKey){
+// Portalen (graph.portals): de twee portaalvakjes tellen als één vakje — instappen in het ene is
+// aankomen bij het andere. `noPortal` = gewone afstand (Noodtransport gaat niet door een portaal).
+function simBfsDistances(graph, fromKey, noPortal){
   simBfsStampCounter++;
   const stamp = simBfsStampCounter;
   const { adjKey } = graph;
+  const P = !noPortal && graph.portals;
+  const pa = P ? P.cells[0] : -1, pb = P && pa >= 0 ? P.cells[1] : -1;
   simBfsStampArr[fromKey] = stamp;
   simBfsDist[fromKey] = 0;
   const queue = [fromKey];
+  // het andere portaal meteen erachter, met dezelfde afstand (zo blijft de wachtrij op volgorde)
+  const link = (k, d) => {
+    if (pb < 0 || (k !== pa && k !== pb)) return;
+    const o = k === pa ? pb : pa;
+    if (simBfsStampArr[o] === stamp) return;
+    simBfsStampArr[o] = stamp; simBfsDist[o] = d; queue.push(o);
+  };
+  link(fromKey, 0);
   let qi = 0;
   while (qi < queue.length){
     const ck = queue[qi++];
@@ -866,6 +1059,7 @@ function simBfsDistances(graph, fromKey){
       simBfsStampArr[nk] = stamp;
       simBfsDist[nk] = d + 1;
       queue.push(nk);
+      if (pb >= 0) link(nk, d + 1);
     }
   }
   return stamp;
@@ -978,6 +1172,13 @@ function resolveMove(graph, startKey, steps, occupiedSet, targets, rand, endBloc
   const { adjKey, adjDir } = graph;
   const layersKeys = [[startKey]], layersDirs = [[-1]], layersParent = [[]], layersBanked = [[0]];
   let wasBlocked = false;
+  // Portalen: stap je in een portaal, dan kom je uit het andere en eindigt je zet daar (zie het
+  // blok PORTALEN). Die eindes lopen niet mee in de lagen maar worden apart verzameld en aan het
+  // eind vergeleken met het beste gewone eindvakje.
+  const P = graph.portals;
+  const portalLive = !!(P && P.cells[0] >= 0 && P.cells[1] >= 0);
+  const portalEnds = [];
+  let lastStep = steps;
 
   for (let step = 1; step <= steps; step++){
     simDpStampCounter++;
@@ -1000,6 +1201,13 @@ function resolveMove(graph, startKey, steps, occupiedSet, targets, rand, endBloc
         if (banked < targets.length && nk === targets[banked] && !(endBlockedSet && endBlockedSet.has(nk))){
           newBanked = banked + 1;
         }
+        if (portalLive){
+          const exit = portalExitFor(graph, nk, occupiedSet, endBlockedSet);
+          if (exit >= 0){
+            portalEnds.push({ step, i, entry: nk, key: exit, banked: newBanked });
+            continue;
+          }
+        }
         const stateIdx = (nk * 4 + d) * SIM_CHAIN_CAP + newBanked;
         if (simDpStamp[stateIdx] === stamp) continue;
         simDpStamp[stateIdx] = stamp;
@@ -1008,17 +1216,45 @@ function resolveMove(graph, startKey, steps, occupiedSet, targets, rand, endBloc
     }
     if (nextKeys.length === 0){
       // doodlopend voordat de worp op is: stop op de laatst haalbare laag
-      const move = pickEnd(graph, layersKeys, layersParent, layersBanked, step - 1, targets, occupiedSet, rand, step - 1, endBlockedSet);
-      if (!move) return null;
-      move.wasBlocked = wasBlocked;
-      return move;
+      lastStep = step - 1;
+      break;
     }
     layersKeys.push(nextKeys); layersDirs.push(nextDirs); layersParent.push(nextParent); layersBanked.push(nextBanked);
   }
-  const move = pickEnd(graph, layersKeys, layersParent, layersBanked, steps, targets, occupiedSet, rand, steps, endBlockedSet);
+  let move = pickEnd(graph, layersKeys, layersParent, layersBanked, lastStep, targets, occupiedSet, rand, lastStep, endBlockedSet);
+  if (portalEnds.length){
+    const via = pickPortalEnd(graph, portalEnds, move, targets, layersKeys, layersParent);
+    if (via) move = via;
+  }
   if (!move) return null;
   move.wasBlocked = wasBlocked;
   return move;
+}
+// Beste einde via een portaal, als dat beter is dan het gewone einde `move`: eerst de meeste
+// gepakte opdrachten, dan het dichtst bij de volgende opdracht. Bij gelijkspel wint het gewone
+// einde. Het pad bevat het portaal waar je instapt én waar je uitkomt (voor de animatie).
+function pickPortalEnd(graph, ends, move, targets, layersKeys, layersParent){
+  let best = -1;
+  for (const e of ends) if (e.banked > best) best = e.banked;
+  const mb = move ? move.bankedCount : -1;
+  if (best < mb) return null;
+  const pool = ends.filter(e => e.banked === best);
+  let pick = null;
+  const next = best < targets.length ? targets[best] : null;
+  if (next === null){
+    if (best > mb) pick = pool[0];
+  } else {
+    const stamp = simBfsDistances(graph, next);
+    let bd = Infinity;
+    for (const e of pool){ const d = simDistLookup(stamp, e.key); if (d >= 0 && d < bd){ bd = d; pick = e; } }
+    if (pick && best === mb && move){
+      const dm = simDistLookup(stamp, move.key);
+      if (dm >= 0 && dm <= bd) pick = null;
+    }
+  }
+  if (!pick) return null;
+  const path = backtrackLayers(layersKeys, layersParent, pick.step - 1, pick.i).concat([pick.entry, pick.key]);
+  return { key: pick.key, stepsUsed: pick.step, bankedCount: pick.banked, bankedQuest: pick.banked > 0, path, viaPortal: true };
 }
 
 function simShuffle(arr, rand){
@@ -1052,6 +1288,8 @@ function newPlayerStats(){
     cardsPlayed: 0, cardsDiscarded: 0,
     walkSteps: 0,                  // vakjes gelopen met de worp
     dashSteps: 0,                  // vakjes gesprint met de Zwaartekracht-laarzen
+    portalShots: 0,                // portalen geschoten met het Portaalkanon
+    portalJumps: 0,                // keer door een portaal gestapt (eigen of van een ander)
     // voor de grafieken in de statistieken-pop-up (soloRenderStatsCharts, 97-solo.js):
     hist: [],                      // per eigen beurt [opdrachten voltooid, energie] bij het BEGIN, + eindstand
     rolls: Array(13).fill(0),      // hoe vaak de 2 loopstenen samen 2..12 gooiden (index = som)
@@ -1120,6 +1358,8 @@ function simulateOneGame(graph, rand, heatmap, questStats, extra){
   const strategies = pickEnergyStrategies(rand);
   for (let i = 0; i < players.length; i++) players[i].strategy = strategies[i];
   const deck = buildActionDeck(rand);   // één gedeelde stapel voor het hele potje
+  portalSetup(graph, rand);             // twee portalen liggen al bij de start (zie PORTALEN)
+  const portalJumpsBy = [0, 0, 0, 0];   // portaalsprongen per speler, voor "meeste teleporteerder wint"
 
   const finishTarget = simFinishTarget(players.length);
   let finished = 0;
@@ -1133,6 +1373,7 @@ function simulateOneGame(graph, rand, heatmap, questStats, extra){
       const player = players[pIdx];
       if (player.rank) continue;   // binnen: speelt niet meer mee en staat niemand in de weg
       turnCount++;
+      player.ownTurns = (player.ownTurns || 0) + 1;   // per-beurt-keuzes van de bot (botPortalWanted)
       // Energie-acties en kaarten hebben ELK hun eigen actie-slot per beurt (max 1 van elk) —
       // vroeger deelden ze één gezamenlijk slot ("hooguit 1 actie per beurt, kaart of energie").
       // Drie kaarten hebben echter een GRATIS variant van een energie-actie (Stuwlading↔Stuwstoot:
@@ -1340,8 +1581,14 @@ function simulateOneGame(graph, rand, heatmap, questStats, extra){
           energyActionUsed = true;
           energyUsedId = pre.kind;
           const st = extra.energyStats[pre.kind];
-          st.steps += pre.path.length - 1;
-          if (pre.bankedCount) st.direct++;
+          if (st){
+            st.steps += pre.path.length - 1;
+            if (pre.bankedCount) st.direct++;
+          }
+          if (pre.kind === 'portal'){
+            const placed = portalPlace(graph, pre.shot.key, pre.shot.color, pIdx);
+            if (extra.portal){ extra.portal.shots++; if (placed.stolen) extra.portal.steals++; }
+          }
         }
       }
       const rollFrom = pre ? pre.key : player.pos;
@@ -1421,10 +1668,24 @@ function simulateOneGame(graph, rand, heatmap, questStats, extra){
       for (let p = 1; p < move.path.length; p++) heatmap[move.path[p]]++;
       if (pathHasActionCell(graph, move.path)) actionCellCrossed = true;
       // "Wat levert een energie-actie op?": haalde deze beurt een opdracht, mét of zonder actie
+      // portalen: sprongen tellen, en wie er gebruik van maakt (eigen portaal of dat van een ander)
+      if (extra.portal){
+        const jumps = pathPortalJumps(graph, move.path);
+        extra.portal.quests += move.bankedCount;
+        if (jumps){
+          const P = graph.portals, own = P.owner[0] === pIdx || P.owner[1] === pIdx;
+          extra.portal.jumps += jumps;
+          if (!own) extra.portal.jumpsOther += jumps;
+          extra.portal.jumpQuests += move.bankedCount;
+          portalJumpsBy[pIdx] += jumps;
+        }
+      }
       if (energyUsedId){
         const st = extra.energyStats[energyUsedId];
-        st.uses++;
-        if (move.bankedQuest) st.banked++;
+        if (st){
+          st.uses++;
+          if (move.bankedQuest) st.banked++;
+        }
       } else {
         extra.noEnergyTurns++;
         if (move.bankedQuest) extra.noEnergyBanked++;
@@ -1497,6 +1758,15 @@ function simulateOneGame(graph, rand, heatmap, questStats, extra){
         // de achterblijver(s) hebben verloren zonder dat ze nog iets kunnen doen
         for (const p of players) if (!p.rank) p.rank = finished + 1;
         recordGameEndStats(players, halfway, extra);
+        // "meeste teleporteerder wint": alleen potjes met één duidelijke koploper in sprongen
+        if (extra.portal){
+          const most = Math.max(...portalJumpsBy);
+          const top = players.filter(p => portalJumpsBy[p.idx] === most);
+          if (most > 0 && top.length === 1){
+            extra.portal.topGames++;
+            extra.portal.topWins += rankOverlapFraction(top[0].rank, top[0].rankShare || 1, 1);
+          }
+        }
         return { stuck: false, turns: turnCount, players };
       }
     }
@@ -1611,6 +1881,9 @@ const simStream = (() => {
   // een staaf is een vaste kolom cijfers die omhoog schuift: bars[c] cijfers in beeld
   function setBar(c){ barEls[c].style.transform = `translateY(${((rows - bars[c]) / rows * 100).toFixed(3)}%)`; }
   function drop(c, land){
+    // vak niet zichtbaar bij de start (bv. ander tabblad): dan geen regen, anders deelt de
+    // snelheid door 0 en weigert animate() de duur (gooide de hele simulatie om)
+    if (!H || !cols) return;
     const el = document.createElement('span');
     el.className = 'sim-drop';
     el.textContent = Array.from({ length: TRAIL }, glyph).join('\n');
@@ -2174,9 +2447,10 @@ function renderSimResults({ n, stuckCount, startWins, startTurnsSum, startRanks,
     if (id === 'reorder') return `wisselt in ${nl(pctOf(st.swaps, st.uses), 0)}% · scheelt dan gem. ${nl(st.swaps ? st.saved / st.swaps : 0, 1)} vakjes`;
     if (id === 'gravity') return `gem. ${nl(st.steps / st.uses, 1)} vakjes rechtdoor · ${nl(pctOf(st.direct, st.uses), 0)}% pakt meteen de opdracht`;
     if (id === 'jump') return `gem. ${nl(st.steps / st.uses, 1)} vakjes gesprongen · ${nl(pctOf(st.direct, st.uses), 0)}% landt precies op de opdracht`;
+    if (id === 'portal') return 'elke bot schiet als het hem ≥' + PORTAL_BOT_MIN_GAIN + ' stappen scheelt';
     return '—';
   };
-  const yieldRows = ENERGY_STRATEGIES.map(id => {
+  const yieldRows = [...ENERGY_STRATEGIES, 'portal'].filter(id => extra.energyStats[id]).map(id => {
     const st = extra.energyStats[id];
     return `<tr><td>${ENERGY_ACTIONS[id].name}<span class="sub">${yieldText(id, st)}</span></td>` +
       `<td class="num">${nl(played ? st.uses / played : 0, 1)}</td>` +
@@ -2187,6 +2461,28 @@ function renderSimResults({ n, stuckCount, startWins, startTurnsSum, startRanks,
   html += simSectionOpen('Wat levert een energie-actie op?');
   html += `<p class="hint">Per keer dat een bot de actie inzet. "Opdracht gehaald" is hoe vaak hij in die beurt een opdracht pakte — vergelijk met een beurt zonder actie.</p>`;
   html += `<table class="sim-table"><thead><tr><th>Actie</th><th>Per potje</th><th>Opdracht gehaald</th></tr></thead><tbody>${yieldRows}</tbody></table>`;
+
+  // ---------- Portalen ----------
+  // De vier meetpunten uit de analyse "Axiom-9 Portalen", met de grens die daar vooraf is gezet.
+  // De winstkans van de vier acties en de potjeslengte staan al hierboven (Welke energie-actie
+  // wint?, Speelduur); eerlijkheid per startpositie bovenaan.
+  const pt = extra.portal;
+  if (pt){
+    const okTag = (ok, warn) => ok ? '<span class="ok">✓ goed</span>' : warn ? '<span style="color:var(--amber)">≈ randgeval</span>' : '<span class="bad">✕ buiten de grens</span>';
+    const questPct = pctOf(pt.jumpQuests, pt.quests);
+    const topPct = pctOf(pt.topWins, pt.topGames);
+    const stealPct = pctOf(pt.steals, pt.shots);
+    const otherPct = pctOf(pt.jumpsOther, pt.jumps);
+    const rows = [
+      ['Portaalschoten per potje', nl(played ? pt.shots / played : 0, 1), `waarvan <b>${nl(stealPct, 0)}%</b> een portaal van een ander verplaatst ("stelen")`, ''],
+      ['Portaalsprongen per potje', nl(played ? pt.jumps / played : 0, 1), `<b>${nl(otherPct, 0)}%</b> door iemand die geen van beide portalen legde`, ''],
+      ['Opdrachten in een beurt met een portaalsprong', nl(questPct, 1) + '%', 'grens: hooguit 5% (10% = randgeval)', okTag(questPct <= 5, questPct <= 10)],
+      ['Meeste teleporteerder wint', nl(topPct, 1) + '%', `grens: hooguit 30% (35% = randgeval) · ${pt.topGames} potjes met één duidelijke koploper in sprongen`, okTag(topPct <= 30, topPct <= 35)],
+    ].map(([label, val, sub, tag]) => `<tr><td>${label}<span class="sub">${sub}</span></td><td class="num">${val}</td><td>${tag}</td></tr>`).join('');
+    html += simSectionOpen('Portalen');
+    html += `<p class="hint">Bij de start liggen er twee portalen, minstens ${PORTAL_START_MIN_DIST} stappen uit elkaar. Met het <b>Portaalkanon</b> (${ENERGY_ACTIONS.portal.cost} energie) schiet een speler er een naar de muur; stap je in een portaal, dan kom je uit het andere en stopt je zet. Elke bot schiet als het hem minstens ${PORTAL_BOT_MIN_GAIN} stappen scheelt, welke strategie hij ook heeft. Wint de speler die het vaakst teleporteerde veel vaker dan 25%, dan beslissen de portalen het potje.</p>`;
+    html += `<table class="sim-table"><thead><tr><th>Meetpunt</th><th>Waarde</th><th>Oordeel</th></tr></thead><tbody>${rows}</tbody></table>`;
+  }
 
   // ---------- beloningskaarten ----------
   const cardRows = ACTION_CARD_IDS.map(id => {
@@ -2333,12 +2629,16 @@ function runSimulationBatch(){
         // "Wat levert een energie-actie op?" — per actie: keer ingezet, beurten met een gehaalde
         // opdracht, verplaatste vakjes (sprint/sprong) of extra steen (Stuwstoot), direct op de
         // opdracht geland, en bij Herprioritering: keer gewisseld + vakjes gescheeld
-        energyStats: Object.fromEntries(ENERGY_STRATEGIES.map(id =>
+        // ('portal' erbij: geen vaste strategie, maar elke bot mag schieten — zie botPortalWanted)
+        energyStats: Object.fromEntries([...ENERGY_STRATEGIES, 'portal'].map(id =>
           [id, { uses: 0, banked: 0, steps: 0, direct: 0, swaps: 0, saved: 0 }])),
         noEnergyTurns: 0, noEnergyBanked: 0,
         // "Pech-reeksen" en "Kan de achterste nog terugkomen?"
         searchHist: new Float64Array(SIM_SEARCH_HIST_MAX + 1), longestSearch: 0, gamesWithLongSearch: 0,
         comebackHist: [0, 0, 0, 0], comebackGames: 0,
+        // "Portalen": schoten, gestolen, sprongen (door een ander), opdrachten in een beurt met
+        // een sprong, en hoe vaak de speler met de meeste sprongen won
+        portal: { shots: 0, steals: 0, jumps: 0, jumpsOther: 0, jumpQuests: 0, quests: 0, topGames: 0, topWins: 0 },
       };
       let stuckCount = 0;
 
