@@ -91,7 +91,7 @@
   header{
     display:flex; flex-wrap:wrap; align-items:flex-end; justify-content:space-between;
     /* padding-bottom was 16px, margin-bottom 22px — zelfde reden als body hierboven. */
-    gap:16px; border-bottom:1px solid var(--line); padding-bottom:10px; margin-bottom:14px;
+    gap:16px; padding-bottom:10px; margin-bottom:14px;
     /* Blijft altijd bovenin staan als je naar beneden scrolt (gebruikerswens; vooral bij
        "Speelbord genereren" en "Speelkaarten"). De 14px bovenrand van <body> zit erin
        (padding-top + negatieve margin), anders schoof de inhoud zichtbaar door dat randje
@@ -101,6 +101,12 @@
     margin-top:-14px; padding-top:14px;
     background:var(--page-bg);
     background-attachment:fixed;
+  }
+  /* de lijn onder de kop loopt over de hele schermbreedte, niet alleen over .wrap (max. 1600px)
+     (gebruikerswens 2026-10); html/body knippen horizontaal af, dus 100vw geeft geen schuifbalk */
+  header::after{
+    content:''; position:absolute; bottom:0; left:calc(50% - 50vw); width:100vw; height:1px;
+    background:var(--line); pointer-events:none;
   }
   .title-block{display:flex; align-items:center; gap:18px;}
   /* was 84px — samen met de rest van de kop hierboven de grootste losse bijdrage aan de hoogte
