@@ -1586,8 +1586,101 @@ function simCountStep(dir, size = SIM_COUNT_STEP){
   });
   simCounterRender();
 }
-// "Aan het simuleren"-vakje: zelfde laadvakje + voortgangsring als map genereren
-// (createProgressLoader in 80-controls.js); vervangt de oude voortgangsbalk (gebruikerswens)
+// ---------- "Datastroom" in het simulatievak (gekozen variant 3 uit 8, 2026-10) ----------
+// Kolommen cijfers regenen naar beneden; een deel ervan "landt" en stapelt zich op tot een
+// staafdiagram dat vol is als de simulatie klaar is (hoeveel er al liggen = de voortgang). De vorm
+// is elke keer anders en zegt niets over de uitslag: het is sfeer. Alles beweegt via Web Animations
+// en transitions op transform/opacity, zodat de browser het afspeelt terwijl runSimulationBatch in
+// brokken van 30 ms rekent (zie het blok in styles.css). Opmeten gebeurt één keer, bij de start.
+const SIM_STREAM_CELL = 16;       // = de 16px in .sim-stream/.sim-stack/.sim-drop (styles.css)
+const SIM_STREAM_DONE_MS = 700;   // na het laatste brok: het volle diagram nog even in beeld
+const simStream = (() => {
+  const root = document.getElementById('simStream');
+  if (!root) return null;
+  const GL = '0123456789ABCDEF', C = SIM_STREAM_CELL, TRAIL = 7;
+  let cols = 0, rows = 0, H = 0, tgt = [], bars = [], pend = [], barEls = [];
+  let total = 0, landed = 0, inflight = 0, rainTimer = null, run = 0, done = false;
+  const glyph = () => GL[Math.floor(Math.random() * GL.length)];
+  // kleur per plek in de kolom: bovenste cijfer bijna wit, naar onder via blauw naar paars
+  const RAMP = [[234, 249, 255], [143, 224, 255], [79, 184, 224], [124, 92, 255]];
+  function color(t){
+    const x = Math.min(.999, t) * (RAMP.length - 1), i = Math.floor(x), f = x - i;
+    const c = RAMP[i].map((v, k) => Math.round(v + (RAMP[i + 1][k] - v) * f));
+    return `rgba(${c[0]},${c[1]},${c[2]},${(.95 - t * .45).toFixed(2)})`;
+  }
+  // een staaf is een vaste kolom cijfers die omhoog schuift: bars[c] cijfers in beeld
+  function setBar(c){ barEls[c].style.transform = `translateY(${((rows - bars[c]) / rows * 100).toFixed(3)}%)`; }
+  function drop(c, land){
+    const el = document.createElement('span');
+    el.className = 'sim-drop';
+    el.textContent = Array.from({ length: TRAIL }, glyph).join('\n');
+    root.appendChild(el);
+    const x = c * C, y0 = -TRAIL * C - Math.random() * H * 0.3;
+    let y1;
+    if (land){ y1 = H - (bars[c] + pend[c]) * C - TRAIL * C; pend[c]++; inflight++; }
+    else y1 = H * (0.25 + Math.random() * 0.35) - TRAIL * C;
+    const speed = (land ? 0.35 + Math.random() * 0.35 : 0.25 + Math.random() * 0.3) * H / 1000;   // px per ms
+    const at = (y, o) => ({ transform: `translate(${x}px, ${y.toFixed(1)}px)`, opacity: o });
+    const kf = land ? [at(y0, 1), at(y1, 1)] : [at(y0, 1), { ...at(y0 + (y1 - y0) * 0.7, 1), offset: 0.7 }, at(y1, 0)];
+    const me = run;
+    el.animate(kf, { duration: Math.max(300, (y1 - y0) / speed), easing: 'linear' }).onfinish = () => {
+      el.remove();
+      if (!land || me !== run) return;
+      pend[c]--; inflight--;
+      if (!done){ bars[c]++; landed++; setBar(c); }
+    };
+  }
+  function clearDrops(){ root.querySelectorAll('.sim-drop').forEach(el => el.remove()); }
+
+  function start(){
+    stop();
+    run++; done = false; landed = 0; inflight = 0;
+    clearDrops();
+    H = root.clientHeight;
+    cols = Math.max(1, Math.floor(root.clientWidth / C));
+    rows = Math.max(4, Math.min(15, Math.floor(H / C) - 1));
+    const ph = Math.random() * 6;
+    tgt = Array.from({ length: cols }, (_, i) => Math.max(1, Math.round(Math.min(1, Math.max(0.08,
+      0.35 + 0.3 * Math.sin(i * 0.28 + ph) + 0.25 * Math.sin(i * 0.11 - ph * 0.7) + (Math.random() - 0.5) * 0.12)) * rows)));
+    total = tgt.reduce((a, b) => a + b, 0);
+    bars = new Array(cols).fill(0); pend = new Array(cols).fill(0);
+    let html = '';
+    for (let c = 0; c < cols; c++){
+      let cells = '';
+      for (let k = 0; k < rows; k++) cells += `<b style="color:${color(k / (rows - 1))}">${glyph()}</b>`;
+      html += `<div class="sim-stack" style="left:${c * C}px;height:${rows * C}px"><i style="transform:translateY(100%)">${cells}</i></div>`;
+    }
+    root.innerHTML = html;
+    barEls = [...root.querySelectorAll('.sim-stack > i')];
+    // sfeerregen die niet landt (vervaagt halverwege)
+    rainTimer = setInterval(() => { if (root.childElementCount < cols + 30) drop(Math.floor(Math.random() * cols), false); }, 140);
+  }
+  // frac = gedaan/totaal; er vallen zoveel landers dat het diagram precies meegroeit
+  function progress(frac){
+    if (done || !cols) return;
+    const need = Math.round(frac * total) - landed - inflight;
+    for (let n = 0; n < Math.min(need, 8); n++){
+      const open = [];
+      for (let c = 0; c < cols; c++) if (bars[c] + pend[c] < tgt[c]) open.push(c);
+      if (!open.length) break;
+      drop(open[Math.floor(Math.random() * open.length)], true);
+    }
+  }
+  function complete(){
+    done = true;
+    for (let c = 0; c < cols; c++){ bars[c] = tgt[c]; setBar(c); }
+  }
+  // pas na het uitfaden de vallende cijfers weghalen (anders verdwijnen ze zichtbaar)
+  function stop(){
+    clearInterval(rainTimer); rainTimer = null;
+    const me = run;
+    setTimeout(() => { if (me === run) clearDrops(); }, GEN_FADE_MS);
+  }
+  return { start, progress, complete, stop };
+})();
+
+// "Aan het simuleren"-vakje: de datastroom hierboven + aftellende tijd (createProgressLoader in
+// 80-controls.js); vervangt de oude voortgangsbalk en later de ring met radar (gebruikerswens)
 const simStageEl = document.getElementById('simStage');
 const simLoaderEl = document.getElementById('simLoader');
 const simLoaderCountEl = document.getElementById('simLoaderCount');
@@ -1598,6 +1691,7 @@ function showSimLoader(){
   simStageEl.classList.remove('is-holding');
   simStageEl.classList.add('is-running');
   simLoader.start();
+  if (simStream) simStream.start();   // na is-running: dan heeft het vak zijn maat
 }
 let simHoldTimer = null;
 function hideSimLoader(){
@@ -1607,6 +1701,7 @@ function hideSimLoader(){
   simStageEl.classList.add('is-holding');
   simStageEl.classList.remove('is-running');
   simLoader.stop();
+  if (simStream) simStream.stop();
   clearTimeout(simHoldTimer);
   simHoldTimer = setTimeout(() => simStageEl.classList.remove('is-holding'), GEN_FADE_MS);
 }
@@ -2158,6 +2253,7 @@ function formatSimSeconds(ms){
 function updateSimProgress(done, n, elapsedMs){
   if (!simLoader) return;
   simLoader.progress(done, n, elapsedMs);
+  if (simStream && n) simStream.progress(done / n);
   if (simLoaderCountEl) simLoaderCountEl.textContent =
     `${done.toLocaleString('nl-NL')} / ${n.toLocaleString('nl-NL')} potjes`;
 }
@@ -2295,11 +2391,12 @@ function runSimulationBatch(){
       if (runId !== simRunId) return;
 
       const elapsedMs = performance.now() - t0;
-      // net als bij map genereren: ring rustig volmaken en het vakje minstens helemaal laten
-      // infaden; dan de uitslag (nog onzichtbaar) opbouwen, en pas daarna overfaden
+      // het diagram afmaken en even laten staan, en het vakje minstens helemaal laten infaden;
+      // dan de uitslag (nog onzichtbaar) opbouwen, en pas daarna overfaden
       simLoader && simLoader.complete();
+      if (simStream) simStream.complete();
       await new Promise(res => setTimeout(res,
-        Math.max(GEN_RING_FILL_MS + 120, GEN_FADE_MS - (performance.now() - tShown))));
+        Math.max(SIM_STREAM_DONE_MS, GEN_FADE_MS - (performance.now() - tShown))));
       if (runId !== simRunId) return;
       renderSimResults({ n, stuckCount, startWins, startTurnsSum, startRanks, strategyStats, seatWins, gameLengths, questStats, extra, graph, heatmap, elapsedMs });
       await genNextFrames(2);

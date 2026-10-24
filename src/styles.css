@@ -308,41 +308,6 @@
     visibility:hidden; transition:opacity .9s ease, visibility 0s linear .9s;   /* zie .sim-loader */
   }
   .map-board-panel.is-generating > .gen-overlay{opacity:1; visibility:visible; transition:opacity .9s ease, visibility 0s;}
-  .gen-box{
-    display:flex; flex-direction:column; align-items:center; gap:18px; padding:44px 84px;
-    border-radius:14px; border:1px solid rgba(79,184,224,.35);
-    background:radial-gradient(ellipse at 50% 30%, rgba(79,184,224,.12), transparent 70%), rgba(5,8,14,.88);
-    box-shadow:0 0 40px rgba(79,184,224,.18), inset 0 0 30px rgba(79,184,224,.08);
-  }
-  .gen-orbit{position:relative; width:150px; height:150px;}
-  /* voortgangsring (createProgressLoader in 80-controls.js). Was een SVG met stroke-dashoffset, maar
-     die animatie draait op dezelfde draad als het rekenwerk en hakkelde dus. Nu: twee halve bogen
-     die alleen draaien (transform) — dat doet de browser los van JavaScript, ook als die bezig is.
-     Rechterhelft: een boog die zelf links ligt en 0→180° rechtsom het zicht in draait (0–50%);
-     linkerhelft idem gespiegeld (50–100%). Ring: middellijn 136px, dikte 5px, 7px marge voor de gloed. */
-  .gen-track{position:absolute; inset:7px; border-radius:50%; border:5px solid rgba(79,184,224,.16);}
-  .gen-half{position:absolute; top:0; width:50%; height:100%; overflow:hidden;}
-  .gen-half-r{left:50%;}
-  .gen-half-l{left:0;}
-  .gen-half > i{
-    position:absolute; top:0; width:200%; height:100%; will-change:transform; transform:rotate(0deg);
-  }
-  .gen-half-r > i{left:-100%; clip-path:inset(0 50% 0 0);}
-  .gen-half-l > i{left:0; clip-path:inset(0 0 0 50%);}
-  .gen-half > i::before{
-    content:''; position:absolute; inset:7px; border-radius:50%; border:5px solid #4fb8e0;
-    box-shadow:0 0 5px rgba(79,184,224,.7), inset 0 0 5px rgba(79,184,224,.5);
-  }
-  /* ronde kopjes: .gen-cap is het vaste beginpuntje bovenaan, .gen-lead draait in één stuk mee
-     met het voorste uiteinde (0–360°). Bij 0% voortgang is alles onzichtbaar (#genOrbit.on). */
-  .gen-lead{position:absolute; inset:0; will-change:transform; transform:rotate(0deg);}
-  .gen-lead::after, .gen-cap{
-    content:''; position:absolute; top:7px; left:50%; width:5px; height:5px; margin-left:-2.5px;
-    border-radius:50%; background:#4fb8e0; box-shadow:0 0 5px rgba(79,184,224,.7);
-  }
-  .gen-half, .gen-cap, .gen-lead{opacity:0; transition:opacity .25s;}
-  .gen-orbit.on .gen-half, .gen-orbit.on .gen-cap, .gen-orbit.on .gen-lead{opacity:1;}
-  @keyframes genSpin{to{transform:rotate(360deg);}}   /* o.a. de radar van het simulatievakje */
 
   /* ---------- "Sterrenbeeld" in het genereer-vakje (genNet in 80-controls.js) ----------
      Gekozen variant 8 uit 8 (2026-10). .gen-net ligt precies over #board (JS zet left/top/width/
@@ -647,14 +612,14 @@
   /* ---------- simulatie ---------- */
   /* korter (gecentreerd, max. 520px) zodat de tekst links en rechts eronder dichter bij elkaar
      staat, en een dikkere balk (gebruikerswens) */
-  /* "Aan het simuleren"-vakje (runSimulationBatch in 95-simulate.js): zelfde .gen-box + ring als
-     bij map genereren. Het ligt óver de uitslag (#simResults), zodat bij klaar het vakje kan
+  /* "Aan het simuleren"-vakje (runSimulationBatch in 95-simulate.js): de datastroom (hieronder) met
+     eronder titel, tijd, teller en Stoppen. Het ligt óver de uitslag (#simResults), zodat bij klaar het vakje kan
      uitfaden terwijl de uitslag op dezelfde plek infaadt (0,9 s = GEN_FADE_MS). Tijdens het
      rekenen houdt .sim-stage ruimte vrij voor het vakje. */
   .sim-stage{position:relative;}
   .sim-stage.is-running, .sim-stage.is-holding{min-height:380px;}
   .sim-loader{
-    position:absolute; top:0; left:0; right:0; display:flex; justify-content:center; padding-top:6px;
+    position:absolute; inset:0;
     z-index:3; opacity:0; pointer-events:none; will-change:opacity;
     /* na het uitfaden ook echt weg (visibility), anders zat de onzichtbare tekst ("Aan het
        simuleren…", "Stoppen") nog op de pagina en kwam die mee bij selecteren/kopiëren */
@@ -664,43 +629,36 @@
   .sim-stage > #simResults, .sim-stage > #simStatus{transition:opacity .9s ease;}
   .sim-stage.is-running > #simResults, .sim-stage.is-running > #simStatus{opacity:0;}
   .sim-stage > #simStatus:not(:empty){margin-bottom:10px;}
-  .sim-loader .gen-box{padding:36px 84px 26px; gap:14px;}
-  .sim-loader-count{font-size:11.5px; font-variant-numeric:tabular-nums; margin-top:-8px; opacity:.75;}
-  .sim-stop{align-self:center; margin-top:4px; min-width:140px;}
+  /* Datastroom (gekozen variant 3 uit 8, 2026-10; simStream in 95-simulate.js): kolommen cijfers
+     regenen naar beneden en stapelen zich op tot een staafdiagram. Alles beweegt via transform/
+     opacity (Web Animations + transitions): de simulatie rekent in brokken van 30 ms op dezelfde
+     draad, en alleen zulke animaties blijven daar vloeiend bij. Een staaf is een vaste kolom
+     cijfers die omhoog schuift (.sim-stack > i), een vallend cijfer een los stukje tekst (.sim-drop).
+     Raster: 16px per vakje; de maten hieronder moeten gelijk blijven aan SIM_STREAM_CELL. */
+  .sim-stream{
+    position:absolute; left:0; right:0; top:0; bottom:140px; overflow:hidden;
+    font-family:var(--font-mono); font-size:13px; line-height:16px;
+  }
+  .sim-stream > .sim-stack{position:absolute; bottom:0; width:16px; overflow:hidden; text-align:center;}
+  .sim-stream > .sim-stack > i{
+    position:absolute; left:0; right:0; bottom:0; display:flex; flex-direction:column; font-style:normal;
+    transform:translateY(100%); transition:transform .3s ease-out; will-change:transform;
+  }
+  .sim-stream > .sim-stack > i > b{display:block; height:16px; font-weight:400;}
+  .sim-stream > .sim-drop{
+    position:absolute; left:0; top:0; width:16px; text-align:center; white-space:pre; will-change:transform, opacity;
+    background:linear-gradient(to bottom, rgba(79,184,224,0), rgba(79,184,224,.55) 70%, #eaf9ff 88%);
+    -webkit-background-clip:text; background-clip:text; color:transparent;
+  }
+  .sim-cap{
+    position:absolute; left:0; right:0; bottom:0; height:120px; padding-bottom:10px;
+    display:flex; flex-direction:column; align-items:center; justify-content:flex-end; gap:8px;
+  }
+  .sim-loader-count{font-size:11.5px; font-variant-numeric:tabular-nums; opacity:.75;}
+  .sim-stop{margin-top:4px; min-width:140px;}
   /* melding na "Stoppen": gecentreerd onder de knop, net als de rest erboven */
   .sim-stopped{display:block; text-align:center;}
-  /* radarscherm in de ring: raster, een draaiende scanstraal en vier pionnen die oplichten als de
-     straal ze raakt (zelfde 2,4 s als de straal; --d per pion). Alles transform/opacity, dus net als
-     de ring vloeiend terwijl er gerekend wordt. */
-  .sim-radar{
-    position:absolute; inset:44px; border-radius:50%; overflow:hidden;
-    background:radial-gradient(circle, rgba(79,184,224,.18), rgba(8,22,38,.95) 70%);
-    box-shadow:0 0 22px rgba(79,184,224,.45), inset 0 0 12px rgba(79,184,224,.35);
-  }
-  .sim-radar-grid{
-    position:absolute; inset:0; border-radius:50%;
-    background:
-      radial-gradient(circle, transparent 0 9px, rgba(79,184,224,.35) 9px 10px, transparent 10px 19px,
-                      rgba(79,184,224,.35) 19px 20px, transparent 20px),
-      linear-gradient(rgba(79,184,224,.3), rgba(79,184,224,.3)) center / 1px 100% no-repeat,
-      linear-gradient(rgba(79,184,224,.3), rgba(79,184,224,.3)) center / 100% 1px no-repeat;
-  }
-  .sim-radar-sweep{
-    position:absolute; inset:0; border-radius:50%; will-change:transform;
-    background:conic-gradient(from 0deg, transparent 0 72%, rgba(79,184,224,.08) 80%, rgba(159,220,255,.55) 100%);
-    animation:genSpin 2.4s linear infinite;
-  }
-  .sim-radar-sweep::after{
-    content:''; position:absolute; left:50%; top:0; width:1.5px; height:50%; margin-left:-.75px;
-    background:linear-gradient(#dff4ff, rgba(159,220,255,.2)); box-shadow:0 0 6px #9fdcff;
-  }
-  .sim-blip{
-    position:absolute; left:50%; top:50%; width:7px; height:7px; margin:-3.5px 0 0 -3.5px;
-    border-radius:50%; background:var(--c); box-shadow:0 0 8px var(--c);
-    transform:rotate(var(--a)) translateY(calc(-1 * var(--r)));
-    opacity:.18; animation:simBlip 2.4s linear var(--d) infinite;
-  }
-  @keyframes simBlip{0%{opacity:1;} 55%{opacity:.25;} 100%{opacity:.18;}}
+  @media (prefers-reduced-motion: reduce){ .sim-stream{display:none;} }
 
   .sim-table{width:100%; border-collapse:collapse; font-family:var(--font-mono); font-size:12px; margin:10px 0;}
   /* Op een telefoon zijn de tabellen met 5-6 kolommen breder dan het scherm. Omdat `body`

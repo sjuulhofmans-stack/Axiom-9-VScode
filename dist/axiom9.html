@@ -640,19 +640,19 @@
      regenen naar beneden en stapelen zich op tot een staafdiagram. Alles beweegt via transform/
      opacity (Web Animations + transitions): de simulatie rekent in brokken van 30 ms op dezelfde
      draad, en alleen zulke animaties blijven daar vloeiend bij. Een staaf is een vaste kolom
-     cijfers die omhoog schuift (.sim-bar > i), een vallend cijfer een los stukje tekst (.sim-drop).
+     cijfers die omhoog schuift (.sim-stack > i), een vallend cijfer een los stukje tekst (.sim-drop).
      Raster: 16px per vakje; de maten hieronder moeten gelijk blijven aan SIM_STREAM_CELL. */
   .sim-stream{
-    position:absolute; left:0; right:0; top:0; bottom:120px; overflow:hidden;
+    position:absolute; left:0; right:0; top:0; bottom:140px; overflow:hidden;
     font-family:var(--font-mono); font-size:13px; line-height:16px;
   }
-  .sim-bar{position:absolute; bottom:0; width:16px; overflow:hidden; text-align:center;}
-  .sim-bar > i{
+  .sim-stream > .sim-stack{position:absolute; bottom:0; width:16px; overflow:hidden; text-align:center;}
+  .sim-stream > .sim-stack > i{
     position:absolute; left:0; right:0; bottom:0; display:flex; flex-direction:column; font-style:normal;
     transform:translateY(100%); transition:transform .3s ease-out; will-change:transform;
   }
-  .sim-bar > i > b{display:block; height:16px; font-weight:400;}
-  .sim-drop{
+  .sim-stream > .sim-stack > i > b{display:block; height:16px; font-weight:400;}
+  .sim-stream > .sim-drop{
     position:absolute; left:0; top:0; width:16px; text-align:center; white-space:pre; will-change:transform, opacity;
     background:linear-gradient(to bottom, rgba(79,184,224,0), rgba(79,184,224,.55) 70%, #eaf9ff 88%);
     -webkit-background-clip:text; background-clip:text; color:transparent;
@@ -8903,7 +8903,7 @@ function simCountStep(dir, size = SIM_COUNT_STEP){
 // is elke keer anders en zegt niets over de uitslag: het is sfeer. Alles beweegt via Web Animations
 // en transitions op transform/opacity, zodat de browser het afspeelt terwijl runSimulationBatch in
 // brokken van 30 ms rekent (zie het blok in styles.css). Opmeten gebeurt één keer, bij de start.
-const SIM_STREAM_CELL = 16;       // = de 16px in .sim-stream/.sim-bar/.sim-drop (styles.css)
+const SIM_STREAM_CELL = 16;       // = de 16px in .sim-stream/.sim-stack/.sim-drop (styles.css)
 const SIM_STREAM_DONE_MS = 700;   // na het laatste brok: het volle diagram nog even in beeld
 const simStream = (() => {
   const root = document.getElementById('simStream');
@@ -8959,10 +8959,10 @@ const simStream = (() => {
     for (let c = 0; c < cols; c++){
       let cells = '';
       for (let k = 0; k < rows; k++) cells += `<b style="color:${color(k / (rows - 1))}">${glyph()}</b>`;
-      html += `<div class="sim-bar" style="left:${c * C}px;height:${rows * C}px"><i style="transform:translateY(100%)">${cells}</i></div>`;
+      html += `<div class="sim-stack" style="left:${c * C}px;height:${rows * C}px"><i style="transform:translateY(100%)">${cells}</i></div>`;
     }
     root.innerHTML = html;
-    barEls = [...root.querySelectorAll('.sim-bar > i')];
+    barEls = [...root.querySelectorAll('.sim-stack > i')];
     // sfeerregen die niet landt (vervaagt halverwege)
     rainTimer = setInterval(() => { if (root.childElementCount < cols + 30) drop(Math.floor(Math.random() * cols), false); }, 140);
   }

@@ -258,7 +258,7 @@ Check minimaal:
    lijn die terugtrekt (terugsporen), eronder "Aan het genereren" + aftellende tijd. Klaar → golf
    vanaf Hibernatie op de nieuwe kaart, sterren blauw (kamer) / paars (gang), netwerk zoomt naar
    bordgrootte, daarna faadt de nieuwe kaart in (0,9 s, GEN_FADE_MS). Alleen transform/opacity
-   (de generator rekent op dezelfde draad). Het simulatievakje houdt de ring + radar. Onder de knoppen
+   (de generator rekent op dezelfde draad). Onder de knoppen
    staat normaal niets; alleen bij een fout (mislukte indeling, kan niet draaien/wisselen)
    een korte rode melding. Niets verschuift tijdens het genereren.
 2. Onbereikbare vakjes (bv. na een tegel-bewerking) krijgen een roze/magenta rand
@@ -273,9 +273,14 @@ Check minimaal:
    weergave `simCounterRender`/`simCountSet` in 95-simulate.js, opmaak `.sim-*` bovenin styles.css.
    "Draai simulatie" → 4 startposities laten allemaal winst
    zien, "vastgelopen potjes" is 0 of bijna 0. Tijdens het rekenen staat er een
-   "Aan het simuleren"-vakje (radarscherm + dezelfde voortgangsring als bij genereren,
-   gedeelde code: `createProgressLoader` in `80-controls.js`) met aftellende tijd,
-   potjesteller en "Stoppen"; bij klaar faadt het uit en de uitslag in.
+   "Aan het simuleren"-vakje met de **datastroom** (gekozen variant 3 uit 8, 2026-10; `simStream`
+   in 95-simulate.js, blok `.sim-stream` in styles.css): cijfers regenen naar beneden en stapelen
+   zich op tot een staafdiagram dat vol is als de simulatie klaar is (de vorm is sfeer, geen
+   uitslag). Alleen Web Animations/transitions op transform/opacity, want de simulatie rekent in
+   brokken van 30 ms op dezelfde draad. Klassen `.sim-stack`/`.sim-drop` staan onder `.sim-stream`:
+   `.sim-bar` en `.sim-col` bestonden al (uitslag) en maakten de staven onzichtbaar. Eronder
+   aftellende tijd (`createProgressLoader` in 80-controls.js, sinds 2026-10 zonder ring),
+   potjesteller en "Stoppen"; bij klaar staat het volle diagram nog 0,7 s, dan faadt de uitslag in.
 7. Onderaan de simulatie: tabel "koudste tegels" — geen enkele tegel mag op
    0,0% verkeer staan. Gebeurt dat toch, dan is er een dode lus ontstaan en
    klopt `deadTileCount` in `70-generator.js` niet meer.
