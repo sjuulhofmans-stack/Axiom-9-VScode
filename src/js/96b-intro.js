@@ -21,7 +21,7 @@ const INTRO_T = {          // tijdlijn in ms vanaf de start van de animatie
   dive: 9350,              // erin duiken: het gat groeit tot het hele beeld zwart is
   inside: 10150,           // helemaal zwart
   end: 10600,              // klaar: spel start, overlay faadt weg (het geluid klinkt nog even na)
-  fadeOut: 1200,           // zwart → potje, rustig; = .start-intro.is-leaving
+  fadeOut: 800,            // zwart → potje; = .start-intro-curtain.is-leaving
 };
 const INTRO_SUBS = ['reactor ontstoken', 'stuwkracht 60%', 'stuwkracht 100%', 'hou je vast'];
 const INTRO_WARM = [[255, 241, 220], [255, 176, 112]];   // hyperspace + schijf: warm (gebruikerswens)
@@ -215,6 +215,15 @@ function playStartIntro(onDone){
   // met logo en tabbladen blijft gewoon zichtbaar
   const host = document.getElementById('walkPanel') || document.body;
   host.appendChild(overlay);
+  // Gordijn over het HELE scherm, alleen voor de overgang naar het spel: het wordt mee zwart met
+  // de duik in het zwarte gat (de kop en achtergrond gaan dus mee op zwart), daaronder wisselt
+  // alles naar het speelscherm (smalle kop, andere achtergrond, groter bord) en pas als dat
+  // getekend is faadt het geheel in één keer in. Vroeger faadde alleen het lobbyvak weg terwijl
+  // de kop en de achtergrond er zichtbaar omheen versprongen (gebruikersmelding 2026-10).
+  const curtain = document.createElement('div');
+  curtain.className = 'start-intro-curtain';
+  document.body.appendChild(curtain);
+  let curtainOn = false;
   const canvas = overlay.querySelector('canvas');
   const layer = overlay.querySelector('.start-intro-layer');
   const vigEl = overlay.querySelector('.start-intro-vig');
@@ -281,6 +290,7 @@ function playStartIntro(onDone){
     const hp = introClamp((t - T.hole) / (T.dive - T.hole)); // zwart gat nadert
     const dp = introClamp((t - T.dive) / (T.inside - T.dive)); // erin duiken
     const inside = t >= T.inside;
+    if (t >= T.dive && !curtainOn){ curtainOn = true; curtain.classList.add('is-on'); }
 
     if (af >= 0 && !bamDone){
       bamDone = true;
@@ -462,11 +472,20 @@ function playStartIntro(onDone){
     if (ro) ro.disconnect(); else window.removeEventListener('resize', resize);
     document.removeEventListener('keydown', onKey, true);
     if (audio) audio.stop(skipped);
-    // het spel start nu al achter de overlay, die daarna rustig wegfaadt
-    try { onDone(); } finally {
-      overlay.classList.add('is-leaving');
-      setTimeout(() => { overlay.remove(); introRunning = false; }, INTRO_T.fadeOut);
-    }
+    // het spel start achter het volledig zwarte gordijn; pas als het nieuwe scherm getekend is
+    // (2 beeldjes, anders valt dat zware eerste tekenwerk in de fade) faadt het gordijn weg
+    const reveal = () => {
+      try { onDone(); } finally {
+        overlay.remove();
+        genNextFrames(2).then(() => {
+          curtain.classList.add('is-leaving');
+          setTimeout(() => { curtain.remove(); introRunning = false; }, INTRO_T.fadeOut);
+        });
+      }
+    };
+    // overgeslagen vóórdat het gordijn dicht was: eerst snel op zwart
+    if (performance.now() - t0 >= INTRO_T.inside) reveal();
+    else { curtain.classList.add('is-on', 'is-quick'); setTimeout(reveal, 260); }
   }
   const onKey = (e) => { if (e.key === 'Escape'){ e.preventDefault(); finish(true); } };
   document.addEventListener('keydown', onKey, true);

@@ -54,7 +54,9 @@ src/
     96-walk.js        tabblad "Spelen": modus Automatisch, automatische simulatie van 1-4 spelers
     96b-intro.js      startanimatie na "Start spel", variant "Titan" (2026-10): traag aftellen met zware dreun,
                       schudden + opbouw, BAM, hyperjump, het zwarte gat in met een gong (gekozen uit 15
-                      geluiden; ±10,6 s) + vinkje in de lobby
+                      geluiden; ±10,6 s) + vinkje in de lobby. Overgang naar het spel: een zwart gordijn
+                      over het HELE scherm (`.start-intro-curtain`) gaat mee dicht met de duik, daaronder
+                      wisselen kop/achtergrond/bord, pas na 2 getekende beeldjes faadt het in 0,8 s weg
     96c-crystals.js   kristallen: tekenen (renderCrystal), de kluis, de animaties bij oprapen, zeshoekjes op
                       de spelerskaartjes. Staat bewust vóór 97-solo.js (zie de kop van het bestand)
     96d-dice.js       dobbelvak: ruimte-stenen (draaien om hun as), energiesteen met bliksems + "+2",
