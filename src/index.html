@@ -30,12 +30,12 @@
     <!-- alleen zichtbaar als uitschuifmenu tijdens een potje (body.is-playing) -->
     <div class="play-menu-head"><span>Menu</span><button type="button" class="ghost small play-menu-close" id="btnPlayMenuClose" aria-label="Menu sluiten">✕</button></div>
     <button class="tab-btn active" id="tabBtnMap" data-tab="map" role="tab" aria-selected="true">Speelbord genereren</button>
-    <button class="tab-btn" id="tabBtnSimulate" data-tab="simulate" role="tab" aria-selected="false">Simulatie</button>
-    <button class="tab-btn" id="tabBtnWalk" data-tab="walk" role="tab" aria-selected="false">Spelen</button>
+    <button class="tab-btn" id="tabBtnSimulate" disabled data-tab="simulate" role="tab" aria-selected="false">Simulatie</button>
+    <button class="tab-btn" id="tabBtnWalk" disabled data-tab="walk" role="tab" aria-selected="false">Spelen</button>
     <!-- Multiplayer als eigen tabblad (gebruikerswens: "te veel klikken"). Gebruikt hetzelfde
          vak als Spelen (#tabWalk), maar dan meteen in de modus Multiplayer — zie switchTab()
          in 80-controls.js. -->
-    <button class="tab-btn" id="tabBtnMulti" data-tab="multi" role="tab" aria-selected="false">Multiplayer</button>
+    <button class="tab-btn" id="tabBtnMulti" disabled data-tab="multi" role="tab" aria-selected="false">Multiplayer</button>
     <button class="tab-btn" id="tabBtnCards" data-tab="cards" role="tab" aria-selected="false">Speelkaarten</button>
     <button class="tab-btn" id="tabBtnRules" data-tab="rules" role="tab" aria-selected="false">Spelregels</button>
     <!-- Het tabblad heette eerst ook "Zelf spelen", net als de modusknop erin — verwarrend, want

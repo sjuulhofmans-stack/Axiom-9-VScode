@@ -173,13 +173,25 @@ function genNetPlace(){
 const genOverlayEl = document.getElementById('genOverlay');
 const mapBoardPanelEl = document.querySelector('.map-board-panel');
 const genLoader = createProgressLoader(genOverlayEl);
+// Tijdens het genereren zijn Simulatie, Spelen en Multiplayer uitgefaded en niet te kiezen (ook niet
+// met het toetsenbord: disabled); ze rekenen allemaal op de kaart die er nog niet is (gebruikerswens
+// 2026-10). Ze staan in index.html al op slot, want bij het openen wordt er meteen gegenereerd.
+const GEN_LOCKED_TABS = ['tabBtnSimulate', 'tabBtnWalk', 'tabBtnMulti'];
+function genLockTabs(on){
+  for (const id of GEN_LOCKED_TABS){
+    const b = document.getElementById(id);
+    if (b) b.disabled = on;
+  }
+}
 function showGenOverlay(){
+  genLockTabs(true);
   genNetPlace();
   if (genNet) genNet.start();
   if (mapBoardPanelEl) mapBoardPanelEl.classList.add('is-generating');
   genLoader.start();
 }
 function hideGenOverlay(){
+  genLockTabs(false);
   if (mapBoardPanelEl) mapBoardPanelEl.classList.remove('is-generating');
   genLoader.stop();
   if (genNet) genNet.stop();

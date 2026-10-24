@@ -319,7 +319,8 @@ Check minimaal:
    lijn die terugtrekt (terugsporen). Geen tekst eronder en geen zoom: het netwerk is van begin tot
    eind precies even groot als het bord (gebruikerswens 2026-10). Klaar → golf vanaf Hibernatie op
    de nieuwe kaart, sterren blauw (kamer) / paars (gang), daarna faadt de nieuwe kaart in (0,9 s, GEN_FADE_MS). Alleen transform/opacity
-   (de generator rekent op dezelfde draad). Onder de knoppen
+   (de generator rekent op dezelfde draad). Tijdens het genereren zijn de tabbladen Simulatie, Spelen
+   en Multiplayer uitgefaded en disabled (`genLockTabs`, ook al in index.html). Onder de knoppen
    staat normaal niets; alleen bij een fout (mislukte indeling, kan niet draaien/wisselen)
    een korte rode melding. Niets verschuift tijdens het genereren.
 2. Onbereikbare vakjes (bv. na een tegel-bewerking) krijgen een roze/magenta rand

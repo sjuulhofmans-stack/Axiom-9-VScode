@@ -161,6 +161,10 @@
   /* zolang een multiplayer-potje loopt (zie switchTab-guard in 80-controls.js) zijn de andere
      tabbladen niet aanklikbaar — visueel gedimd zodat dat ook zonder klikken duidelijk is */
   .tab-bar.mp-locked .tab-btn:not([data-tab="multi"]){opacity:.35; pointer-events:none;}
+  /* tijdens het genereren van een kaart (genLockTabs in 80-controls.js): Simulatie/Spelen/Multiplayer
+     disabled; rustig uit- en weer infaden (0,9 s = GEN_FADE_MS) */
+  .tab-btn{transition:opacity .9s ease;}
+  .tab-btn:disabled{opacity:.3; pointer-events:none; cursor:default;}
   /* "Nieuw potje" (#btnWalkSoloReset) — margin-left:auto duwt 'm helemaal naar rechts in
      dezelfde balk als de tabbladen, los van hoeveel tabbladen ervoor staan. align-self:center
      + eigen margin i.p.v. .tab-btn's padding/margin-bottom: dit is geen tabblad en moet niet
@@ -4500,12 +4504,12 @@
     <!-- alleen zichtbaar als uitschuifmenu tijdens een potje (body.is-playing) -->
     <div class="play-menu-head"><span>Menu</span><button type="button" class="ghost small play-menu-close" id="btnPlayMenuClose" aria-label="Menu sluiten">✕</button></div>
     <button class="tab-btn active" id="tabBtnMap" data-tab="map" role="tab" aria-selected="true">Speelbord genereren</button>
-    <button class="tab-btn" id="tabBtnSimulate" data-tab="simulate" role="tab" aria-selected="false">Simulatie</button>
-    <button class="tab-btn" id="tabBtnWalk" data-tab="walk" role="tab" aria-selected="false">Spelen</button>
+    <button class="tab-btn" id="tabBtnSimulate" disabled data-tab="simulate" role="tab" aria-selected="false">Simulatie</button>
+    <button class="tab-btn" id="tabBtnWalk" disabled data-tab="walk" role="tab" aria-selected="false">Spelen</button>
     <!-- Multiplayer als eigen tabblad (gebruikerswens: "te veel klikken"). Gebruikt hetzelfde
          vak als Spelen (#tabWalk), maar dan meteen in de modus Multiplayer — zie switchTab()
          in 80-controls.js. -->
-    <button class="tab-btn" id="tabBtnMulti" data-tab="multi" role="tab" aria-selected="false">Multiplayer</button>
+    <button class="tab-btn" id="tabBtnMulti" disabled data-tab="multi" role="tab" aria-selected="false">Multiplayer</button>
     <button class="tab-btn" id="tabBtnCards" data-tab="cards" role="tab" aria-selected="false">Speelkaarten</button>
     <button class="tab-btn" id="tabBtnRules" data-tab="rules" role="tab" aria-selected="false">Spelregels</button>
     <!-- Het tabblad heette eerst ook "Zelf spelen", net als de modusknop erin — verwarrend, want
@@ -7047,13 +7051,25 @@ function genNetPlace(){
 const genOverlayEl = document.getElementById('genOverlay');
 const mapBoardPanelEl = document.querySelector('.map-board-panel');
 const genLoader = createProgressLoader(genOverlayEl);
+// Tijdens het genereren zijn Simulatie, Spelen en Multiplayer uitgefaded en niet te kiezen (ook niet
+// met het toetsenbord: disabled); ze rekenen allemaal op de kaart die er nog niet is (gebruikerswens
+// 2026-10). Ze staan in index.html al op slot, want bij het openen wordt er meteen gegenereerd.
+const GEN_LOCKED_TABS = ['tabBtnSimulate', 'tabBtnWalk', 'tabBtnMulti'];
+function genLockTabs(on){
+  for (const id of GEN_LOCKED_TABS){
+    const b = document.getElementById(id);
+    if (b) b.disabled = on;
+  }
+}
 function showGenOverlay(){
+  genLockTabs(true);
   genNetPlace();
   if (genNet) genNet.start();
   if (mapBoardPanelEl) mapBoardPanelEl.classList.add('is-generating');
   genLoader.start();
 }
 function hideGenOverlay(){
+  genLockTabs(false);
   if (mapBoardPanelEl) mapBoardPanelEl.classList.remove('is-generating');
   genLoader.stop();
   if (genNet) genNet.stop();

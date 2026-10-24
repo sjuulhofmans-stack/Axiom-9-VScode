@@ -154,6 +154,10 @@
   /* zolang een multiplayer-potje loopt (zie switchTab-guard in 80-controls.js) zijn de andere
      tabbladen niet aanklikbaar — visueel gedimd zodat dat ook zonder klikken duidelijk is */
   .tab-bar.mp-locked .tab-btn:not([data-tab="multi"]){opacity:.35; pointer-events:none;}
+  /* tijdens het genereren van een kaart (genLockTabs in 80-controls.js): Simulatie/Spelen/Multiplayer
+     disabled; rustig uit- en weer infaden (0,9 s = GEN_FADE_MS) */
+  .tab-btn{transition:opacity .9s ease;}
+  .tab-btn:disabled{opacity:.3; pointer-events:none; cursor:default;}
   /* "Nieuw potje" (#btnWalkSoloReset) — margin-left:auto duwt 'm helemaal naar rechts in
      dezelfde balk als de tabbladen, los van hoeveel tabbladen ervoor staan. align-self:center
      + eigen margin i.p.v. .tab-btn's padding/margin-bottom: dit is geen tabblad en moet niet
