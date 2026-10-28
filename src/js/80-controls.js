@@ -451,7 +451,36 @@ document.querySelectorAll('.board-zoom').forEach(btn => {
 // Een MutationObserver houdt de rail gelijk als de code opties hernoemt (Energie-inzet: naam +
 // prijs uit ENERGY_ACTIONS, 96-walk.js) of de keuze uitzet (Beurten van de bots zonder bots).
 // Het schuifje blijft hetzelfde element (alleen --i verandert), anders glijdt het niet.
-const SEG_BOLT = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M13 2L4 14h7l-1 8 9-12h-7z"/></svg>';
+// Het schuifje glijdt via een Web Animation, niet via een CSS-overgang (gebruikersmelding: "wat
+// hakkelig"): een wissel van modus kost ±60 ms opbouw en de overgang begon daarvoor al te lopen,
+// waardoor het eerste stuk werd overgeslagen. Nu start de animatie twee beeldjes later (na dat
+// zware beeldje) en komt hij vanaf waar het schuifje op dat moment echt staat, ook als je
+// halverwege nog iets anders kiest. De eindplek staat in --i (CSS), de animatie zit er alleen
+// tijdelijk overheen. pseudo = '::before' voor de modusrail.
+const SEG_SLIDE_MS = 340;
+function segSlide(el, vert, from, to, pseudo){
+  const opt = pseudo ? { pseudoElement: pseudo } : {};
+  const run = el.getAnimations({ subtree: !!pseudo }).find(a => a.id === 'segSlide');
+  let start = from;
+  if (run){
+    const p = run.effect.getComputedTiming().progress;
+    if (p != null) start = run.segFrom + (run.segTo - run.segFrom) * p;
+    run.cancel();
+  }
+  if (start === to || matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  const tf = i => `translate${vert ? 'Y' : 'X'}(${i * 100}%)`;
+  // tot de animatie start, blijft het schuifje op de oude plek staan
+  const hold = el.animate([{ transform: tf(start) }, { transform: tf(start) }], { duration: 1000, fill: 'forwards', ...opt });
+  hold.id = 'segSlide'; hold.segFrom = start; hold.segTo = start;
+  requestAnimationFrame(() => requestAnimationFrame(() => {
+    if (hold.playState === 'idle') return;   // intussen alweer een nieuwe keuze
+    hold.cancel();
+    const a = el.animate([{ transform: tf(start) }, { transform: tf(to) }],
+      { duration: SEG_SLIDE_MS, easing: 'cubic-bezier(.25,.8,.25,1)', ...opt });
+    a.id = 'segSlide'; a.segFrom = start; a.segTo = to;
+  }));
+}
+const SEG_BOLT ='<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M13 2L4 14h7l-1 8 9-12h-7z"/></svg>';
 function segmentSelect(sel){
   if (!sel || sel.dataset.seg) return;
   sel.dataset.seg = '1';
@@ -475,7 +504,7 @@ function segmentSelect(sel){
   const options = () => isRange
     ? (sel.dataset.labels || '').split('|').map((t, i) => ({ value: String(Number(sel.min) + i), text: t, ds: {} }))
     : [...sel.options].map(o => ({ value: o.value, text: o.textContent.trim(), ds: o.dataset, disabled: o.disabled }));
-  let builtKey = '';
+  let builtKey = '', lastI = null;
   function render(){
     const opts = options();
     const i = Math.max(0, opts.findIndex(o => o.value === sel.value));
@@ -504,6 +533,8 @@ function segmentSelect(sel){
     }
     box.style.setProperty('--n', opts.length);
     box.style.setProperty('--i', i);
+    if (lastI !== null && lastI !== i) segSlide(thumb, box.classList.contains('is-vert'), lastI, i);
+    lastI = i;
     box.classList.toggle('is-disabled', sel.disabled);
     [...box.querySelectorAll('.seg-btn')].forEach((b, j) => {
       b.classList.toggle('is-on', j === i);

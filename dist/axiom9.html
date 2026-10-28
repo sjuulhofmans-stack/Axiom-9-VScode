@@ -849,7 +849,7 @@
      .mp-chat-log{overflow-y:auto} — die zit met flex:1 binnen deze vaste hoogte en vangt te
      veel berichten dus altijd zelf op, zonder dat de kolom eromheen ooit hoeft te bewegen. */
   .walk-lobby-col{
-    max-width:1160px; margin:0 auto; display:flex; flex-direction:column; gap:16px;
+    max-width:1160px; margin:0 auto; display:flex; flex-direction:column; --lobby-gap:16px; gap:var(--lobby-gap);
     height:calc(100vh - 274px); overflow-y:hidden;
     /* expliciet: met alleen overflow-y:hidden maakt de browser overflow-x vanzelf "auto", en
        dan kan de kolom bij de kleinste uitsteker een paar px zijwaarts scrollen. */
@@ -908,7 +908,7 @@
   .seg-thumb{
     position:absolute; top:3px; bottom:3px; left:3px; width:calc((100% - 6px) / var(--n));
     border-radius:7px; pointer-events:none; will-change:transform;
-    transform:translateX(calc(var(--i) * 100%)); transition:transform .32s cubic-bezier(.3,.8,.2,1);
+    transform:translateX(calc(var(--i) * 100%));   /* glijden: segSlide (Web Animation, 80-controls.js) */
     background:rgba(79,184,224,.18); border:1px solid rgba(79,184,224,.6);
     box-shadow:inset 0 1px 0 rgba(255,255,255,.12), 0 0 14px rgba(79,184,224,.25);
   }
@@ -943,7 +943,7 @@
   .walk-mode-toggle:not(.mp-host-toggle)::before{
     content:''; position:absolute; top:3px; bottom:3px; left:3px; width:calc((100% - 6px) / 2);
     border-radius:7px; pointer-events:none; will-change:transform;
-    transform:translateX(calc(var(--i, 0) * 100%)); transition:transform .32s cubic-bezier(.3,.8,.2,1);
+    transform:translateX(calc(var(--i, 0) * 100%));
     background:rgba(79,184,224,.18); border:1px solid rgba(79,184,224,.6);
     box-shadow:inset 0 1px 0 rgba(255,255,255,.12), 0 0 14px rgba(79,184,224,.25);
   }
@@ -954,7 +954,13 @@
     border-radius:7px; transition:color .2s;
   }
   .walk-mode-toggle:not(.mp-host-toggle) .walk-mode-btn.active{color:#eafcff;}
-  @media (prefers-reduced-motion:reduce){ .seg-thumb, .walk-mode-toggle::before{transition:none;} }
+  /* "Startanimatie tonen" precies in het midden tussen de laatste balk en "Start spel"
+     (gebruikerswens): de inhoud groeit niet meer mee, de startrij neemt de vrije ruimte en het
+     vinkje staat daarin met margin:auto boven én onder. De negatieve marge heft de kolom-gap op,
+     zodat het midden echt tussen de balk en de knop ligt. Niet in Multiplayer (eigen opbouw). */
+  #tabWalk:not(.is-multi-tab) .walk-lobby-body{flex:0 1 auto;}
+  #tabWalk:not(.is-multi-tab) .walk-lobby-col > .walk-lobby-start-row{flex:1 1 auto; margin-top:calc(-1 * var(--lobby-gap, 16px));}
+  #tabWalk:not(.is-multi-tab) .walk-lobby-start-row > .walk-intro-toggle{margin:auto 0;}
   .walk-lobby-body .mp-setup .btn-row, .walk-lobby-body #mpJoinWaiting .btn-row,
   .walk-lobby-body #mpHostRoom .btn-row{justify-content:center;}
   /* (de oude 2-koloms spelerskaartjes van #walkSoloSetupPlayers stonden hier; nu bemanningslijst,
@@ -1430,7 +1436,7 @@
     /* --lobby-space: ruimte boven de tabs en tussen de tabs en de inhoud; schaalt mee met de
        vakhoogte (40px op een groot scherm, ±16px op een laptop), zodat Zelf spelen ook daar past */
     .walk-lobby-col{
-      height:calc(var(--wcell) * 32 + 160px - 26px); gap:12px;
+      height:calc(var(--wcell) * 32 + 160px - 26px); --lobby-gap:12px;
       --lobby-space: clamp(10px, calc(var(--wcell) * 4 - 40px), 40px);
     }
     .walk-lobby-col .walk-mode-toggle{margin:var(--lobby-space) 0 0;}
@@ -7392,7 +7398,36 @@ document.querySelectorAll('.board-zoom').forEach(btn => {
 // Een MutationObserver houdt de rail gelijk als de code opties hernoemt (Energie-inzet: naam +
 // prijs uit ENERGY_ACTIONS, 96-walk.js) of de keuze uitzet (Beurten van de bots zonder bots).
 // Het schuifje blijft hetzelfde element (alleen --i verandert), anders glijdt het niet.
-const SEG_BOLT = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M13 2L4 14h7l-1 8 9-12h-7z"/></svg>';
+// Het schuifje glijdt via een Web Animation, niet via een CSS-overgang (gebruikersmelding: "wat
+// hakkelig"): een wissel van modus kost ±60 ms opbouw en de overgang begon daarvoor al te lopen,
+// waardoor het eerste stuk werd overgeslagen. Nu start de animatie twee beeldjes later (na dat
+// zware beeldje) en komt hij vanaf waar het schuifje op dat moment echt staat, ook als je
+// halverwege nog iets anders kiest. De eindplek staat in --i (CSS), de animatie zit er alleen
+// tijdelijk overheen. pseudo = '::before' voor de modusrail.
+const SEG_SLIDE_MS = 340;
+function segSlide(el, vert, from, to, pseudo){
+  const opt = pseudo ? { pseudoElement: pseudo } : {};
+  const run = el.getAnimations({ subtree: !!pseudo }).find(a => a.id === 'segSlide');
+  let start = from;
+  if (run){
+    const p = run.effect.getComputedTiming().progress;
+    if (p != null) start = run.segFrom + (run.segTo - run.segFrom) * p;
+    run.cancel();
+  }
+  if (start === to || matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  const tf = i => `translate${vert ? 'Y' : 'X'}(${i * 100}%)`;
+  // tot de animatie start, blijft het schuifje op de oude plek staan
+  const hold = el.animate([{ transform: tf(start) }, { transform: tf(start) }], { duration: 1000, fill: 'forwards', ...opt });
+  hold.id = 'segSlide'; hold.segFrom = start; hold.segTo = start;
+  requestAnimationFrame(() => requestAnimationFrame(() => {
+    if (hold.playState === 'idle') return;   // intussen alweer een nieuwe keuze
+    hold.cancel();
+    const a = el.animate([{ transform: tf(start) }, { transform: tf(to) }],
+      { duration: SEG_SLIDE_MS, easing: 'cubic-bezier(.25,.8,.25,1)', ...opt });
+    a.id = 'segSlide'; a.segFrom = start; a.segTo = to;
+  }));
+}
+const SEG_BOLT ='<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M13 2L4 14h7l-1 8 9-12h-7z"/></svg>';
 function segmentSelect(sel){
   if (!sel || sel.dataset.seg) return;
   sel.dataset.seg = '1';
@@ -7416,7 +7451,7 @@ function segmentSelect(sel){
   const options = () => isRange
     ? (sel.dataset.labels || '').split('|').map((t, i) => ({ value: String(Number(sel.min) + i), text: t, ds: {} }))
     : [...sel.options].map(o => ({ value: o.value, text: o.textContent.trim(), ds: o.dataset, disabled: o.disabled }));
-  let builtKey = '';
+  let builtKey = '', lastI = null;
   function render(){
     const opts = options();
     const i = Math.max(0, opts.findIndex(o => o.value === sel.value));
@@ -7445,6 +7480,8 @@ function segmentSelect(sel){
     }
     box.style.setProperty('--n', opts.length);
     box.style.setProperty('--i', i);
+    if (lastI !== null && lastI !== i) segSlide(thumb, box.classList.contains('is-vert'), lastI, i);
+    lastI = i;
     box.classList.toggle('is-disabled', sel.disabled);
     [...box.querySelectorAll('.seg-btn')].forEach((b, j) => {
       b.classList.toggle('is-on', j === i);
@@ -14263,7 +14300,11 @@ function setWalkMode(mode){
   if (walkModeSoloBtn){ walkModeSoloBtn.classList.toggle('active', isSolo); walkModeSoloBtn.setAttribute('aria-selected', String(isSolo)); }
   if (walkModeMultiBtn){ walkModeMultiBtn.classList.toggle('active', isMulti); walkModeMultiBtn.setAttribute('aria-selected', String(isMulti)); }
   // schuifje van de modus-rail (::before op .walk-mode-toggle, styles.css) naar de gekozen knop
-  if (walkModeAutoBtn) walkModeAutoBtn.parentElement.style.setProperty('--i', isSolo ? 1 : 0);
+  if (walkModeAutoBtn){
+    const rail = walkModeAutoBtn.parentElement, from = Number(rail.style.getPropertyValue('--i') || 0), to = isSolo ? 1 : 0;
+    rail.style.setProperty('--i', to);
+    if (from !== to && !isMulti) segSlide(rail, false, from, to, '::before');   // 80-controls.js
+  }
   if (walkAutoControlsEl) walkAutoControlsEl.hidden = !isAuto;
   if (walkSoloControlsEl) walkSoloControlsEl.hidden = !isSolo;
   if (walkSoloSetupEl) walkSoloSetupEl.hidden = !isSolo;

@@ -842,7 +842,7 @@
      .mp-chat-log{overflow-y:auto} — die zit met flex:1 binnen deze vaste hoogte en vangt te
      veel berichten dus altijd zelf op, zonder dat de kolom eromheen ooit hoeft te bewegen. */
   .walk-lobby-col{
-    max-width:1160px; margin:0 auto; display:flex; flex-direction:column; gap:16px;
+    max-width:1160px; margin:0 auto; display:flex; flex-direction:column; --lobby-gap:16px; gap:var(--lobby-gap);
     height:calc(100vh - 274px); overflow-y:hidden;
     /* expliciet: met alleen overflow-y:hidden maakt de browser overflow-x vanzelf "auto", en
        dan kan de kolom bij de kleinste uitsteker een paar px zijwaarts scrollen. */
@@ -901,7 +901,7 @@
   .seg-thumb{
     position:absolute; top:3px; bottom:3px; left:3px; width:calc((100% - 6px) / var(--n));
     border-radius:7px; pointer-events:none; will-change:transform;
-    transform:translateX(calc(var(--i) * 100%)); transition:transform .32s cubic-bezier(.3,.8,.2,1);
+    transform:translateX(calc(var(--i) * 100%));   /* glijden: segSlide (Web Animation, 80-controls.js) */
     background:rgba(79,184,224,.18); border:1px solid rgba(79,184,224,.6);
     box-shadow:inset 0 1px 0 rgba(255,255,255,.12), 0 0 14px rgba(79,184,224,.25);
   }
@@ -936,7 +936,7 @@
   .walk-mode-toggle:not(.mp-host-toggle)::before{
     content:''; position:absolute; top:3px; bottom:3px; left:3px; width:calc((100% - 6px) / 2);
     border-radius:7px; pointer-events:none; will-change:transform;
-    transform:translateX(calc(var(--i, 0) * 100%)); transition:transform .32s cubic-bezier(.3,.8,.2,1);
+    transform:translateX(calc(var(--i, 0) * 100%));
     background:rgba(79,184,224,.18); border:1px solid rgba(79,184,224,.6);
     box-shadow:inset 0 1px 0 rgba(255,255,255,.12), 0 0 14px rgba(79,184,224,.25);
   }
@@ -947,7 +947,13 @@
     border-radius:7px; transition:color .2s;
   }
   .walk-mode-toggle:not(.mp-host-toggle) .walk-mode-btn.active{color:#eafcff;}
-  @media (prefers-reduced-motion:reduce){ .seg-thumb, .walk-mode-toggle::before{transition:none;} }
+  /* "Startanimatie tonen" precies in het midden tussen de laatste balk en "Start spel"
+     (gebruikerswens): de inhoud groeit niet meer mee, de startrij neemt de vrije ruimte en het
+     vinkje staat daarin met margin:auto boven én onder. De negatieve marge heft de kolom-gap op,
+     zodat het midden echt tussen de balk en de knop ligt. Niet in Multiplayer (eigen opbouw). */
+  #tabWalk:not(.is-multi-tab) .walk-lobby-body{flex:0 1 auto;}
+  #tabWalk:not(.is-multi-tab) .walk-lobby-col > .walk-lobby-start-row{flex:1 1 auto; margin-top:calc(-1 * var(--lobby-gap, 16px));}
+  #tabWalk:not(.is-multi-tab) .walk-lobby-start-row > .walk-intro-toggle{margin:auto 0;}
   .walk-lobby-body .mp-setup .btn-row, .walk-lobby-body #mpJoinWaiting .btn-row,
   .walk-lobby-body #mpHostRoom .btn-row{justify-content:center;}
   /* (de oude 2-koloms spelerskaartjes van #walkSoloSetupPlayers stonden hier; nu bemanningslijst,
@@ -1423,7 +1429,7 @@
     /* --lobby-space: ruimte boven de tabs en tussen de tabs en de inhoud; schaalt mee met de
        vakhoogte (40px op een groot scherm, ±16px op een laptop), zodat Zelf spelen ook daar past */
     .walk-lobby-col{
-      height:calc(var(--wcell) * 32 + 160px - 26px); gap:12px;
+      height:calc(var(--wcell) * 32 + 160px - 26px); --lobby-gap:12px;
       --lobby-space: clamp(10px, calc(var(--wcell) * 4 - 40px), 40px);
     }
     .walk-lobby-col .walk-mode-toggle{margin:var(--lobby-space) 0 0;}
