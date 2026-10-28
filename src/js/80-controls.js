@@ -441,45 +441,18 @@ document.querySelectorAll('.board-zoom').forEach(btn => {
   }
 }
 
-// ---------- schuifrail i.p.v. keuzelijsten (gekozen ontwerp 1 uit 6, 2026-10) ----------
-// In de lobby van Spelen en bij Spel hosten is elke keuze één rail; een glazen schuifje glijdt
-// naar de gekozen optie (artifact "Axiom-9 Lobbyvarianten"). De <select> (of bij Tempo de
-// <input type=range>) blijft verborgen de bron: alle code leest/zet gewoon .value/.disabled en
-// luistert naar 'change'/'input'. Op een optie: data-short = kort woord op de rail (de volle
-// tekst komt dan in het regeltje eronder), data-note = eigen uitleg eronder, data-cost = prijs
-// met een bliksempje. Een range krijgt zijn woorden uit data-labels ("a|b|c").
-// Een MutationObserver houdt de rail gelijk als de code opties hernoemt (Energie-inzet: naam +
+// ---------- console i.p.v. keuzelijsten (artifact "Axiom-9 Lobbyvarianten") ----------
+// In de lobby van Spelen en bij Spel hosten is elke keuze een rij knoppen. De <select> (of bij
+// Tempo de <input type=range>) blijft verborgen de bron: alle code leest/zet gewoon
+// .value/.disabled en luistert naar 'change'/'input'. Op een optie: data-short = kort woord op de
+// knop (de volle tekst komt dan als stand naast het label), data-note = eigen uitleg eronder,
+// data-cost = prijs met een bliksempje. Een range krijgt zijn woorden uit data-labels ("a|b|c").
+// Een MutationObserver houdt de knoppen gelijk als de code opties hernoemt (Energie-inzet: naam +
 // prijs uit ENERGY_ACTIONS, 96-walk.js) of de keuze uitzet (Beurten van de bots zonder bots).
-// Het schuifje blijft hetzelfde element (alleen --i verandert), anders glijdt het niet.
-// Het schuifje glijdt via een Web Animation, niet via een CSS-overgang (gebruikersmelding: "wat
-// hakkelig"): een wissel van modus kost ±60 ms opbouw en de overgang begon daarvoor al te lopen,
-// waardoor het eerste stuk werd overgeslagen. Nu start de animatie twee beeldjes later (na dat
-// zware beeldje) en komt hij vanaf waar het schuifje op dat moment echt staat, ook als je
-// halverwege nog iets anders kiest. De eindplek staat in --i (CSS), de animatie zit er alleen
-// tijdelijk overheen. pseudo = '::before' voor de modusrail.
-const SEG_SLIDE_MS = 340;
-function segSlide(el, vert, from, to, pseudo){
-  const opt = pseudo ? { pseudoElement: pseudo } : {};
-  const run = el.getAnimations({ subtree: !!pseudo }).find(a => a.id === 'segSlide');
-  let start = from;
-  if (run){
-    const p = run.effect.getComputedTiming().progress;
-    if (p != null) start = run.segFrom + (run.segTo - run.segFrom) * p;
-    run.cancel();
-  }
-  if (start === to || matchMedia('(prefers-reduced-motion: reduce)').matches) return;
-  const tf = i => `translate${vert ? 'Y' : 'X'}(${i * 100}%)`;
-  // tot de animatie start, blijft het schuifje op de oude plek staan
-  const hold = el.animate([{ transform: tf(start) }, { transform: tf(start) }], { duration: 1000, fill: 'forwards', ...opt });
-  hold.id = 'segSlide'; hold.segFrom = start; hold.segTo = start;
-  requestAnimationFrame(() => requestAnimationFrame(() => {
-    if (hold.playState === 'idle') return;   // intussen alweer een nieuwe keuze
-    hold.cancel();
-    const a = el.animate([{ transform: tf(start) }, { transform: tf(to) }],
-      { duration: SEG_SLIDE_MS, easing: 'cubic-bezier(.25,.8,.25,1)', ...opt });
-    a.id = 'segSlide'; a.segFrom = start; a.segTo = to;
-  }));
-}
+// CONSOLE (gekozen variant 3 uit 6, 2026-10, met de glazen knopstijl van de schuifrail; de
+// schuifrail zelf viel af): losse knoppen met een lampje, onder elkaar (.is-vert) = een lijst met
+// lampjes, een range = meter die volloopt (.is-meter). Rechts naast het label staat de stand
+// (.seg-out). Geen glijdend schuifje meer, dus ook geen animatie.
 const SEG_BOLT ='<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M13 2L4 14h7l-1 8 9-12h-7z"/></svg>';
 function segmentSelect(sel){
   if (!sel || sel.dataset.seg) return;
@@ -487,40 +460,46 @@ function segmentSelect(sel){
   const isRange = sel.type === 'range';
   const evt = isRange ? 'input' : 'change';
   const box = document.createElement('div');
-  box.className = 'seg-group' + (sel.dataset.rail === 'vert' ? ' is-vert' : '');
+  box.className = 'seg-group' + (isRange ? ' is-meter' : sel.dataset.rail === 'vert' ? ' is-vert' : '');
   box.setAttribute('role', 'radiogroup');
-  const thumb = document.createElement('span');
-  thumb.className = 'seg-thumb';
   const cap = document.createElement('div');
   cap.className = 'seg-cap';
+  const out = document.createElement('output');
+  out.className = 'seg-out';
   const lbl = sel.id && document.querySelector(`label[for="${sel.id}"]`);
   if (lbl){
     if (!lbl.id) lbl.id = sel.id + 'RailLabel';   // niet "…Label": #walkSpeedLabel bestaat al
     box.setAttribute('aria-labelledby', lbl.id);
     lbl.removeAttribute('for');   // een label voor een verborgen lijst doet niets
+    lbl.classList.add('has-seg-out');
+    lbl.append(out);
   }
   sel.classList.add('seg-source');
   sel.after(box);
   const options = () => isRange
     ? (sel.dataset.labels || '').split('|').map((t, i) => ({ value: String(Number(sel.min) + i), text: t, ds: {} }))
     : [...sel.options].map(o => ({ value: o.value, text: o.textContent.trim(), ds: o.dataset, disabled: o.disabled }));
-  let builtKey = '', lastI = null;
+  let builtKey = '';
   function render(){
     const opts = options();
     const i = Math.max(0, opts.findIndex(o => o.value === sel.value));
     const key = opts.map(o => o.value + '=' + o.text + (o.ds.short || '') + (o.ds.cost || '')).join('|');
+    const isNum = opts.every(o => /^\d+$/.test(o.ds.short || o.text));
     if (key !== builtKey){
       builtKey = key;
-      box.classList.toggle('is-num', opts.every(o => /^\d+$/.test(o.ds.short || o.text)));
-      box.replaceChildren(thumb, ...opts.map(o => {
+      box.classList.toggle('is-num', isNum);
+      box.replaceChildren(...opts.map(o => {
         const b = document.createElement('button');
         b.type = 'button';
         b.className = 'seg-btn';
         b.setAttribute('role', 'radio');
         b.dataset.value = o.value;
+        if (isRange){ b.title = b.ariaLabel = o.text; return b; }   // meter: alleen een balkje
+        const led = document.createElement('i');
+        led.className = 'seg-led';
         const name = document.createElement('span');
         name.textContent = o.ds.short || o.text;
-        b.append(name);
+        b.append(led, name);
         if (o.ds.cost){
           const c = document.createElement('em');
           c.className = 'seg-bolt';
@@ -532,20 +511,21 @@ function segmentSelect(sel){
       }));
     }
     box.style.setProperty('--n', opts.length);
-    box.style.setProperty('--i', i);
-    if (lastI !== null && lastI !== i) segSlide(thumb, box.classList.contains('is-vert'), lastI, i);
-    lastI = i;
     box.classList.toggle('is-disabled', sel.disabled);
     [...box.querySelectorAll('.seg-btn')].forEach((b, j) => {
       b.classList.toggle('is-on', j === i);
+      b.classList.toggle('is-lit', isRange && j <= i);
       b.setAttribute('aria-checked', String(j === i));
       b.disabled = sel.disabled || !!opts[j].disabled;
     });
-    // regeltje eronder: eigen uitleg, anders de volle tekst als de rail een kort woord toont
-    // (bij alleen getallen, zoals het aantal spelers, is "4 spelers" eronder overbodig)
+    // stand rechts naast het label: het korte woord, of de volle tekst als die meer zegt
+    // (Beurten van de bots: "Laten zien — snel"); bij een eigen uitleg eronder het korte woord
     const cur = opts[i];
+    out.textContent = sel.disabled || !cur ? '—'
+      : isRange || isNum || cur.ds.note || !cur.ds.short ? (cur.ds.short || cur.text) : cur.text;
+    // regeltje eronder: alleen een eigen uitleg (data-note) of waarom het uit staat
     const capText = sel.disabled && sel.dataset.offNote ? sel.dataset.offNote
-      : cur ? (cur.ds.note || (cur.ds.short && !box.classList.contains('is-num') ? cur.text : '')) : '';
+      : cur ? (cur.ds.note || '') : '';
     if (capText){ cap.textContent = capText; if (!cap.isConnected) box.after(cap); }
     else if (cap.isConnected) cap.remove();
   }

@@ -888,65 +888,64 @@
   /* uitgezet keuzeveld (bv. "Beurten van de bots" zonder bots): blijft staan, maar gedimd */
   .walk-lobby-body .field.is-disabled{opacity:.4;}
   .walk-lobby-body .field.is-disabled select{cursor:not-allowed;}
-  /* SCHUIFRAIL i.p.v. keuzelijsten (gekozen ontwerp 1 uit 6, 2026-10, artifact "Axiom-9
-     Lobbyvarianten"; segmentSelect in 80-controls.js): de <select>/<input type=range> blijft
-     verborgen de bron. Elke keuze is één rail, een glazen schuifje (.seg-thumb, alleen transform)
-     glijdt naar de gekozen optie. Energie-inzet staat onder elkaar (.is-vert), met de prijs rechts. */
+  /* CONSOLE i.p.v. keuzelijsten (gekozen variant 3 uit 6, 2026-10, artifact "Axiom-9
+     Lobbyvarianten", in de glazen knopstijl van de eerdere schuifrail; segmentSelect in
+     80-controls.js): de <select>/<input type=range> blijft verborgen de bron. Elke keuze = losse
+     knoppen met een lampje (.seg-led), de gekozen knop is glas (zelfde blauw als button.primary).
+     Energie-inzet = lijst met lampjes (.is-vert), Tempo = meter die volloopt (.is-meter). De stand
+     staat rechts naast het label (.seg-out). */
   .seg-source{display:none !important;}
-  .seg-group{
-    position:relative; display:grid; grid-template-columns:repeat(var(--n), minmax(0, 1fr));
-    padding:3px; border-radius:9px; background:var(--hull); border:1px solid var(--line-dim);
-    box-shadow:inset 0 2px 8px rgba(0,0,0,.5);
+  .field label.has-seg-out{display:flex; justify-content:space-between; align-items:baseline; gap:10px;}
+  .seg-out{min-width:0; overflow:hidden; white-space:nowrap; text-overflow:ellipsis; color:var(--quest-glow); letter-spacing:.1em;}
+  .seg-group{display:grid; grid-template-columns:repeat(var(--n), minmax(0, 1fr)); gap:6px;}
+  .seg-btn{
+    min-width:0; height:44px; padding:0 8px; display:flex; align-items:center; justify-content:center; gap:9px;
+    border-radius:7px; background:var(--hull); border:1px solid var(--line-dim); color:var(--text-dim);
+    white-space:nowrap; font-family:var(--font-display); font-weight:700; font-size:13px; letter-spacing:.09em;
+    text-transform:uppercase; transition:color .15s, border-color .15s, background .15s, box-shadow .15s;
   }
-  .seg-thumb{
-    position:absolute; top:3px; bottom:3px; left:3px; width:calc((100% - 6px) / var(--n));
-    border-radius:7px; pointer-events:none; will-change:transform;
-    transform:translateX(calc(var(--i) * 100%));   /* glijden: segSlide (Web Animation, 80-controls.js) */
-    background:rgba(79,184,224,.18); border:1px solid rgba(79,184,224,.6);
+  .seg-btn:hover:not(:disabled):not(.is-on){color:var(--text); border-color:rgba(79,184,224,.45); background:rgba(79,184,224,.06);}
+  .seg-btn.is-on{
+    color:#eafcff; background:rgba(79,184,224,.18); border-color:rgba(79,184,224,.6);
     box-shadow:inset 0 1px 0 rgba(255,255,255,.12), 0 0 14px rgba(79,184,224,.25);
   }
-  .seg-btn{
-    position:relative; z-index:1; min-width:0; height:40px; padding:0 6px; border:0; border-radius:7px;
-    background:none; color:var(--text-dim); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
-    font-family:var(--font-display); font-weight:700; font-size:13px; letter-spacing:.09em;
-    text-transform:uppercase; transition:color .2s;
-  }
-  .seg-btn:hover:not(:disabled){color:var(--text);}
-  .seg-btn.is-on{color:#eafcff;}
-  .seg-btn:focus-visible{outline:2px solid var(--quest-glow); outline-offset:-2px;}
+  .seg-btn:focus-visible{outline:2px solid var(--quest-glow); outline-offset:2px;}
   .seg-btn:disabled{cursor:not-allowed;}
   .seg-group.is-num .seg-btn{font-size:19px; letter-spacing:0;}
+  /* lampje: uit = donker kuiltje, aan = blauw gloeiend */
+  .seg-led, .walk-mode-toggle:not(.mp-host-toggle) .walk-mode-btn::before{
+    width:9px; height:9px; flex:none; border-radius:50%; background:#26303b;
+    box-shadow:inset 0 1px 2px rgba(0,0,0,.7); transition:background .2s, box-shadow .2s;
+  }
+  .seg-btn.is-on .seg-led, .walk-mode-toggle:not(.mp-host-toggle) .walk-mode-btn.active::before{
+    background:var(--quest-glow); box-shadow:0 0 4px var(--quest), 0 0 10px rgba(79,184,224,.6);
+  }
   /* uitgezet: het veld eromheen dimt al (.field.is-disabled); alleen buiten zo'n veld zelf dimmen */
   :not(.is-disabled) > .seg-group.is-disabled{opacity:.6;}
-  /* onder elkaar: rijen van 36px, schuifje glijdt omlaag */
-  .seg-group.is-vert{grid-template-columns:none; grid-template-rows:repeat(var(--n), 36px);}
-  .seg-group.is-vert .seg-thumb{right:3px; width:auto; bottom:auto; height:calc((100% - 6px) / var(--n)); transform:translateY(calc(var(--i) * 100%));}
-  .seg-group.is-vert .seg-btn{height:36px; display:flex; justify-content:space-between; align-items:center; gap:10px; padding:0 12px; text-align:left;}
+  /* onder elkaar: één lijst, rijen van 36px, lampje | naam | prijs */
+  .seg-group.is-vert{grid-template-columns:none; gap:0; padding:3px; border-radius:9px; background:var(--hull); border:1px solid var(--line-dim);}
+  .seg-group.is-vert .seg-btn{height:36px; justify-content:flex-start; gap:11px; padding:0 12px; text-align:left; background:none; border-color:transparent;}
+  .seg-group.is-vert .seg-btn.is-on{background:rgba(79,184,224,.18); border-color:rgba(79,184,224,.6);}
+  .seg-group.is-vert .seg-btn > span{flex:1;}
   .seg-btn > span{overflow:hidden; text-overflow:ellipsis;}
+  /* meter (Tempo): balkjes lichten op tot en met je keuze */
+  .seg-group.is-meter{gap:4px; padding:4px; border-radius:9px; background:var(--hull); border:1px solid var(--line-dim);}
+  .seg-group.is-meter .seg-btn{height:34px; padding:0; border-radius:4px; background:#1b242e; border-color:transparent;}
+  .seg-group.is-meter .seg-btn.is-lit{background:rgba(79,184,224,.18); border-color:rgba(79,184,224,.6);}
+  .seg-group.is-meter .seg-btn.is-on{background:rgba(79,184,224,.34); border-color:var(--quest);}
   .seg-bolt{display:inline-flex; align-items:center; gap:2px; flex:none; font-style:normal; color:var(--amber); font-variant-numeric:tabular-nums; letter-spacing:0;}
   .seg-bolt svg{width:11px; height:11px; fill:currentColor;}
   /* regeltje onder de rail: wat je gekozen hebt in één zin */
   .seg-cap{margin-top:7px; font-family:var(--font-mono); font-size:11.5px; line-height:1.45; color:var(--text-dim);}
-  /* modusknoppen Automatisch / Zelf spelen als één grote rail (zelfde 45px hoogte als "Spel hosten");
-     het schuifje is ::before, --i zet setWalkMode (97-solo.js). Multiplayer staat hier altijd verborgen. */
-  .walk-mode-toggle:not(.mp-host-toggle){
-    position:relative; gap:0; height:45px; padding:3px; border-radius:9px;
-    background:var(--hull); border:1px solid var(--line-dim); box-shadow:inset 0 2px 8px rgba(0,0,0,.5);
-  }
-  .walk-mode-toggle:not(.mp-host-toggle)::before{
-    content:''; position:absolute; top:3px; bottom:3px; left:3px; width:calc((100% - 6px) / 2);
-    border-radius:7px; pointer-events:none; will-change:transform;
-    transform:translateX(calc(var(--i, 0) * 100%));
-    background:rgba(79,184,224,.18); border:1px solid rgba(79,184,224,.6);
+  /* modusknoppen Automatisch / Zelf spelen: twee consoleknoppen met lampje (zelfde 45px hoogte als
+     "Spel hosten"), gekozen = glas zoals .seg-btn.is-on. Multiplayer staat hier altijd verborgen. */
+  .walk-mode-toggle:not(.mp-host-toggle) .walk-mode-btn{display:flex; align-items:center; justify-content:center; gap:9px; border-radius:7px;}
+  .walk-mode-toggle:not(.mp-host-toggle) .walk-mode-btn::before{content:'';}
+  .walk-mode-toggle:not(.mp-host-toggle) .walk-mode-btn.active,
+  .walk-mode-toggle:not(.mp-host-toggle) .walk-mode-btn.active:hover{
+    color:#eafcff; background:rgba(79,184,224,.18); border-color:rgba(79,184,224,.6);
     box-shadow:inset 0 1px 0 rgba(255,255,255,.12), 0 0 14px rgba(79,184,224,.25);
   }
-  .walk-mode-toggle:not(.mp-host-toggle) .walk-mode-btn,
-  .walk-mode-toggle:not(.mp-host-toggle) .walk-mode-btn:hover,
-  .walk-mode-toggle:not(.mp-host-toggle) .walk-mode-btn.active{
-    position:relative; z-index:1; height:auto; background:none; border-color:transparent; box-shadow:none;
-    border-radius:7px; transition:color .2s;
-  }
-  .walk-mode-toggle:not(.mp-host-toggle) .walk-mode-btn.active{color:#eafcff;}
   /* "Startanimatie tonen" precies in het midden tussen de laatste balk en "Start spel"
      (gebruikerswens): de inhoud groeit niet meer mee, de startrij neemt de vrije ruimte en het
      vinkje staat daarin met margin:auto boven én onder. De negatieve marge heft de kolom-gap op,

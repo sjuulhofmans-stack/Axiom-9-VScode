@@ -394,12 +394,6 @@ function setWalkMode(mode){
   if (walkModeAutoBtn){ walkModeAutoBtn.classList.toggle('active', isAuto); walkModeAutoBtn.setAttribute('aria-selected', String(isAuto)); }
   if (walkModeSoloBtn){ walkModeSoloBtn.classList.toggle('active', isSolo); walkModeSoloBtn.setAttribute('aria-selected', String(isSolo)); }
   if (walkModeMultiBtn){ walkModeMultiBtn.classList.toggle('active', isMulti); walkModeMultiBtn.setAttribute('aria-selected', String(isMulti)); }
-  // schuifje van de modus-rail (::before op .walk-mode-toggle, styles.css) naar de gekozen knop
-  if (walkModeAutoBtn){
-    const rail = walkModeAutoBtn.parentElement, from = Number(rail.style.getPropertyValue('--i') || 0), to = isSolo ? 1 : 0;
-    rail.style.setProperty('--i', to);
-    if (from !== to && !isMulti) segSlide(rail, false, from, to, '::before');   // 80-controls.js
-  }
   if (walkAutoControlsEl) walkAutoControlsEl.hidden = !isAuto;
   if (walkSoloControlsEl) walkSoloControlsEl.hidden = !isSolo;
   if (walkSoloSetupEl) walkSoloSetupEl.hidden = !isSolo;
