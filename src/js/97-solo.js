@@ -365,12 +365,32 @@ function soloOccupied(){
 // solo-opzet-UI aan/uit zetten moeten dus op `!isSolo` testen, niet op `isAuto`/`!isAuto`
 // (dat ging hier eerder mis: de solo-knoppenrij en "Start spel" bleven staan zodra multiplayer
 // als derde modus werd toegevoegd, vóórdat dat hier werd rechtgezet).
+// "Startanimatie tonen" bij Zelf spelen op dezelfde hoogte als bij Automatisch (gebruikerswens).
+// Bij Automatisch staat het vinkje in het midden tussen de Tempo-balk en "Start spel" (margin:auto,
+// styles.css). Die afstand tot de knop meten we zolang Automatisch in beeld is, en Zelf spelen
+// krijgt precies die afstand als ondermarge. Nog niet gemeten (Spelen nooit in Automatisch
+// gezien)? Dan blijft het vinkje gewoon in het midden staan.
+let walkIntroBelowPx = null;
+function walkIntroMeasureAuto(){
+  const toggle = document.getElementById('walkIntroToggle');
+  const label = toggle && toggle.closest('.walk-intro-toggle');
+  if (!label || !btnWalkStart || btnWalkStart.hidden || !btnWalkStart.offsetParent) return;
+  const gap = btnWalkStart.getBoundingClientRect().top - label.getBoundingClientRect().bottom;
+  if (gap >= 0) walkIntroBelowPx = Math.round(gap);
+}
+function walkIntroPlace(isSolo){
+  const toggle = document.getElementById('walkIntroToggle');
+  const label = toggle && toggle.closest('.walk-intro-toggle');
+  if (label) label.style.marginBottom = isSolo && walkIntroBelowPx !== null ? walkIntroBelowPx + 'px' : '';
+}
+window.addEventListener('resize', walkIntroMeasureAuto);   // meet alleen als Automatisch in beeld is
 function setWalkMode(mode){
   stopWalkSimulation();
   stopSoloGame();
   const isAuto = mode === 'auto';
   const isSolo = mode === 'solo';
   const isMulti = mode === 'multi';
+  walkIntroMeasureAuto();
   if (walkModeAutoBtn){ walkModeAutoBtn.classList.toggle('active', isAuto); walkModeAutoBtn.setAttribute('aria-selected', String(isAuto)); }
   if (walkModeSoloBtn){ walkModeSoloBtn.classList.toggle('active', isSolo); walkModeSoloBtn.setAttribute('aria-selected', String(isSolo)); }
   if (walkModeMultiBtn){ walkModeMultiBtn.classList.toggle('active', isMulti); walkModeMultiBtn.setAttribute('aria-selected', String(isMulti)); }
@@ -392,6 +412,7 @@ function setWalkMode(mode){
   // zichtbaar, net als de instellingen erboven. Multiplayer heeft geen "Start spel"-knop:
   // die start via "Aanmaken"/"Verbinden" in #walkMultiControls zelf.
   if (btnWalkStart) btnWalkStart.hidden = !isAuto;
+  walkIntroPlace(isSolo);
   // "Nieuw potje" (Zelf spelen) en Pauze/Stoppen (Automatisch) staan rechtsboven in de
   // tabbladenbalk; hun zichtbaarheid hangt van de modus af. Pauze/Stoppen worden verderop
   // bijgewerkt via walkFooterSyncVisibility() → walkPauseStopSyncVisibility() (96-walk.js).
