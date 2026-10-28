@@ -7281,7 +7281,55 @@ function switchTab(name){
   // mpRenderLobby() wordt vanuit setWalkMode('multi') aangeroepen (hierboven, bij het openen
   // van het tabblad Multiplayer), niet apart hiervandaan.
 }
-tabButtons.forEach(btn => btn.addEventListener('click', () => switchTab(btn.dataset.tab)));
+// Klikken op een tabblad: oud tabblad kort uitfaden, wisselen, nieuw tabblad infaden. Alleen
+// bij een klik — switchTab() zelf blijft direct, want andere code rekent erop dat het nieuwe
+// tabblad meteen zichtbaar is. Web Animations op opacity (zie "Prestatie" in CLAUDE.md).
+// Klik je tijdens het uitfaden nog een tabblad aan, dan wordt dat gewoon het doel.
+// Gemeten: een tabblad openen kost 50–280 ms (opbouw + opmaak; Spelregels de eerste keer het
+// meest). Dat gebeurt terwijl het scherm leeg is; pas daarna start het infaden (opmaak vooraf
+// afdwingen), anders at het rekenwerk de hele fade op en sprong het nieuwe tabblad in beeld.
+const TAB_FADE_OUT_MS = 90, TAB_FADE_IN_MS = 180;
+let tabFadeTarget = null;
+function tabMarkActive(name){
+  for (const btn of tabButtons) btn.classList.toggle('active', btn.dataset.tab === name);
+}
+function switchTabFaded(name){
+  if (window.mpGameActive && name !== 'multi') return;
+  if (tabFadeTarget !== null){ tabFadeTarget = name; tabMarkActive(name); return; }
+  const current = Object.values(tabPanels).find(p => !p.hidden);
+  const alreadyActive = [...tabButtons].some(b => b.dataset.tab === name && b.classList.contains('active'));
+  if (!current || alreadyActive || matchMedia('(prefers-reduced-motion: reduce)').matches){
+    switchTab(name);
+    return;
+  }
+  tabFadeTarget = name;
+  // het knopje meteen laten oplichten, niet pas na het uitfaden (voelde traag)
+  tabMarkActive(name);
+  const out = current.animate([{ opacity: 1 }, { opacity: 0 }],
+    { duration: TAB_FADE_OUT_MS, easing: 'ease-in', fill: 'forwards' });
+  // op een timer, niet op out.onfinish: in een venster dat geen beeldjes tekent (achter een
+  // ander venster) loopt de animatie niet af en bleef het oude tabblad dan staan
+  setTimeout(() => {
+    const target = tabFadeTarget;
+    tabFadeTarget = null;
+    switchTab(target);
+    out.cancel();
+    const next = Object.values(tabPanels).find(p => !p.hidden);
+    if (!next) return;
+    next.style.opacity = '0';
+    void next.offsetHeight;
+    next.style.opacity = '';
+    next.animate([{ opacity: 0, transform: 'translateY(6px)' }, { opacity: 1, transform: 'none' }],
+      { duration: TAB_FADE_IN_MS, easing: 'cubic-bezier(.2,.7,.3,1)' });
+  }, TAB_FADE_OUT_MS);
+}
+// Spelregels alvast opbouwen als de browser even niets te doen heeft: de eerste keer openen
+// was het zwaarst (±280 ms).
+{
+  const idle = window.requestIdleCallback || ((fn) => setTimeout(fn, 1500));
+  idle(() => renderRulesTab(), { timeout: 4000 });
+}
+tabButtons.forEach(btn => btn.addEventListener('click', () => switchTabFaded(btn.dataset.tab)));
 
 // ---------- speelmenu: tabbladen als uitschuifmenu tijdens een potje ----------
 // Alleen in de speelweergave (body.is-playing, gezet door walkPauseStopSyncVisibility in
