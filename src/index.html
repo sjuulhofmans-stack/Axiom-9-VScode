@@ -262,29 +262,32 @@
           <div class="field">
             <label for="walkPlayers">Aantal spelers</label>
             <select id="walkPlayers">
-              <option value="1">1 speler</option>
-              <option value="2">2 spelers</option>
-              <option value="3">3 spelers</option>
-              <option value="4" selected>4 spelers</option>
+              <option value="1" data-short="1">1 speler</option>
+              <option value="2" data-short="2">2 spelers</option>
+              <option value="3" data-short="3">3 spelers</option>
+              <option value="4" data-short="4" selected>4 spelers</option>
             </select>
           </div>
+          <!-- schuifrail onder elkaar (segmentSelect, 80-controls.js); data-short = woord op de rail,
+               data-note = regeltje eronder -->
           <div class="field">
             <label for="walkEnergyMode">Energie-inzet</label>
-            <select id="walkEnergyMode">
-              <option value="mix" selected>elke speler een andere</option>
+            <select id="walkEnergyMode" data-rail="vert">
+              <option value="mix" data-short="Gemengd" data-note="Elke bot krijgt een eigen energie-actie." selected>elke speler een andere</option>
               <!-- elke bot kiest per beurt zelf wat nu het slimst is, of spaart (botStrategyNow, 95-simulate.js) -->
-              <option value="smart">iedereen slim — kiest per beurt zelf</option>
-              <!-- naam + prijs worden bij het laden ingevuld vanuit ENERGY_ACTIONS (96-walk.js) -->
-              <option value="boost">alleen Stuwstoot</option>
-              <option value="reorder">alleen Herprioritering</option>
-              <option value="gravity">alleen Zwaartekracht-laarzen</option>
-              <option value="jump">alleen Noodtransport</option>
-              <option value="none">niemand geeft uit</option>
+              <option value="smart" data-short="Slim" data-note="Elke bot kiest per beurt zelf wat nu het slimst is, of spaart.">iedereen slim — kiest per beurt zelf</option>
+              <option value="none" data-short="Niemand" data-note="Niemand geeft energie uit.">niemand geeft uit</option>
+              <!-- naam + prijs (data-short/data-cost) worden bij het laden ingevuld vanuit ENERGY_ACTIONS (96-walk.js) -->
+              <option value="boost" data-note="Alleen Stuwstoot: gooien met 3 loopstenen.">alleen Stuwstoot</option>
+              <option value="reorder" data-note="Alleen Herprioritering: eerst je volgende opdracht bekijken en kiezen.">alleen Herprioritering</option>
+              <option value="gravity" data-note="Alleen Zwaartekracht-laarzen: eerst tot 8 vakjes rechtdoor, dan gooien.">alleen Zwaartekracht-laarzen</option>
+              <option value="jump" data-note="Alleen Noodtransport: eerst vrij springen tot 11 vakjes, dan gooien.">alleen Noodtransport</option>
             </select>
           </div>
           <div class="field">
-            <label for="walkSpeed">Tempo — <span id="walkSpeedLabel">normaal</span></label>
-            <input type="range" id="walkSpeed" min="0" max="4" step="1" value="2">
+            <!-- het woord van het tempo staat op de rail zelf; #walkSpeedLabel blijft (96-walk.js vult hem) -->
+            <label for="walkSpeed">Tempo<span id="walkSpeedLabel" hidden>normaal</span></label>
+            <input type="range" id="walkSpeed" min="0" max="4" step="1" value="2" data-labels="Heel traag|Traag|Normaal|Snel|Razend">
           </div>
         </div>
         <!-- (uitlegtekst #walkAutoHint weggehaald, gebruikerswens: komt later in een eigen tabblad Spelregels) -->
@@ -298,11 +301,11 @@
                (96-walk.js). Zie soloAnimateBotTurn() in 97-solo.js. -->
           <div class="field">
             <label for="walkSoloBotView">Beurten van de bots</label>
-            <select id="walkSoloBotView">
-              <option value="instant" selected>Meteen doorspelen</option>
-              <option value="3">Laten zien — snel</option>
-              <option value="2">Laten zien — normaal</option>
-              <option value="1">Laten zien — langzaam</option>
+            <select id="walkSoloBotView" data-off-note="Geen bots in het spel.">
+              <option value="instant" data-short="Meteen" selected>Meteen doorspelen</option>
+              <option value="3" data-short="Snel">Laten zien — snel</option>
+              <option value="2" data-short="Normaal">Laten zien — normaal</option>
+              <option value="1" data-short="Langzaam">Laten zien — langzaam</option>
             </select>
           </div>
         </div>
@@ -348,16 +351,16 @@
                   <div class="field">
                     <label for="mpHostTotal">Aantal spelers</label>
                     <select id="mpHostTotal">
-                      <option value="2">2 spelers</option>
-                      <option value="3">3 spelers</option>
-                      <option value="4" selected>4 spelers</option>
+                      <option value="2" data-short="2">2 spelers</option>
+                      <option value="3" data-short="3">3 spelers</option>
+                      <option value="4" data-short="4" selected>4 spelers</option>
                     </select>
                   </div>
                   <div class="field">
                     <label for="mpHostFillBots">Lege plekken bij het starten</label>
                     <select id="mpHostFillBots">
-                      <option value="bots" selected>vullen met bots</option>
-                      <option value="wait">niet starten — wachten tot vol</option>
+                      <option value="bots" data-short="Bots" selected>vullen met bots</option>
+                      <option value="wait" data-short="Wachten">niet starten — wachten tot vol</option>
                     </select>
                   </div>
                   <!-- zelfde keuze als bij Zelf spelen (#walkSoloBotView); de host speelt de bot-beurt
@@ -365,10 +368,10 @@
                   <div class="field">
                     <label for="mpHostBotView">Beurten van de bots</label>
                     <select id="mpHostBotView">
-                      <option value="instant" selected>Meteen doorspelen</option>
-                      <option value="3">Laten zien — snel</option>
-                      <option value="2">Laten zien — normaal</option>
-                      <option value="1">Laten zien — langzaam</option>
+                      <option value="instant" data-short="Meteen" selected>Meteen doorspelen</option>
+                      <option value="3" data-short="Snel">Laten zien — snel</option>
+                      <option value="2" data-short="Normaal">Laten zien — normaal</option>
+                      <option value="1" data-short="Langzaam">Laten zien — langzaam</option>
                     </select>
                   </div>
                   <div class="btn-row">

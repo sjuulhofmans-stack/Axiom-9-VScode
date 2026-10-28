@@ -1686,6 +1686,7 @@ if (walkSpeedEl){
       walkSpeedPlayEl.title = 'Tempo: ' + walkSpeed().label;
     }
     walkSpeedLabelEl.textContent = walkSpeed().label;
+    if (walkSpeedEl.segRender) walkSpeedEl.segRender();   // schuifrail in de lobby (80-controls.js)
   };
   walkSpeedEl.addEventListener('input', () => syncSpeed(walkSpeedEl));
   if (walkSpeedPlayEl) walkSpeedPlayEl.addEventListener('input', () => syncSpeed(walkSpeedPlayEl));
@@ -1695,6 +1696,11 @@ if (walkSpeedEl){
 if (walkEnergyModeEl){
   for (const opt of walkEnergyModeEl.options){
     const act = ENERGY_ACTIONS[opt.value];
-    if (act && opt.value !== 'none') opt.textContent = `alleen ${act.name} (${act.cost})`;
+    if (act && opt.value !== 'none'){
+      // schuifrail: naam op de rail, prijs met een bliksempje erachter (segmentSelect, 80-controls.js)
+      opt.dataset.short = act.name;
+      opt.dataset.cost = act.cost;
+      opt.textContent = `alleen ${act.name} (${act.cost})`;
+    }
   }
 }

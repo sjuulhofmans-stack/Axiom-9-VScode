@@ -441,55 +441,94 @@ document.querySelectorAll('.board-zoom').forEach(btn => {
   }
 }
 
-// ---------- keuzevakjes i.p.v. keuzelijsten (gebruikerswens 2026-10) ----------
-// In de lobby van Spelen en bij Spel hosten kies je een optie met losse vakjes i.p.v. een
-// uitklaplijst. De <select> blijft (verborgen) de bron: alle code leest/zet gewoon .value/.disabled
-// en luistert naar 'change'. Een klik op een vakje zet de waarde en stuurt 'change'; een
-// MutationObserver houdt de vakjes gelijk als de code opties hernoemt (Energie-inzet: naam + prijs
-// uit ENERGY_ACTIONS, 96-walk.js) of de keuze uitzet (Beurten van de bots zonder bots).
+// ---------- schuifrail i.p.v. keuzelijsten (gekozen ontwerp 1 uit 6, 2026-10) ----------
+// In de lobby van Spelen en bij Spel hosten is elke keuze één rail; een glazen schuifje glijdt
+// naar de gekozen optie (artifact "Axiom-9 Lobbyvarianten"). De <select> (of bij Tempo de
+// <input type=range>) blijft verborgen de bron: alle code leest/zet gewoon .value/.disabled en
+// luistert naar 'change'/'input'. Op een optie: data-short = kort woord op de rail (de volle
+// tekst komt dan in het regeltje eronder), data-note = eigen uitleg eronder, data-cost = prijs
+// met een bliksempje. Een range krijgt zijn woorden uit data-labels ("a|b|c").
+// Een MutationObserver houdt de rail gelijk als de code opties hernoemt (Energie-inzet: naam +
+// prijs uit ENERGY_ACTIONS, 96-walk.js) of de keuze uitzet (Beurten van de bots zonder bots).
+// Het schuifje blijft hetzelfde element (alleen --i verandert), anders glijdt het niet.
+const SEG_BOLT = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M13 2L4 14h7l-1 8 9-12h-7z"/></svg>';
 function segmentSelect(sel){
   if (!sel || sel.dataset.seg) return;
   sel.dataset.seg = '1';
+  const isRange = sel.type === 'range';
+  const evt = isRange ? 'input' : 'change';
   const box = document.createElement('div');
-  box.className = 'seg-group';
+  box.className = 'seg-group' + (sel.dataset.rail === 'vert' ? ' is-vert' : '');
   box.setAttribute('role', 'radiogroup');
+  const thumb = document.createElement('span');
+  thumb.className = 'seg-thumb';
+  const cap = document.createElement('div');
+  cap.className = 'seg-cap';
   const lbl = sel.id && document.querySelector(`label[for="${sel.id}"]`);
   if (lbl){
-    if (!lbl.id) lbl.id = sel.id + 'Label';
+    if (!lbl.id) lbl.id = sel.id + 'RailLabel';   // niet "…Label": #walkSpeedLabel bestaat al
     box.setAttribute('aria-labelledby', lbl.id);
     lbl.removeAttribute('for');   // een label voor een verborgen lijst doet niets
   }
   sel.classList.add('seg-source');
   sel.after(box);
+  const options = () => isRange
+    ? (sel.dataset.labels || '').split('|').map((t, i) => ({ value: String(Number(sel.min) + i), text: t, ds: {} }))
+    : [...sel.options].map(o => ({ value: o.value, text: o.textContent.trim(), ds: o.dataset, disabled: o.disabled }));
+  let builtKey = '';
   function render(){
-    const opts = [...sel.options];
-    const longest = Math.max(...opts.map(o => o.textContent.trim().length));
-    // korte opties (1 speler … 4 spelers) op één rij, lange in twee kolommen
-    const cols = longest <= 10 ? Math.min(opts.length, 4) : Math.min(opts.length, 2);
-    box.style.setProperty('--seg-cols', cols);
-    box.classList.toggle('is-2col', cols === 2);
-    box.replaceChildren(...opts.map(o => {
-      const b = document.createElement('button');
-      b.type = 'button';
-      b.className = 'seg-btn' + (o.value === sel.value ? ' is-on' : '');
-      b.setAttribute('role', 'radio');
-      b.setAttribute('aria-checked', String(o.value === sel.value));
-      b.dataset.value = o.value;
-      b.disabled = sel.disabled || o.disabled;
-      b.textContent = o.textContent.trim();
-      return b;
-    }));
+    const opts = options();
+    const i = Math.max(0, opts.findIndex(o => o.value === sel.value));
+    const key = opts.map(o => o.value + '=' + o.text + (o.ds.short || '') + (o.ds.cost || '')).join('|');
+    if (key !== builtKey){
+      builtKey = key;
+      box.classList.toggle('is-num', opts.every(o => /^\d+$/.test(o.ds.short || o.text)));
+      box.replaceChildren(thumb, ...opts.map(o => {
+        const b = document.createElement('button');
+        b.type = 'button';
+        b.className = 'seg-btn';
+        b.setAttribute('role', 'radio');
+        b.dataset.value = o.value;
+        const name = document.createElement('span');
+        name.textContent = o.ds.short || o.text;
+        b.append(name);
+        if (o.ds.cost){
+          const c = document.createElement('em');
+          c.className = 'seg-bolt';
+          c.innerHTML = SEG_BOLT + o.ds.cost;
+          b.append(c);
+        }
+        if (o.ds.short) b.title = o.text;
+        return b;
+      }));
+    }
+    box.style.setProperty('--n', opts.length);
+    box.style.setProperty('--i', i);
+    box.classList.toggle('is-disabled', sel.disabled);
+    [...box.querySelectorAll('.seg-btn')].forEach((b, j) => {
+      b.classList.toggle('is-on', j === i);
+      b.setAttribute('aria-checked', String(j === i));
+      b.disabled = sel.disabled || !!opts[j].disabled;
+    });
+    // regeltje eronder: eigen uitleg, anders de volle tekst als de rail een kort woord toont
+    // (bij alleen getallen, zoals het aantal spelers, is "4 spelers" eronder overbodig)
+    const cur = opts[i];
+    const capText = sel.disabled && sel.dataset.offNote ? sel.dataset.offNote
+      : cur ? (cur.ds.note || (cur.ds.short && !box.classList.contains('is-num') ? cur.text : '')) : '';
+    if (capText){ cap.textContent = capText; if (!cap.isConnected) box.after(cap); }
+    else if (cap.isConnected) cap.remove();
   }
   box.addEventListener('click', (e) => {
     const b = e.target.closest('.seg-btn');
     if (!b || b.disabled || b.dataset.value === sel.value) return;
     sel.value = b.dataset.value;
-    sel.dispatchEvent(new Event('change', { bubbles: true }));
+    sel.dispatchEvent(new Event(evt, { bubbles: true }));
     render();
   });
-  sel.addEventListener('change', render);
-  new MutationObserver(render).observe(sel, { attributes: true, attributeFilter: ['disabled'], childList: true, subtree: true, characterData: true });
+  sel.addEventListener(evt, render);
+  sel.segRender = render;   // voor code die .value zet zonder event (Tempo tijdens het lopen)
+  if (!isRange) new MutationObserver(render).observe(sel, { attributes: true, attributeFilter: ['disabled'], childList: true, subtree: true, characterData: true });
   render();
 }
-['walkPlayers', 'walkEnergyMode', 'walkSoloBotView', 'mpHostTotal', 'mpHostFillBots', 'mpHostBotView']
+['walkPlayers', 'walkEnergyMode', 'walkSpeed', 'walkSoloBotView', 'mpHostTotal', 'mpHostFillBots', 'mpHostBotView']
   .forEach(id => segmentSelect(document.getElementById(id)));

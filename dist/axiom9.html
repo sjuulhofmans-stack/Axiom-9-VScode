@@ -895,25 +895,66 @@
   /* uitgezet keuzeveld (bv. "Beurten van de bots" zonder bots): blijft staan, maar gedimd */
   .walk-lobby-body .field.is-disabled{opacity:.4;}
   .walk-lobby-body .field.is-disabled select{cursor:not-allowed;}
-  /* keuzevakjes i.p.v. keuzelijsten (segmentSelect in 80-controls.js): de <select> blijft verborgen
-     de bron; elk vakje is één optie, het gekozen vakje licht blauw op zoals het actieve tabblad */
-  select.seg-source{display:none;}
-  .seg-group{display:grid; grid-template-columns:repeat(var(--seg-cols, 2), minmax(0, 1fr)); gap:6px;}
-  /* oneven aantal in twee kolommen: het laatste vakje over de hele breedte, niet alleen in een rij */
-  .seg-group.is-2col .seg-btn:last-child:nth-child(odd){grid-column:1 / -1;}
+  /* SCHUIFRAIL i.p.v. keuzelijsten (gekozen ontwerp 1 uit 6, 2026-10, artifact "Axiom-9
+     Lobbyvarianten"; segmentSelect in 80-controls.js): de <select>/<input type=range> blijft
+     verborgen de bron. Elke keuze is één rail, een glazen schuifje (.seg-thumb, alleen transform)
+     glijdt naar de gekozen optie. Energie-inzet staat onder elkaar (.is-vert), met de prijs rechts. */
+  .seg-source{display:none !important;}
+  .seg-group{
+    position:relative; display:grid; grid-template-columns:repeat(var(--n), minmax(0, 1fr));
+    padding:3px; border-radius:9px; background:var(--hull); border:1px solid var(--line-dim);
+    box-shadow:inset 0 2px 8px rgba(0,0,0,.5);
+  }
+  .seg-thumb{
+    position:absolute; top:3px; bottom:3px; left:3px; width:calc((100% - 6px) / var(--n));
+    border-radius:7px; pointer-events:none; will-change:transform;
+    transform:translateX(calc(var(--i) * 100%)); transition:transform .32s cubic-bezier(.3,.8,.2,1);
+    background:rgba(79,184,224,.18); border:1px solid rgba(79,184,224,.6);
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.12), 0 0 14px rgba(79,184,224,.25);
+  }
   .seg-btn{
-    min-height:40px; padding:8px 10px; border-radius:6px; text-align:center;
-    background:var(--panel-2); border:1px solid var(--line-dim); color:var(--text-dim);
-    font-family:var(--font-mono); font-weight:400; font-size:12.5px; line-height:1.25; letter-spacing:0;
+    position:relative; z-index:1; min-width:0; height:40px; padding:0 6px; border:0; border-radius:7px;
+    background:none; color:var(--text-dim); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+    font-family:var(--font-display); font-weight:700; font-size:13px; letter-spacing:.09em;
+    text-transform:uppercase; transition:color .2s;
   }
-  .seg-btn:hover:not(:disabled){color:var(--text); border-color:var(--line);}
-  .seg-btn.is-on{
-    color:#eafcff; border-color:var(--quest);
-    background:color-mix(in srgb, var(--quest) 16%, var(--panel-2));
-    box-shadow:0 0 10px color-mix(in srgb, var(--quest) 25%, transparent);
-  }
-  .seg-btn:focus-visible{outline:2px solid var(--quest); outline-offset:2px;}
+  .seg-btn:hover:not(:disabled){color:var(--text);}
+  .seg-btn.is-on{color:#eafcff;}
+  .seg-btn:focus-visible{outline:2px solid var(--quest-glow); outline-offset:-2px;}
   .seg-btn:disabled{cursor:not-allowed;}
+  .seg-group.is-num .seg-btn{font-size:19px; letter-spacing:0;}
+  /* uitgezet: het veld eromheen dimt al (.field.is-disabled); alleen buiten zo'n veld zelf dimmen */
+  :not(.is-disabled) > .seg-group.is-disabled{opacity:.6;}
+  /* onder elkaar: rijen van 36px, schuifje glijdt omlaag */
+  .seg-group.is-vert{grid-template-columns:none; grid-template-rows:repeat(var(--n), 36px);}
+  .seg-group.is-vert .seg-thumb{right:3px; width:auto; bottom:auto; height:calc((100% - 6px) / var(--n)); transform:translateY(calc(var(--i) * 100%));}
+  .seg-group.is-vert .seg-btn{height:36px; display:flex; justify-content:space-between; align-items:center; gap:10px; padding:0 12px; text-align:left;}
+  .seg-btn > span{overflow:hidden; text-overflow:ellipsis;}
+  .seg-bolt{display:inline-flex; align-items:center; gap:2px; flex:none; font-style:normal; color:var(--amber); font-variant-numeric:tabular-nums; letter-spacing:0;}
+  .seg-bolt svg{width:11px; height:11px; fill:currentColor;}
+  /* regeltje onder de rail: wat je gekozen hebt in één zin */
+  .seg-cap{margin-top:7px; font-family:var(--font-mono); font-size:11.5px; line-height:1.45; color:var(--text-dim);}
+  /* modusknoppen Automatisch / Zelf spelen als één grote rail (zelfde 45px hoogte als "Spel hosten");
+     het schuifje is ::before, --i zet setWalkMode (97-solo.js). Multiplayer staat hier altijd verborgen. */
+  .walk-mode-toggle:not(.mp-host-toggle){
+    position:relative; gap:0; height:45px; padding:3px; border-radius:9px;
+    background:var(--hull); border:1px solid var(--line-dim); box-shadow:inset 0 2px 8px rgba(0,0,0,.5);
+  }
+  .walk-mode-toggle:not(.mp-host-toggle)::before{
+    content:''; position:absolute; top:3px; bottom:3px; left:3px; width:calc((100% - 6px) / 2);
+    border-radius:7px; pointer-events:none; will-change:transform;
+    transform:translateX(calc(var(--i, 0) * 100%)); transition:transform .32s cubic-bezier(.3,.8,.2,1);
+    background:rgba(79,184,224,.18); border:1px solid rgba(79,184,224,.6);
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.12), 0 0 14px rgba(79,184,224,.25);
+  }
+  .walk-mode-toggle:not(.mp-host-toggle) .walk-mode-btn,
+  .walk-mode-toggle:not(.mp-host-toggle) .walk-mode-btn:hover,
+  .walk-mode-toggle:not(.mp-host-toggle) .walk-mode-btn.active{
+    position:relative; z-index:1; height:auto; background:none; border-color:transparent; box-shadow:none;
+    border-radius:7px; transition:color .2s;
+  }
+  .walk-mode-toggle:not(.mp-host-toggle) .walk-mode-btn.active{color:#eafcff;}
+  @media (prefers-reduced-motion:reduce){ .seg-thumb, .walk-mode-toggle::before{transition:none;} }
   .walk-lobby-body .mp-setup .btn-row, .walk-lobby-body #mpJoinWaiting .btn-row,
   .walk-lobby-body #mpHostRoom .btn-row{justify-content:center;}
   /* (de oude 2-koloms spelerskaartjes van #walkSoloSetupPlayers stonden hier; nu bemanningslijst,
@@ -4755,29 +4796,32 @@
           <div class="field">
             <label for="walkPlayers">Aantal spelers</label>
             <select id="walkPlayers">
-              <option value="1">1 speler</option>
-              <option value="2">2 spelers</option>
-              <option value="3">3 spelers</option>
-              <option value="4" selected>4 spelers</option>
+              <option value="1" data-short="1">1 speler</option>
+              <option value="2" data-short="2">2 spelers</option>
+              <option value="3" data-short="3">3 spelers</option>
+              <option value="4" data-short="4" selected>4 spelers</option>
             </select>
           </div>
+          <!-- schuifrail onder elkaar (segmentSelect, 80-controls.js); data-short = woord op de rail,
+               data-note = regeltje eronder -->
           <div class="field">
             <label for="walkEnergyMode">Energie-inzet</label>
-            <select id="walkEnergyMode">
-              <option value="mix" selected>elke speler een andere</option>
+            <select id="walkEnergyMode" data-rail="vert">
+              <option value="mix" data-short="Gemengd" data-note="Elke bot krijgt een eigen energie-actie." selected>elke speler een andere</option>
               <!-- elke bot kiest per beurt zelf wat nu het slimst is, of spaart (botStrategyNow, 95-simulate.js) -->
-              <option value="smart">iedereen slim — kiest per beurt zelf</option>
-              <!-- naam + prijs worden bij het laden ingevuld vanuit ENERGY_ACTIONS (96-walk.js) -->
-              <option value="boost">alleen Stuwstoot</option>
-              <option value="reorder">alleen Herprioritering</option>
-              <option value="gravity">alleen Zwaartekracht-laarzen</option>
-              <option value="jump">alleen Noodtransport</option>
-              <option value="none">niemand geeft uit</option>
+              <option value="smart" data-short="Slim" data-note="Elke bot kiest per beurt zelf wat nu het slimst is, of spaart.">iedereen slim — kiest per beurt zelf</option>
+              <option value="none" data-short="Niemand" data-note="Niemand geeft energie uit.">niemand geeft uit</option>
+              <!-- naam + prijs (data-short/data-cost) worden bij het laden ingevuld vanuit ENERGY_ACTIONS (96-walk.js) -->
+              <option value="boost" data-note="Alleen Stuwstoot: gooien met 3 loopstenen.">alleen Stuwstoot</option>
+              <option value="reorder" data-note="Alleen Herprioritering: eerst je volgende opdracht bekijken en kiezen.">alleen Herprioritering</option>
+              <option value="gravity" data-note="Alleen Zwaartekracht-laarzen: eerst tot 8 vakjes rechtdoor, dan gooien.">alleen Zwaartekracht-laarzen</option>
+              <option value="jump" data-note="Alleen Noodtransport: eerst vrij springen tot 11 vakjes, dan gooien.">alleen Noodtransport</option>
             </select>
           </div>
           <div class="field">
-            <label for="walkSpeed">Tempo — <span id="walkSpeedLabel">normaal</span></label>
-            <input type="range" id="walkSpeed" min="0" max="4" step="1" value="2">
+            <!-- het woord van het tempo staat op de rail zelf; #walkSpeedLabel blijft (96-walk.js vult hem) -->
+            <label for="walkSpeed">Tempo<span id="walkSpeedLabel" hidden>normaal</span></label>
+            <input type="range" id="walkSpeed" min="0" max="4" step="1" value="2" data-labels="Heel traag|Traag|Normaal|Snel|Razend">
           </div>
         </div>
         <!-- (uitlegtekst #walkAutoHint weggehaald, gebruikerswens: komt later in een eigen tabblad Spelregels) -->
@@ -4791,11 +4835,11 @@
                (96-walk.js). Zie soloAnimateBotTurn() in 97-solo.js. -->
           <div class="field">
             <label for="walkSoloBotView">Beurten van de bots</label>
-            <select id="walkSoloBotView">
-              <option value="instant" selected>Meteen doorspelen</option>
-              <option value="3">Laten zien — snel</option>
-              <option value="2">Laten zien — normaal</option>
-              <option value="1">Laten zien — langzaam</option>
+            <select id="walkSoloBotView" data-off-note="Geen bots in het spel.">
+              <option value="instant" data-short="Meteen" selected>Meteen doorspelen</option>
+              <option value="3" data-short="Snel">Laten zien — snel</option>
+              <option value="2" data-short="Normaal">Laten zien — normaal</option>
+              <option value="1" data-short="Langzaam">Laten zien — langzaam</option>
             </select>
           </div>
         </div>
@@ -4841,16 +4885,16 @@
                   <div class="field">
                     <label for="mpHostTotal">Aantal spelers</label>
                     <select id="mpHostTotal">
-                      <option value="2">2 spelers</option>
-                      <option value="3">3 spelers</option>
-                      <option value="4" selected>4 spelers</option>
+                      <option value="2" data-short="2">2 spelers</option>
+                      <option value="3" data-short="3">3 spelers</option>
+                      <option value="4" data-short="4" selected>4 spelers</option>
                     </select>
                   </div>
                   <div class="field">
                     <label for="mpHostFillBots">Lege plekken bij het starten</label>
                     <select id="mpHostFillBots">
-                      <option value="bots" selected>vullen met bots</option>
-                      <option value="wait">niet starten — wachten tot vol</option>
+                      <option value="bots" data-short="Bots" selected>vullen met bots</option>
+                      <option value="wait" data-short="Wachten">niet starten — wachten tot vol</option>
                     </select>
                   </div>
                   <!-- zelfde keuze als bij Zelf spelen (#walkSoloBotView); de host speelt de bot-beurt
@@ -4858,10 +4902,10 @@
                   <div class="field">
                     <label for="mpHostBotView">Beurten van de bots</label>
                     <select id="mpHostBotView">
-                      <option value="instant" selected>Meteen doorspelen</option>
-                      <option value="3">Laten zien — snel</option>
-                      <option value="2">Laten zien — normaal</option>
-                      <option value="1">Laten zien — langzaam</option>
+                      <option value="instant" data-short="Meteen" selected>Meteen doorspelen</option>
+                      <option value="3" data-short="Snel">Laten zien — snel</option>
+                      <option value="2" data-short="Normaal">Laten zien — normaal</option>
+                      <option value="1" data-short="Langzaam">Laten zien — langzaam</option>
                     </select>
                   </div>
                   <div class="btn-row">
@@ -7338,57 +7382,96 @@ document.querySelectorAll('.board-zoom').forEach(btn => {
   }
 }
 
-// ---------- keuzevakjes i.p.v. keuzelijsten (gebruikerswens 2026-10) ----------
-// In de lobby van Spelen en bij Spel hosten kies je een optie met losse vakjes i.p.v. een
-// uitklaplijst. De <select> blijft (verborgen) de bron: alle code leest/zet gewoon .value/.disabled
-// en luistert naar 'change'. Een klik op een vakje zet de waarde en stuurt 'change'; een
-// MutationObserver houdt de vakjes gelijk als de code opties hernoemt (Energie-inzet: naam + prijs
-// uit ENERGY_ACTIONS, 96-walk.js) of de keuze uitzet (Beurten van de bots zonder bots).
+// ---------- schuifrail i.p.v. keuzelijsten (gekozen ontwerp 1 uit 6, 2026-10) ----------
+// In de lobby van Spelen en bij Spel hosten is elke keuze één rail; een glazen schuifje glijdt
+// naar de gekozen optie (artifact "Axiom-9 Lobbyvarianten"). De <select> (of bij Tempo de
+// <input type=range>) blijft verborgen de bron: alle code leest/zet gewoon .value/.disabled en
+// luistert naar 'change'/'input'. Op een optie: data-short = kort woord op de rail (de volle
+// tekst komt dan in het regeltje eronder), data-note = eigen uitleg eronder, data-cost = prijs
+// met een bliksempje. Een range krijgt zijn woorden uit data-labels ("a|b|c").
+// Een MutationObserver houdt de rail gelijk als de code opties hernoemt (Energie-inzet: naam +
+// prijs uit ENERGY_ACTIONS, 96-walk.js) of de keuze uitzet (Beurten van de bots zonder bots).
+// Het schuifje blijft hetzelfde element (alleen --i verandert), anders glijdt het niet.
+const SEG_BOLT = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M13 2L4 14h7l-1 8 9-12h-7z"/></svg>';
 function segmentSelect(sel){
   if (!sel || sel.dataset.seg) return;
   sel.dataset.seg = '1';
+  const isRange = sel.type === 'range';
+  const evt = isRange ? 'input' : 'change';
   const box = document.createElement('div');
-  box.className = 'seg-group';
+  box.className = 'seg-group' + (sel.dataset.rail === 'vert' ? ' is-vert' : '');
   box.setAttribute('role', 'radiogroup');
+  const thumb = document.createElement('span');
+  thumb.className = 'seg-thumb';
+  const cap = document.createElement('div');
+  cap.className = 'seg-cap';
   const lbl = sel.id && document.querySelector(`label[for="${sel.id}"]`);
   if (lbl){
-    if (!lbl.id) lbl.id = sel.id + 'Label';
+    if (!lbl.id) lbl.id = sel.id + 'RailLabel';   // niet "…Label": #walkSpeedLabel bestaat al
     box.setAttribute('aria-labelledby', lbl.id);
     lbl.removeAttribute('for');   // een label voor een verborgen lijst doet niets
   }
   sel.classList.add('seg-source');
   sel.after(box);
+  const options = () => isRange
+    ? (sel.dataset.labels || '').split('|').map((t, i) => ({ value: String(Number(sel.min) + i), text: t, ds: {} }))
+    : [...sel.options].map(o => ({ value: o.value, text: o.textContent.trim(), ds: o.dataset, disabled: o.disabled }));
+  let builtKey = '';
   function render(){
-    const opts = [...sel.options];
-    const longest = Math.max(...opts.map(o => o.textContent.trim().length));
-    // korte opties (1 speler … 4 spelers) op één rij, lange in twee kolommen
-    const cols = longest <= 10 ? Math.min(opts.length, 4) : Math.min(opts.length, 2);
-    box.style.setProperty('--seg-cols', cols);
-    box.classList.toggle('is-2col', cols === 2);
-    box.replaceChildren(...opts.map(o => {
-      const b = document.createElement('button');
-      b.type = 'button';
-      b.className = 'seg-btn' + (o.value === sel.value ? ' is-on' : '');
-      b.setAttribute('role', 'radio');
-      b.setAttribute('aria-checked', String(o.value === sel.value));
-      b.dataset.value = o.value;
-      b.disabled = sel.disabled || o.disabled;
-      b.textContent = o.textContent.trim();
-      return b;
-    }));
+    const opts = options();
+    const i = Math.max(0, opts.findIndex(o => o.value === sel.value));
+    const key = opts.map(o => o.value + '=' + o.text + (o.ds.short || '') + (o.ds.cost || '')).join('|');
+    if (key !== builtKey){
+      builtKey = key;
+      box.classList.toggle('is-num', opts.every(o => /^\d+$/.test(o.ds.short || o.text)));
+      box.replaceChildren(thumb, ...opts.map(o => {
+        const b = document.createElement('button');
+        b.type = 'button';
+        b.className = 'seg-btn';
+        b.setAttribute('role', 'radio');
+        b.dataset.value = o.value;
+        const name = document.createElement('span');
+        name.textContent = o.ds.short || o.text;
+        b.append(name);
+        if (o.ds.cost){
+          const c = document.createElement('em');
+          c.className = 'seg-bolt';
+          c.innerHTML = SEG_BOLT + o.ds.cost;
+          b.append(c);
+        }
+        if (o.ds.short) b.title = o.text;
+        return b;
+      }));
+    }
+    box.style.setProperty('--n', opts.length);
+    box.style.setProperty('--i', i);
+    box.classList.toggle('is-disabled', sel.disabled);
+    [...box.querySelectorAll('.seg-btn')].forEach((b, j) => {
+      b.classList.toggle('is-on', j === i);
+      b.setAttribute('aria-checked', String(j === i));
+      b.disabled = sel.disabled || !!opts[j].disabled;
+    });
+    // regeltje eronder: eigen uitleg, anders de volle tekst als de rail een kort woord toont
+    // (bij alleen getallen, zoals het aantal spelers, is "4 spelers" eronder overbodig)
+    const cur = opts[i];
+    const capText = sel.disabled && sel.dataset.offNote ? sel.dataset.offNote
+      : cur ? (cur.ds.note || (cur.ds.short && !box.classList.contains('is-num') ? cur.text : '')) : '';
+    if (capText){ cap.textContent = capText; if (!cap.isConnected) box.after(cap); }
+    else if (cap.isConnected) cap.remove();
   }
   box.addEventListener('click', (e) => {
     const b = e.target.closest('.seg-btn');
     if (!b || b.disabled || b.dataset.value === sel.value) return;
     sel.value = b.dataset.value;
-    sel.dispatchEvent(new Event('change', { bubbles: true }));
+    sel.dispatchEvent(new Event(evt, { bubbles: true }));
     render();
   });
-  sel.addEventListener('change', render);
-  new MutationObserver(render).observe(sel, { attributes: true, attributeFilter: ['disabled'], childList: true, subtree: true, characterData: true });
+  sel.addEventListener(evt, render);
+  sel.segRender = render;   // voor code die .value zet zonder event (Tempo tijdens het lopen)
+  if (!isRange) new MutationObserver(render).observe(sel, { attributes: true, attributeFilter: ['disabled'], childList: true, subtree: true, characterData: true });
   render();
 }
-['walkPlayers', 'walkEnergyMode', 'walkSoloBotView', 'mpHostTotal', 'mpHostFillBots', 'mpHostBotView']
+['walkPlayers', 'walkEnergyMode', 'walkSpeed', 'walkSoloBotView', 'mpHostTotal', 'mpHostFillBots', 'mpHostBotView']
   .forEach(id => segmentSelect(document.getElementById(id)));
 
 
@@ -12181,6 +12264,7 @@ if (walkSpeedEl){
       walkSpeedPlayEl.title = 'Tempo: ' + walkSpeed().label;
     }
     walkSpeedLabelEl.textContent = walkSpeed().label;
+    if (walkSpeedEl.segRender) walkSpeedEl.segRender();   // schuifrail in de lobby (80-controls.js)
   };
   walkSpeedEl.addEventListener('input', () => syncSpeed(walkSpeedEl));
   if (walkSpeedPlayEl) walkSpeedPlayEl.addEventListener('input', () => syncSpeed(walkSpeedPlayEl));
@@ -12190,7 +12274,12 @@ if (walkSpeedEl){
 if (walkEnergyModeEl){
   for (const opt of walkEnergyModeEl.options){
     const act = ENERGY_ACTIONS[opt.value];
-    if (act && opt.value !== 'none') opt.textContent = `alleen ${act.name} (${act.cost})`;
+    if (act && opt.value !== 'none'){
+      // schuifrail: naam op de rail, prijs met een bliksempje erachter (segmentSelect, 80-controls.js)
+      opt.dataset.short = act.name;
+      opt.dataset.cost = act.cost;
+      opt.textContent = `alleen ${act.name} (${act.cost})`;
+    }
   }
 }
 
@@ -14173,6 +14262,8 @@ function setWalkMode(mode){
   if (walkModeAutoBtn){ walkModeAutoBtn.classList.toggle('active', isAuto); walkModeAutoBtn.setAttribute('aria-selected', String(isAuto)); }
   if (walkModeSoloBtn){ walkModeSoloBtn.classList.toggle('active', isSolo); walkModeSoloBtn.setAttribute('aria-selected', String(isSolo)); }
   if (walkModeMultiBtn){ walkModeMultiBtn.classList.toggle('active', isMulti); walkModeMultiBtn.setAttribute('aria-selected', String(isMulti)); }
+  // schuifje van de modus-rail (::before op .walk-mode-toggle, styles.css) naar de gekozen knop
+  if (walkModeAutoBtn) walkModeAutoBtn.parentElement.style.setProperty('--i', isSolo ? 1 : 0);
   if (walkAutoControlsEl) walkAutoControlsEl.hidden = !isAuto;
   if (walkSoloControlsEl) walkSoloControlsEl.hidden = !isSolo;
   if (walkSoloSetupEl) walkSoloSetupEl.hidden = !isSolo;
