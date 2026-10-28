@@ -451,8 +451,8 @@ document.querySelectorAll('.board-zoom').forEach(btn => {
 // prijs uit ENERGY_ACTIONS, 96-walk.js) of de keuze uitzet (Beurten van de bots zonder bots).
 // CONSOLE (gekozen variant 3 uit 6, 2026-10, met de glazen knopstijl van de schuifrail; de
 // schuifrail zelf viel af): losse knoppen met een lampje, onder elkaar (.is-vert) = een lijst met
-// lampjes, een range = meter die volloopt (.is-meter). Rechts naast het label staat de stand
-// (.seg-out). Geen glijdend schuifje meer, dus ook geen animatie.
+// lampjes. Getallen en Tempo (range) = dezelfde knoppen met tekst, zonder lampje. Geen stand
+// naast het label en geen meter meer (gebruikerswens). Geen glijdend schuifje, geen animatie.
 const SEG_BOLT ='<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M13 2L4 14h7l-1 8 9-12h-7z"/></svg>';
 function segmentSelect(sel){
   if (!sel || sel.dataset.seg) return;
@@ -460,19 +460,15 @@ function segmentSelect(sel){
   const isRange = sel.type === 'range';
   const evt = isRange ? 'input' : 'change';
   const box = document.createElement('div');
-  box.className = 'seg-group' + (isRange ? ' is-meter' : sel.dataset.rail === 'vert' ? ' is-vert' : '');
+  box.className = 'seg-group' + (sel.dataset.rail === 'vert' ? ' is-vert' : '');
   box.setAttribute('role', 'radiogroup');
   const cap = document.createElement('div');
   cap.className = 'seg-cap';
-  const out = document.createElement('output');
-  out.className = 'seg-out';
   const lbl = sel.id && document.querySelector(`label[for="${sel.id}"]`);
   if (lbl){
     if (!lbl.id) lbl.id = sel.id + 'RailLabel';   // niet "…Label": #walkSpeedLabel bestaat al
     box.setAttribute('aria-labelledby', lbl.id);
     lbl.removeAttribute('for');   // een label voor een verborgen lijst doet niets
-    lbl.classList.add('has-seg-out');
-    lbl.append(out);
   }
   sel.classList.add('seg-source');
   sel.after(box);
@@ -494,12 +490,15 @@ function segmentSelect(sel){
         b.className = 'seg-btn';
         b.setAttribute('role', 'radio');
         b.dataset.value = o.value;
-        if (isRange){ b.title = b.ariaLabel = o.text; return b; }   // meter: alleen een balkje
-        const led = document.createElement('i');
-        led.className = 'seg-led';
+        // lampje alleen bij woorden; getallen (Aantal spelers) en Tempo zonder (gebruikerswens)
+        if (!isNum && !isRange){
+          const led = document.createElement('i');
+          led.className = 'seg-led';
+          b.append(led);
+        }
         const name = document.createElement('span');
         name.textContent = o.ds.short || o.text;
-        b.append(led, name);
+        b.append(name);
         if (o.ds.cost){
           const c = document.createElement('em');
           c.className = 'seg-bolt';
@@ -514,15 +513,10 @@ function segmentSelect(sel){
     box.classList.toggle('is-disabled', sel.disabled);
     [...box.querySelectorAll('.seg-btn')].forEach((b, j) => {
       b.classList.toggle('is-on', j === i);
-      b.classList.toggle('is-lit', isRange && j <= i);
       b.setAttribute('aria-checked', String(j === i));
       b.disabled = sel.disabled || !!opts[j].disabled;
     });
-    // stand rechts naast het label: het korte woord, of de volle tekst als die meer zegt
-    // (Beurten van de bots: "Laten zien — snel"); bij een eigen uitleg eronder het korte woord
     const cur = opts[i];
-    out.textContent = sel.disabled || !cur ? '—'
-      : isRange || isNum || cur.ds.note || !cur.ds.short ? (cur.ds.short || cur.text) : cur.text;
     // regeltje eronder: alleen een eigen uitleg (data-note) of waarom het uit staat
     const capText = sel.disabled && sel.dataset.offNote ? sel.dataset.offNote
       : cur ? (cur.ds.note || '') : '';

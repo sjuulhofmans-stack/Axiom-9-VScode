@@ -899,11 +899,9 @@
      Lobbyvarianten", in de glazen knopstijl van de eerdere schuifrail; segmentSelect in
      80-controls.js): de <select>/<input type=range> blijft verborgen de bron. Elke keuze = losse
      knoppen met een lampje (.seg-led), de gekozen knop is glas (zelfde blauw als button.primary).
-     Energie-inzet = lijst met lampjes (.is-vert), Tempo = meter die volloopt (.is-meter). De stand
-     staat rechts naast het label (.seg-out). */
+     Energie-inzet = lijst met lampjes (.is-vert). Aantal spelers en Tempo: zelfde knoppen met
+     tekst, zonder lampje. */
   .seg-source{display:none !important;}
-  .field label.has-seg-out{display:flex; justify-content:space-between; align-items:baseline; gap:10px;}
-  .seg-out{min-width:0; overflow:hidden; white-space:nowrap; text-overflow:ellipsis; color:var(--quest-glow); letter-spacing:.1em;}
   .seg-group{display:grid; grid-template-columns:repeat(var(--n), minmax(0, 1fr)); gap:6px;}
   .seg-btn{
     min-width:0; height:44px; padding:0 8px; display:flex; align-items:center; justify-content:center; gap:9px;
@@ -935,11 +933,6 @@
   .seg-group.is-vert .seg-btn.is-on{background:rgba(79,184,224,.18); border-color:rgba(79,184,224,.6);}
   .seg-group.is-vert .seg-btn > span{flex:1;}
   .seg-btn > span{overflow:hidden; text-overflow:ellipsis;}
-  /* meter (Tempo): balkjes lichten op tot en met je keuze */
-  .seg-group.is-meter{gap:4px; padding:4px; border-radius:9px; background:var(--hull); border:1px solid var(--line-dim);}
-  .seg-group.is-meter .seg-btn{height:34px; padding:0; border-radius:4px; background:#1b242e; border-color:transparent;}
-  .seg-group.is-meter .seg-btn.is-lit{background:rgba(79,184,224,.18); border-color:rgba(79,184,224,.6);}
-  .seg-group.is-meter .seg-btn.is-on{background:rgba(79,184,224,.34); border-color:var(--quest);}
   .seg-bolt{display:inline-flex; align-items:center; gap:2px; flex:none; font-style:normal; color:var(--amber); font-variant-numeric:tabular-nums; letter-spacing:0;}
   .seg-bolt svg{width:11px; height:11px; fill:currentColor;}
   /* regeltje onder de rail: wat je gekozen hebt in één zin */
@@ -7397,8 +7390,8 @@ document.querySelectorAll('.board-zoom').forEach(btn => {
 // prijs uit ENERGY_ACTIONS, 96-walk.js) of de keuze uitzet (Beurten van de bots zonder bots).
 // CONSOLE (gekozen variant 3 uit 6, 2026-10, met de glazen knopstijl van de schuifrail; de
 // schuifrail zelf viel af): losse knoppen met een lampje, onder elkaar (.is-vert) = een lijst met
-// lampjes, een range = meter die volloopt (.is-meter). Rechts naast het label staat de stand
-// (.seg-out). Geen glijdend schuifje meer, dus ook geen animatie.
+// lampjes. Getallen en Tempo (range) = dezelfde knoppen met tekst, zonder lampje. Geen stand
+// naast het label en geen meter meer (gebruikerswens). Geen glijdend schuifje, geen animatie.
 const SEG_BOLT ='<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M13 2L4 14h7l-1 8 9-12h-7z"/></svg>';
 function segmentSelect(sel){
   if (!sel || sel.dataset.seg) return;
@@ -7406,19 +7399,15 @@ function segmentSelect(sel){
   const isRange = sel.type === 'range';
   const evt = isRange ? 'input' : 'change';
   const box = document.createElement('div');
-  box.className = 'seg-group' + (isRange ? ' is-meter' : sel.dataset.rail === 'vert' ? ' is-vert' : '');
+  box.className = 'seg-group' + (sel.dataset.rail === 'vert' ? ' is-vert' : '');
   box.setAttribute('role', 'radiogroup');
   const cap = document.createElement('div');
   cap.className = 'seg-cap';
-  const out = document.createElement('output');
-  out.className = 'seg-out';
   const lbl = sel.id && document.querySelector(`label[for="${sel.id}"]`);
   if (lbl){
     if (!lbl.id) lbl.id = sel.id + 'RailLabel';   // niet "…Label": #walkSpeedLabel bestaat al
     box.setAttribute('aria-labelledby', lbl.id);
     lbl.removeAttribute('for');   // een label voor een verborgen lijst doet niets
-    lbl.classList.add('has-seg-out');
-    lbl.append(out);
   }
   sel.classList.add('seg-source');
   sel.after(box);
@@ -7440,12 +7429,15 @@ function segmentSelect(sel){
         b.className = 'seg-btn';
         b.setAttribute('role', 'radio');
         b.dataset.value = o.value;
-        if (isRange){ b.title = b.ariaLabel = o.text; return b; }   // meter: alleen een balkje
-        const led = document.createElement('i');
-        led.className = 'seg-led';
+        // lampje alleen bij woorden; getallen (Aantal spelers) en Tempo zonder (gebruikerswens)
+        if (!isNum && !isRange){
+          const led = document.createElement('i');
+          led.className = 'seg-led';
+          b.append(led);
+        }
         const name = document.createElement('span');
         name.textContent = o.ds.short || o.text;
-        b.append(led, name);
+        b.append(name);
         if (o.ds.cost){
           const c = document.createElement('em');
           c.className = 'seg-bolt';
@@ -7460,15 +7452,10 @@ function segmentSelect(sel){
     box.classList.toggle('is-disabled', sel.disabled);
     [...box.querySelectorAll('.seg-btn')].forEach((b, j) => {
       b.classList.toggle('is-on', j === i);
-      b.classList.toggle('is-lit', isRange && j <= i);
       b.setAttribute('aria-checked', String(j === i));
       b.disabled = sel.disabled || !!opts[j].disabled;
     });
-    // stand rechts naast het label: het korte woord, of de volle tekst als die meer zegt
-    // (Beurten van de bots: "Laten zien — snel"); bij een eigen uitleg eronder het korte woord
     const cur = opts[i];
-    out.textContent = sel.disabled || !cur ? '—'
-      : isRange || isNum || cur.ds.note || !cur.ds.short ? (cur.ds.short || cur.text) : cur.text;
     // regeltje eronder: alleen een eigen uitleg (data-note) of waarom het uit staat
     const capText = sel.disabled && sel.dataset.offNote ? sel.dataset.offNote
       : cur ? (cur.ds.note || '') : '';
@@ -13400,11 +13387,13 @@ function crystalFxAnon(fromKey, player, full, fast = false, graph = soloGraph){
 // bot-beurten, Automatisch en Multiplayer. renderWalkDice (96-walk.js) en renderSoloDicePending
 // (97-solo.js) roepen dit aan.
 //
-//   loopsteen     donker glas met gloeiende stippen (Stuwstoot-steen in amber)
-//   energiesteen  groen glas met 0-3 bliksems op stip-plekken; ernaast groot "+2"
-//   draaien       een nieuwe worp draait om de eigen as, steeds langzamer, en staat dan rechtop
-//                 stil. Dezelfde worp nog eens tekenen (Multiplayer tekent 5x per seconde) laat
-//                 hem NIET opnieuw draaien: #walkDice onthoudt welke worp er staat (data-key).
+//   loopsteen     "Pantser": afgeschuinde hoeken, ruitvormige stippen (Stuwstoot-steen in amber)
+//   energiesteen  zelfde vorm met een groene rand en 0-3 bliksems op stip-plekken; ernaast groot "+2"
+//   wachten       "Pulse": alle stenen samen iets groter en weer kleiner
+//   gooien        "Teleport": de steen verdwijnt in een lichtstraal en komt terug met de uitkomst.
+//                 Dezelfde worp nog eens tekenen (Multiplayer tekent 5x per seconde) laat
+//                 hem NIET opnieuw gooien: #walkDice onthoudt welke worp er staat (data-key).
+//   (alle drie gekozen uit 10 varianten, artifact "Axiom-9 Dobbelstenen", 2026-10)
 //   teller        "Gegooid" en "Nog te zetten … van …" groot, met een stappenbalk eronder
 //   energie       na het stilvallen vliegen de energiebolletjes van de steen naar je energiebalk;
 //                 de balk telt pas op als een bolletje aankomt (diceEnergyCap, gebruikt door
@@ -13428,9 +13417,10 @@ const DICE_SPIN_SHORT_MS = 500;     // na het schudden van een bot / Automatisch
 const DICE_ORB_STAGGER_MS = 200;    // tussen twee energiebolletjes
 const DICE_ORB_FLIGHT_MS = 620;
 
-// gloed = een zacht, half doorzichtig cirkeltje achter elke stip (geen CSS-filter: dat liet de
+// gloed = een zachte, half doorzichtige ruit achter elke stip (geen CSS-filter: dat liet de
 // browser het hele dobbelvak elk beeldje opnieuw tekenen — gemeten: 20 i.p.v. 44 beeldjes/s)
-const diceFaceSvg = n => `<svg class="sd-face sd-f${n}" viewBox="0 0 100 100" aria-hidden="true">${DICE_PIPS[n].map(([x, y]) => `<circle class="sd-halo" cx="${x}" cy="${y}" r="14"/><circle cx="${x}" cy="${y}" r="9"/>`).join('')}</svg>`;
+const diceRuit = (x, y, r) => `${x},${y - r} ${x + r},${y} ${x},${y + r} ${x - r},${y}`;
+const diceFaceSvg = n => `<svg class="sd-face sd-f${n}" viewBox="0 0 100 100" aria-hidden="true">${DICE_PIPS[n].map(([x, y]) => `<polygon class="sd-halo" points="${diceRuit(x, y, 15)}"/><polygon points="${diceRuit(x, y, 10.5)}"/>`).join('')}</svg>`;
 const DICE_ALL_FACES = [1,2,3,4,5,6].map(diceFaceSvg).join('');
 const diceBoltSvg = (x, y) => `<svg style="left:${x}%;top:${y}%" viewBox="0 0 14 24" aria-hidden="true"><path d="M9.4 .8 1.6 13.4h4.3L4.6 23.2l7.8-13h-4.5z"/></svg>`;
 const DICE_E_FACES = [0,1,2,3].map(v => `<span class="sd-face sd-f${v}">${v === 0 ? '<i class="sd-empty"></i>' : DICE_BOLT_POS[v].map(([x, y]) => diceBoltSvg(x, y)).join('')}</span>`).join('');
@@ -13444,6 +13434,12 @@ function diceDieHtml(face, cls = ''){
 function diceEnergyDieHtml(face, cls = ''){
   if (face === null || face === undefined) return `<span class="sd-edie is-pending ${cls}"><span class="sd-q">?</span></span>`;
   return `<span class="sd-edie ${cls}" data-face="${face}" aria-label="${face} energie">${DICE_E_FACES}</span>`;
+}
+// Vakje om een steen, met de lichtstraal en de ring van de teleport er al in (onzichtbaar). Die
+// staan naast de steen en niet erin: de steen zelf krimpt bij het teleporteren tot bijna niets.
+// Vooraf erin, zodat er midden in een beurt niets aan de DOM verandert. cls: 'boost' / 'is-e'.
+function diceCell(html, cls = ''){
+  return `<span class="sd-cell ${cls}">${html}<i class="sd-beam"></i><i class="sd-ring"></i></span>`;
 }
 
 const diceHudEl = document.querySelector('#walkDice') ? document.querySelector('#walkDice').closest('.walk-hud') : null;

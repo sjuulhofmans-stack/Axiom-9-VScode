@@ -892,11 +892,9 @@
      Lobbyvarianten", in de glazen knopstijl van de eerdere schuifrail; segmentSelect in
      80-controls.js): de <select>/<input type=range> blijft verborgen de bron. Elke keuze = losse
      knoppen met een lampje (.seg-led), de gekozen knop is glas (zelfde blauw als button.primary).
-     Energie-inzet = lijst met lampjes (.is-vert), Tempo = meter die volloopt (.is-meter). De stand
-     staat rechts naast het label (.seg-out). */
+     Energie-inzet = lijst met lampjes (.is-vert). Aantal spelers en Tempo: zelfde knoppen met
+     tekst, zonder lampje. */
   .seg-source{display:none !important;}
-  .field label.has-seg-out{display:flex; justify-content:space-between; align-items:baseline; gap:10px;}
-  .seg-out{min-width:0; overflow:hidden; white-space:nowrap; text-overflow:ellipsis; color:var(--quest-glow); letter-spacing:.1em;}
   .seg-group{display:grid; grid-template-columns:repeat(var(--n), minmax(0, 1fr)); gap:6px;}
   .seg-btn{
     min-width:0; height:44px; padding:0 8px; display:flex; align-items:center; justify-content:center; gap:9px;
@@ -928,11 +926,6 @@
   .seg-group.is-vert .seg-btn.is-on{background:rgba(79,184,224,.18); border-color:rgba(79,184,224,.6);}
   .seg-group.is-vert .seg-btn > span{flex:1;}
   .seg-btn > span{overflow:hidden; text-overflow:ellipsis;}
-  /* meter (Tempo): balkjes lichten op tot en met je keuze */
-  .seg-group.is-meter{gap:4px; padding:4px; border-radius:9px; background:var(--hull); border:1px solid var(--line-dim);}
-  .seg-group.is-meter .seg-btn{height:34px; padding:0; border-radius:4px; background:#1b242e; border-color:transparent;}
-  .seg-group.is-meter .seg-btn.is-lit{background:rgba(79,184,224,.18); border-color:rgba(79,184,224,.6);}
-  .seg-group.is-meter .seg-btn.is-on{background:rgba(79,184,224,.34); border-color:var(--quest);}
   .seg-bolt{display:inline-flex; align-items:center; gap:2px; flex:none; font-style:normal; color:var(--amber); font-variant-numeric:tabular-nums; letter-spacing:0;}
   .seg-bolt svg{width:11px; height:11px; fill:currentColor;}
   /* regeltje onder de rail: wat je gekozen hebt in één zin */

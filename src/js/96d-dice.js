@@ -3,11 +3,13 @@
 // bot-beurten, Automatisch en Multiplayer. renderWalkDice (96-walk.js) en renderSoloDicePending
 // (97-solo.js) roepen dit aan.
 //
-//   loopsteen     donker glas met gloeiende stippen (Stuwstoot-steen in amber)
-//   energiesteen  groen glas met 0-3 bliksems op stip-plekken; ernaast groot "+2"
-//   draaien       een nieuwe worp draait om de eigen as, steeds langzamer, en staat dan rechtop
-//                 stil. Dezelfde worp nog eens tekenen (Multiplayer tekent 5x per seconde) laat
-//                 hem NIET opnieuw draaien: #walkDice onthoudt welke worp er staat (data-key).
+//   loopsteen     "Pantser": afgeschuinde hoeken, ruitvormige stippen (Stuwstoot-steen in amber)
+//   energiesteen  zelfde vorm met een groene rand en 0-3 bliksems op stip-plekken; ernaast groot "+2"
+//   wachten       "Pulse": alle stenen samen iets groter en weer kleiner
+//   gooien        "Teleport": de steen verdwijnt in een lichtstraal en komt terug met de uitkomst.
+//                 Dezelfde worp nog eens tekenen (Multiplayer tekent 5x per seconde) laat
+//                 hem NIET opnieuw gooien: #walkDice onthoudt welke worp er staat (data-key).
+//   (alle drie gekozen uit 10 varianten, artifact "Axiom-9 Dobbelstenen", 2026-10)
 //   teller        "Gegooid" en "Nog te zetten … van …" groot, met een stappenbalk eronder
 //   energie       na het stilvallen vliegen de energiebolletjes van de steen naar je energiebalk;
 //                 de balk telt pas op als een bolletje aankomt (diceEnergyCap, gebruikt door
@@ -31,9 +33,10 @@ const DICE_SPIN_SHORT_MS = 500;     // na het schudden van een bot / Automatisch
 const DICE_ORB_STAGGER_MS = 200;    // tussen twee energiebolletjes
 const DICE_ORB_FLIGHT_MS = 620;
 
-// gloed = een zacht, half doorzichtig cirkeltje achter elke stip (geen CSS-filter: dat liet de
+// gloed = een zachte, half doorzichtige ruit achter elke stip (geen CSS-filter: dat liet de
 // browser het hele dobbelvak elk beeldje opnieuw tekenen — gemeten: 20 i.p.v. 44 beeldjes/s)
-const diceFaceSvg = n => `<svg class="sd-face sd-f${n}" viewBox="0 0 100 100" aria-hidden="true">${DICE_PIPS[n].map(([x, y]) => `<circle class="sd-halo" cx="${x}" cy="${y}" r="14"/><circle cx="${x}" cy="${y}" r="9"/>`).join('')}</svg>`;
+const diceRuit = (x, y, r) => `${x},${y - r} ${x + r},${y} ${x},${y + r} ${x - r},${y}`;
+const diceFaceSvg = n => `<svg class="sd-face sd-f${n}" viewBox="0 0 100 100" aria-hidden="true">${DICE_PIPS[n].map(([x, y]) => `<polygon class="sd-halo" points="${diceRuit(x, y, 15)}"/><polygon points="${diceRuit(x, y, 10.5)}"/>`).join('')}</svg>`;
 const DICE_ALL_FACES = [1,2,3,4,5,6].map(diceFaceSvg).join('');
 const diceBoltSvg = (x, y) => `<svg style="left:${x}%;top:${y}%" viewBox="0 0 14 24" aria-hidden="true"><path d="M9.4 .8 1.6 13.4h4.3L4.6 23.2l7.8-13h-4.5z"/></svg>`;
 const DICE_E_FACES = [0,1,2,3].map(v => `<span class="sd-face sd-f${v}">${v === 0 ? '<i class="sd-empty"></i>' : DICE_BOLT_POS[v].map(([x, y]) => diceBoltSvg(x, y)).join('')}</span>`).join('');
@@ -48,6 +51,12 @@ function diceEnergyDieHtml(face, cls = ''){
   if (face === null || face === undefined) return `<span class="sd-edie is-pending ${cls}"><span class="sd-q">?</span></span>`;
   return `<span class="sd-edie ${cls}" data-face="${face}" aria-label="${face} energie">${DICE_E_FACES}</span>`;
 }
+// Vakje om een steen, met de lichtstraal en de ring van de teleport er al in (onzichtbaar). Die
+// staan naast de steen en niet erin: de steen zelf krimpt bij het teleporteren tot bijna niets.
+// Vooraf erin, zodat er midden in een beurt niets aan de DOM verandert. cls: 'boost' / 'is-e'.
+function diceCell(html, cls = ''){
+  return `<span class="sd-cell ${cls}">${html}<i class="sd-beam"></i><i class="sd-ring"></i></span>`;
+}
 
 const diceHudEl = document.querySelector('#walkDice') ? document.querySelector('#walkDice').closest('.walk-hud') : null;
 function diceSetHudResult(on){
@@ -61,29 +70,66 @@ function diceSetHudResult(on){
 // te vragen (getComputedStyle dwong midden in de klik een herberekening van de opmaak af, ±7 ms,
 // gemeten). Eerst draaiden wiebelen en tollen via CSS, en begon de worp altijd vanaf 0°: bij een
 // bot of in Automatisch sprong de steen dan bij de overgang tollen → uitrollen (gebruikersmelding:
-// "hakkelig"). De twee loopstenen en de energiesteen draaien om en om de andere kant op.
+// "hakkelig"). De twee loopstenen en de energiesteen tollen om en om de andere kant op.
 const DICE_TUMBLE_MS = 450;   // één rondje tijdens het tollen (= 800°/s)
 let diceMotion = { mode: 'none', t0: 0, pausedAt: null };
 const diceSign = i => i % 2 ? -1 : 1;
-// hoek (graden) van steen i in de huidige beweging
-function diceMotionAngle(i, now){
+
+// Wachten = puls: alle stenen tegelijk iets groter en weer kleiner (in stukjes, lineair ertussen,
+// zodat dicePulseScale precies kan zeggen hoe groot een steen op een moment is)
+const DICE_PULSE_MS = 1600, DICE_PULSE_AMP = .08;
+const dicePulseScale = t => 1 + DICE_PULSE_AMP * (.5 - .5 * Math.cos(2 * Math.PI * t / DICE_PULSE_MS));
+const DICE_PULSE_FRAMES = Array.from({ length: 25 }, (_, i) => ({ transform: `scale(${dicePulseScale(i / 24 * DICE_PULSE_MS).toFixed(4)})` }));
+
+// stand van steen i in de huidige beweging: hoek (graden) en grootte
+function diceMotionPose(i, now){
   const t = (diceMotion.pausedAt ?? now) - diceMotion.t0;
-  if (diceMotion.mode === 'wiggle') return diceSign(i) * OD_WIGGLE_DEG * Math.sin(2 * Math.PI * t / OD_WIGGLE_MS);
-  if (diceMotion.mode === 'tumble') return diceSign(i) * 360 * t / DICE_TUMBLE_MS;
-  return 0;
+  if (diceMotion.mode === 'pulse') return { a: 0, k: dicePulseScale(t) };
+  if (diceMotion.mode === 'tumble') return { a: diceSign(i) * 360 * t / DICE_TUMBLE_MS, k: .94 };
+  return { a: 0, k: 1 };
 }
-// wiebelen of tollen starten op alle stenen in #walkDice (met de gedeelde starttijd)
+// pulseren of tollen starten op alle stenen in #walkDice (met de gedeelde starttijd)
 function diceStartMotion(mode){
   diceMotion = { mode, t0: odNow(), pausedAt: null };
   if (crystalReduceMotion()) return;
   walkDiceEl.querySelectorAll('.sd-die, .sd-edie').forEach((el, i) => {
     const s = diceSign(i);
-    const anim = mode === 'wiggle'
-      ? el.animate(OD_WIGGLE_FRAMES.map(a => ({ transform: `rotate(${(s * a).toFixed(2)}deg)` })), { duration: OD_WIGGLE_MS, iterations: Infinity })
+    const anim = mode === 'pulse'
+      ? el.animate(DICE_PULSE_FRAMES, { duration: DICE_PULSE_MS, iterations: Infinity })
       : el.animate([{ transform: 'rotate(0deg) scale(.94)' }, { transform: `rotate(${s * 360}deg) scale(.94)` }], { duration: DICE_TUMBLE_MS, iterations: Infinity });
     anim.startTime = diceMotion.t0;
   });
   if (walkPanelEl && walkPanelEl.classList.contains('walk-is-paused')) dicePause(true);
+}
+
+// Gooien = teleport: de steen draait weg en krimpt in een lichtstraal (tot 32%), is even weg
+// (de uitkomst wordt dan neergezet, bij 40%), schiet groot terug (76%) en staat rechtop stil.
+// Begint precies in de stand van daarvoor (a0 = hoek, k0 = grootte), dus naadloos vanuit de puls
+// of het tollen. Gebruikt in #walkDice én bij "Wie begint?". Geeft de Animation terug.
+const DICE_TP_FACE_AT = .4;
+function diceTeleport(el, s, a0, k0, dur, startTime){
+  const a = ((a0 % 360) + 540) % 360 - 180;   // tollen kan op 1000° staan: niet terugdraaien
+  const tf = (r, k) => `rotate(${r.toFixed(2)}deg) scale(${k})`;
+  const anim = el.animate([
+    { transform: tf(a, k0.toFixed(4)), opacity: 1, easing: 'ease-in' },
+    { transform: tf(a + s * 120, .08), opacity: 0, offset: .32 },
+    { transform: tf(s * 120, .08), opacity: 0, offset: .5, easing: 'cubic-bezier(.2,.8,.3,1.2)' },
+    { transform: tf(-s * 8, 1.22), opacity: 1, offset: .76 },
+    { transform: tf(0, 1), opacity: 1 },
+  ], { duration: dur });
+  anim.startTime = startTime;
+  const cell = el.closest('.sd-cell');
+  if (cell){
+    const beam = cell.querySelector('.sd-beam'), ring = cell.querySelector('.sd-ring');
+    const fx = (node, frames, delay, d) => {
+      if (!node) return;
+      const an = node.animate(frames, { duration: d, delay, easing: 'cubic-bezier(.2,.7,.3,1)' });
+      an.startTime = startTime;
+    };
+    fx(beam, [{ transform: 'scaleY(.1)', opacity: 0 }, { transform: 'scaleY(1)', opacity: .9, offset: .4 }, { transform: 'scaleY(.2)', opacity: 0 }], dur * .18, dur * .55);
+    fx(ring, [{ transform: 'scale(.2)', opacity: 1 }, { transform: 'scale(1.7)', opacity: 0 }], dur * .5, 450);
+  }
+  return anim;
 }
 // Pauze in Automatisch: de stenen staan dan ook stil (setWalkPaused, 96-walk.js)
 function dicePause(on){
@@ -94,25 +140,29 @@ function dicePause(on){
   else return;
   walkDiceEl.querySelectorAll('.sd-die, .sd-edie').forEach(el => el.getAnimations().forEach(a => on ? a.pause() : a.play()));
 }
+// de rij stenen in #walkDice: loopstenen (de 3e = Stuwstoot, amber) en rechts de energiesteen
+function diceRowHtml(diceHtml, gainHtml, eDieHtml){
+  return `<div class="sd-row"><span class="sd-dice">${diceHtml.map((h, i) => diceCell(h, i === 2 ? 'boost' : '')).join('')}</span>`
+    + `<span class="sd-ewrap">${gainHtml}${diceCell(eDieHtml, 'is-e')}</span></div>`;
+}
 
-// Wacht op de worp: "?"-stenen die zachtjes om hun as wiebelen. `energy` is al bekend als de
+// Wacht op de worp: "?"-stenen die zachtjes pulseren. `energy` is al bekend als de
 // energiesteen eerder viel (na Zwaartekracht-laarzen e.d.), anders null. Staat precies dit al in
 // beeld, dan niets doen: in Multiplayer komt de stand 5x per seconde binnen, en opnieuw tekenen liet
-// het wiebelen elke keer opnieuw beginnen (hakkelig bij de gasten).
+// de beweging elke keer opnieuw beginnen (hakkelig bij de gasten).
 function diceRenderPending(n, energy){
   if (!walkDiceEl) return;
   const key = `pending|${n}|${energy}`;
   if (walkDiceEl.dataset.key === key && walkDiceEl.firstElementChild) return;
   diceProgress = null;
   diceLandAt = 0;
-  const dice = Array.from({ length: n }, (_, i) => diceDieHtml('?', i === 2 ? 'boost' : '')).join('');
+  const dice = Array.from({ length: n }, (_, i) => diceDieHtml('?', i === 2 ? 'boost' : ''));
   const known = energy !== null && energy !== undefined;
   walkDiceEl.dataset.key = key;
-  walkDiceEl.innerHTML = `<div class="sd-row"><span class="sd-dice">${dice}</span>`
-    + `<span class="sd-ewrap"><span class="sd-gain${known ? ' show' : ''}${energy === 0 ? ' zero' : ''}">${known ? '+' + energy : ''}</span>${diceEnergyDieHtml(known ? energy : null)}</span></div>`;
+  walkDiceEl.innerHTML = diceRowHtml(dice, `<span class="sd-gain${known ? ' show' : ''}${energy === 0 ? ' zero' : ''}">${known ? '+' + energy : ''}</span>`, diceEnergyDieHtml(known ? energy : null));
   diceSetHudResult(false);
-  // in Multiplayer tijdens andermans beurt niet wiebelen: daar hoef jij niets te doen
-  if (!(walkPlayAreaEl && walkPlayAreaEl.classList.contains('mp-not-my-turn'))) diceStartMotion('wiggle');
+  // in Multiplayer tijdens andermans beurt niet pulseren: daar hoef jij niets te doen
+  if (!(walkPlayAreaEl && walkPlayAreaEl.classList.contains('mp-not-my-turn'))) diceStartMotion('pulse');
   else diceMotion = { mode: 'none', t0: 0, pausedAt: null };
 }
 // Schudden (Automatisch / bot naspelen): willekeurige kanten, de stenen tollen rond. Wordt elke
