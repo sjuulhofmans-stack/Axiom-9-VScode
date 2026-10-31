@@ -445,10 +445,11 @@
   input[type=number]:focus{border-color:var(--amber-dim); box-shadow:0 0 0 2px rgba(255,181,69,.12);}
   /* Simulatie: rolteller "Aantal potjes" (gekozen ontwerp B uit 4), gecentreerd in het midden.
      5 rolcijfers van 38×58px; elk cijfer schuift met transform naar zijn plek (simCounterRender in
-     95-simulate.js), voorloopnullen gedimd. −100/+100 ernaast, snelkeuzes eronder, brede startknop. */
-  .sim-run{display:flex; flex-direction:column; align-items:center; gap:16px; width:100%; max-width:420px; margin:6px auto 0;}
+     95-simulate.js), voorloopnullen gedimd. −1000/−100 links, +100/+1000 rechts, snelkeuzes eronder,
+     brede startknop. */
+  .sim-run{display:flex; flex-direction:column; align-items:center; gap:16px; width:100%; max-width:460px; margin:6px auto 0;}
   .sim-run-label{font-family:var(--font-display); font-size:13px; letter-spacing:.18em; text-transform:uppercase; color:var(--text-dim);}
-  .sim-counter{display:flex; align-items:center; gap:10px;}
+  .sim-counter{display:flex; align-items:center; gap:8px;}
   .sim-digits{
     display:flex; gap:4px; padding:8px; border-radius:8px;
     background:var(--hull); border:1px solid var(--line); box-shadow:inset 0 2px 10px rgba(0,0,0,.6);
@@ -484,7 +485,7 @@
   /* zelfde tekst als de andere hoofdknoppen (gewone button.primary, maat van "Start spel" =
      .walk-lobby-start) — gebruikersmelding: hoofdletters/spatiëring week af van de rest */
   button.sim-go{width:100%; padding:13px;}
-  @media (max-width: 420px){ .sim-digit{width:30px;} button.sim-step{width:40px;} }
+  @media (max-width: 460px){ .sim-counter{gap:4px;} .sim-digit{width:30px;} button.sim-step{width:36px; font-size:12px; letter-spacing:0;} }
   /* verplicht-veld-fout (nu alleen #mpHostName, zie mpHostCreate in 99-multiplayer.js) — rode
      rand + gloed i.p.v. de normale amber-focusring, generiek genoeg voor hergebruik elders. */
   input[type=text].mp-field-invalid{border-color:var(--danger);}
@@ -4722,17 +4723,19 @@
     <div class="panel">
       <div class="controls">
         <!-- Rolteller (gekozen ontwerp "B" uit 4, sinds 2026-10): het aantal potjes als teller met
-             rolcijfers, −100/+100 ernaast (ingedrukt houden = doortellen), snelkeuzes eronder en een
+             rolcijfers, −1000/−100 links en +100/+1000 rechts (ingedrukt houden = doortellen), snelkeuzes eronder en een
              brede startknop. #simCount blijft de bron (verborgen veld) die runSimulationBatch leest;
              de weergave staat in simCounterRender (95-simulate.js). -->
         <div class="sim-run">
           <span class="sim-run-label" id="simCountLabel">Aantal potjes</span>
           <input type="hidden" id="simCount" value="2000">
           <div class="sim-counter">
+            <button type="button" class="sim-step" data-sim-step="-1" data-sim-size="1000" aria-label="1000 potjes minder">−1000</button>
             <button type="button" class="sim-step" data-sim-step="-1" aria-label="100 potjes minder">−100</button>
             <div class="sim-digits" id="simDigits" tabindex="0" role="spinbutton" aria-labelledby="simCountLabel"
                  aria-valuemin="100" aria-valuemax="20000" aria-valuenow="2000"></div>
             <button type="button" class="sim-step" data-sim-step="1" aria-label="100 potjes meer">+100</button>
+            <button type="button" class="sim-step" data-sim-step="1" data-sim-size="1000" aria-label="1000 potjes meer">+1000</button>
           </div>
           <div class="sim-presets" id="simPresets"></div>
           <button id="btnSimulate" class="primary sim-go">Draai simulatie</button>
@@ -9603,7 +9606,8 @@ const btnSimulate = document.getElementById('btnSimulate');
 // ---------- rolteller "Aantal potjes" (gekozen ontwerp B, zie index.html) ----------
 // #simCount (verborgen) is de bron; dit tekent 5 rolcijfers die naar hun cijfer schuiven
 // (transform, geen herberekening van de opmaak), voorloopnullen gedimd. −100/+100: klik = 100,
-// ingedrukt houden telt steeds sneller door (na 12 stappen per 500). Pijltjestoetsen op de teller
+// ingedrukt houden telt steeds sneller door (na 12 stappen per 500). −1000/+1000 (data-sim-size)
+// werken net zo, maar altijd per 1000. Pijltjestoetsen op de teller
 // werken ook. Snelkeuzes zetten het getal in één keer.
 const SIM_COUNT_MIN = 100, SIM_COUNT_MAX = 20000, SIM_COUNT_STEP = 100;
 const SIM_COUNT_DIGITS = 5;
@@ -9691,13 +9695,14 @@ function simCountStep(dir, size = SIM_COUNT_STEP){
   const stopHold = () => { clearTimeout(holdTimer); holdTimer = null; };
   for (const btn of document.querySelectorAll('[data-sim-step]')){
     const dir = Number(btn.dataset.simStep);
+    const size = Number(btn.dataset.simSize) || SIM_COUNT_STEP;
     btn.addEventListener('pointerdown', (e) => {
       if (e.button !== 0) return;
-      simCountStep(dir);
+      simCountStep(dir, size);
       let delay = 380, n = 0;
       const tick = () => {
         n++;
-        simCountStep(dir, n > 12 ? 5 * SIM_COUNT_STEP : SIM_COUNT_STEP);
+        simCountStep(dir, size === SIM_COUNT_STEP && n > 12 ? 5 * SIM_COUNT_STEP : size);
         delay = Math.max(45, delay * 0.8);
         holdTimer = setTimeout(tick, delay);
       };
@@ -9705,7 +9710,7 @@ function simCountStep(dir, size = SIM_COUNT_STEP){
     });
     for (const t of ['pointerup', 'pointerleave', 'pointercancel']) btn.addEventListener(t, stopHold);
     // toetsenbord (Enter/spatie op de knop): de click zonder pointerdown ervoor
-    btn.addEventListener('click', (e) => { if (e.detail === 0) simCountStep(dir); });
+    btn.addEventListener('click', (e) => { if (e.detail === 0) simCountStep(dir, size); });
   }
   if (simDigitsEl) simDigitsEl.addEventListener('keydown', (e) => {
     const dir = { ArrowUp: 1, ArrowRight: 1, ArrowDown: -1, ArrowLeft: -1 }[e.key];

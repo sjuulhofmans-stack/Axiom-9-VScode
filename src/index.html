@@ -191,17 +191,19 @@
     <div class="panel">
       <div class="controls">
         <!-- Rolteller (gekozen ontwerp "B" uit 4, sinds 2026-10): het aantal potjes als teller met
-             rolcijfers, −100/+100 ernaast (ingedrukt houden = doortellen), snelkeuzes eronder en een
+             rolcijfers, −1000/−100 links en +100/+1000 rechts (ingedrukt houden = doortellen), snelkeuzes eronder en een
              brede startknop. #simCount blijft de bron (verborgen veld) die runSimulationBatch leest;
              de weergave staat in simCounterRender (95-simulate.js). -->
         <div class="sim-run">
           <span class="sim-run-label" id="simCountLabel">Aantal potjes</span>
           <input type="hidden" id="simCount" value="2000">
           <div class="sim-counter">
+            <button type="button" class="sim-step" data-sim-step="-1" data-sim-size="1000" aria-label="1000 potjes minder">−1000</button>
             <button type="button" class="sim-step" data-sim-step="-1" aria-label="100 potjes minder">−100</button>
             <div class="sim-digits" id="simDigits" tabindex="0" role="spinbutton" aria-labelledby="simCountLabel"
                  aria-valuemin="100" aria-valuemax="20000" aria-valuenow="2000"></div>
             <button type="button" class="sim-step" data-sim-step="1" aria-label="100 potjes meer">+100</button>
+            <button type="button" class="sim-step" data-sim-step="1" data-sim-size="1000" aria-label="1000 potjes meer">+1000</button>
           </div>
           <div class="sim-presets" id="simPresets"></div>
           <button id="btnSimulate" class="primary sim-go">Draai simulatie</button>

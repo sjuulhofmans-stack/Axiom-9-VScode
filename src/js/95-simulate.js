@@ -1761,7 +1761,8 @@ const btnSimulate = document.getElementById('btnSimulate');
 // ---------- rolteller "Aantal potjes" (gekozen ontwerp B, zie index.html) ----------
 // #simCount (verborgen) is de bron; dit tekent 5 rolcijfers die naar hun cijfer schuiven
 // (transform, geen herberekening van de opmaak), voorloopnullen gedimd. −100/+100: klik = 100,
-// ingedrukt houden telt steeds sneller door (na 12 stappen per 500). Pijltjestoetsen op de teller
+// ingedrukt houden telt steeds sneller door (na 12 stappen per 500). −1000/+1000 (data-sim-size)
+// werken net zo, maar altijd per 1000. Pijltjestoetsen op de teller
 // werken ook. Snelkeuzes zetten het getal in één keer.
 const SIM_COUNT_MIN = 100, SIM_COUNT_MAX = 20000, SIM_COUNT_STEP = 100;
 const SIM_COUNT_DIGITS = 5;
@@ -1849,13 +1850,14 @@ function simCountStep(dir, size = SIM_COUNT_STEP){
   const stopHold = () => { clearTimeout(holdTimer); holdTimer = null; };
   for (const btn of document.querySelectorAll('[data-sim-step]')){
     const dir = Number(btn.dataset.simStep);
+    const size = Number(btn.dataset.simSize) || SIM_COUNT_STEP;
     btn.addEventListener('pointerdown', (e) => {
       if (e.button !== 0) return;
-      simCountStep(dir);
+      simCountStep(dir, size);
       let delay = 380, n = 0;
       const tick = () => {
         n++;
-        simCountStep(dir, n > 12 ? 5 * SIM_COUNT_STEP : SIM_COUNT_STEP);
+        simCountStep(dir, size === SIM_COUNT_STEP && n > 12 ? 5 * SIM_COUNT_STEP : size);
         delay = Math.max(45, delay * 0.8);
         holdTimer = setTimeout(tick, delay);
       };
@@ -1863,7 +1865,7 @@ function simCountStep(dir, size = SIM_COUNT_STEP){
     });
     for (const t of ['pointerup', 'pointerleave', 'pointercancel']) btn.addEventListener(t, stopHold);
     // toetsenbord (Enter/spatie op de knop): de click zonder pointerdown ervoor
-    btn.addEventListener('click', (e) => { if (e.detail === 0) simCountStep(dir); });
+    btn.addEventListener('click', (e) => { if (e.detail === 0) simCountStep(dir, size); });
   }
   if (simDigitsEl) simDigitsEl.addEventListener('keydown', (e) => {
     const dir = { ArrowUp: 1, ArrowRight: 1, ArrowDown: -1, ArrowLeft: -1 }[e.key];
