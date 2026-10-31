@@ -59,8 +59,11 @@ src/
                       wisselen kop/achtergrond/bord, pas na 2 getekende beeldjes faadt het in 0,8 s weg
     96c-crystals.js   kristallen: tekenen (renderCrystal), de kluis, de animaties bij oprapen, zeshoekjes op
                       de spelerskaartjes. Staat bewust vóór 97-solo.js (zie de kop van het bestand)
-    96d-dice.js       dobbelvak: ruimte-stenen (draaien om hun as), energiesteen met bliksems + "+2",
-                      teller Gegooid/Nog te zetten + stappenbalk, energiebolletjes naar de balk
+    96d-dice.js       dobbelvak: stenen "Pantser" (afgeschuind, ruitstippen), wachten = puls, gooien =
+                      teleport (lichtstraal + ring in `.sd-cell`); gekozen uit 10+10+10 varianten, artifact
+                      "Axiom-9 Dobbelstenen" (2026-10). Ook "Wie begint?" (zelfde 42px, zelfde puls/teleport).
+                      Energiesteen met bliksems + "+2", teller Gegooid/Nog te zetten + stappenbalk,
+                      energiebolletjes naar de balk
     97-solo.js        tabblad "Spelen": modus Zelf spelen, eigen speler besturen tussen bots, energiekaarten
     98-cards.js       tabblad Speelkaarten: vitrine + zoom voor opdrachtkaarten en kristallen
     98b-avatar.js     avatars in de multiplayer-kamer: 5 karakters, 5 brillen, 5 hoedjes (SVG) + editor
@@ -500,10 +503,11 @@ Check minimaal:
     gelijk aan de kiesvolgorde. In Multiplayer moet een gast op zijn eigen
     scherm kunnen gooien en kiezen. Elke speler heeft een groot vak met vaste plekken voor 2
     stenen + de som (vaag "?" zolang je niet gooide; "gooit"/"gelijk" is een tabje op de rand),
-    dus de stenen verspringen nooit. Wachten = stenen wiebelen om hun as; bij de klik rollen ze
-    vanuit die hoek door en rollen ze met dezelfde vaart uit tot ze rechtop op de worp liggen
+    dus de stenen verspringen nooit. Wachten = stenen pulseren; bij de klik rollen ze en zodra de
+    worp bekend is teleporteren ze (verdwijnen in een lichtstraal, komen terug met de uitkomst)
     (`openingDiceSet` in 96d-dice.js, per speler, omdat het paneel bij elke stap opnieuw wordt
-    opgebouwd). Ook de gewone stenen wiebelen om hun as (`sdWiggle`), niet meer op en neer.
+    opgebouwd). Zelfde puls (`DICE_PULSE_FRAMES`) en teleport (`diceTeleport`) als in het
+    dobbelvak, en even groot (42px, `--od`; gebruikerswens 2026-10).
     Na een dobbelronde schuiven de rijen langs elkaar naar de nieuwe volgorde (`openingShuffle`,
     1,3 s, pas als de stenen stilliggen); het potje wacht daarop (`openingBusyMs`). Bij het
     kiezen blijven dezelfde rijen staan, mét de worp; "kiest nu"/"start 3.x" zijn tabjes.
