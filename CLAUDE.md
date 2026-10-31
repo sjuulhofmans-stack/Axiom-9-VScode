@@ -62,6 +62,8 @@ src/
     96d-dice.js       dobbelvak: stenen "Pantser" (afgeschuind, ruitstippen), wachten = puls, gooien =
                       teleport (lichtstraal + ring in `.sd-cell`); gekozen uit 10+10+10 varianten, artifact
                       "Axiom-9 Dobbelstenen" (2026-10). Ook "Wie begint?" (zelfde 42px, zelfde puls/teleport).
+                      Puls = 1,9 s met starttijd 0, gelijk met de dobbelknop (axPulseBtn). Elke worp rolt
+                      eerst even (bot: tollen, eigen worp: `DICE_ROLL_MS`) en teleporteert dan.
                       Energiesteen met bliksems + "+2", teller Gegooid/Nog te zetten + stappenbalk,
                       energiebolletjes naar de balk
     97-solo.js        tabblad "Spelen": modus Zelf spelen, eigen speler besturen tussen bots, energiekaarten

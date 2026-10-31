@@ -76,9 +76,12 @@ let diceMotion = { mode: 'none', t0: 0, pausedAt: null };
 const diceSign = i => i % 2 ? -1 : 1;
 
 // Wachten = puls: alle stenen tegelijk iets groter en weer kleiner (in stukjes, lineair ertussen,
-// zodat dicePulseScale precies kan zeggen hoe groot een steen op een moment is)
-const DICE_PULSE_MS = 1600, DICE_PULSE_AMP = .08;
-const dicePulseScale = t => 1 + DICE_PULSE_AMP * (.5 - .5 * Math.cos(2 * Math.PI * t / DICE_PULSE_MS));
+// zodat dicePulseScale precies kan zeggen hoe groot een steen op een moment is). Zelfde ritme als
+// de dobbelknop (axPulseBtn, PULSE_DURATION_MS in 97-solo.js, gebruikerswens): 1,9 s, en net als
+// die knop vast op de tijdlijn (starttijd 0, zoals syncAllPulses doet), dus het grootst als de
+// gloed van de knop het felst is. De starttijd van de puls is daarom altijd 0.
+const DICE_PULSE_MS = 1900, DICE_PULSE_AMP = .08;
+const dicePulseScale = t => 1 + DICE_PULSE_AMP * (.5 + .5 * Math.cos(2 * Math.PI * t / DICE_PULSE_MS));
 const DICE_PULSE_FRAMES = Array.from({ length: 25 }, (_, i) => ({ transform: `scale(${dicePulseScale(i / 24 * DICE_PULSE_MS).toFixed(4)})` }));
 
 // stand van steen i in de huidige beweging: hoek (graden) en grootte
@@ -90,7 +93,7 @@ function diceMotionPose(i, now){
 }
 // pulseren of tollen starten op alle stenen in #walkDice (met de gedeelde starttijd)
 function diceStartMotion(mode){
-  diceMotion = { mode, t0: odNow(), pausedAt: null };
+  diceMotion = { mode, t0: mode === 'pulse' ? 0 : odNow(), pausedAt: null };
   if (crystalReduceMotion()) return;
   walkDiceEl.querySelectorAll('.sd-die, .sd-edie').forEach((el, i) => {
     const s = diceSign(i);
@@ -107,6 +110,7 @@ function diceStartMotion(mode){
 // Begint precies in de stand van daarvoor (a0 = hoek, k0 = grootte), dus naadloos vanuit de puls
 // of het tollen. Gebruikt in #walkDice én bij "Wie begint?". Geeft de Animation terug.
 const DICE_TP_FACE_AT = .4;
+const DICE_ROLL_MS = 700;   // eigen worp: zo lang eerst rollen, dan teleporteren
 function diceTeleport(el, s, a0, k0, dur, startTime){
   const a = ((a0 % 360) + 540) % 360 - 180;   // tollen kan op 1000° staan: niet terugdraaien
   const tf = (r, k) => `rotate(${r.toFixed(2)}deg) scale(${k})`;
@@ -216,16 +220,29 @@ function diceRenderRoll(d, e, total, key, opts = {}){
   const finals = [...d, e];
   let left = els.length;
   els.forEach((el, i) => {
-    const { a, k } = fromPoses[i] || { a: 0, k: 1 };
-    // eigen worp: rustig; na het tollen van een bot / Automatisch (korte spinMs) iets vlotter
+    const s = diceSign(i);
+    let { a, k } = fromPoses[i] || { a: 0, k: 1 };
+    // na het tollen van een bot / Automatisch (korte spinMs) iets vlotter. Een eigen worp komt
+    // uit de puls: dan eerst nog even rollen (zelfde optrekken en vaart als bij "Wie begint?"),
+    // zodat je eigen worp er net zo uitziet als die van een bot (gebruikerswens)
     const dur = from === 'tumble' ? Math.max(650, spinMs) + i * 60 : spinMs + i * Math.round(spinMs / 9);
-    diceTeleport(el, diceSign(i), a, k, dur, now);   // zelfde moment als waarop de stand hierboven berekend is
-    diceLater(() => { el.dataset.face = finals[i]; }, dur * DICE_TP_FACE_AT);
+    let roll = 0;
+    if (from !== 'tumble'){
+      roll = DICE_ROLL_MS;
+      const rot = (r, sc) => ({ transform: `rotate(${(s * r).toFixed(2)}deg) scale(${sc.toFixed(4)})` });
+      const end = OD_ACCEL_DEG + OD_SPIN_DPS * (roll - OD_ACCEL_MS) / 1000;
+      const spin = el.animate([{ ...rot(0, k), easing: OD_EASE_IN }, { ...rot(OD_ACCEL_DEG, 1), offset: OD_ACCEL_MS / roll }, rot(end, 1)], { duration: roll });
+      spin.startTime = now;
+      for (let t = 80; t < roll; t += 80) diceLater(() => { el.dataset.face = el.classList.contains('sd-edie') ? ENERGY_DIE_FACES[Math.floor(Math.random() * ENERGY_DIE_FACES.length)] : 1 + Math.floor(Math.random() * 6); }, t);
+      a = s * end; k = 1;
+    }
+    diceTeleport(el, s, a, k, dur, now + roll);   // zelfde moment als waarop de stand hierboven berekend is
+    diceLater(() => { el.dataset.face = finals[i]; }, roll + dur * DICE_TP_FACE_AT);
     diceLater(() => {
       el.classList.remove('is-spinning');
       if (--left === 0) landed();
-    }, dur);
-    diceLandAt = Math.max(diceLandAt, now + dur);
+    }, roll + dur);
+    diceLandAt = Math.max(diceLandAt, now + roll + dur);
   });
   function landed(){
     if (walkDiceEl.dataset.key !== key) return;   // intussen een andere worp getekend
@@ -506,7 +523,8 @@ function openingDiceSet(idx, mode, finals){
         odSetSumHidden(idx, false);
       }, dur);
     } else {
-      Object.assign(s, { mode: next, t0: now, a0: 0, k0: 1 });
+      // de puls loopt vast op de tijdlijn (starttijd 0), gelijk met de dobbelknop
+      Object.assign(s, { mode: next, t0: next === 'pulse' ? 0 : now, a0: 0, k0: 1 });
     }
     s.v++;
   }
