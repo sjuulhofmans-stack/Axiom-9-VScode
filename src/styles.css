@@ -891,9 +891,8 @@
   /* CONSOLE i.p.v. keuzelijsten (gekozen variant 3 uit 6, 2026-10, artifact "Axiom-9
      Lobbyvarianten", in de glazen knopstijl van de eerdere schuifrail; segmentSelect in
      80-controls.js): de <select>/<input type=range> blijft verborgen de bron. Elke keuze = losse
-     knoppen met een lampje (.seg-led), de gekozen knop is glas (zelfde blauw als button.primary).
-     Energie-inzet = lijst met lampjes (.is-vert). Aantal spelers en Tempo: zelfde knoppen met
-     tekst, zonder lampje. */
+     knoppen met alleen tekst (geen lampjes, gebruikerswens), de gekozen knop is glas (zelfde blauw
+     als button.primary). Energie-inzet = één lijst onder elkaar (.is-vert). */
   .seg-source{display:none !important;}
   .seg-group{display:grid; grid-template-columns:repeat(var(--n), minmax(0, 1fr)); gap:6px;}
   .seg-btn{
@@ -910,17 +909,9 @@
   .seg-btn:focus-visible{outline:2px solid var(--quest-glow); outline-offset:2px;}
   .seg-btn:disabled{cursor:not-allowed;}
   .seg-group.is-num .seg-btn{font-size:19px; letter-spacing:0;}
-  /* lampje: uit = donker kuiltje, aan = blauw gloeiend */
-  .seg-led, .walk-mode-toggle:not(.mp-host-toggle) .walk-mode-btn::before{
-    width:9px; height:9px; flex:none; border-radius:50%; background:#26303b;
-    box-shadow:inset 0 1px 2px rgba(0,0,0,.7); transition:background .2s, box-shadow .2s;
-  }
-  .seg-btn.is-on .seg-led, .walk-mode-toggle:not(.mp-host-toggle) .walk-mode-btn.active::before{
-    background:var(--quest-glow); box-shadow:0 0 4px var(--quest), 0 0 10px rgba(79,184,224,.6);
-  }
   /* uitgezet: het veld eromheen dimt al (.field.is-disabled); alleen buiten zo'n veld zelf dimmen */
   :not(.is-disabled) > .seg-group.is-disabled{opacity:.6;}
-  /* onder elkaar: één lijst, rijen van 36px, lampje | naam | prijs */
+  /* onder elkaar: één lijst, rijen van 36px, naam | prijs */
   .seg-group.is-vert{grid-template-columns:none; gap:0; padding:3px; border-radius:9px; background:var(--hull); border:1px solid var(--line-dim);}
   .seg-group.is-vert .seg-btn{height:36px; justify-content:flex-start; gap:11px; padding:0 12px; text-align:left; background:none; border-color:transparent;}
   .seg-group.is-vert .seg-btn.is-on{background:rgba(79,184,224,.18); border-color:rgba(79,184,224,.6);}
@@ -930,10 +921,9 @@
   .seg-bolt svg{width:11px; height:11px; fill:currentColor;}
   /* regeltje onder de rail: wat je gekozen hebt in één zin */
   .seg-cap{margin-top:7px; font-family:var(--font-mono); font-size:11.5px; line-height:1.45; color:var(--text-dim);}
-  /* modusknoppen Automatisch / Zelf spelen: twee consoleknoppen met lampje (zelfde 45px hoogte als
-     "Spel hosten"), gekozen = glas zoals .seg-btn.is-on. Multiplayer staat hier altijd verborgen. */
-  .walk-mode-toggle:not(.mp-host-toggle) .walk-mode-btn{display:flex; align-items:center; justify-content:center; gap:9px; border-radius:7px;}
-  .walk-mode-toggle:not(.mp-host-toggle) .walk-mode-btn::before{content:'';}
+  /* modusknoppen Automatisch / Zelf spelen: twee consoleknoppen met alleen tekst (zelfde 45px
+     hoogte als "Spel hosten"), gekozen = glas zoals .seg-btn.is-on. Multiplayer staat hier altijd verborgen. */
+  .walk-mode-toggle:not(.mp-host-toggle) .walk-mode-btn{border-radius:7px;}
   .walk-mode-toggle:not(.mp-host-toggle) .walk-mode-btn.active,
   .walk-mode-toggle:not(.mp-host-toggle) .walk-mode-btn.active:hover{
     color:#eafcff; background:rgba(79,184,224,.18); border-color:rgba(79,184,224,.6);
@@ -1349,8 +1339,8 @@
      plaats | stip | naam | stenen + som. De stenen en de som staan er altijd (vaag "?" als je nog
      niet gegooid hebt), en het label "gooit"/"gelijk"/"kiest nu" is een tabje op de rand — zo
      verspringen de stenen niet meer als de tekst verandert (gebruikersmelding). --od = maat van
-     een steen, schaalt met de vakjesgrootte van het bord. */
-  .walk-opening-panel{--od:clamp(36px, calc(var(--wcell, 20px) * 2.2), 52px);}
+     een steen: even groot als in het dobbelvak tijdens het potje (gebruikerswens 2026-10). */
+  .walk-opening-panel{--od:42px;}
   .walk-opening-list{list-style:none; margin:4px 0 0; padding:0; display:flex; flex-direction:column; gap:14px;}
   .walk-opening-row{
     position:relative; display:grid; grid-template-columns:26px 12px minmax(0,1fr) auto;
@@ -1363,12 +1353,10 @@
   .walk-opening-name{min-width:0; font-size:17px; font-weight:600; color:var(--text); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
   .walk-opening-dice{display:flex; align-items:center; gap:calc(var(--od) * .18);}
   .walk-opening-die{display:flex; will-change:transform;}
-  .sd-die.is-op{width:var(--od); height:var(--od); border-radius:calc(var(--od) * .22);}
+  .sd-die.is-op{width:var(--od); height:var(--od);}
   .sd-die.is-op .sd-q{font-size:calc(var(--od) * .46);}
-  /* het draaien doet openingDiceSet (96d-dice.js) op het omhulsel, dus geen eigen CSS-animatie —
-     behalve het kleine "plof" bij het stilvallen */
-  .sd-die.is-op:not(.is-landed){animation:none;}
-  .sd-die.is-op.is-idle{opacity:.28; box-shadow:inset 0 0 0 1px color-mix(in srgb, var(--sd) 35%, transparent);}
+  /* het bewegen doet openingDiceSet (96d-dice.js) op het omhulsel */
+  .sd-die.is-op.is-idle{opacity:.28;}
   .walk-opening-sum{
     width:calc(var(--od) * .8); text-align:right; font-family:var(--font-display); font-size:calc(var(--od) * .62);
     font-weight:700; line-height:1; color:var(--text); transition:opacity .25s;
@@ -3872,43 +3860,54 @@
   .sd-none{font:12.5px var(--font-mono); color:var(--text-dim);}
   .sd-ewrap{display:flex; align-items:center; gap:7px; margin-left:auto;}
 
-  /* loopsteen: donker glas, gloeiende stippen, HUD-hoekjes */
+  /* "Pantser" (gekozen ontwerp 9 uit 10, artifact "Axiom-9 Dobbelstenen", 2026-10): afgeschuinde
+     hoeken, een rand in de kleur van de steen (de achtergrond, ::before ligt er 2px binnen),
+     ruitvormige stippen en vier HUD-streepjes (::after). De clip-path knipt een schaduw onder de
+     steen weg, daarom heeft hij er geen. */
   .sd-die, .sd-edie{
     --sd: #8fe0ff;
-    position:relative; flex:none; width:42px; height:42px; border-radius:9px; color:var(--sd);
-    background:radial-gradient(120% 120% at 30% 20%, #2b3c50 0%, #141d28 55%, #0b1118 100%);
-    box-shadow:inset 0 0 0 1px color-mix(in srgb, var(--sd) 45%, transparent), inset 0 -6px 10px rgba(0,0,0,.5),
-               inset 0 4px 8px color-mix(in srgb, var(--sd) 10%, transparent), 0 4px 10px rgba(0,0,0,.45);
+    position:relative; flex:none; width:42px; height:42px; color:var(--sd);
+    clip-path:polygon(20% 0,80% 0,100% 20%,100% 80%,80% 100%,20% 100%,0 80%,0 20%);
+    background:color-mix(in srgb, var(--sd) 70%, #000);
   }
-  .sd-die::before, .sd-die::after, .sd-edie::before, .sd-edie::after{
-    content:""; position:absolute; width:7px; height:7px; border:1.5px solid color-mix(in srgb, var(--sd) 70%, transparent);
+  .sd-die::before, .sd-edie::before{
+    content:""; position:absolute; inset:2px; background:linear-gradient(160deg, #27333f, #10161d 60%, #19222c);
+    clip-path:polygon(20% 0,80% 0,100% 20%,100% 80%,80% 100%,20% 100%,0 80%,0 20%);
   }
-  .sd-die::before, .sd-edie::before{top:3px; left:3px; border-right:0; border-bottom:0; border-top-left-radius:4px;}
-  .sd-die::after, .sd-edie::after{bottom:3px; right:3px; border-left:0; border-top:0; border-bottom-right-radius:4px;}
+  .sd-die::after, .sd-edie::after{
+    content:""; position:absolute; inset:0; opacity:.55;
+    background:linear-gradient(currentColor, currentColor) 50% 6% / 16% 2px no-repeat,
+               linear-gradient(currentColor, currentColor) 50% 94% / 16% 2px no-repeat,
+               linear-gradient(currentColor, currentColor) 6% 50% / 2px 16% no-repeat,
+               linear-gradient(currentColor, currentColor) 94% 50% / 2px 16% no-repeat;
+  }
   .sd-die.boost{--sd: var(--amber);}
   .sd-face{position:absolute; inset:0; width:100%; height:100%; display:none;}
-  .sd-die circle{fill:currentColor;}
-  .sd-die circle.sd-halo{opacity:.22;}
+  .sd-die polygon{fill:currentColor;}
+  .sd-die polygon.sd-halo{opacity:.2;}
+  /* vakje om een steen met de lichtstraal en ring van de teleport (diceCell / diceTeleport in
+     96d-dice.js); onzichtbaar tot een worp, alleen transform/opacity bewegen */
+  .sd-cell{--sd: #8fe0ff; position:relative; display:flex; flex:none;}
+  .sd-cell.boost{--sd: var(--amber);}
+  .sd-cell.is-e{--sd: var(--start);}
+  .sd-beam, .sd-ring{position:absolute; left:50%; top:50%; pointer-events:none; opacity:0; will-change:transform, opacity;}
+  .sd-beam{width:10px; height:90px; margin:-45px 0 0 -5px; border-radius:3px; background:linear-gradient(transparent, var(--sd), transparent);}
+  .sd-ring{width:42px; height:42px; margin:-21px 0 0 -21px; box-sizing:border-box; border-radius:50%; border:2px solid var(--sd);}
   .sd-die[data-face="1"] .sd-f1, .sd-die[data-face="2"] .sd-f2, .sd-die[data-face="3"] .sd-f3,
   .sd-die[data-face="4"] .sd-f4, .sd-die[data-face="5"] .sd-f5, .sd-die[data-face="6"] .sd-f6,
   .sd-edie[data-face="0"] .sd-f0, .sd-edie[data-face="1"] .sd-f1, .sd-edie[data-face="2"] .sd-f2,
   .sd-edie[data-face="3"] .sd-f3{display:block;}
   .sd-q{position:absolute; inset:0; display:grid; place-items:center; font:700 19px/1 var(--font-display); color:color-mix(in srgb, var(--sd) 70%, transparent);}
-  /* will-change: eigen laag, zodat wiebelen/draaien niet het hele vak opnieuw laat tekenen.
-     Het wiebelen (wachten op de worp), tollen (bot / Automatisch) en uitrollen zelf zijn browser-
-     animaties uit 96d-dice.js (diceStartMotion / diceRenderRoll), geen CSS-animaties meer: zo weet
-     de code op elk moment de hoek en loopt elke beweging naadloos in de volgende over. */
+  /* will-change: eigen laag, zodat pulseren/draaien niet het hele vak opnieuw laat tekenen.
+     Het pulseren (wachten op de worp), tollen (bot / Automatisch) en teleporteren zelf zijn browser-
+     animaties uit 96d-dice.js (diceStartMotion / diceRenderRoll), geen CSS-animaties: zo weet
+     de code op elk moment de stand en loopt elke beweging naadloos in de volgende over. */
   .sd-die.is-pending, .sd-edie.is-pending,
   .sd-die.is-tumbling, .sd-edie.is-tumbling,
-  .sd-die.is-spinning, .sd-edie.is-spinning{will-change:transform;}
-  .sd-die.is-landed, .sd-edie.is-landed{animation:sdLand .5s cubic-bezier(.2,1.6,.4,1);}
-  /* alleen transform (een box-shadow in deze keyframes moest elk beeldje opnieuw getekend worden) */
-  @keyframes sdLand{0%{transform:scale(1.16);} 100%{transform:none;}}
+  .sd-die.is-spinning, .sd-edie.is-spinning{will-change:transform, opacity;}
 
-  /* energiesteen: groen glas met bliksems op stip-plekken */
-  .sd-edie{--sd: var(--start);
-    background:radial-gradient(120% 120% at 30% 20%, #1f4a35 0%, #10261b 55%, #08130e 100%);}
-  .sd-edie[data-face="0"]{background:radial-gradient(120% 120% at 30% 20%, #1a2a22 0%, #0e1712 60%, #08100c 100%);}
+  /* energiesteen: zelfde vorm met een groene rand, bliksems op stip-plekken */
+  .sd-edie{--sd: var(--start);}
   .sd-edie .sd-face svg{position:absolute; width:11px; height:17px; margin:-8.5px 0 0 -5.5px; fill:var(--start-glow);}
   .sd-edie .sd-empty{position:absolute; left:50%; top:50%; width:14px; height:2px; margin:-1px 0 0 -7px; border-radius:1px; background:color-mix(in srgb, var(--start) 40%, transparent);}
   /* de opbrengst groot links naast de energiesteen */

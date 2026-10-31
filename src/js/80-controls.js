@@ -450,9 +450,9 @@ document.querySelectorAll('.board-zoom').forEach(btn => {
 // Een MutationObserver houdt de knoppen gelijk als de code opties hernoemt (Energie-inzet: naam +
 // prijs uit ENERGY_ACTIONS, 96-walk.js) of de keuze uitzet (Beurten van de bots zonder bots).
 // CONSOLE (gekozen variant 3 uit 6, 2026-10, met de glazen knopstijl van de schuifrail; de
-// schuifrail zelf viel af): losse knoppen met een lampje, onder elkaar (.is-vert) = een lijst met
-// lampjes. Getallen en Tempo (range) = dezelfde knoppen met tekst, zonder lampje. Geen stand
-// naast het label en geen meter meer (gebruikerswens). Geen glijdend schuifje, geen animatie.
+// schuifrail zelf viel af): losse knoppen met alleen tekst, onder elkaar (.is-vert) = één lijst.
+// Geen lampjes, geen stand naast het label en geen meter (gebruikerswens). Geen glijdend
+// schuifje, geen animatie.
 const SEG_BOLT ='<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M13 2L4 14h7l-1 8 9-12h-7z"/></svg>';
 function segmentSelect(sel){
   if (!sel || sel.dataset.seg) return;
@@ -490,12 +490,6 @@ function segmentSelect(sel){
         b.className = 'seg-btn';
         b.setAttribute('role', 'radio');
         b.dataset.value = o.value;
-        // lampje alleen bij woorden; getallen (Aantal spelers) en Tempo zonder (gebruikerswens)
-        if (!isNum && !isRange){
-          const led = document.createElement('i');
-          led.className = 'seg-led';
-          b.append(led);
-        }
         const name = document.createElement('span');
         name.textContent = o.ds.short || o.text;
         b.append(name);

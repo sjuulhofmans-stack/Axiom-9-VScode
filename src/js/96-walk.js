@@ -716,9 +716,10 @@ function renderOpeningPanel(players, op, opts = {}){
   if (!walkOpeningPanelEl || !op) return;
   // Elke speler heeft vaste plekken voor twee stenen en de som, ook als er (nog) niets staat:
   // zo verspringen de stenen niet meer als de tekst ernaast verandert (gebruikersmelding). Het
-  // draaien (wiebelen → rollen → uitrollen) zit in openingDiceSet (96d-dice.js); de steen staat
-  // daarvoor in een eigen omhulsel met data-od="speler-steen".
-  const die = (i, k, face, cls = '') => `<span class="walk-opening-die" data-od="${i}-${k}">${diceDieHtml(face, 'is-op' + cls)}</span>`;
+  // bewegen (pulseren → rollen → teleporteren) zit in openingDiceSet (96d-dice.js); de steen staat
+  // daarvoor in een eigen omhulsel met data-od="speler-steen", en dat in een vakje met de
+  // lichtstraal en ring van de teleport (diceCell).
+  const die = (i, k, face, cls = '') => diceCell(`<span class="walk-opening-die" data-od="${i}-${k}">${diceDieHtml(face, 'is-op' + cls)}</span>`);
   const spin = [];   // [speler, toestand, worp] — pas toepassen als het paneel getekend is
   // data-pi: welke speler, zodat openingShuffle de rijen kan volgen als de volgorde verandert
   const row = (i, placeHtml, right, cls) =>
@@ -727,13 +728,13 @@ function renderOpeningPanel(players, op, opts = {}){
       `<span class="walk-opening-dot"></span>` +
       `<span class="walk-opening-name">${players[i].name}</span>${right}</li>`;
   // de stenen + som van één speler. Aan de beurt: rollen als er gegooid wordt, anders (wachten op
-  // de klik) "?"-stenen die zachtjes om hun as wiebelen; gegooid: de worp (blijft ook tijdens het
+  // de klik) "?"-stenen die zachtjes pulseren; gegooid: de worp (blijft ook tijdens het
   // kiezen staan, gebruikerswens); nog niet aan de beurt: vage "?"-stenen op hun plek
   const diceHtml = (i, up, shaking) => {
     const r = op.last[i];
     let dice, sum = '';
     if (up && shaking){ dice = die(i, 0, 1) + die(i, 1, 1); spin.push([i, 'spin']); }
-    else if (up){ dice = die(i, 0, '?') + die(i, 1, '?'); spin.push([i, 'wiggle']); }
+    else if (up){ dice = die(i, 0, '?') + die(i, 1, '?'); spin.push([i, 'pulse']); }
     else if (r){ dice = die(i, 0, r[0]) + die(i, 1, r[1]); sum = r[0] + r[1]; spin.push([i, 'result', r]); }
     else { dice = die(i, 0, '?', ' is-idle') + die(i, 1, '?', ' is-idle'); spin.push([i, 'rest']); }
     return `<span class="walk-opening-dice">${dice}<span class="walk-opening-sum">${sum}</span></span>`;

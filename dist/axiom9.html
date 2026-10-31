@@ -898,9 +898,8 @@
   /* CONSOLE i.p.v. keuzelijsten (gekozen variant 3 uit 6, 2026-10, artifact "Axiom-9
      Lobbyvarianten", in de glazen knopstijl van de eerdere schuifrail; segmentSelect in
      80-controls.js): de <select>/<input type=range> blijft verborgen de bron. Elke keuze = losse
-     knoppen met een lampje (.seg-led), de gekozen knop is glas (zelfde blauw als button.primary).
-     Energie-inzet = lijst met lampjes (.is-vert). Aantal spelers en Tempo: zelfde knoppen met
-     tekst, zonder lampje. */
+     knoppen met alleen tekst (geen lampjes, gebruikerswens), de gekozen knop is glas (zelfde blauw
+     als button.primary). Energie-inzet = één lijst onder elkaar (.is-vert). */
   .seg-source{display:none !important;}
   .seg-group{display:grid; grid-template-columns:repeat(var(--n), minmax(0, 1fr)); gap:6px;}
   .seg-btn{
@@ -917,17 +916,9 @@
   .seg-btn:focus-visible{outline:2px solid var(--quest-glow); outline-offset:2px;}
   .seg-btn:disabled{cursor:not-allowed;}
   .seg-group.is-num .seg-btn{font-size:19px; letter-spacing:0;}
-  /* lampje: uit = donker kuiltje, aan = blauw gloeiend */
-  .seg-led, .walk-mode-toggle:not(.mp-host-toggle) .walk-mode-btn::before{
-    width:9px; height:9px; flex:none; border-radius:50%; background:#26303b;
-    box-shadow:inset 0 1px 2px rgba(0,0,0,.7); transition:background .2s, box-shadow .2s;
-  }
-  .seg-btn.is-on .seg-led, .walk-mode-toggle:not(.mp-host-toggle) .walk-mode-btn.active::before{
-    background:var(--quest-glow); box-shadow:0 0 4px var(--quest), 0 0 10px rgba(79,184,224,.6);
-  }
   /* uitgezet: het veld eromheen dimt al (.field.is-disabled); alleen buiten zo'n veld zelf dimmen */
   :not(.is-disabled) > .seg-group.is-disabled{opacity:.6;}
-  /* onder elkaar: één lijst, rijen van 36px, lampje | naam | prijs */
+  /* onder elkaar: één lijst, rijen van 36px, naam | prijs */
   .seg-group.is-vert{grid-template-columns:none; gap:0; padding:3px; border-radius:9px; background:var(--hull); border:1px solid var(--line-dim);}
   .seg-group.is-vert .seg-btn{height:36px; justify-content:flex-start; gap:11px; padding:0 12px; text-align:left; background:none; border-color:transparent;}
   .seg-group.is-vert .seg-btn.is-on{background:rgba(79,184,224,.18); border-color:rgba(79,184,224,.6);}
@@ -937,10 +928,9 @@
   .seg-bolt svg{width:11px; height:11px; fill:currentColor;}
   /* regeltje onder de rail: wat je gekozen hebt in één zin */
   .seg-cap{margin-top:7px; font-family:var(--font-mono); font-size:11.5px; line-height:1.45; color:var(--text-dim);}
-  /* modusknoppen Automatisch / Zelf spelen: twee consoleknoppen met lampje (zelfde 45px hoogte als
-     "Spel hosten"), gekozen = glas zoals .seg-btn.is-on. Multiplayer staat hier altijd verborgen. */
-  .walk-mode-toggle:not(.mp-host-toggle) .walk-mode-btn{display:flex; align-items:center; justify-content:center; gap:9px; border-radius:7px;}
-  .walk-mode-toggle:not(.mp-host-toggle) .walk-mode-btn::before{content:'';}
+  /* modusknoppen Automatisch / Zelf spelen: twee consoleknoppen met alleen tekst (zelfde 45px
+     hoogte als "Spel hosten"), gekozen = glas zoals .seg-btn.is-on. Multiplayer staat hier altijd verborgen. */
+  .walk-mode-toggle:not(.mp-host-toggle) .walk-mode-btn{border-radius:7px;}
   .walk-mode-toggle:not(.mp-host-toggle) .walk-mode-btn.active,
   .walk-mode-toggle:not(.mp-host-toggle) .walk-mode-btn.active:hover{
     color:#eafcff; background:rgba(79,184,224,.18); border-color:rgba(79,184,224,.6);
@@ -1356,8 +1346,8 @@
      plaats | stip | naam | stenen + som. De stenen en de som staan er altijd (vaag "?" als je nog
      niet gegooid hebt), en het label "gooit"/"gelijk"/"kiest nu" is een tabje op de rand — zo
      verspringen de stenen niet meer als de tekst verandert (gebruikersmelding). --od = maat van
-     een steen, schaalt met de vakjesgrootte van het bord. */
-  .walk-opening-panel{--od:clamp(36px, calc(var(--wcell, 20px) * 2.2), 52px);}
+     een steen: even groot als in het dobbelvak tijdens het potje (gebruikerswens 2026-10). */
+  .walk-opening-panel{--od:42px;}
   .walk-opening-list{list-style:none; margin:4px 0 0; padding:0; display:flex; flex-direction:column; gap:14px;}
   .walk-opening-row{
     position:relative; display:grid; grid-template-columns:26px 12px minmax(0,1fr) auto;
@@ -1370,12 +1360,10 @@
   .walk-opening-name{min-width:0; font-size:17px; font-weight:600; color:var(--text); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
   .walk-opening-dice{display:flex; align-items:center; gap:calc(var(--od) * .18);}
   .walk-opening-die{display:flex; will-change:transform;}
-  .sd-die.is-op{width:var(--od); height:var(--od); border-radius:calc(var(--od) * .22);}
+  .sd-die.is-op{width:var(--od); height:var(--od);}
   .sd-die.is-op .sd-q{font-size:calc(var(--od) * .46);}
-  /* het draaien doet openingDiceSet (96d-dice.js) op het omhulsel, dus geen eigen CSS-animatie —
-     behalve het kleine "plof" bij het stilvallen */
-  .sd-die.is-op:not(.is-landed){animation:none;}
-  .sd-die.is-op.is-idle{opacity:.28; box-shadow:inset 0 0 0 1px color-mix(in srgb, var(--sd) 35%, transparent);}
+  /* het bewegen doet openingDiceSet (96d-dice.js) op het omhulsel */
+  .sd-die.is-op.is-idle{opacity:.28;}
   .walk-opening-sum{
     width:calc(var(--od) * .8); text-align:right; font-family:var(--font-display); font-size:calc(var(--od) * .62);
     font-weight:700; line-height:1; color:var(--text); transition:opacity .25s;
@@ -3879,43 +3867,54 @@
   .sd-none{font:12.5px var(--font-mono); color:var(--text-dim);}
   .sd-ewrap{display:flex; align-items:center; gap:7px; margin-left:auto;}
 
-  /* loopsteen: donker glas, gloeiende stippen, HUD-hoekjes */
+  /* "Pantser" (gekozen ontwerp 9 uit 10, artifact "Axiom-9 Dobbelstenen", 2026-10): afgeschuinde
+     hoeken, een rand in de kleur van de steen (de achtergrond, ::before ligt er 2px binnen),
+     ruitvormige stippen en vier HUD-streepjes (::after). De clip-path knipt een schaduw onder de
+     steen weg, daarom heeft hij er geen. */
   .sd-die, .sd-edie{
     --sd: #8fe0ff;
-    position:relative; flex:none; width:42px; height:42px; border-radius:9px; color:var(--sd);
-    background:radial-gradient(120% 120% at 30% 20%, #2b3c50 0%, #141d28 55%, #0b1118 100%);
-    box-shadow:inset 0 0 0 1px color-mix(in srgb, var(--sd) 45%, transparent), inset 0 -6px 10px rgba(0,0,0,.5),
-               inset 0 4px 8px color-mix(in srgb, var(--sd) 10%, transparent), 0 4px 10px rgba(0,0,0,.45);
+    position:relative; flex:none; width:42px; height:42px; color:var(--sd);
+    clip-path:polygon(20% 0,80% 0,100% 20%,100% 80%,80% 100%,20% 100%,0 80%,0 20%);
+    background:color-mix(in srgb, var(--sd) 70%, #000);
   }
-  .sd-die::before, .sd-die::after, .sd-edie::before, .sd-edie::after{
-    content:""; position:absolute; width:7px; height:7px; border:1.5px solid color-mix(in srgb, var(--sd) 70%, transparent);
+  .sd-die::before, .sd-edie::before{
+    content:""; position:absolute; inset:2px; background:linear-gradient(160deg, #27333f, #10161d 60%, #19222c);
+    clip-path:polygon(20% 0,80% 0,100% 20%,100% 80%,80% 100%,20% 100%,0 80%,0 20%);
   }
-  .sd-die::before, .sd-edie::before{top:3px; left:3px; border-right:0; border-bottom:0; border-top-left-radius:4px;}
-  .sd-die::after, .sd-edie::after{bottom:3px; right:3px; border-left:0; border-top:0; border-bottom-right-radius:4px;}
+  .sd-die::after, .sd-edie::after{
+    content:""; position:absolute; inset:0; opacity:.55;
+    background:linear-gradient(currentColor, currentColor) 50% 6% / 16% 2px no-repeat,
+               linear-gradient(currentColor, currentColor) 50% 94% / 16% 2px no-repeat,
+               linear-gradient(currentColor, currentColor) 6% 50% / 2px 16% no-repeat,
+               linear-gradient(currentColor, currentColor) 94% 50% / 2px 16% no-repeat;
+  }
   .sd-die.boost{--sd: var(--amber);}
   .sd-face{position:absolute; inset:0; width:100%; height:100%; display:none;}
-  .sd-die circle{fill:currentColor;}
-  .sd-die circle.sd-halo{opacity:.22;}
+  .sd-die polygon{fill:currentColor;}
+  .sd-die polygon.sd-halo{opacity:.2;}
+  /* vakje om een steen met de lichtstraal en ring van de teleport (diceCell / diceTeleport in
+     96d-dice.js); onzichtbaar tot een worp, alleen transform/opacity bewegen */
+  .sd-cell{--sd: #8fe0ff; position:relative; display:flex; flex:none;}
+  .sd-cell.boost{--sd: var(--amber);}
+  .sd-cell.is-e{--sd: var(--start);}
+  .sd-beam, .sd-ring{position:absolute; left:50%; top:50%; pointer-events:none; opacity:0; will-change:transform, opacity;}
+  .sd-beam{width:10px; height:90px; margin:-45px 0 0 -5px; border-radius:3px; background:linear-gradient(transparent, var(--sd), transparent);}
+  .sd-ring{width:42px; height:42px; margin:-21px 0 0 -21px; box-sizing:border-box; border-radius:50%; border:2px solid var(--sd);}
   .sd-die[data-face="1"] .sd-f1, .sd-die[data-face="2"] .sd-f2, .sd-die[data-face="3"] .sd-f3,
   .sd-die[data-face="4"] .sd-f4, .sd-die[data-face="5"] .sd-f5, .sd-die[data-face="6"] .sd-f6,
   .sd-edie[data-face="0"] .sd-f0, .sd-edie[data-face="1"] .sd-f1, .sd-edie[data-face="2"] .sd-f2,
   .sd-edie[data-face="3"] .sd-f3{display:block;}
   .sd-q{position:absolute; inset:0; display:grid; place-items:center; font:700 19px/1 var(--font-display); color:color-mix(in srgb, var(--sd) 70%, transparent);}
-  /* will-change: eigen laag, zodat wiebelen/draaien niet het hele vak opnieuw laat tekenen.
-     Het wiebelen (wachten op de worp), tollen (bot / Automatisch) en uitrollen zelf zijn browser-
-     animaties uit 96d-dice.js (diceStartMotion / diceRenderRoll), geen CSS-animaties meer: zo weet
-     de code op elk moment de hoek en loopt elke beweging naadloos in de volgende over. */
+  /* will-change: eigen laag, zodat pulseren/draaien niet het hele vak opnieuw laat tekenen.
+     Het pulseren (wachten op de worp), tollen (bot / Automatisch) en teleporteren zelf zijn browser-
+     animaties uit 96d-dice.js (diceStartMotion / diceRenderRoll), geen CSS-animaties: zo weet
+     de code op elk moment de stand en loopt elke beweging naadloos in de volgende over. */
   .sd-die.is-pending, .sd-edie.is-pending,
   .sd-die.is-tumbling, .sd-edie.is-tumbling,
-  .sd-die.is-spinning, .sd-edie.is-spinning{will-change:transform;}
-  .sd-die.is-landed, .sd-edie.is-landed{animation:sdLand .5s cubic-bezier(.2,1.6,.4,1);}
-  /* alleen transform (een box-shadow in deze keyframes moest elk beeldje opnieuw getekend worden) */
-  @keyframes sdLand{0%{transform:scale(1.16);} 100%{transform:none;}}
+  .sd-die.is-spinning, .sd-edie.is-spinning{will-change:transform, opacity;}
 
-  /* energiesteen: groen glas met bliksems op stip-plekken */
-  .sd-edie{--sd: var(--start);
-    background:radial-gradient(120% 120% at 30% 20%, #1f4a35 0%, #10261b 55%, #08130e 100%);}
-  .sd-edie[data-face="0"]{background:radial-gradient(120% 120% at 30% 20%, #1a2a22 0%, #0e1712 60%, #08100c 100%);}
+  /* energiesteen: zelfde vorm met een groene rand, bliksems op stip-plekken */
+  .sd-edie{--sd: var(--start);}
   .sd-edie .sd-face svg{position:absolute; width:11px; height:17px; margin:-8.5px 0 0 -5.5px; fill:var(--start-glow);}
   .sd-edie .sd-empty{position:absolute; left:50%; top:50%; width:14px; height:2px; margin:-1px 0 0 -7px; border-radius:1px; background:color-mix(in srgb, var(--start) 40%, transparent);}
   /* de opbrengst groot links naast de energiesteen */
@@ -7389,9 +7388,9 @@ document.querySelectorAll('.board-zoom').forEach(btn => {
 // Een MutationObserver houdt de knoppen gelijk als de code opties hernoemt (Energie-inzet: naam +
 // prijs uit ENERGY_ACTIONS, 96-walk.js) of de keuze uitzet (Beurten van de bots zonder bots).
 // CONSOLE (gekozen variant 3 uit 6, 2026-10, met de glazen knopstijl van de schuifrail; de
-// schuifrail zelf viel af): losse knoppen met een lampje, onder elkaar (.is-vert) = een lijst met
-// lampjes. Getallen en Tempo (range) = dezelfde knoppen met tekst, zonder lampje. Geen stand
-// naast het label en geen meter meer (gebruikerswens). Geen glijdend schuifje, geen animatie.
+// schuifrail zelf viel af): losse knoppen met alleen tekst, onder elkaar (.is-vert) = één lijst.
+// Geen lampjes, geen stand naast het label en geen meter (gebruikerswens). Geen glijdend
+// schuifje, geen animatie.
 const SEG_BOLT ='<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M13 2L4 14h7l-1 8 9-12h-7z"/></svg>';
 function segmentSelect(sel){
   if (!sel || sel.dataset.seg) return;
@@ -7429,12 +7428,6 @@ function segmentSelect(sel){
         b.className = 'seg-btn';
         b.setAttribute('role', 'radio');
         b.dataset.value = o.value;
-        // lampje alleen bij woorden; getallen (Aantal spelers) en Tempo zonder (gebruikerswens)
-        if (!isNum && !isRange){
-          const led = document.createElement('i');
-          led.className = 'seg-led';
-          b.append(led);
-        }
         const name = document.createElement('span');
         name.textContent = o.ds.short || o.text;
         b.append(name);
@@ -11297,9 +11290,10 @@ function renderOpeningPanel(players, op, opts = {}){
   if (!walkOpeningPanelEl || !op) return;
   // Elke speler heeft vaste plekken voor twee stenen en de som, ook als er (nog) niets staat:
   // zo verspringen de stenen niet meer als de tekst ernaast verandert (gebruikersmelding). Het
-  // draaien (wiebelen → rollen → uitrollen) zit in openingDiceSet (96d-dice.js); de steen staat
-  // daarvoor in een eigen omhulsel met data-od="speler-steen".
-  const die = (i, k, face, cls = '') => `<span class="walk-opening-die" data-od="${i}-${k}">${diceDieHtml(face, 'is-op' + cls)}</span>`;
+  // bewegen (pulseren → rollen → teleporteren) zit in openingDiceSet (96d-dice.js); de steen staat
+  // daarvoor in een eigen omhulsel met data-od="speler-steen", en dat in een vakje met de
+  // lichtstraal en ring van de teleport (diceCell).
+  const die = (i, k, face, cls = '') => diceCell(`<span class="walk-opening-die" data-od="${i}-${k}">${diceDieHtml(face, 'is-op' + cls)}</span>`);
   const spin = [];   // [speler, toestand, worp] — pas toepassen als het paneel getekend is
   // data-pi: welke speler, zodat openingShuffle de rijen kan volgen als de volgorde verandert
   const row = (i, placeHtml, right, cls) =>
@@ -11308,13 +11302,13 @@ function renderOpeningPanel(players, op, opts = {}){
       `<span class="walk-opening-dot"></span>` +
       `<span class="walk-opening-name">${players[i].name}</span>${right}</li>`;
   // de stenen + som van één speler. Aan de beurt: rollen als er gegooid wordt, anders (wachten op
-  // de klik) "?"-stenen die zachtjes om hun as wiebelen; gegooid: de worp (blijft ook tijdens het
+  // de klik) "?"-stenen die zachtjes pulseren; gegooid: de worp (blijft ook tijdens het
   // kiezen staan, gebruikerswens); nog niet aan de beurt: vage "?"-stenen op hun plek
   const diceHtml = (i, up, shaking) => {
     const r = op.last[i];
     let dice, sum = '';
     if (up && shaking){ dice = die(i, 0, 1) + die(i, 1, 1); spin.push([i, 'spin']); }
-    else if (up){ dice = die(i, 0, '?') + die(i, 1, '?'); spin.push([i, 'wiggle']); }
+    else if (up){ dice = die(i, 0, '?') + die(i, 1, '?'); spin.push([i, 'pulse']); }
     else if (r){ dice = die(i, 0, r[0]) + die(i, 1, r[1]); sum = r[0] + r[1]; spin.push([i, 'result', r]); }
     else { dice = die(i, 0, '?', ' is-idle') + die(i, 1, '?', ' is-idle'); spin.push([i, 'rest']); }
     return `<span class="walk-opening-dice">${dice}<span class="walk-opening-sum">${sum}</span></span>`;
@@ -13454,29 +13448,66 @@ function diceSetHudResult(on){
 // te vragen (getComputedStyle dwong midden in de klik een herberekening van de opmaak af, ±7 ms,
 // gemeten). Eerst draaiden wiebelen en tollen via CSS, en begon de worp altijd vanaf 0°: bij een
 // bot of in Automatisch sprong de steen dan bij de overgang tollen → uitrollen (gebruikersmelding:
-// "hakkelig"). De twee loopstenen en de energiesteen draaien om en om de andere kant op.
+// "hakkelig"). De twee loopstenen en de energiesteen tollen om en om de andere kant op.
 const DICE_TUMBLE_MS = 450;   // één rondje tijdens het tollen (= 800°/s)
 let diceMotion = { mode: 'none', t0: 0, pausedAt: null };
 const diceSign = i => i % 2 ? -1 : 1;
-// hoek (graden) van steen i in de huidige beweging
-function diceMotionAngle(i, now){
+
+// Wachten = puls: alle stenen tegelijk iets groter en weer kleiner (in stukjes, lineair ertussen,
+// zodat dicePulseScale precies kan zeggen hoe groot een steen op een moment is)
+const DICE_PULSE_MS = 1600, DICE_PULSE_AMP = .08;
+const dicePulseScale = t => 1 + DICE_PULSE_AMP * (.5 - .5 * Math.cos(2 * Math.PI * t / DICE_PULSE_MS));
+const DICE_PULSE_FRAMES = Array.from({ length: 25 }, (_, i) => ({ transform: `scale(${dicePulseScale(i / 24 * DICE_PULSE_MS).toFixed(4)})` }));
+
+// stand van steen i in de huidige beweging: hoek (graden) en grootte
+function diceMotionPose(i, now){
   const t = (diceMotion.pausedAt ?? now) - diceMotion.t0;
-  if (diceMotion.mode === 'wiggle') return diceSign(i) * OD_WIGGLE_DEG * Math.sin(2 * Math.PI * t / OD_WIGGLE_MS);
-  if (diceMotion.mode === 'tumble') return diceSign(i) * 360 * t / DICE_TUMBLE_MS;
-  return 0;
+  if (diceMotion.mode === 'pulse') return { a: 0, k: dicePulseScale(t) };
+  if (diceMotion.mode === 'tumble') return { a: diceSign(i) * 360 * t / DICE_TUMBLE_MS, k: .94 };
+  return { a: 0, k: 1 };
 }
-// wiebelen of tollen starten op alle stenen in #walkDice (met de gedeelde starttijd)
+// pulseren of tollen starten op alle stenen in #walkDice (met de gedeelde starttijd)
 function diceStartMotion(mode){
   diceMotion = { mode, t0: odNow(), pausedAt: null };
   if (crystalReduceMotion()) return;
   walkDiceEl.querySelectorAll('.sd-die, .sd-edie').forEach((el, i) => {
     const s = diceSign(i);
-    const anim = mode === 'wiggle'
-      ? el.animate(OD_WIGGLE_FRAMES.map(a => ({ transform: `rotate(${(s * a).toFixed(2)}deg)` })), { duration: OD_WIGGLE_MS, iterations: Infinity })
+    const anim = mode === 'pulse'
+      ? el.animate(DICE_PULSE_FRAMES, { duration: DICE_PULSE_MS, iterations: Infinity })
       : el.animate([{ transform: 'rotate(0deg) scale(.94)' }, { transform: `rotate(${s * 360}deg) scale(.94)` }], { duration: DICE_TUMBLE_MS, iterations: Infinity });
     anim.startTime = diceMotion.t0;
   });
   if (walkPanelEl && walkPanelEl.classList.contains('walk-is-paused')) dicePause(true);
+}
+
+// Gooien = teleport: de steen draait weg en krimpt in een lichtstraal (tot 32%), is even weg
+// (de uitkomst wordt dan neergezet, bij 40%), schiet groot terug (76%) en staat rechtop stil.
+// Begint precies in de stand van daarvoor (a0 = hoek, k0 = grootte), dus naadloos vanuit de puls
+// of het tollen. Gebruikt in #walkDice én bij "Wie begint?". Geeft de Animation terug.
+const DICE_TP_FACE_AT = .4;
+function diceTeleport(el, s, a0, k0, dur, startTime){
+  const a = ((a0 % 360) + 540) % 360 - 180;   // tollen kan op 1000° staan: niet terugdraaien
+  const tf = (r, k) => `rotate(${r.toFixed(2)}deg) scale(${k})`;
+  const anim = el.animate([
+    { transform: tf(a, k0.toFixed(4)), opacity: 1, easing: 'ease-in' },
+    { transform: tf(a + s * 120, .08), opacity: 0, offset: .32 },
+    { transform: tf(s * 120, .08), opacity: 0, offset: .5, easing: 'cubic-bezier(.2,.8,.3,1.2)' },
+    { transform: tf(-s * 8, 1.22), opacity: 1, offset: .76 },
+    { transform: tf(0, 1), opacity: 1 },
+  ], { duration: dur });
+  anim.startTime = startTime;
+  const cell = el.closest('.sd-cell');
+  if (cell){
+    const beam = cell.querySelector('.sd-beam'), ring = cell.querySelector('.sd-ring');
+    const fx = (node, frames, delay, d) => {
+      if (!node) return;
+      const an = node.animate(frames, { duration: d, delay, easing: 'cubic-bezier(.2,.7,.3,1)' });
+      an.startTime = startTime;
+    };
+    fx(beam, [{ transform: 'scaleY(.1)', opacity: 0 }, { transform: 'scaleY(1)', opacity: .9, offset: .4 }, { transform: 'scaleY(.2)', opacity: 0 }], dur * .18, dur * .55);
+    fx(ring, [{ transform: 'scale(.2)', opacity: 1 }, { transform: 'scale(1.7)', opacity: 0 }], dur * .5, 450);
+  }
+  return anim;
 }
 // Pauze in Automatisch: de stenen staan dan ook stil (setWalkPaused, 96-walk.js)
 function dicePause(on){
@@ -13487,25 +13518,29 @@ function dicePause(on){
   else return;
   walkDiceEl.querySelectorAll('.sd-die, .sd-edie').forEach(el => el.getAnimations().forEach(a => on ? a.pause() : a.play()));
 }
+// de rij stenen in #walkDice: loopstenen (de 3e = Stuwstoot, amber) en rechts de energiesteen
+function diceRowHtml(diceHtml, gainHtml, eDieHtml){
+  return `<div class="sd-row"><span class="sd-dice">${diceHtml.map((h, i) => diceCell(h, i === 2 ? 'boost' : '')).join('')}</span>`
+    + `<span class="sd-ewrap">${gainHtml}${diceCell(eDieHtml, 'is-e')}</span></div>`;
+}
 
-// Wacht op de worp: "?"-stenen die zachtjes om hun as wiebelen. `energy` is al bekend als de
+// Wacht op de worp: "?"-stenen die zachtjes pulseren. `energy` is al bekend als de
 // energiesteen eerder viel (na Zwaartekracht-laarzen e.d.), anders null. Staat precies dit al in
 // beeld, dan niets doen: in Multiplayer komt de stand 5x per seconde binnen, en opnieuw tekenen liet
-// het wiebelen elke keer opnieuw beginnen (hakkelig bij de gasten).
+// de beweging elke keer opnieuw beginnen (hakkelig bij de gasten).
 function diceRenderPending(n, energy){
   if (!walkDiceEl) return;
   const key = `pending|${n}|${energy}`;
   if (walkDiceEl.dataset.key === key && walkDiceEl.firstElementChild) return;
   diceProgress = null;
   diceLandAt = 0;
-  const dice = Array.from({ length: n }, (_, i) => diceDieHtml('?', i === 2 ? 'boost' : '')).join('');
+  const dice = Array.from({ length: n }, (_, i) => diceDieHtml('?', i === 2 ? 'boost' : ''));
   const known = energy !== null && energy !== undefined;
   walkDiceEl.dataset.key = key;
-  walkDiceEl.innerHTML = `<div class="sd-row"><span class="sd-dice">${dice}</span>`
-    + `<span class="sd-ewrap"><span class="sd-gain${known ? ' show' : ''}${energy === 0 ? ' zero' : ''}">${known ? '+' + energy : ''}</span>${diceEnergyDieHtml(known ? energy : null)}</span></div>`;
+  walkDiceEl.innerHTML = diceRowHtml(dice, `<span class="sd-gain${known ? ' show' : ''}${energy === 0 ? ' zero' : ''}">${known ? '+' + energy : ''}</span>`, diceEnergyDieHtml(known ? energy : null));
   diceSetHudResult(false);
-  // in Multiplayer tijdens andermans beurt niet wiebelen: daar hoef jij niets te doen
-  if (!(walkPlayAreaEl && walkPlayAreaEl.classList.contains('mp-not-my-turn'))) diceStartMotion('wiggle');
+  // in Multiplayer tijdens andermans beurt niet pulseren: daar hoef jij niets te doen
+  if (!(walkPlayAreaEl && walkPlayAreaEl.classList.contains('mp-not-my-turn'))) diceStartMotion('pulse');
   else diceMotion = { mode: 'none', t0: 0, pausedAt: null };
 }
 // Schudden (Automatisch / bot naspelen): willekeurige kanten, de stenen tollen rond. Wordt elke
@@ -13520,9 +13555,8 @@ function diceRenderTumble(n){
     return;
   }
   walkDiceEl.dataset.key = 'tumble';
-  const dice = Array.from({ length: n }, (_, i) => diceDieHtml(rnd(), 'is-tumbling' + (i === 2 ? ' boost' : ''))).join('');
-  walkDiceEl.innerHTML = `<div class="sd-row"><span class="sd-dice">${dice}</span>`
-    + `<span class="sd-ewrap"><span class="sd-gain"></span>${diceEnergyDieHtml(rndE(), 'is-tumbling')}</span></div>`;
+  const dice = Array.from({ length: n }, (_, i) => diceDieHtml(rnd(), 'is-tumbling' + (i === 2 ? ' boost' : '')));
+  walkDiceEl.innerHTML = diceRowHtml(dice, '<span class="sd-gain"></span>', diceEnergyDieHtml(rndE(), 'is-tumbling'));
   diceSetHudResult(false);
   diceStartMotion('tumble');
 }
@@ -13539,13 +13573,12 @@ function diceRenderRoll(d, e, total, key, opts = {}){
   if (!diceProgress || diceProgress.key !== key) diceProgress = { key, sum, steps, done: 0, left: steps };
   const spinMs = crystalReduceMotion() ? 0 : (opts.spinMs === undefined ? DICE_SPIN_MS : opts.spinMs);
   const spinning = fresh && spinMs > 0;
-  // waar stonden de stenen (wiebelen of tollen)? Daar gaat de worp verder
+  // waar stonden de stenen (pulseren of tollen)? Daar gaat de worp verder
   const now = odNow(), from = diceMotion.mode;
-  const fromAngles = Array.from({ length: d.length + 1 }, (_, i) => diceMotionAngle(i, now));
+  const fromPoses = Array.from({ length: d.length + 1 }, (_, i) => diceMotionPose(i, now));
   diceMotion = { mode: 'none', t0: 0, pausedAt: null };
-  const dice = d.map((v, i) => diceDieHtml(v, (spinning ? 'is-spinning' : '') + (i === 2 ? ' boost' : ''))).join('');
-  walkDiceEl.innerHTML = `<div class="sd-row"><span class="sd-dice">${dice}</span>`
-    + `<span class="sd-ewrap"><span class="sd-gain${spinning ? '' : ' show'}${e === 0 ? ' zero' : ''}">+${e}</span>${diceEnergyDieHtml(e, spinning ? 'is-spinning' : '')}</span></div>`
+  const dice = d.map((v, i) => diceDieHtml(v, (spinning ? 'is-spinning' : '') + (i === 2 ? ' boost' : '')));
+  walkDiceEl.innerHTML = diceRowHtml(dice, `<span class="sd-gain${spinning ? '' : ' show'}${e === 0 ? ' zero' : ''}">+${e}</span>`, diceEnergyDieHtml(e, spinning ? 'is-spinning' : ''))
     + `<div class="sd-result${spinning ? ' is-waiting' : ''}">`
     +   `<div class="sd-count"><div class="sd-cnt"><span class="sd-lbl">Gegooid</span><span class="sd-val sd-rolled">${spinning ? '…' : sum}${!spinning && steps < sum ? `<small class="sd-pen">−${sum - steps}</small>` : ''}</span></div>`
     +   `<div class="sd-cnt sd-left"><span class="sd-lbl">Nog te zetten</span><span class="sd-val sd-leftval">…</span></div></div>`
@@ -13555,39 +13588,19 @@ function diceRenderRoll(d, e, total, key, opts = {}){
   diceLandAt = 0;
   if (!spinning){ diceRenderProgress(); if (fresh && opts.flow) diceFlowEnergy(); return; }
 
-  // draaien om de eigen as en rechtop stoppen (hele rondjes); de kanten wisselen intussen, ook
-  // steeds trager, tot de echte uitkomst
+  // teleporteren: de steen verdwijnt in een lichtstraal; terwijl hij weg is komt de uitkomst
+  // erop, en zo komt hij terug. De stenen komen kort na elkaar terug.
   const els = [...walkDiceEl.querySelectorAll('.sd-die, .sd-edie')];
   const finals = [...d, e];
   let left = els.length;
   els.forEach((el, i) => {
-    const isE = el.classList.contains('sd-edie');
-    const s = diceSign(i), a0 = fromAngles[i] || 0;
-    let dur, anim;
-    if (from === 'tumble'){
-      // tollen (bot / Automatisch): met dezelfde vaart (800°/s) verder en kwadratisch afremmen tot
-      // het volgende hele rondje; kwadratisch afremmen begint met snelheid 2·afstand/duur
-      const v = 360 / DICE_TUMBLE_MS;   // graden per ms
-      const a1 = s * Math.ceil((s * a0 + v * spinMs / 2) / 360) * 360;
-      dur = Math.round(2 * Math.abs(a1 - a0) / v) + i * 40;
-      anim = el.animate([{ transform: `rotate(${a0.toFixed(2)}deg) scale(.94)` }, { transform: `rotate(${a1}deg) scale(1)` }],
-                        { duration: dur, easing: OD_EASE_OUT });
-    } else {
-      // eigen worp (vanuit het wiebelen): een flinke zwiep, steeds langzamer, rechtop stoppen
-      dur = spinMs + i * Math.round(spinMs / 9);
-      const turns = (isE ? 2 : 3) + (i % 2);
-      anim = el.animate([{ transform: `rotate(${a0.toFixed(2)}deg) scale(.96)` }, { transform: `rotate(${s * 360 * turns * .7}deg) scale(1.06)`, offset: .55 }, { transform: `rotate(${s * 360 * turns}deg) scale(1)` }],
-                        { duration: dur, easing: 'cubic-bezier(.2,.65,.3,1)' });
-    }
-    anim.startTime = now;   // zelfde moment als waarop de hoek hierboven berekend is
-    let t = 0, gap = 55;
-    while (t + gap < dur - 120){
-      t += gap; gap *= 1.22;
-      diceLater(() => { el.dataset.face = isE ? ENERGY_DIE_FACES[Math.floor(Math.random() * ENERGY_DIE_FACES.length)] : 1 + Math.floor(Math.random() * 6); }, t);
-    }
+    const { a, k } = fromPoses[i] || { a: 0, k: 1 };
+    // eigen worp: rustig; na het tollen van een bot / Automatisch (korte spinMs) iets vlotter
+    const dur = from === 'tumble' ? Math.max(650, spinMs) + i * 60 : spinMs + i * Math.round(spinMs / 9);
+    diceTeleport(el, diceSign(i), a, k, dur, now);   // zelfde moment als waarop de stand hierboven berekend is
+    diceLater(() => { el.dataset.face = finals[i]; }, dur * DICE_TP_FACE_AT);
     diceLater(() => {
-      el.dataset.face = finals[i];
-      el.classList.remove('is-spinning'); el.classList.add('is-landed');
+      el.classList.remove('is-spinning');
       if (--left === 0) landed();
     }, dur);
     diceLandAt = Math.max(diceLandAt, now + dur);
@@ -13618,7 +13631,7 @@ function diceRenderNoRoll(e){
   diceMotion = { mode: 'none', t0: 0, pausedAt: null };
   walkDiceEl.dataset.key = '';
   walkDiceEl.innerHTML = `<div class="sd-row"><span class="sd-none">geen worp nodig</span>`
-    + `<span class="sd-ewrap"><span class="sd-gain show${e === 0 ? ' zero' : ''}">+${e}</span>${diceEnergyDieHtml(e)}</span></div>`;
+    + `<span class="sd-ewrap"><span class="sd-gain show${e === 0 ? ' zero' : ''}">+${e}</span>${diceCell(diceEnergyDieHtml(e), 'is-e')}</span></div>`;
   diceSetHudResult(false);
 }
 
@@ -13767,39 +13780,42 @@ function diceMaybeHold(){
   if (p && typeof soloViewer === 'function' && soloViewer() === p && soloEnergyGain) diceHoldEnergy(p, soloEnergyGain);
   else diceFlow = { done: true };
 }
-// ---------- "Wie begint?": wiebelen, doorrollen en uitrollen ----------
-// renderOpeningPanel (96-walk.js) bouwt het paneel bij elke stap opnieuw op. De draaiing zit
+// ---------- "Wie begint?": pulseren, doorrollen en teleporteren ----------
+// renderOpeningPanel (96-walk.js) bouwt het paneel bij elke stap opnieuw op. De beweging zit
 // daarom niet in de stenen zelf maar hier, per speler: welke beweging, sinds wanneer, vanaf welke
 // hoek. Elke (nieuwe) steen van die speler (data-od="speler-steen") krijgt dezelfde animatie met
-// dezelfde starttijd, dus een draai loopt gewoon door over een nieuwe opbouw heen.
-// Het draaien zelf doet de browser (Web Animations, alleen transform): dat loopt los van
+// dezelfde starttijd, dus een beweging loopt gewoon door over een nieuwe opbouw heen.
+// Het bewegen zelf doet de browser (Web Animations, alleen transform/opacity): dat loopt los van
 // JavaScript en hapert dus niet als de pagina even druk is (gebruikersmelding: de eerste versie,
 // die elk beeldje zelf de hoek zette, was hakkelig). Bij elke overgang rekenen we de huidige
-// hoek en snelheid uit (odAngle), zodat de volgende beweging precies daar verder gaat:
-//   wiggle  wacht op de worp: zachtjes heen en weer om de eigen as (gebruikerswens: niet meer
-//           op en neer)
-//   spin    gooien: vanuit het wiebelen kwadratisch optrekken tot 2,5 rondje per seconde (sneller
+// stand uit (odAngle/odScale), zodat de volgende beweging precies daar verder gaat:
+//   pulse   wacht op de worp: zachtjes groter en kleiner, net als in het dobbelvak
+//   spin    gooien: vanuit de puls kwadratisch optrekken tot 2,5 rondje per seconde (sneller
 //           oogt flikkerig), de kanten flitsen voorbij
-//   land    de worp is bekend: met die vaart uitrollen (kwadratisch afremmen) en precies rechtop
-//           stilvallen op de uitkomst; de som verschijnt pas dan
-// De twee stenen draaien tegen elkaar in. De kanten wisselen via data-face.
-const OD_WIGGLE_DEG = 11, OD_WIGGLE_MS = 1400, OD_SPIN_DPS = 900, OD_ACCEL_MS = 350;
+//   land    de worp is bekend: teleporteren (diceTeleport) en terugkomen met de uitkomst; de som
+//           verschijnt pas dan
+// De twee stenen draaien tegen elkaar in. De kanten wisselen via data-face. Even groot als in het
+// dobbelvak (42px, --od in styles.css).
+const OD_SPIN_DPS = 900, OD_ACCEL_MS = 350;
 const OD_ACCEL_DEG = OD_SPIN_DPS * OD_ACCEL_MS / 2000;   // eindigt precies op de draaisnelheid
 const OD_EASE_IN = 'cubic-bezier(.333,0,.667,.333)';    // = u²
-const OD_EASE_OUT = 'cubic-bezier(.333,.667,.667,1)';   // = 1 − (1 − u)²
-// het wiebelen als sinus, in stukjes (lineair ertussen), zodat odAngle het precies kan volgen
-const OD_WIGGLE_FRAMES = Array.from({ length: 25 }, (_, i) => OD_WIGGLE_DEG * Math.sin(2 * Math.PI * i / 24));
-const odState = new Map();   // speler-idx -> { mode, t0, a0, a1, dur, finals, v, timers }
+const OD_TP_MS = 1050, OD_TP_STAGGER = 120;            // teleport; de tweede steen komt iets later terug
+const odState = new Map();   // speler-idx -> { mode, t0, a0, k0, dur, finals, v, timers }
 const odNow = () => document.timeline.currentTime;
 // hoek (graden) van steen 0 van deze speler op tijdstip `now`; steen 1 draait gespiegeld
 function odAngle(s, now){
   const t = Math.max(0, now - s.t0);
-  if (s.mode === 'wiggle') return OD_WIGGLE_DEG * Math.sin(2 * Math.PI * t / OD_WIGGLE_MS);
   if (s.mode === 'spin') return t < OD_ACCEL_MS
     ? s.a0 + OD_ACCEL_DEG * (t / OD_ACCEL_MS) ** 2
     : s.a0 + OD_ACCEL_DEG + OD_SPIN_DPS * (t - OD_ACCEL_MS) / 1000;
-  if (s.mode === 'land'){ const u = Math.min(1, t / s.dur); return s.a0 + (s.a1 - s.a0) * (1 - (1 - u) ** 2); }
   return 0;
+}
+// grootte op tijdstip `now` (de puls; tijdens het optrekken van groot naar gewoon)
+function odScale(s, now){
+  const t = Math.max(0, now - s.t0);
+  if (s.mode === 'pulse') return dicePulseScale(t);
+  if (s.mode === 'spin' && t < OD_ACCEL_MS) return s.k0 + (1 - s.k0) * t / OD_ACCEL_MS;
+  return 1;
 }
 // hoe lang (ms) rollen er nog stenen uit? (openingShuffle in 96-walk.js wacht daarop)
 function openingDiceBusyMs(){
@@ -13817,17 +13833,19 @@ function odApply(el, s){
   el.getAnimations().forEach(a => a.cancel());
   el.dataset.odv = s.v;
   if (s.mode === 'rest') return;
-  const sg = el.dataset.od.endsWith('-1') ? -1 : 1;
-  const rot = a => ({ transform: `rotate(${(sg * a).toFixed(2)}deg)` });
+  const second = el.dataset.od.endsWith('-1'), sg = second ? -1 : 1;
+  const rot = (a, k = 1) => ({ transform: `rotate(${(sg * a).toFixed(2)}deg) scale(${k.toFixed(4)})` });
+  if (s.mode === 'land'){
+    diceTeleport(el, sg, sg * s.a0, s.k0, OD_TP_MS + (second ? OD_TP_STAGGER : 0), s.t0);
+    return;
+  }
   const anims = [];
-  if (s.mode === 'wiggle'){
-    anims.push(el.animate(OD_WIGGLE_FRAMES.map(rot), { duration: OD_WIGGLE_MS, iterations: Infinity }));
+  if (s.mode === 'pulse'){
+    anims.push(el.animate(DICE_PULSE_FRAMES, { duration: DICE_PULSE_MS, iterations: Infinity }));
   } else if (s.mode === 'spin'){
     const b = s.a0 + OD_ACCEL_DEG;
-    anims.push(el.animate([rot(s.a0), rot(b)], { duration: OD_ACCEL_MS, easing: OD_EASE_IN }));
+    anims.push(el.animate([rot(s.a0, s.k0), rot(b)], { duration: OD_ACCEL_MS, easing: OD_EASE_IN }));
     anims.push(el.animate([rot(b), rot(b + 360)], { duration: 360 / OD_SPIN_DPS * 1000, delay: OD_ACCEL_MS, iterations: Infinity }));
-  } else if (s.mode === 'land'){
-    anims.push(el.animate([rot(s.a0), rot(s.a1)], { duration: s.dur, easing: OD_EASE_OUT }));
   }
   for (const a of anims) a.startTime = s.t0;
 }
@@ -13837,41 +13855,36 @@ function odSetSumHidden(idx, on){
     if (sum) sum.classList.toggle('is-hidden', on);
   });
 }
-// mode: 'wiggle' | 'spin' | 'result' (finals = de worp) | 'rest'. Aangeroepen na elke opbouw.
+// mode: 'pulse' | 'spin' | 'result' (finals = de worp) | 'rest'. Aangeroepen na elke opbouw.
 function openingDiceSet(idx, mode, finals){
   let s = odState.get(idx);
-  if (!s){ s = { mode: 'rest', t0: 0, a0: 0, v: 0, timers: [] }; odState.set(idx, s); }
+  if (!s){ s = { mode: 'rest', t0: 0, a0: 0, k0: 1, v: 0, timers: [] }; odState.set(idx, s); }
   if (crystalReduceMotion()) mode = 'rest';
   const now = odNow();
   let next = mode;
-  if (mode === 'result') next = s.mode === 'spin' || s.mode === 'wiggle' ? 'land' : s.mode === 'land' ? 'land' : 'rest';
+  if (mode === 'result') next = s.mode === 'spin' || s.mode === 'pulse' ? 'land' : s.mode === 'land' ? 'land' : 'rest';
   if (next !== s.mode){
-    const a = odAngle(s, now);
+    const a = odAngle(s, now), k = odScale(s, now);
     odClearTimers(s);
     if (next === 'spin'){
-      Object.assign(s, { mode: 'spin', t0: now, a0: a });
+      Object.assign(s, { mode: 'spin', t0: now, a0: a, k0: k });
       const tick = () => { odFlip(idx); odLater(s, tick, 80); };
       odLater(s, tick, 80);
     } else if (next === 'land'){
-      // snelheid op dit moment (graden/s): na het optrekken de draaisnelheid; kwam de worp nog
-      // tijdens het wiebelen binnen (Multiplayer kan de schudstand overslaan), dan toch vlot
-      const t = now - s.t0;
-      const v = s.mode === 'spin' && t < OD_ACCEL_MS ? Math.max(300, 2 * OD_ACCEL_DEG * t / OD_ACCEL_MS ** 2 * 1000) : OD_SPIN_DPS;
-      const a1 = Math.ceil((a + 270) / 360) * 360;
-      // kwadratisch afremmen begint met snelheid 2·afstand/duur: duur zo kiezen dat dat klopt
-      const dur = Math.min(1800, Math.max(500, 2 * (a1 - a) / v * 1000));
-      Object.assign(s, { mode: 'land', t0: now, a0: a, a1, dur, finals });
-      // kanten flitsen steeds trager voorbij, het laatste kwart staat de echte uitkomst er
-      let at = 0, gap = 80;
-      while (at + gap < dur * .75){ at += gap; gap *= 1.25; odLater(s, () => odFlip(idx), at); }
-      odLater(s, () => odEls(idx).forEach(el => { const d = el.firstElementChild; if (d && d.dataset.face) d.dataset.face = s.finals[+el.dataset.od.split('-')[1]]; }), dur * .75);
+      // teleporteren vanuit de huidige hoek en grootte (ook als de worp nog tijdens het pulseren
+      // binnenkwam: Multiplayer kan de schudstand overslaan). Tot de steen weg is een willekeurige
+      // kant, dan de uitkomst, zodat je de worp niet al ziet vóór hij verdwijnt.
+      const dur = OD_TP_MS + OD_TP_STAGGER;
+      Object.assign(s, { mode: 'land', t0: now, a0: a % 360, k0: k, dur, finals });
+      odFlip(idx);
+      odLater(s, () => odEls(idx).forEach(el => { const d = el.firstElementChild; if (d && d.dataset.face) d.dataset.face = s.finals[+el.dataset.od.split('-')[1]]; }), OD_TP_MS * DICE_TP_FACE_AT);
       odLater(s, () => {
         s.mode = 'rest'; s.v++;
-        odEls(idx).forEach(el => { el.dataset.odv = s.v; el.firstElementChild?.classList.add('is-landed'); });
+        odEls(idx).forEach(el => { el.dataset.odv = s.v; });
         odSetSumHidden(idx, false);
       }, dur);
     } else {
-      Object.assign(s, { mode: next, t0: now, a0: 0 });
+      Object.assign(s, { mode: next, t0: now, a0: 0, k0: 1 });
     }
     s.v++;
   }

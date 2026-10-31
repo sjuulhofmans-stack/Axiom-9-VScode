@@ -177,9 +177,8 @@ function diceRenderTumble(n){
     return;
   }
   walkDiceEl.dataset.key = 'tumble';
-  const dice = Array.from({ length: n }, (_, i) => diceDieHtml(rnd(), 'is-tumbling' + (i === 2 ? ' boost' : ''))).join('');
-  walkDiceEl.innerHTML = `<div class="sd-row"><span class="sd-dice">${dice}</span>`
-    + `<span class="sd-ewrap"><span class="sd-gain"></span>${diceEnergyDieHtml(rndE(), 'is-tumbling')}</span></div>`;
+  const dice = Array.from({ length: n }, (_, i) => diceDieHtml(rnd(), 'is-tumbling' + (i === 2 ? ' boost' : '')));
+  walkDiceEl.innerHTML = diceRowHtml(dice, '<span class="sd-gain"></span>', diceEnergyDieHtml(rndE(), 'is-tumbling'));
   diceSetHudResult(false);
   diceStartMotion('tumble');
 }
@@ -196,13 +195,12 @@ function diceRenderRoll(d, e, total, key, opts = {}){
   if (!diceProgress || diceProgress.key !== key) diceProgress = { key, sum, steps, done: 0, left: steps };
   const spinMs = crystalReduceMotion() ? 0 : (opts.spinMs === undefined ? DICE_SPIN_MS : opts.spinMs);
   const spinning = fresh && spinMs > 0;
-  // waar stonden de stenen (wiebelen of tollen)? Daar gaat de worp verder
+  // waar stonden de stenen (pulseren of tollen)? Daar gaat de worp verder
   const now = odNow(), from = diceMotion.mode;
-  const fromAngles = Array.from({ length: d.length + 1 }, (_, i) => diceMotionAngle(i, now));
+  const fromPoses = Array.from({ length: d.length + 1 }, (_, i) => diceMotionPose(i, now));
   diceMotion = { mode: 'none', t0: 0, pausedAt: null };
-  const dice = d.map((v, i) => diceDieHtml(v, (spinning ? 'is-spinning' : '') + (i === 2 ? ' boost' : ''))).join('');
-  walkDiceEl.innerHTML = `<div class="sd-row"><span class="sd-dice">${dice}</span>`
-    + `<span class="sd-ewrap"><span class="sd-gain${spinning ? '' : ' show'}${e === 0 ? ' zero' : ''}">+${e}</span>${diceEnergyDieHtml(e, spinning ? 'is-spinning' : '')}</span></div>`
+  const dice = d.map((v, i) => diceDieHtml(v, (spinning ? 'is-spinning' : '') + (i === 2 ? ' boost' : '')));
+  walkDiceEl.innerHTML = diceRowHtml(dice, `<span class="sd-gain${spinning ? '' : ' show'}${e === 0 ? ' zero' : ''}">+${e}</span>`, diceEnergyDieHtml(e, spinning ? 'is-spinning' : ''))
     + `<div class="sd-result${spinning ? ' is-waiting' : ''}">`
     +   `<div class="sd-count"><div class="sd-cnt"><span class="sd-lbl">Gegooid</span><span class="sd-val sd-rolled">${spinning ? '…' : sum}${!spinning && steps < sum ? `<small class="sd-pen">−${sum - steps}</small>` : ''}</span></div>`
     +   `<div class="sd-cnt sd-left"><span class="sd-lbl">Nog te zetten</span><span class="sd-val sd-leftval">…</span></div></div>`
@@ -212,39 +210,19 @@ function diceRenderRoll(d, e, total, key, opts = {}){
   diceLandAt = 0;
   if (!spinning){ diceRenderProgress(); if (fresh && opts.flow) diceFlowEnergy(); return; }
 
-  // draaien om de eigen as en rechtop stoppen (hele rondjes); de kanten wisselen intussen, ook
-  // steeds trager, tot de echte uitkomst
+  // teleporteren: de steen verdwijnt in een lichtstraal; terwijl hij weg is komt de uitkomst
+  // erop, en zo komt hij terug. De stenen komen kort na elkaar terug.
   const els = [...walkDiceEl.querySelectorAll('.sd-die, .sd-edie')];
   const finals = [...d, e];
   let left = els.length;
   els.forEach((el, i) => {
-    const isE = el.classList.contains('sd-edie');
-    const s = diceSign(i), a0 = fromAngles[i] || 0;
-    let dur, anim;
-    if (from === 'tumble'){
-      // tollen (bot / Automatisch): met dezelfde vaart (800°/s) verder en kwadratisch afremmen tot
-      // het volgende hele rondje; kwadratisch afremmen begint met snelheid 2·afstand/duur
-      const v = 360 / DICE_TUMBLE_MS;   // graden per ms
-      const a1 = s * Math.ceil((s * a0 + v * spinMs / 2) / 360) * 360;
-      dur = Math.round(2 * Math.abs(a1 - a0) / v) + i * 40;
-      anim = el.animate([{ transform: `rotate(${a0.toFixed(2)}deg) scale(.94)` }, { transform: `rotate(${a1}deg) scale(1)` }],
-                        { duration: dur, easing: OD_EASE_OUT });
-    } else {
-      // eigen worp (vanuit het wiebelen): een flinke zwiep, steeds langzamer, rechtop stoppen
-      dur = spinMs + i * Math.round(spinMs / 9);
-      const turns = (isE ? 2 : 3) + (i % 2);
-      anim = el.animate([{ transform: `rotate(${a0.toFixed(2)}deg) scale(.96)` }, { transform: `rotate(${s * 360 * turns * .7}deg) scale(1.06)`, offset: .55 }, { transform: `rotate(${s * 360 * turns}deg) scale(1)` }],
-                        { duration: dur, easing: 'cubic-bezier(.2,.65,.3,1)' });
-    }
-    anim.startTime = now;   // zelfde moment als waarop de hoek hierboven berekend is
-    let t = 0, gap = 55;
-    while (t + gap < dur - 120){
-      t += gap; gap *= 1.22;
-      diceLater(() => { el.dataset.face = isE ? ENERGY_DIE_FACES[Math.floor(Math.random() * ENERGY_DIE_FACES.length)] : 1 + Math.floor(Math.random() * 6); }, t);
-    }
+    const { a, k } = fromPoses[i] || { a: 0, k: 1 };
+    // eigen worp: rustig; na het tollen van een bot / Automatisch (korte spinMs) iets vlotter
+    const dur = from === 'tumble' ? Math.max(650, spinMs) + i * 60 : spinMs + i * Math.round(spinMs / 9);
+    diceTeleport(el, diceSign(i), a, k, dur, now);   // zelfde moment als waarop de stand hierboven berekend is
+    diceLater(() => { el.dataset.face = finals[i]; }, dur * DICE_TP_FACE_AT);
     diceLater(() => {
-      el.dataset.face = finals[i];
-      el.classList.remove('is-spinning'); el.classList.add('is-landed');
+      el.classList.remove('is-spinning');
       if (--left === 0) landed();
     }, dur);
     diceLandAt = Math.max(diceLandAt, now + dur);
@@ -275,7 +253,7 @@ function diceRenderNoRoll(e){
   diceMotion = { mode: 'none', t0: 0, pausedAt: null };
   walkDiceEl.dataset.key = '';
   walkDiceEl.innerHTML = `<div class="sd-row"><span class="sd-none">geen worp nodig</span>`
-    + `<span class="sd-ewrap"><span class="sd-gain show${e === 0 ? ' zero' : ''}">+${e}</span>${diceEnergyDieHtml(e)}</span></div>`;
+    + `<span class="sd-ewrap"><span class="sd-gain show${e === 0 ? ' zero' : ''}">+${e}</span>${diceCell(diceEnergyDieHtml(e), 'is-e')}</span></div>`;
   diceSetHudResult(false);
 }
 
@@ -424,39 +402,42 @@ function diceMaybeHold(){
   if (p && typeof soloViewer === 'function' && soloViewer() === p && soloEnergyGain) diceHoldEnergy(p, soloEnergyGain);
   else diceFlow = { done: true };
 }
-// ---------- "Wie begint?": wiebelen, doorrollen en uitrollen ----------
-// renderOpeningPanel (96-walk.js) bouwt het paneel bij elke stap opnieuw op. De draaiing zit
+// ---------- "Wie begint?": pulseren, doorrollen en teleporteren ----------
+// renderOpeningPanel (96-walk.js) bouwt het paneel bij elke stap opnieuw op. De beweging zit
 // daarom niet in de stenen zelf maar hier, per speler: welke beweging, sinds wanneer, vanaf welke
 // hoek. Elke (nieuwe) steen van die speler (data-od="speler-steen") krijgt dezelfde animatie met
-// dezelfde starttijd, dus een draai loopt gewoon door over een nieuwe opbouw heen.
-// Het draaien zelf doet de browser (Web Animations, alleen transform): dat loopt los van
+// dezelfde starttijd, dus een beweging loopt gewoon door over een nieuwe opbouw heen.
+// Het bewegen zelf doet de browser (Web Animations, alleen transform/opacity): dat loopt los van
 // JavaScript en hapert dus niet als de pagina even druk is (gebruikersmelding: de eerste versie,
 // die elk beeldje zelf de hoek zette, was hakkelig). Bij elke overgang rekenen we de huidige
-// hoek en snelheid uit (odAngle), zodat de volgende beweging precies daar verder gaat:
-//   wiggle  wacht op de worp: zachtjes heen en weer om de eigen as (gebruikerswens: niet meer
-//           op en neer)
-//   spin    gooien: vanuit het wiebelen kwadratisch optrekken tot 2,5 rondje per seconde (sneller
+// stand uit (odAngle/odScale), zodat de volgende beweging precies daar verder gaat:
+//   pulse   wacht op de worp: zachtjes groter en kleiner, net als in het dobbelvak
+//   spin    gooien: vanuit de puls kwadratisch optrekken tot 2,5 rondje per seconde (sneller
 //           oogt flikkerig), de kanten flitsen voorbij
-//   land    de worp is bekend: met die vaart uitrollen (kwadratisch afremmen) en precies rechtop
-//           stilvallen op de uitkomst; de som verschijnt pas dan
-// De twee stenen draaien tegen elkaar in. De kanten wisselen via data-face.
-const OD_WIGGLE_DEG = 11, OD_WIGGLE_MS = 1400, OD_SPIN_DPS = 900, OD_ACCEL_MS = 350;
+//   land    de worp is bekend: teleporteren (diceTeleport) en terugkomen met de uitkomst; de som
+//           verschijnt pas dan
+// De twee stenen draaien tegen elkaar in. De kanten wisselen via data-face. Even groot als in het
+// dobbelvak (42px, --od in styles.css).
+const OD_SPIN_DPS = 900, OD_ACCEL_MS = 350;
 const OD_ACCEL_DEG = OD_SPIN_DPS * OD_ACCEL_MS / 2000;   // eindigt precies op de draaisnelheid
 const OD_EASE_IN = 'cubic-bezier(.333,0,.667,.333)';    // = u²
-const OD_EASE_OUT = 'cubic-bezier(.333,.667,.667,1)';   // = 1 − (1 − u)²
-// het wiebelen als sinus, in stukjes (lineair ertussen), zodat odAngle het precies kan volgen
-const OD_WIGGLE_FRAMES = Array.from({ length: 25 }, (_, i) => OD_WIGGLE_DEG * Math.sin(2 * Math.PI * i / 24));
-const odState = new Map();   // speler-idx -> { mode, t0, a0, a1, dur, finals, v, timers }
+const OD_TP_MS = 1050, OD_TP_STAGGER = 120;            // teleport; de tweede steen komt iets later terug
+const odState = new Map();   // speler-idx -> { mode, t0, a0, k0, dur, finals, v, timers }
 const odNow = () => document.timeline.currentTime;
 // hoek (graden) van steen 0 van deze speler op tijdstip `now`; steen 1 draait gespiegeld
 function odAngle(s, now){
   const t = Math.max(0, now - s.t0);
-  if (s.mode === 'wiggle') return OD_WIGGLE_DEG * Math.sin(2 * Math.PI * t / OD_WIGGLE_MS);
   if (s.mode === 'spin') return t < OD_ACCEL_MS
     ? s.a0 + OD_ACCEL_DEG * (t / OD_ACCEL_MS) ** 2
     : s.a0 + OD_ACCEL_DEG + OD_SPIN_DPS * (t - OD_ACCEL_MS) / 1000;
-  if (s.mode === 'land'){ const u = Math.min(1, t / s.dur); return s.a0 + (s.a1 - s.a0) * (1 - (1 - u) ** 2); }
   return 0;
+}
+// grootte op tijdstip `now` (de puls; tijdens het optrekken van groot naar gewoon)
+function odScale(s, now){
+  const t = Math.max(0, now - s.t0);
+  if (s.mode === 'pulse') return dicePulseScale(t);
+  if (s.mode === 'spin' && t < OD_ACCEL_MS) return s.k0 + (1 - s.k0) * t / OD_ACCEL_MS;
+  return 1;
 }
 // hoe lang (ms) rollen er nog stenen uit? (openingShuffle in 96-walk.js wacht daarop)
 function openingDiceBusyMs(){
@@ -474,17 +455,19 @@ function odApply(el, s){
   el.getAnimations().forEach(a => a.cancel());
   el.dataset.odv = s.v;
   if (s.mode === 'rest') return;
-  const sg = el.dataset.od.endsWith('-1') ? -1 : 1;
-  const rot = a => ({ transform: `rotate(${(sg * a).toFixed(2)}deg)` });
+  const second = el.dataset.od.endsWith('-1'), sg = second ? -1 : 1;
+  const rot = (a, k = 1) => ({ transform: `rotate(${(sg * a).toFixed(2)}deg) scale(${k.toFixed(4)})` });
+  if (s.mode === 'land'){
+    diceTeleport(el, sg, sg * s.a0, s.k0, OD_TP_MS + (second ? OD_TP_STAGGER : 0), s.t0);
+    return;
+  }
   const anims = [];
-  if (s.mode === 'wiggle'){
-    anims.push(el.animate(OD_WIGGLE_FRAMES.map(rot), { duration: OD_WIGGLE_MS, iterations: Infinity }));
+  if (s.mode === 'pulse'){
+    anims.push(el.animate(DICE_PULSE_FRAMES, { duration: DICE_PULSE_MS, iterations: Infinity }));
   } else if (s.mode === 'spin'){
     const b = s.a0 + OD_ACCEL_DEG;
-    anims.push(el.animate([rot(s.a0), rot(b)], { duration: OD_ACCEL_MS, easing: OD_EASE_IN }));
+    anims.push(el.animate([rot(s.a0, s.k0), rot(b)], { duration: OD_ACCEL_MS, easing: OD_EASE_IN }));
     anims.push(el.animate([rot(b), rot(b + 360)], { duration: 360 / OD_SPIN_DPS * 1000, delay: OD_ACCEL_MS, iterations: Infinity }));
-  } else if (s.mode === 'land'){
-    anims.push(el.animate([rot(s.a0), rot(s.a1)], { duration: s.dur, easing: OD_EASE_OUT }));
   }
   for (const a of anims) a.startTime = s.t0;
 }
@@ -494,41 +477,36 @@ function odSetSumHidden(idx, on){
     if (sum) sum.classList.toggle('is-hidden', on);
   });
 }
-// mode: 'wiggle' | 'spin' | 'result' (finals = de worp) | 'rest'. Aangeroepen na elke opbouw.
+// mode: 'pulse' | 'spin' | 'result' (finals = de worp) | 'rest'. Aangeroepen na elke opbouw.
 function openingDiceSet(idx, mode, finals){
   let s = odState.get(idx);
-  if (!s){ s = { mode: 'rest', t0: 0, a0: 0, v: 0, timers: [] }; odState.set(idx, s); }
+  if (!s){ s = { mode: 'rest', t0: 0, a0: 0, k0: 1, v: 0, timers: [] }; odState.set(idx, s); }
   if (crystalReduceMotion()) mode = 'rest';
   const now = odNow();
   let next = mode;
-  if (mode === 'result') next = s.mode === 'spin' || s.mode === 'wiggle' ? 'land' : s.mode === 'land' ? 'land' : 'rest';
+  if (mode === 'result') next = s.mode === 'spin' || s.mode === 'pulse' ? 'land' : s.mode === 'land' ? 'land' : 'rest';
   if (next !== s.mode){
-    const a = odAngle(s, now);
+    const a = odAngle(s, now), k = odScale(s, now);
     odClearTimers(s);
     if (next === 'spin'){
-      Object.assign(s, { mode: 'spin', t0: now, a0: a });
+      Object.assign(s, { mode: 'spin', t0: now, a0: a, k0: k });
       const tick = () => { odFlip(idx); odLater(s, tick, 80); };
       odLater(s, tick, 80);
     } else if (next === 'land'){
-      // snelheid op dit moment (graden/s): na het optrekken de draaisnelheid; kwam de worp nog
-      // tijdens het wiebelen binnen (Multiplayer kan de schudstand overslaan), dan toch vlot
-      const t = now - s.t0;
-      const v = s.mode === 'spin' && t < OD_ACCEL_MS ? Math.max(300, 2 * OD_ACCEL_DEG * t / OD_ACCEL_MS ** 2 * 1000) : OD_SPIN_DPS;
-      const a1 = Math.ceil((a + 270) / 360) * 360;
-      // kwadratisch afremmen begint met snelheid 2·afstand/duur: duur zo kiezen dat dat klopt
-      const dur = Math.min(1800, Math.max(500, 2 * (a1 - a) / v * 1000));
-      Object.assign(s, { mode: 'land', t0: now, a0: a, a1, dur, finals });
-      // kanten flitsen steeds trager voorbij, het laatste kwart staat de echte uitkomst er
-      let at = 0, gap = 80;
-      while (at + gap < dur * .75){ at += gap; gap *= 1.25; odLater(s, () => odFlip(idx), at); }
-      odLater(s, () => odEls(idx).forEach(el => { const d = el.firstElementChild; if (d && d.dataset.face) d.dataset.face = s.finals[+el.dataset.od.split('-')[1]]; }), dur * .75);
+      // teleporteren vanuit de huidige hoek en grootte (ook als de worp nog tijdens het pulseren
+      // binnenkwam: Multiplayer kan de schudstand overslaan). Tot de steen weg is een willekeurige
+      // kant, dan de uitkomst, zodat je de worp niet al ziet vóór hij verdwijnt.
+      const dur = OD_TP_MS + OD_TP_STAGGER;
+      Object.assign(s, { mode: 'land', t0: now, a0: a % 360, k0: k, dur, finals });
+      odFlip(idx);
+      odLater(s, () => odEls(idx).forEach(el => { const d = el.firstElementChild; if (d && d.dataset.face) d.dataset.face = s.finals[+el.dataset.od.split('-')[1]]; }), OD_TP_MS * DICE_TP_FACE_AT);
       odLater(s, () => {
         s.mode = 'rest'; s.v++;
-        odEls(idx).forEach(el => { el.dataset.odv = s.v; el.firstElementChild?.classList.add('is-landed'); });
+        odEls(idx).forEach(el => { el.dataset.odv = s.v; });
         odSetSumHidden(idx, false);
       }, dur);
     } else {
-      Object.assign(s, { mode: next, t0: now, a0: 0 });
+      Object.assign(s, { mode: next, t0: now, a0: 0, k0: 1 });
     }
     s.v++;
   }
