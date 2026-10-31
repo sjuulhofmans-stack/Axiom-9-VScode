@@ -52,7 +52,13 @@ src/
     70-generator.js   backtracking-solver die een geldige indeling zoekt
     80-controls.js    knoppen: seed, dobbelsteen, vorige indeling, draaien, legenda; bij het openen
                       meteen een willekeurige kaart (met "Aan het genereren"-vakje i.p.v. het bord)
-    90-editor.js      tegel-editor (vakjes aan/uit klikken)
+    90-editor.js      tegel-editor (vakjes aan/uit klikken). Opzet = "Werkbank" (gekozen variant 1 uit 6,
+                      artifact "Axiom-9 Tegeleditor", 2026-10): grote naam, tegel met 4 lipjes die oplichten
+                      als die doorgang open is, voorproefje bij muis-erop, rechts gereedschap + controle,
+                      onderaan Herstel | melding | Opslaan. ALLES VASTE MAAT (gebruikerswens): het
+                      nummer-veld blijft staan (.is-off = onzichtbaar), melding heeft vaste hoogte (#editorMsg,
+                      ook de fout bij opslaan staat daar). Gemeten: niets verschuift bij gereedschap
+                      wisselen, klikken, foutmelding of Herstel
     95-simulate.js    batch-spelsimulatie (2xD6, geen U-turn, bezette vakjes blokkeren)
     96-walk.js        tabblad "Spelen": modus Automatisch, automatische simulatie van 1-4 spelers
     96b-intro.js      startanimatie na "Start spel", variant "Titan" (2026-10): traag aftellen met zware dreun,

@@ -8,6 +8,10 @@ const editorClose = document.getElementById('editorClose');
 const editorChecklist = document.getElementById('editorChecklist');
 const toolQuest = document.getElementById('toolQuest');
 const toolCard = document.getElementById('toolCard');
+const editorMsg = document.getElementById('editorMsg');
+const editorRevert = document.getElementById('editorRevert');
+const toolWalkSwatch = document.getElementById('toolWalkSwatch');
+const editorNubs = [...document.querySelectorAll('#editorOverlay .ed-nub')];
 let editorTile = null;      // tegel-id dat open staat
 let editorTool = 'walk';
 let editorTouchedTiles = null; // Map<tileId, Map-snapshot> — alle tegels die deze sessie zijn aangeraakt, om te kunnen terugdraaien
@@ -160,8 +164,10 @@ function labelsInUse(exceptTile){
 }
 function refreshLabelOptions(){
   const wantLabel = editorTool === 'quest' || editorTool === 'card';
-  labelField.hidden = !wantLabel;
-  if (labelField.hidden) return;
+  // niet verbergen maar onzichtbaar maken: het veld houdt zijn plek, zodat de kolom niet verspringt
+  labelField.classList.toggle('is-off', !wantLabel);
+  labelSelect.disabled = !wantLabel;
+  if (!wantLabel) return;
   const used = labelsInUse(editorTile);
   const opts = editorTool === 'quest'
     ? Array.from({length:9}, (_,i) => '2.'+(i+1))
@@ -174,8 +180,10 @@ function refreshLabelOptions(){
 }
 
 function updateCloseButtonLabel(){
-  editorClose.textContent = editorDirty ? 'Opslaan en sluiten' : 'Sluiten ✕';
+  editorClose.textContent = editorDirty ? 'Opslaan' : 'Sluiten';
+  editorRevert.disabled = !editorDirty;
 }
+function setEditorMsg(text){ editorMsg.textContent = text || ''; }
 
 // tegel Hibernatie (#8) bevat de 4 vaste startposities en mag niet bewerkt worden
 function openTileEditor(tid){
@@ -184,11 +192,12 @@ function openTileEditor(tid){
   editorTouchedTiles = new Map();
   rememberTouchedTile(tid);
   editorDirty = false;
-  const name = ROOM_NAMES[tid] ? ROOM_NAMES[tid] : 'Gang';
-  editorTitle.textContent = `Tegel #${tid} — ${name}`;
+  editorTitle.textContent = ROOM_NAMES[tid] || ('Gang ' + tid);
+  setEditorMsg('');
   // gangen mogen geen opdrachtvakjes hebben en kamers geen actiekaartvakjes: dat gereedschap
   // is dan niet beschikbaar
   const isRoom = !!ROOM_NAMES[tid];
+  toolWalkSwatch.style.background = isRoom ? 'var(--walk-room)' : 'var(--walk)';
   toolQuest.hidden = !isRoom;
   toolCard.hidden = isRoom;
   if ((!isRoom && editorTool === 'quest') || (isRoom && editorTool === 'card')){
@@ -208,8 +217,8 @@ function attemptCloseTileEditor(){
   const issues = tileValidationIssues(editorTile);
   if (issues.length){
     drawEditorGrid();
-    const lines = issues.map(i => '• ' + i.message);
-    swapHint.innerHTML = `<span style="color:var(--danger)">Tegel #${editorTile} kan nog niet gesloten worden (hover over een rood vakje voor uitleg), of gebruik "Wijzigingen terugdraaien":<br>${lines.join('<br>')}</span>`;
+    // in de editor zelf (vak met vaste hoogte), niet meer onder de knoppen achter de pop-up
+    setEditorMsg('Nog niet opslaan: ' + issues[0].message + (issues.length > 1 ? ` (en nog ${issues.length - 1})` : ''));
     return;
   }
   editorOverlay.hidden = true;
@@ -224,6 +233,15 @@ function drawEditorGrid(){
     errCells.set(k, errCells.has(k) ? errCells.get(k) + ' / ' + issue.message : issue.message);
   }
   editorGrid.innerHTML = '';
+  editorGrid.dataset.tool = editorTool;   // voorproefje bij muis-erop (styles.css)
+  const isRoom = !!ROOM_NAMES[editorTile];
+  // lipjes aan de rand: oplichten = doorgang open (beide deurvakjes gevuld)
+  for (const nub of editorNubs){
+    const open = EDGE_CELLS[nub.dataset.side].every(([dr,dc]) => m.has(dr+'_'+dc));
+    nub.classList.toggle('open', open);
+    nub.textContent = open ? 'open' : '';
+    nub.title = `Doorgang ${EDGE_DIR_NAMES[nub.dataset.side]}: ${open ? 'open' : 'dicht'}`;
+  }
   for (let dr=0; dr<TILE_H; dr++){
     for (let dc=0; dc<TILE_W; dc++){
       const key = dr+'_'+dc;
@@ -231,7 +249,7 @@ function drawEditorGrid(){
       const cell = document.createElement('div');
       let cls = 'ed-cell';
       const type = cellType(val);
-      if (type) cls += ' ' + type;
+      if (type) cls += ' ' + type + (type === 'walk' && isRoom ? ' room-tile' : '');
       if (DOOR_KEYS.has(key)) cls += ' door';
       if (!patternSet.has(key)) cls += ' outside-pattern';
       if (errCells.has(key)) cls += ' err';
@@ -255,7 +273,7 @@ function drawEditorGrid(){
     }
   }
   editorChecklist.innerHTML = tileChecklistItems(editorTile).map(it =>
-    `<li class="${it.ok ? 'ok' : 'bad'}"><span class="check">${it.ok ? '✓' : ''}</span>${it.label}</li>`
+    `<li class="${it.ok ? 'ok' : 'bad'}"><span class="check">${it.ok ? '✓' : '!'}</span>${it.label}</li>`
   ).join('');
 }
 
@@ -263,6 +281,7 @@ function paintCell(key){
   // vakjes buiten de sjabloonvorm ("2") mogen nooit gevuld worden
   if (!patternSet.has(key)) return;
   const m = tileLookup[editorTile];
+  setEditorMsg('');
   if (editorTool === 'erase'){
     m.delete(key);
     // een deurvakje wissen wist ook het andere deurvakje van diezelfde zijde
@@ -284,7 +303,8 @@ function paintCell(key){
     }
   } else {
     // opdracht-/actiekaartvakjes alleen op gewone vakjes, nooit op een deurvakje of het vakje erachter
-    if (DOOR_KEYS.has(key) || DOOR_INWARD_VALUES.has(key)) return;
+    const what = editorTool === 'quest' ? 'Een opdrachtvakje' : 'Een kristalvakje';
+    if (DOOR_KEYS.has(key) || DOOR_INWARD_VALUES.has(key)){ setEditorMsg(what + ' mag niet bij een doorgang liggen.'); return; }
     // het label wordt over een AL LOOPBAAR vakje gelegd (of over een vakje met hetzelfde
     // labeltype, om het label te wisselen) — nooit op een lege/onbenutte sjabloonplek of een
     // vakje van het ANDERE labeltype. Kon dat eerder wel: dan werd de tegelvorm ongemerkt
@@ -292,7 +312,7 @@ function paintCell(key){
     // altijd terug op "loopbaar" (1) in plaats van weer leeg — ook als hij dat origineel nooit was.
     const prefix = editorTool === 'quest' ? '2.' : '4.';
     const cur = m.get(key);
-    if (cur !== 1 && !(typeof cur === 'string' && cur.startsWith(prefix))) return;
+    if (cur !== 1 && !(typeof cur === 'string' && cur.startsWith(prefix))){ setEditorMsg(what + ' leg je op een loopvakje.'); return; }
     const label = labelSelect.value;
     if (!label) return;
     // stond er op de doelcel al een ANDER label, dan mag dat niet zomaar verdwijnen —
@@ -330,6 +350,7 @@ function applyTileEdits(){
 }
 
 editorClose.addEventListener('click', attemptCloseTileEditor);
+document.getElementById('editorX').addEventListener('click', attemptCloseTileEditor);
 editorOverlay.addEventListener('pointerdown', (e)=>{ if (e.target === editorOverlay) attemptCloseTileEditor(); });
 document.addEventListener('keydown', (e)=>{ if (e.key === 'Escape' && !editorOverlay.hidden) attemptCloseTileEditor(); });
 
@@ -338,12 +359,15 @@ document.querySelectorAll('#toolList .tool').forEach(btn => {
     document.querySelectorAll('#toolList .tool').forEach(b => b.classList.remove('active'));
     btn.classList.add('active');
     editorTool = btn.dataset.tool;
+    editorGrid.dataset.tool = editorTool;
+    setEditorMsg('');
     refreshLabelOptions();
   });
 });
 
-document.getElementById('editorRevert').addEventListener('click', ()=>{
+editorRevert.addEventListener('click', ()=>{
   if (editorTile === null || !editorTouchedTiles) return;
+  setEditorMsg('');
   for (const [tid, snapshot] of editorTouchedTiles) tileLookup[tid] = new Map(snapshot);
   editorDirty = false;
   updateCloseButtonLabel();

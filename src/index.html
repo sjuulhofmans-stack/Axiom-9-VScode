@@ -733,40 +733,42 @@
     </div>
   </div>
 
+  <!-- Tegeleditor = "Werkbank" (gekozen variant 1 uit 6, artifact "Axiom-9 Tegeleditor", 2026-10):
+       links de tegel met lipjes per doorgang, rechts gereedschap + controle, onderaan een vaste balk.
+       Alles heeft een vaste maat: het nummer-veld staat er altijd (onzichtbaar als je het niet nodig
+       hebt) en de melding heeft een vaste hoogte, zodat er niets verschuift als je klikt. -->
   <div id="editorOverlay" class="editor-overlay" hidden>
-    <div class="editor-panel">
+    <div class="editor-panel" role="dialog" aria-labelledby="editorTitle">
       <div class="editor-head">
-        <h2 id="editorTitle">Tegel bewerken</h2>
-        <button id="editorClose" class="small ghost">Sluiten ✕</button>
+        <div class="editor-title"><small>Tegel bewerken</small><h2 id="editorTitle">Tegel</h2></div>
+        <button type="button" id="editorX" class="editor-x" aria-label="Sluiten">✕</button>
       </div>
       <div class="editor-body">
-        <div>
+        <div class="editor-grid-wrap">
+          <span class="ed-nub n" data-side="N"></span><span class="ed-nub s" data-side="S"></span>
+          <span class="ed-nub w" data-side="W"></span><span class="ed-nub e" data-side="E"></span>
           <div id="editorGrid" class="editor-grid"></div>
-          <p class="hint" style="margin-top:10px;">Klik een vakje aan om het met het gekozen gereedschap te zetten.</p>
         </div>
         <div class="editor-side">
-          <div class="field">
-            <label>Gereedschap</label>
-            <div class="tool-list" id="toolList">
-              <button class="tool active" data-tool="walk"><span class="swatch" style="background:var(--walk)"></span>Loopbaar vakje</button>
-              <button class="tool" id="toolQuest" data-tool="quest"><span class="swatch" style="background:var(--quest)"></span>Opdrachtvakje</button>
-              <button class="tool" id="toolCard" data-tool="card"><span class="swatch swatch-crystal"></span>Kristalvakje</button>
-              <button class="tool" data-tool="erase"><span class="swatch" style="background:var(--slot-empty); border:1px solid var(--line);"></span>Wissen</button>
-            </div>
+          <div class="editor-lbl">Gereedschap</div>
+          <div class="tool-list" id="toolList">
+            <button type="button" class="tool active" data-tool="walk"><span class="swatch" id="toolWalkSwatch" style="background:var(--walk)"></span><b>Loopvakje</b><span class="tool-how">Klik om aan of uit te zetten</span></button>
+            <button type="button" class="tool" id="toolQuest" data-tool="quest"><span class="swatch" style="background:var(--quest)"></span><b>Opdrachtvakje</b><span class="tool-how">Klik op een loopvakje om hem daar te leggen</span></button>
+            <button type="button" class="tool" id="toolCard" data-tool="card"><span class="swatch swatch-crystal"></span><b>Kristalvakje</b><span class="tool-how">Klik op een loopvakje om hem daar te leggen</span></button>
+            <button type="button" class="tool" data-tool="erase"><span class="swatch swatch-erase"></span><b>Wissen</b><span class="tool-how">Klik om een vakje leeg te maken</span></button>
           </div>
-          <div class="field" id="labelField" hidden>
+          <div class="field editor-label-field is-off" id="labelField">
             <label for="labelSelect">Nummer</label>
             <select id="labelSelect"></select>
           </div>
-          <div class="btn-row">
-            <button id="editorRevert" class="small ghost">Herstel deze tegel</button>
-          </div>
-          <p class="hint">Een zijde telt als doorgang zodra beide deurvakjes gevuld zijn. Wijzig je dat, dan passen de regels en de generator zich automatisch aan.</p>
-          <div class="field editor-checklist-field">
-            <label>Controlelijst</label>
-            <ul id="editorChecklist" class="checklist"></ul>
-          </div>
+          <div class="editor-lbl">Controle</div>
+          <ul id="editorChecklist" class="checklist"></ul>
         </div>
+      </div>
+      <div class="editor-foot">
+        <button type="button" id="editorRevert" class="ghost" disabled>Herstel</button>
+        <div id="editorMsg" class="editor-msg" role="status"></div>
+        <button type="button" id="editorClose" class="primary">Sluiten</button>
       </div>
     </div>
   </div>
