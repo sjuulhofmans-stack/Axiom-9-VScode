@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <!-- Favicon Axiom-9: een kruistegel (doorgang aan alle 4 de zijden) met in het midden een
+       opdrachtvakje, op het donkere bord met een amber rand. build.py zet hem als data-URI in de pagina. -->
+  <rect x="2" y="2" width="60" height="60" rx="12" fill="#0b0f14" stroke="#ffb545" stroke-width="3"/>
+  <g fill="#1c2530">
+    <rect x="9" y="9" width="14" height="14" rx="2.5"/>
+    <rect x="41" y="9" width="14" height="14" rx="2.5"/>
+    <rect x="9" y="41" width="14" height="14" rx="2.5"/>
+    <rect x="41" y="41" width="14" height="14" rx="2.5"/>
+  </g>
+  <g fill="#a89d8e">
+    <rect x="25" y="9" width="14" height="14" rx="2.5"/>
+    <rect x="9" y="25" width="14" height="14" rx="2.5"/>
+    <rect x="41" y="25" width="14" height="14" rx="2.5"/>
+    <rect x="25" y="41" width="14" height="14" rx="2.5"/>
+  </g>
+  <rect x="25" y="25" width="14" height="14" rx="2.5" fill="#4fb8e0"/>
+</svg>

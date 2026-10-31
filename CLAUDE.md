@@ -35,6 +35,7 @@ src/
   rules.css           opmaak van het tabblad Spelregels (+ de iets compactere tabbladen in de kop);
                       build.py plakt hem achter styles.css
   assets/logo.b64     logo als base64 — hier zelden iets aan doen
+  assets/favicon.svg  tabbladicoon (kruistegel met opdrachtvakje); build.py bakt hem in als data-URI ({{FAVICON}})
   assets/orbitron900.b64  lettertype Orbitron 900 voor de startanimatie (ingebakken, werkt offline)
   data/tiles.json     de 20 tegels + de vorm van een tegel (pattern)
   js/

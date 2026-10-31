@@ -148,6 +148,9 @@ def build() -> pathlib.Path:
     html = template.replace("{{CSS}}", css)
     html = html.replace("{{JS}}", js)
     html = html.replace("{{LOGO}}", f"data:image/png;base64,{logo}")
+    # favicon (tabbladicoon): klein SVG'tje, ook ingebakken zodat het offline werkt
+    favicon = base64.b64encode(read(SRC / "assets" / "favicon.svg").encode("utf-8")).decode("ascii")
+    html = html.replace("{{FAVICON}}", f"data:image/svg+xml;base64,{favicon}")
 
     for leftover in re.findall(r"\{\{[A-Z]+\}\}", html):
         sys.exit(f"FOUT: placeholder {leftover} niet vervangen")
