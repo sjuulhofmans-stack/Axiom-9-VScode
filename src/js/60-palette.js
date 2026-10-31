@@ -1,4 +1,9 @@
 // ---------- palette ----------
+// Kaartjes = "Tekentafel" (gekozen variant 2 uit 4, artifact "Axiom-9 Kamerkaartjes", 2026-10):
+// grote vaste naam (geen naamveld meer, de namen staan vast), de tegel op ruitjespapier en bij
+// muis-erop "Bewerken" over de tegel heen. Geen nummer of positieletter meer.
+const THUMB_PEN = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20h4L19 9l-4-4L4 16z"/><path d="M13.5 6.5l4 4"/></svg>';
+const THUMB_LOCK = '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="11" width="14" height="9" rx="1.5"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>';
 function renderPalette(){
   const roomsEl = document.getElementById('paletteRooms');
   const corrEl  = document.getElementById('paletteCorridors');
@@ -11,54 +16,28 @@ function renderPalette(){
     const slotIdx = layout.indexOf(tid);
     const card = document.createElement('div');
     card.className = 'tile-thumb' + (selectedSlot===slotIdx || highlightTile===tid ? ' active' : '');
-    const badge = isCornerTile(tid) ? ' 🔒' : (tid===START_TILE ? ' ★' : '');
     const roomName = ROOM_NAMES[tid];
-    card.innerHTML = `<div class="id"><span class="id-num">#${tid}${badge}</span><b>${letterForSlot(slotIdx)}</b></div>`;
-    if (roomName){
-      const nameInput = document.createElement('input');
-      nameInput.type = 'text';
-      nameInput.className = 'room-tag room room-name-input';
-      nameInput.value = roomName;
-      nameInput.maxLength = 40;
-      nameInput.title = 'Kamernaam aanpassen';
-      nameInput.setAttribute('aria-label', 'Kamernaam van tegel #' + tid);
-      nameInput.addEventListener('pointerdown', e => e.stopPropagation());
-      nameInput.addEventListener('click', e => e.stopPropagation());
-      nameInput.addEventListener('dblclick', e => e.stopPropagation());
-      nameInput.addEventListener('keydown', e => {
-        e.stopPropagation();
-        if (e.key === 'Enter') nameInput.blur();
-      });
-      nameInput.addEventListener('change', () => {
-        const val = nameInput.value.trim();
-        ROOM_NAMES[tid] = val || roomName;
-        nameInput.value = ROOM_NAMES[tid];
-        renderBoard();
-        renderQuestRegister();
-      });
-      card.appendChild(nameInput);
-    } else {
-      const tag = document.createElement('div');
-      tag.className = 'room-tag corridor';
-      tag.textContent = 'Gang ' + tid;
-      card.appendChild(tag);
-    }
+    const name = document.createElement('div');
+    name.className = 'thumb-name' + (roomName ? '' : ' is-corridor');
+    name.textContent = roomName || ('Gang ' + tid);
+    name.title = name.textContent;
+    card.appendChild(name);
+    const board = document.createElement('div');
+    board.className = 'thumb-board';
     const editBtn = document.createElement('button');
-    editBtn.className = 'edit-btn';
+    editBtn.className = 'thumb-edit';
     editBtn.type = 'button';
     if (tid === START_TILE){
       editBtn.disabled = true;
       editBtn.title = 'Hibernatie bevat de 4 vaste startposities en kan niet bewerkt worden';
+      editBtn.innerHTML = THUMB_LOCK + '<span>Vaste tegel</span>';
     } else {
       editBtn.title = 'Tegel bewerken';
+      editBtn.innerHTML = THUMB_PEN + '<span>Bewerken</span>';
       editBtn.addEventListener('click', (e)=>{ e.stopPropagation(); openTileEditor(tid); });
       editBtn.addEventListener('pointerdown', (e)=> e.stopPropagation());
     }
-    editBtn.textContent = '✎';
-    editBtn.setAttribute('aria-label', editBtn.title);
-    // In de kopregel meelopen in plaats van er absoluut overheen liggen: als absolute knop
-    // bedekte hij de positieletter volledig en liep de kamernaam eronder door.
-    card.querySelector('.id').appendChild(editBtn);
+    editBtn.setAttribute('aria-label', editBtn.title + ': ' + name.textContent);
     const g = document.createElement('div');
     g.className = 'thumb-grid';
     for (let dr=0; dr<TILE_H; dr++){
@@ -72,7 +51,8 @@ function renderPalette(){
         g.appendChild(cell);
       }
     }
-    card.appendChild(g);
+    board.append(g, editBtn);
+    card.appendChild(board);
     card.addEventListener('click', ()=>{
       selectedSlot = (selectedSlot === slotIdx) ? null : slotIdx;
       highlightTile = null;

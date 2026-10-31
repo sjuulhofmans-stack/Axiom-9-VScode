@@ -45,7 +45,10 @@ src/
     30-random.js      seeded random (mulberry32) — zelfde seed = zelfde bord
     40-board.js       het bord tekenen, contour, naadmarkeringen, statusregel
     50-interaction.js slepen om tegels te verwisselen, selecteren
-    60-palette.js     het register onderaan (twee tabellen: Kamers / Gangen)
+    60-palette.js     het register onderaan (twee rijen: Kamers / Gangen). Kaartje = "Tekentafel" (gekozen
+                      variant 2 uit 4, artifact "Axiom-9 Kamerkaartjes", 2026-10): grote VASTE naam (geen
+                      naamveld meer: de namen staan vast, gebruikerswens), tegel op ruitjespapier, bij muis-erop
+                      "Bewerken" over de tegel (zonder muis: potloodje in de hoek). Geen nummer/positieletter
     70-generator.js   backtracking-solver die een geldige indeling zoekt
     80-controls.js    knoppen: seed, dobbelsteen, vorige indeling, draaien, legenda; bij het openen
                       meteen een willekeurige kaart (met "Aan het genereren"-vakje i.p.v. het bord)
@@ -85,7 +88,7 @@ aangeroepen (functiedeclaraties worden gehoist, `const`/`let` niet).
 | Ik wil...                                  | Bestand              |
 |--------------------------------------------|----------------------|
 | een tegel van vorm veranderen               | `src/data/tiles.json` |
-| een kamer hernoemen / kamer↔gang wisselen   | `10-rules.js` (`ROOM_NAMES`) |
+| een kamer hernoemen / kamer↔gang wisselen   | `10-rules.js` (`ROOM_NAMES`) — kan bewust niet meer in de tool zelf |
 | een opdracht hernoemen (2.1–2.9)            | `10-rules.js` (`QUEST_NAMES`) — puur thematisch, geen spelregel |
 | regel wijzigen over waar een tegel mag liggen | `10-rules.js` (`canTileGoInSlot`) |
 | de generator slimmer/anders maken           | `70-generator.js`     |
