@@ -378,12 +378,35 @@ editorRevert.addEventListener('click', ()=>{
 });
 
 // ---------- klikbare legenda: markeringen aan/uit ----------
+// + "Uitgelicht": muis op een regel (of focus) dimt de rest van het bord, alleen die vakjes
+// blijven licht (#board.is-spot.spot-<key>, alleen opacity), en #legendExplain toont data-info
+const legendExplainEl = document.getElementById('legendExplain');
+const LEGEND_EXPLAIN_IDLE = legendExplainEl ? legendExplainEl.innerHTML : '';
+let legendSpotKey = null;
+function legendSpot(row){
+  if (legendSpotKey) boardEl.classList.remove('spot-'+legendSpotKey);
+  legendSpotKey = row ? row.dataset.key : null;
+  boardEl.classList.toggle('is-spot', !!row);
+  if (row) boardEl.classList.add('spot-'+legendSpotKey);
+  if (legendExplainEl){
+    if (row){
+      const b = document.createElement('b');
+      b.textContent = row.querySelector('.legend-text').textContent;
+      legendExplainEl.replaceChildren(b, document.createTextNode(row.dataset.info || ''));
+    } else legendExplainEl.innerHTML = LEGEND_EXPLAIN_IDLE;
+  }
+}
 document.querySelectorAll('#legend .legend-row').forEach(row => {
   row.addEventListener('click', ()=>{
     const key = row.dataset.key;
-    row.classList.toggle('off');
-    boardEl.classList.toggle('hide-'+key);
+    const off = row.classList.toggle('off');
+    row.setAttribute('aria-pressed', String(!off));
+    boardEl.classList.toggle('hide-'+key, off);
   });
+  row.addEventListener('mouseenter', ()=> legendSpot(row));
+  row.addEventListener('focus', ()=> legendSpot(row));
+  row.addEventListener('mouseleave', ()=> legendSpot(null));
+  row.addEventListener('blur', ()=> legendSpot(null));
 });
 
 renderBoard();

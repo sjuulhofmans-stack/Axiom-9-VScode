@@ -568,12 +568,42 @@
      gelijk over die hele hoogte, van boven tot onder (gebruikerswens), iets groter */
   #tabMap .right-col > .panel:last-child{display:flex; flex-direction:column;}
   #tabMap .right-col > .panel:last-child > .controls{flex:1 1 auto; display:flex; flex-direction:column;}
-  #tabMap .legend{flex:1 1 auto; display:flex; flex-direction:column; justify-content:space-between; gap:2px; margin-top:0;}
+  #tabMap .legend{flex:1 1 auto; display:flex; flex-direction:column; justify-content:space-between; gap:0; margin-top:0;}
   #tabMap .legend-row{gap:14px; padding:4px 8px; font-size:15px; color:var(--text); border-radius:4px;}
   #tabMap .legend-row .swatch{width:18px; height:18px; border-radius:3px;}
   #tabMap .legend-row .swatch-letter{font-size:11px; border-radius:3px 7px 3px 3px;}
   #tabMap .legend-text i{font-size:12px;}
   #tabMap .legend-row:hover{background:rgba(255,255,255,.03);}
+
+  /* ---------- legenda "Uitgelicht" (variant 4 uit 4, artifact "Axiom-9 Legendavarianten",
+     2026-11): elke regel = streepje | staal | naam | code rechts. Muis erop: streepje amber, de
+     rest van het bord dimt (alleen opacity), uitleg onderin #legendExplain met VASTE hoogte, dus
+     niets verschuift. De regels zijn <button>s (toetsenbord: focus doet hetzelfde als de muis). */
+  #legend .legend-row{
+    display:grid; grid-template-columns:3px 18px minmax(0,1fr) auto; align-items:center;
+    width:100%; padding:1px 8px 1px 0; border:0; background:none; font:inherit; text-align:left;
+    font-family:var(--font-display);
+  }
+  #legend .legend-row:hover, #legend .legend-row:focus-visible{background:rgba(255,255,255,.04);}
+  #legend .legend-row:focus-visible{outline:1px solid var(--line); outline-offset:0;}
+  #legend .legend-row.off{color:var(--text-dim);}
+  .legend-bar{height:20px; border-radius:2px; background:var(--amber); opacity:0; transition:opacity .15s;}
+  #legend .legend-row:hover .legend-bar, #legend .legend-row:focus-visible .legend-bar{opacity:1;}
+  .legend-code{font-style:normal; font-family:var(--font-mono); font-size:12px; color:var(--text-dim); opacity:.8; white-space:nowrap;}
+  .legend-explain{
+    flex:none; height:76px; overflow:hidden; margin-top:8px; padding:8px 12px; border-radius:6px;
+    background:rgba(0,0,0,.28); font-size:14px; line-height:1.4; color:var(--text-dim);
+  }
+  .legend-explain b{display:block; color:var(--text); font-weight:600; font-size:15px;}
+  /* de schijnwerper: alles dimt, alleen de soort onder de muis blijft licht. De letterbadge en de
+     kamernaam zijn kinderen van een vakje, dus bij "Positieletter" blijft dat ene vakje mee licht. */
+  #board .cell{transition:opacity .18s;}
+  #board.is-spot .cell{opacity:.12;}
+  #board.spot-walk .cell.walk, #board.spot-walk .cell.quest, #board.spot-walk .cell.start, #board.spot-walk .cell.actioncell,
+  #board.spot-quest .cell.quest, #board.spot-actioncell .cell.actioncell, #board.spot-start .cell.start,
+  #board.spot-empty .cell.empty-slot, #board.spot-seamopen .cell.seam-open, #board.spot-seambroken .cell.seam-broken,
+  #board.spot-letters .cell.has-badge{opacity:1;}
+  @media (prefers-reduced-motion:reduce){ #board .cell, .legend-bar{transition:none;} }
 
   /* ---------- board ---------- */
   .board-outer{
@@ -4718,19 +4748,21 @@
     <div class="panel">
       <h2>Legenda</h2>
       <div class="controls">
+        <!-- variant 4 "Uitgelicht" (gekozen uit 4, artifact "Axiom-9 Legendavarianten", 2026-11):
+             muis op een regel (of toetsenbordfocus) = alleen die vakjes op het bord blijven licht,
+             de rest dimt; onderaan staat de uitleg (data-info) in een vak met vaste hoogte.
+             Klikken = markering aan/uit, zoals altijd (90-editor.js). -->
         <div class="legend" id="legend">
-          <!-- korte teksten op één regel; de naad-voorbeelden zijn net als op de kaart een
-               loopbaar vakje met alleen een gekleurde rand + gloed (niet ingevuld), de
-               positieletter een klein label zoals linksboven op elke tegel -->
-          <div class="legend-row" data-key="walk"><span class="swatch" style="background:var(--walk)"></span><span class="legend-text">Loopbaar vakje</span></div>
-          <div class="legend-row" data-key="quest"><span class="swatch" style="background:var(--quest)"></span><span class="legend-text">Opdrachtvakje <i>2.x</i></span></div>
-          <div class="legend-row" data-key="actioncell"><span class="swatch swatch-crystal"></span><span class="legend-text">Kristalvakje <i>4.x</i></span></div>
-          <div class="legend-row" data-key="start"><span class="swatch" style="background:var(--start)"></span><span class="legend-text">Startpositie <i>3.x</i></span></div>
-          <div class="legend-row" data-key="empty"><span class="swatch swatch-empty"></span><span class="legend-text">Leeg vakje <i>niet beloopbaar</i></span></div>
-          <div class="legend-row" data-key="seamopen"><span class="swatch swatch-seam" style="--sc:var(--amber)"></span><span class="legend-text">Naad open <i>tegels sluiten aan</i></span></div>
-          <div class="legend-row" data-key="seambroken"><span class="swatch swatch-seam" style="--sc:var(--danger)"></span><span class="legend-text">Naad geblokkeerd <i>loopt dood</i></span></div>
-          <div class="legend-row" data-key="letters"><span class="swatch swatch-letter">A</span><span class="legend-text">Positieletter <i>A–T</i></span></div>
+          <button type="button" class="legend-row" data-key="walk" aria-pressed="true" data-info="Hier mag je lopen, alleen recht en nooit schuin. Grijs = gang, warmer grijs = kamer."><span class="legend-bar"></span><span class="swatch" style="background:var(--walk)"></span><span class="legend-text">Loopbaar vakje</span><i class="legend-code"></i></button>
+          <button type="button" class="legend-row" data-key="quest" aria-pressed="true" data-info="Hier voltooi je een opdracht. Elke kamer heeft er één, behalve Hibernatie."><span class="legend-bar"></span><span class="swatch" style="background:var(--quest)"></span><span class="legend-text">Opdrachtvakje</span><i class="legend-code">2.x</i></button>
+          <button type="button" class="legend-row" data-key="actioncell" aria-pressed="true" data-info="Loop je erover, dan krijg je een kristal (hooguit één per beurt). Elke gang heeft er één."><span class="legend-bar"></span><span class="swatch swatch-crystal"></span><span class="legend-text">Kristalvakje</span><i class="legend-code">4.x</i></button>
+          <button type="button" class="legend-row" data-key="start" aria-pressed="true" data-info="De vier startplekken. Ze liggen allemaal in Hibernatie."><span class="legend-bar"></span><span class="swatch" style="background:var(--start)"></span><span class="legend-text">Startpositie</span><i class="legend-code">3.x</i></button>
+          <button type="button" class="legend-row" data-key="empty" aria-pressed="true" data-info="Hier ligt geen vloer. Je kunt er niet staan of doorheen lopen."><span class="legend-bar"></span><span class="swatch swatch-empty"></span><span class="legend-text">Leeg vakje</span><i class="legend-code">niet beloopbaar</i></button>
+          <button type="button" class="legend-row" data-key="seamopen" aria-pressed="true" data-info="Twee tegels sluiten hier op elkaar aan, dus je kunt van de ene naar de andere lopen."><span class="legend-bar"></span><span class="swatch swatch-seam" style="--sc:var(--amber)"></span><span class="legend-text">Naad open</span><i class="legend-code">sluit aan</i></button>
+          <button type="button" class="legend-row" data-key="seambroken" aria-pressed="true" data-info="Een doorgang die op een dichte wand uitkomt. Hier loop je vast. Op een goede kaart zie je er geen."><span class="legend-bar"></span><span class="swatch swatch-seam" style="--sc:var(--danger)"></span><span class="legend-text">Naad geblokkeerd</span><i class="legend-code">loopt dood</i></button>
+          <button type="button" class="legend-row" data-key="letters" aria-pressed="true" data-info="Waar de tegel op het bord ligt: A t/m T, rij voor rij van links naar rechts. Rood = hoek, groen = binnenin."><span class="legend-bar"></span><span class="swatch swatch-letter">A</span><span class="legend-text">Positieletter</span><i class="legend-code">A–T</i></button>
         </div>
+        <div class="legend-explain" id="legendExplain" aria-live="polite"><b>Wijs een regel aan</b>Dan licht dat deel van het bord op. Klik om het aan of uit te zetten.</div>
       </div>
     </div>
 
@@ -7873,12 +7905,35 @@ editorRevert.addEventListener('click', ()=>{
 });
 
 // ---------- klikbare legenda: markeringen aan/uit ----------
+// + "Uitgelicht": muis op een regel (of focus) dimt de rest van het bord, alleen die vakjes
+// blijven licht (#board.is-spot.spot-<key>, alleen opacity), en #legendExplain toont data-info
+const legendExplainEl = document.getElementById('legendExplain');
+const LEGEND_EXPLAIN_IDLE = legendExplainEl ? legendExplainEl.innerHTML : '';
+let legendSpotKey = null;
+function legendSpot(row){
+  if (legendSpotKey) boardEl.classList.remove('spot-'+legendSpotKey);
+  legendSpotKey = row ? row.dataset.key : null;
+  boardEl.classList.toggle('is-spot', !!row);
+  if (row) boardEl.classList.add('spot-'+legendSpotKey);
+  if (legendExplainEl){
+    if (row){
+      const b = document.createElement('b');
+      b.textContent = row.querySelector('.legend-text').textContent;
+      legendExplainEl.replaceChildren(b, document.createTextNode(row.dataset.info || ''));
+    } else legendExplainEl.innerHTML = LEGEND_EXPLAIN_IDLE;
+  }
+}
 document.querySelectorAll('#legend .legend-row').forEach(row => {
   row.addEventListener('click', ()=>{
     const key = row.dataset.key;
-    row.classList.toggle('off');
-    boardEl.classList.toggle('hide-'+key);
+    const off = row.classList.toggle('off');
+    row.setAttribute('aria-pressed', String(!off));
+    boardEl.classList.toggle('hide-'+key, off);
   });
+  row.addEventListener('mouseenter', ()=> legendSpot(row));
+  row.addEventListener('focus', ()=> legendSpot(row));
+  row.addEventListener('mouseleave', ()=> legendSpot(null));
+  row.addEventListener('blur', ()=> legendSpot(null));
 });
 
 renderBoard();
