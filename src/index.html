@@ -648,15 +648,14 @@
                   <button type="button" id="btnCardDiscard" class="ghost small" disabled>Afleggen</button>
                 </div>
               </div>
+              <!-- vervolgkeuze ná het spelen van een kristal (doelwit kiezen, Zelf kiezen, het
+                   Blinde-Vlek-aanbod) — hoort bij het kristal dat je net speelde, dus bij de kluis
+                   (gebruikerswens). Sinds 2026-11 BINNEN de kluis, als laag eroverheen: eronder
+                   paste niet meer sinds de kluis altijd groot is (stak tot 174px onder het bord uit
+                   en de kluis sprong omhoog). Leeg = onzichtbaar (.walk-card-actions:empty);
+                   soloRenderCardActionsPanel in 97-solo.js zet 'm pulserend. -->
+              <div class="walk-card-actions" id="walkCardActions"></div>
             </div>
-
-            <!-- vervolgkeuze ná het spelen van een actiekaart (doelwit kiezen, richting voor
-                 Zwaartekracht-laarzen, het Blinde-Vlek-aanbod) — hoort bij de kaart die je net
-                 speelde, dus staat nu bij de kaartkluis i.p.v. hierboven in de energiekolom
-                 (gebruikerswens). Leeg = onzichtbaar (zie .walk-card-actions:empty in
-                 styles.css); soloRenderCardActionsPanel in 97-solo.js zet 'm ook pulserend
-                 zodra je hier echt iets moet kiezen. -->
-            <div class="walk-panel-box walk-card-actions" id="walkCardActions"></div>
           </div>
 
           <!-- Eigen (4e) kolom rechts van de zijkolom — stond eerst ín de zijkolom en drukte daar

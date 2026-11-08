@@ -1501,6 +1501,7 @@ function mpOnGameOver(){
   if (!mp.isHost){
     const t = soloEndgameTexts(!soloPlayers.some(p => p.rank === 1));
     soloShowEndgame(t.trophy, t.title, t.sub);
+    soloRenderStatusExtras();   // missiestrook: eindstand i.p.v. "Bezig met …" (zie soloMissionHtml)
   }
   // de 200ms-broadcasttick tikte hierna anders onnodig door tot de host handmatig "Stop
   // hosting" deed — en mp.phase bleef op 'in-game' staan, terwijl er geen potje meer loopt.

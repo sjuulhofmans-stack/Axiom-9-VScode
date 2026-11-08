@@ -196,6 +196,9 @@ aangeroepen (functiedeclaraties worden gehoist, `const`/`let` niet).
   kristal, ernaast de 3 plekken, de reden waarom het nu (niet) kan, Gebruik/Afleggen. Alleen
   het gekozen plekje pulst (`crystalPulse`, zelfde ritme als de dobbelknop). De kluis staat
   ALTIJD groot (gebruikerswens), ook vóór het dobbelen en tijdens een doelwit-/richtingkeuze.
+  De vervolgkeuze van een kristal (doelwit, Zelf kiezen, Blinde-Vlek-aanbod; `#walkCardActions`)
+  staat sinds 2026-11 BINNEN de kluis als laag eroverheen (eronder stak hij tot 174px onder het bord
+  uit). Gemeten 1920×960 en 1440×780: kluis en Gebruik/Afleggen verspringen niet, niets scrolt.
   De energie-acties staan weer ONDER ELKAAR (gebruikerswens: de 2x2-tegels stonden scheef en de
   tekst liep door het vak; alleen de laarzen-richtingen zijn nog 2x2); het grote kristal schaalt
   met `--wcell`. Dobbelvak (134px) en energievak hebben een VASTE hoogte, vóór én na de worp —
@@ -434,7 +437,8 @@ Check minimaal:
     tabblad kiezen). Pagina op volle breedte, bord tot 34px per vakje ("altijd zo groot
     mogelijk"); hoogte boven/onder het bord = `--play-chrome` (224px, gemeten). Kolomminima:
     links 280px, zijkolom 370px (smaller breken opdrachtnaam/energietegels af); Multiplayer
-    270 / 370 / chat 230px. Gemeten: Full HD ±21px, 1440×780 ±15px, Multiplayer op Full HD even
+    270 / 370 / chat 230px. Tussen 1361 en 1520 breed staat de chat in Multiplayer als eigen regel
+    ONDER het speelscherm (anders viel het bord rechts ±42px af op 1440×780; sinds 2026-11). Gemeten: Full HD ±21px, 1440×780 ±15px, Multiplayer op Full HD even
     groot als de rest. Buiten een potje blijft de gewone kop.
     Speelscherm op ±1400px breed (laptop/half scherm): alles in beeld, niets
     afgeknipt — het bord krimpt daar mee (zie `--wcell` in `styles.css`),

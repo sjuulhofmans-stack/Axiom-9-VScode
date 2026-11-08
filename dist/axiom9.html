@@ -1270,6 +1270,14 @@
   }
   .sc-card h3 span{color:var(--text-dim); letter-spacing:.04em; text-transform:none; font-weight:400;}
   .sc-svg{display:block; width:100%; height:auto; max-height:200px;}
+  /* lage schermen (1440×780 e.d.): grafieken iets lager, anders scrolde de pop-up (808 in 716px) */
+  @media (max-height: 860px){
+    .sc-svg{max-height:150px;}
+    /* het balkenvak (rechtsonder) bepaalt de hoogte van de onderste rij: iets compacter */
+    .sc-mix{gap:4px;}
+    .sc-mix-player{row-gap:2px;}
+    .sc-mix .sc-bar{height:10px; font-size:9px;}
+  }
   .sc-svg .sc-grid{stroke:var(--line-dim); stroke-width:1;}
   .sc-svg .sc-ax{fill:var(--text-dim); font-family:var(--font-mono); font-size:10px;}
   .sc-svg .sc-ax-name{font-size:9.5px; letter-spacing:.08em;}
@@ -1504,6 +1512,17 @@
       min-height:calc(var(--wcell) * 32 + 160px);
     }
   }
+  /* Multiplayer op een laptop (1361–1520 breed): met de chat als 4e kolom paste het bord niet meer
+     (op 1440×780 viel er rechts ±42px af, terwijl er onder het bord 230px leeg bleef). Hier staat
+     de chat daarom als eigen regel ONDER het speelscherm en rekent het bord als bij Zelf spelen. */
+  @media (min-width: 1361px) and (max-width: 1520px){
+    body.is-mp-game .walk-board-row,
+    body.is-mp-game #walkPanel{
+      --wcell: clamp(13px, min(calc((100vw - 830px) / 40), calc((100vh - var(--play-chrome)) / 32)), 34px);
+    }
+    body.is-mp-game .walk-board-row{grid-template-columns: minmax(270px,1fr) auto minmax(370px,1.4fr);}
+    body.is-mp-game .walk-board-row > .walk-chat-col{grid-column:1 / -1; grid-row:auto; height:300px;}
+  }
   /* was 1150px — onder de 1360px zou het bord hierboven kleiner dan 14px per vakje worden,
      dan liever alles onder elkaar met een bord op volle maat */
   @media (max-width: 1360px){
@@ -1538,6 +1557,9 @@
     letter-spacing:.14em; text-transform:uppercase; color:var(--text-dim);
   }
   .walk-or-sep[hidden]{display:none;}
+  /* het "of" boven de kluis neemt geen hoogte in: het zweeft in de tussenruimte (gap 10px) tussen
+     energievak en kluis. Anders duwde het de kluis op 1440×780 19px onder het bord. */
+  #walkOrSep2{height:0; margin-top:-10px; line-height:0; overflow:visible; transform:translateY(5px); position:relative; z-index:2; pointer-events:none;}
 
   /* puls in de kleur van wie aan zet is (--pc, gezet op #walkSideStack — zie
      soloBeginHumanTurn in 97-solo.js) — geeft aan dat een actie NU mogelijk is: de
@@ -4043,7 +4065,15 @@
   /* energie-acties: alleen prijs + naam, de uitleg staat in de tooltip (title) */
   .energy-pick-list.is-short .energy-pick-text span{display:none;}
 
-  /* ---------- doelwit kiezen (Duwstoot e.d.): kleine knopjes, zodat de kluis kan blijven staan ---------- */
+  /* ---------- doelwit kiezen (Duwstoot e.d.): als laag OVER de kluis (zie index.html) ----------
+     Zo blijft de zijkolom precies even hoog als het bord en verspringen Gebruik/Afleggen niet:
+     de kluis houdt zijn maat, de keuze ligt er tijdelijk overheen. */
+  #walkCardVault{position:relative;}
+  #walkCardVault > .walk-card-actions{
+    position:absolute; inset:0; z-index:6; margin:0;
+    justify-content:center; overflow:hidden;
+    background:var(--panel); border-color:var(--line-dim);
+  }
   .walk-card-actions .action-card-row{gap:6px;}
   .walk-card-actions .action-card.action-card--lg{
     flex:1 1 calc(50% - 6px); width:auto; min-width:0; height:auto; min-height:0; aspect-ratio:auto;
@@ -5244,15 +5274,14 @@
                   <button type="button" id="btnCardDiscard" class="ghost small" disabled>Afleggen</button>
                 </div>
               </div>
+              <!-- vervolgkeuze ná het spelen van een kristal (doelwit kiezen, Zelf kiezen, het
+                   Blinde-Vlek-aanbod) — hoort bij het kristal dat je net speelde, dus bij de kluis
+                   (gebruikerswens). Sinds 2026-11 BINNEN de kluis, als laag eroverheen: eronder
+                   paste niet meer sinds de kluis altijd groot is (stak tot 174px onder het bord uit
+                   en de kluis sprong omhoog). Leeg = onzichtbaar (.walk-card-actions:empty);
+                   soloRenderCardActionsPanel in 97-solo.js zet 'm pulserend. -->
+              <div class="walk-card-actions" id="walkCardActions"></div>
             </div>
-
-            <!-- vervolgkeuze ná het spelen van een actiekaart (doelwit kiezen, richting voor
-                 Zwaartekracht-laarzen, het Blinde-Vlek-aanbod) — hoort bij de kaart die je net
-                 speelde, dus staat nu bij de kaartkluis i.p.v. hierboven in de energiekolom
-                 (gebruikerswens). Leeg = onzichtbaar (zie .walk-card-actions:empty in
-                 styles.css); soloRenderCardActionsPanel in 97-solo.js zet 'm ook pulserend
-                 zodra je hier echt iets moet kiezen. -->
-            <div class="walk-panel-box walk-card-actions" id="walkCardActions"></div>
           </div>
 
           <!-- Eigen (4e) kolom rechts van de zijkolom — stond eerst ín de zijkolom en drukte daar
@@ -14615,7 +14644,8 @@ const SOLO_MISSION_CHECK = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d=
 function soloMissionHtml(p){
   const goal = SIM_QUESTS_TO_WIN;
   const done = Math.min(goal, p.completed);
-  const current = p.rank ? null : p.deck[p.nextIdx];
+  // geen pulserend "actief" vakje meer zodra je klaar bent of het potje voorbij is
+  const current = (p.rank || soloPhase === 'game-over') ? null : p.deck[p.nextIdx];
   const rank = p.rank || soloLiveRank();
   // het actieve vakje (de opdracht waar je nu mee bezig bent) is groen, net als de voltooide, en
   // pulst als een sonar (gebruikerswens: niet in de kamerkleur). De ringen zitten op .mission-slot,
@@ -14629,9 +14659,14 @@ function soloMissionHtml(p){
   // volgorde (gebruikerswens): Beurt/Stand → kopje → de 6 zeshoekjes; geen los "x / 6"-getal meer.
   // Het kopje noemt de opdracht waar je mee bezig bent (= het oplichtende vakje): "Opdrachten
   // voltooid" boven een oplichtende 1 las als "1 voltooid" (gebruikersmelding).
-  const caption = done < goal && !p.rank
-    ? `Bezig met opdracht <b>${done + 1}</b> van ${goal}`
-    : `Alle ${goal} opdrachten voltooid`;
+  // na afloop (p.rank, of het potje is voorbij) geen "Bezig met …" meer; wie niet alle 6 haalde
+  // krijgt het echte aantal (vroeger stond er bij een 4e plaats met 4/6 "Alle 6 voltooid")
+  const over = !!p.rank || soloPhase === 'game-over';
+  const caption = done >= goal
+    ? `Alle ${goal} opdrachten voltooid`
+    : over
+      ? `<b>${done}</b> van ${goal} opdrachten voltooid`
+      : `Bezig met opdracht <b>${done + 1}</b> van ${goal}`;
   return `<div class="mission-pills">` +
       `<div class="mission-pill"><span class="mission-lbl">Beurt</span><b>${p.myTurn}</b></div>` +
       `<div class="mission-pill is-me" style="--pc:${p.color}"><span class="mission-lbl">Stand</span><b>${walkRankLabel(rank)}</b><span class="mission-lbl">/ ${soloPlayers.length}</span></div>` +
@@ -15116,6 +15151,8 @@ function soloCanDiscardNow(){ return soloPhase === 'moving' && !soloCardActionUs
 // (niet) kan. In multiplayer neemt mpRefreshCardVault (99-multiplayer.js) dit over: daar is "mijn"
 // kluis niet per se die van wie aan zet is.
 function soloRefreshCardVault(){
+  // het 2e "of" hoort alleen bij de keuze vóór het dobbelen (zie soloRenderActionPanel)
+  if (walkOrSep2El && soloPhase !== 'choose-action') walkOrSep2El.hidden = true;
   if (soloPhase === 'moving' || soloPhase === 'rolling'){
     if (walkSoloActionsEl) walkSoloActionsEl.innerHTML = '';
     soloClearCardActionsPanel();
@@ -17271,6 +17308,7 @@ function soloEndGame(stuck){
   btnWalkSoloRoll.hidden = true;
   btnWalkSoloSkip.hidden = true;
   renderWalkScore(soloPlayers, -1);
+  soloRenderStatusExtras();   // missiestrook: geen "Bezig met …" en geen puls meer na afloop
   if (walkMetaEl) walkMetaEl.innerHTML = '';
   const t = soloEndgameTexts(stuck);
   // leeg — ook voor multiplayer-gasten, die #walkStatus van de host overnemen (mpApplyState)
@@ -20334,6 +20372,7 @@ function mpOnGameOver(){
   if (!mp.isHost){
     const t = soloEndgameTexts(!soloPlayers.some(p => p.rank === 1));
     soloShowEndgame(t.trophy, t.title, t.sub);
+    soloRenderStatusExtras();   // missiestrook: eindstand i.p.v. "Bezig met …" (zie soloMissionHtml)
   }
   // de 200ms-broadcasttick tikte hierna anders onnodig door tot de host handmatig "Stop
   // hosting" deed — en mp.phase bleef op 'in-game' staan, terwijl er geen potje meer loopt.

@@ -533,7 +533,8 @@ const SOLO_MISSION_CHECK = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d=
 function soloMissionHtml(p){
   const goal = SIM_QUESTS_TO_WIN;
   const done = Math.min(goal, p.completed);
-  const current = p.rank ? null : p.deck[p.nextIdx];
+  // geen pulserend "actief" vakje meer zodra je klaar bent of het potje voorbij is
+  const current = (p.rank || soloPhase === 'game-over') ? null : p.deck[p.nextIdx];
   const rank = p.rank || soloLiveRank();
   // het actieve vakje (de opdracht waar je nu mee bezig bent) is groen, net als de voltooide, en
   // pulst als een sonar (gebruikerswens: niet in de kamerkleur). De ringen zitten op .mission-slot,
@@ -547,9 +548,14 @@ function soloMissionHtml(p){
   // volgorde (gebruikerswens): Beurt/Stand → kopje → de 6 zeshoekjes; geen los "x / 6"-getal meer.
   // Het kopje noemt de opdracht waar je mee bezig bent (= het oplichtende vakje): "Opdrachten
   // voltooid" boven een oplichtende 1 las als "1 voltooid" (gebruikersmelding).
-  const caption = done < goal && !p.rank
-    ? `Bezig met opdracht <b>${done + 1}</b> van ${goal}`
-    : `Alle ${goal} opdrachten voltooid`;
+  // na afloop (p.rank, of het potje is voorbij) geen "Bezig met …" meer; wie niet alle 6 haalde
+  // krijgt het echte aantal (vroeger stond er bij een 4e plaats met 4/6 "Alle 6 voltooid")
+  const over = !!p.rank || soloPhase === 'game-over';
+  const caption = done >= goal
+    ? `Alle ${goal} opdrachten voltooid`
+    : over
+      ? `<b>${done}</b> van ${goal} opdrachten voltooid`
+      : `Bezig met opdracht <b>${done + 1}</b> van ${goal}`;
   return `<div class="mission-pills">` +
       `<div class="mission-pill"><span class="mission-lbl">Beurt</span><b>${p.myTurn}</b></div>` +
       `<div class="mission-pill is-me" style="--pc:${p.color}"><span class="mission-lbl">Stand</span><b>${walkRankLabel(rank)}</b><span class="mission-lbl">/ ${soloPlayers.length}</span></div>` +
@@ -1034,6 +1040,8 @@ function soloCanDiscardNow(){ return soloPhase === 'moving' && !soloCardActionUs
 // (niet) kan. In multiplayer neemt mpRefreshCardVault (99-multiplayer.js) dit over: daar is "mijn"
 // kluis niet per se die van wie aan zet is.
 function soloRefreshCardVault(){
+  // het 2e "of" hoort alleen bij de keuze vóór het dobbelen (zie soloRenderActionPanel)
+  if (walkOrSep2El && soloPhase !== 'choose-action') walkOrSep2El.hidden = true;
   if (soloPhase === 'moving' || soloPhase === 'rolling'){
     if (walkSoloActionsEl) walkSoloActionsEl.innerHTML = '';
     soloClearCardActionsPanel();
@@ -3189,6 +3197,7 @@ function soloEndGame(stuck){
   btnWalkSoloRoll.hidden = true;
   btnWalkSoloSkip.hidden = true;
   renderWalkScore(soloPlayers, -1);
+  soloRenderStatusExtras();   // missiestrook: geen "Bezig met …" en geen puls meer na afloop
   if (walkMetaEl) walkMetaEl.innerHTML = '';
   const t = soloEndgameTexts(stuck);
   // leeg — ook voor multiplayer-gasten, die #walkStatus van de host overnemen (mpApplyState)
