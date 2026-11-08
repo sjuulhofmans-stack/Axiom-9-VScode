@@ -1889,7 +1889,11 @@ function simCountStep(dir, size = SIM_COUNT_STEP){
   }
   if (simDigitsEl) simDigitsEl.addEventListener('keydown', (e) => {
     const dir = { ArrowUp: 1, ArrowRight: 1, ArrowDown: -1, ArrowLeft: -1 }[e.key];
-    if (dir){ e.preventDefault(); simCountStep(dir); }
+    if (dir){ e.preventDefault(); simCountStep(dir); return; }
+    // wat je bij een spinbutton verwacht: PageUp/PageDown = grote stap, Home/End = minimum/maximum
+    if (e.key === 'PageUp' || e.key === 'PageDown'){ e.preventDefault(); simCountStep(e.key === 'PageUp' ? 1 : -1, 1000); }
+    else if (e.key === 'Home'){ e.preventDefault(); simCountSet(SIM_COUNT_MIN); }
+    else if (e.key === 'End'){ e.preventDefault(); simCountSet(SIM_COUNT_MAX); }
   });
   if (simPresetsEl) simPresetsEl.addEventListener('click', (e) => {
     const b = e.target.closest('[data-sim-preset]');

@@ -2058,6 +2058,10 @@
     border:2.5px dotted var(--qtint, var(--quest)); box-sizing:border-box;
     animation:startRingSpin 4s linear infinite reverse; will-change:transform;
   }
+  /* Pauze (Automatisch): ook de ring om je eerste opdracht en de portalen staan stil */
+  #tabWalk.walk-is-paused #walkBoard.is-start-pick .cell.walk-target::before,
+  #tabWalk.walk-is-paused .walk-portal::before,
+  #tabWalk.walk-is-paused .walk-portal b{animation-play-state:paused;}
   /* blok "Jouw eerste opdracht" in het kiespaneel */
   .walk-opening-goal{
     display:flex; flex-direction:column; gap:3px; padding:12px 14px; border-radius:8px;

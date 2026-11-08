@@ -12,7 +12,8 @@ Datum: 2026-11-08.
 | 4 | **opgelost** 2026-11-08 | 14, 16, 17, 36, 37, 39, 40 (38 al in portie 1). **15 wacht op een keuze.** Balans daarna (4000 potjes): kristallen 21,3–27,9%, energie-acties 23,5–26,3%, startposities 23,9–26,3% |
 | 5 | **opgelost** 2026-11-08 | 18, 25, 26, 27, 41, 43, 44, 51, 52, 53, 54, 55, en 29 (legenda-uitleg past nu op 1280/1366/1440/1920) |
 | 6 | **opgelost** 2026-11-08 | 22, 23, 24, 30, 48. Gemeten op 400×800 en 360×740: geen zijwaarts scrollen, niets afgekapt |
-| 7 t/m 9 | nog te doen | zie onderaan |
+| 7 | **opgelost** 2026-11-08 | 28 (hoektegels draaien bij het wisselen vanzelf goed), 32, 45, 46, 47, 56 |
+| 8 en 9 | nog te doen | zie onderaan |
 
 Getest in Chrome: console leeg, Zelf spelen en Automatisch helemaal uitgespeeld, 500 potjes simulatie,
 Multiplayer host + gast (gast vertrekt, nieuw potje start gewoon, portalen staan op het bord).

@@ -218,9 +218,20 @@ function renderSelectedBox(){
   if (btnR) btnR.disabled = false;
 }
 
+// Een hoek-geschikte tegel die op een hoek belandt, draait bij het wisselen meteen in de enige stand
+// die daar past (vroeger zei de melding "probeer eerst te draaien", maar op een hoek kún je niet
+// draaien: twee hoektegels verwisselen ging dus nooit). swapAllowed rekent met die stand (en zet
+// alles terug); trySwap zet hem echt.
+function swapAutoTurn(tid, slot){
+  if (slotCategory(slot) === 'corner' && isCornerCapable(tid)) tileRotation[tid] = requiredCornerRotation(tid, slot);
+}
 function swapAllowed(slotA, slotB){
   const tileA = layout[slotA], tileB = layout[slotB];
-  return canTileGoInSlotNow(tileA, slotB) && canTileGoInSlotNow(tileB, slotA);
+  const ra = tileRotation[tileA], rb = tileRotation[tileB];
+  swapAutoTurn(tileA, slotB); swapAutoTurn(tileB, slotA);
+  const ok = canTileGoInSlotNow(tileA, slotB) && canTileGoInSlotNow(tileB, slotA);
+  tileRotation[tileA] = ra; tileRotation[tileB] = rb;
+  return ok;
 }
 
 // blokkeert een swap puur vanwege de HUIDIGE stand van de tegel (niet het tegeltype/de
@@ -250,6 +261,7 @@ function trySwap(slotA, slotB){
     return false;
   }
   clearSimResults();
+  swapAutoTurn(tileA, slotB); swapAutoTurn(tileB, slotA);
   [layout[slotA], layout[slotB]] = [layout[slotB], layout[slotA]];
   swapHint.textContent = '';   // geen tekst onder de knoppen bij succes (gebruikerswens), alleen bij fouten
   return true;

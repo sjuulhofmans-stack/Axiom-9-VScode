@@ -81,6 +81,27 @@ function tileIsConnected(tid){
   }
   return seen.size === keys.length;
 }
+// de vakjes BUITEN het grootste aaneengesloten stuk — alleen die krijgen het rode "!" (vroeger de
+// hele tegel, dan zag je niet welk vakje los lag)
+function tileLooseCells(tid){
+  const m = tileLookup[tid];
+  const left = new Set(m.keys());
+  let biggest = [];
+  while (left.size){
+    const start = left.values().next().value;
+    const part = [start]; left.delete(start);
+    for (let i = 0; i < part.length; i++){
+      const [dr, dc] = part[i].split('_').map(Number);
+      for (const [ddr, ddc] of [[-1,0],[1,0],[0,-1],[0,1]]){
+        const nk = (dr+ddr)+'_'+(dc+ddc);
+        if (left.has(nk)){ left.delete(nk); part.push(nk); }
+      }
+    }
+    if (part.length > biggest.length) biggest = part;
+  }
+  const inBig = new Set(biggest);
+  return [...m.keys()].filter(k => !inBig.has(k));
+}
 // alle regels uit "Regels tegel editor.xlsx" voor 1 tegel; elk issue draagt de betrokken
 // vakjes bij zodat we ze in de editor rood met een ! kunnen markeren
 function tileValidationIssues(tid){
@@ -99,7 +120,7 @@ function tileValidationIssues(tid){
     }
   }
   if (!tileIsConnected(tid)){
-    issues.push({ category: 'connected', cells: [...m.keys()], message: `patroon is niet aaneengesloten — er hangen losse vakjes buiten de rest van de tegel.` });
+    issues.push({ category: 'connected', cells: tileLooseCells(tid), message: `patroon is niet aaneengesloten — er hangen losse vakjes buiten de rest van de tegel.` });
   }
   if (openDegree(tid) < 2){
     issues.push({ category: 'exits', cells: [], message: `tegel moet minimaal 2 doorgangen (zijden) hebben — nu ${openDegree(tid)}.` });
@@ -185,10 +206,18 @@ function updateCloseButtonLabel(){
 }
 function setEditorMsg(text){ editorMsg.textContent = text || ''; }
 
+// hoeveel tegels kunnen op een hoek liggen? (zie isCornerCapable in 10-rules.js; het bord heeft er 4 nodig)
+let editorCornerWarned = false;
+function cornerCapableCount(){
+  let n = 0;
+  for (let tid = 1; tid <= 20; tid++) if (isCornerCapable(tid)) n++;
+  return n;
+}
 // tegel Hibernatie (#8) bevat de 4 vaste startposities en mag niet bewerkt worden
 function openTileEditor(tid){
   if (tid === START_TILE) return;
   if (genRunning) return;   // niet tijdens het genereren, zie tryRotate in 80-controls.js
+  editorCornerWarned = false;
   editorTile = tid;
   editorTouchedTiles = new Map();
   rememberTouchedTile(tid);
@@ -231,6 +260,14 @@ function attemptCloseTileEditor(){
       setEditorMsg(`Nog niet opslaan: ${ROOM_NAMES[tid] || ('Gang ' + tid)} — ${other[0].message}`);
       return;
     }
+  }
+  // het bord heeft 4 hoektegels nodig; zakt dat eronder, dan lukt geen enkele kaart meer. Eén keer
+  // waarschuwen (nog een klik op Opslaan = toch opslaan), want misschien maak je er zo een nieuwe.
+  const corners = cornerCapableCount();
+  if (corners < CORNER_SLOTS.length && !editorCornerWarned){
+    editorCornerWarned = true;
+    setEditorMsg(`Let op: nog maar ${corners} hoektegels, dan lukt geen kaart. Nog eens Opslaan = toch opslaan.`);
+    return;
   }
   editorOverlay.hidden = true;
   editorTile = null;
@@ -349,6 +386,7 @@ function paintCell(key){
     m.set(key, label);
   }
   editorDirty = true;
+  editorCornerWarned = false;   // na een nieuwe wijziging opnieuw waarschuwen
   updateCloseButtonLabel();
   applyTileEdits();
   drawEditorGrid();

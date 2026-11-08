@@ -90,10 +90,13 @@ function walkPauseStopSyncVisibility(){
   const autoBtn = document.getElementById('walkModeAuto');
   const isAuto = !!autoBtn && autoBtn.classList.contains('active') && !window.mpGameActive;
   const show = onWalkTab && playing && isAuto;
-  if (btnWalkPause) btnWalkPause.hidden = !show;
+  // na afloop (of na een stop) alleen nog "Terug naar lobby": Pauze en Tempo hebben dan geen zin
+  // meer en lieten de rij verspringen toen de knop breder werd
+  const live = show && walkRunning;
+  if (btnWalkPause) btnWalkPause.hidden = !live;
   if (btnWalkStop) btnWalkStop.hidden = !show;
   const tempo = document.getElementById('walkSpeedPlayWrap');
-  if (tempo) tempo.hidden = !show;
+  if (tempo) tempo.hidden = !live;
   // speelweergave over het hele scherm (alle modi): kop wordt een smalle balk, tabbladen in het
   // uitschuifmenu, bord zo groot als past — zie body.is-playing in styles.css
   const inGame = onWalkTab && playing;
@@ -923,6 +926,9 @@ async function walkRunOpening(graph, players, rand, aborted){
     op.picks[p.idx] = choice;
     walkLog(`${p.name} kiest startpositie <b>${choice}</b> — eerste opdracht ${label} ${QUEST_NAMES[label] || ''}.`, null, p);
     // komeet naar het startvak; de pion staat pas op het bord als hij geland is
+    // tijdens een pauze geen nieuwe komeet laten vertrekken (die liep anders gewoon door en landde)
+    await walkPauseGate();
+    if (aborted()) return null;
     walkFlyingIdx.add(p.idx);
     await walkCometToStart(graph, p, p.pos);
     walkFlyingIdx.delete(p.idx);
@@ -1107,6 +1113,7 @@ function setWalkRunning(on){
   btnWalkStop.disabled = !on;
   if (on) btnWalkStop.textContent = 'Stoppen';
   if (btnWalkPause) btnWalkPause.disabled = !on;
+  walkPauseStopSyncVisibility();   // Pauze/Tempo alleen zolang er echt gespeeld wordt
   if (walkPlayersSel) walkPlayersSel.disabled = on;
   if (walkEnergyModeEl) walkEnergyModeEl.disabled = on;
 }
@@ -1438,6 +1445,8 @@ async function runWalkSimulation(){
           statsUseEnergy(player, pre.kind);
         }
         if (preIsPortal(pre)){
+          await walkPauseGate();   // tijdens een pauze geen nieuw portaalschot afvuren
+          if (aborted()) return;
           const placed = portalPlace(graph, pre.shot.key, pre.shot.color, pIdx);
           player.stats.portalShots = (player.stats.portalShots || 0) + 1;   // voor de Statistieken-pop-up
           walkLog(walkPortalShotText(player.name, pre.shot, placed.stolen), null, player);
@@ -1685,6 +1694,7 @@ async function runWalkSimulation(){
   // "Stoppen" was na afloop grijs, waardoor je niet meer terug kon naar de lobby. Zelfde knop,
   // zelfde handler (stopWalkSimulation + walkFadeToLobby); setWalkRunning(true) zet de tekst terug.
   if (btnWalkStop){ btnWalkStop.disabled = false; btnWalkStop.textContent = 'Terug naar lobby'; }
+  walkPauseStopSyncVisibility();   // Pauze en Tempo weg, alleen "Terug naar lobby" blijft
 }
 
 if (btnWalkStart) btnWalkStart.addEventListener('click', () => walkTryStart(runWalkSimulation));

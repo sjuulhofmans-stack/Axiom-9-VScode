@@ -2067,6 +2067,10 @@
     border:2.5px dotted var(--qtint, var(--quest)); box-sizing:border-box;
     animation:startRingSpin 4s linear infinite reverse; will-change:transform;
   }
+  /* Pauze (Automatisch): ook de ring om je eerste opdracht en de portalen staan stil */
+  #tabWalk.walk-is-paused #walkBoard.is-start-pick .cell.walk-target::before,
+  #tabWalk.walk-is-paused .walk-portal::before,
+  #tabWalk.walk-is-paused .walk-portal b{animation-play-state:paused;}
   /* blok "Jouw eerste opdracht" in het kiespaneel */
   .walk-opening-goal{
     display:flex; flex-direction:column; gap:3px; padding:12px 14px; border-radius:8px;
@@ -6128,9 +6132,20 @@ function renderSelectedBox(){
   if (btnR) btnR.disabled = false;
 }
 
+// Een hoek-geschikte tegel die op een hoek belandt, draait bij het wisselen meteen in de enige stand
+// die daar past (vroeger zei de melding "probeer eerst te draaien", maar op een hoek kún je niet
+// draaien: twee hoektegels verwisselen ging dus nooit). swapAllowed rekent met die stand (en zet
+// alles terug); trySwap zet hem echt.
+function swapAutoTurn(tid, slot){
+  if (slotCategory(slot) === 'corner' && isCornerCapable(tid)) tileRotation[tid] = requiredCornerRotation(tid, slot);
+}
 function swapAllowed(slotA, slotB){
   const tileA = layout[slotA], tileB = layout[slotB];
-  return canTileGoInSlotNow(tileA, slotB) && canTileGoInSlotNow(tileB, slotA);
+  const ra = tileRotation[tileA], rb = tileRotation[tileB];
+  swapAutoTurn(tileA, slotB); swapAutoTurn(tileB, slotA);
+  const ok = canTileGoInSlotNow(tileA, slotB) && canTileGoInSlotNow(tileB, slotA);
+  tileRotation[tileA] = ra; tileRotation[tileB] = rb;
+  return ok;
 }
 
 // blokkeert een swap puur vanwege de HUIDIGE stand van de tegel (niet het tegeltype/de
@@ -6160,6 +6175,7 @@ function trySwap(slotA, slotB){
     return false;
   }
   clearSimResults();
+  swapAutoTurn(tileA, slotB); swapAutoTurn(tileB, slotA);
   [layout[slotA], layout[slotB]] = [layout[slotB], layout[slotA]];
   swapHint.textContent = '';   // geen tekst onder de knoppen bij succes (gebruikerswens), alleen bij fouten
   return true;
@@ -7314,9 +7330,13 @@ async function applyGeneratedLayout(seed){
   // Geen tekst meer onder de knoppen (gebruikerswens); alleen als het NIET gelukt is volgt er
   // een korte waarschuwing. De seed staat in het seed-veld en rechtsboven in de kop.
   const conn = computeConnectivity();
+  // te weinig hoektegels (na het bewerken van tegels)? Dan helpt een nieuwe map nooit: zeg dat
+  const cornersOk = cornerCapableCount() >= CORNER_SLOTS.length;
   swapHint.innerHTML = conn.groups.length === 1 && conn.brokenCount === 0
     ? ''
-    : `<span style="color:var(--danger)">Beste poging: ${conn.brokenCount} doodlopende naad/naden — probeer een nieuwe map.</span>`;
+    : !cornersOk
+      ? `<span style="color:var(--danger)">Geen geldige kaart mogelijk: er zijn minder dan ${CORNER_SLOTS.length} tegels die op een hoek passen (2 doorgangen als een L). Pas een tegel aan in de tegel-editor.</span>`
+      : `<span style="color:var(--danger)">Beste poging: ${conn.brokenCount} doodlopende naad/naden — probeer een nieuwe map.</span>`;
   renderBoard();
   // eerst het (nog onzichtbare) nieuwe bord laten opbouwen en tekenen, pas dán infaden — anders
   // valt dat zware eerste tekenwerk precies in de eerste frames van de overgang en hapert die
@@ -7692,6 +7712,27 @@ function tileIsConnected(tid){
   }
   return seen.size === keys.length;
 }
+// de vakjes BUITEN het grootste aaneengesloten stuk — alleen die krijgen het rode "!" (vroeger de
+// hele tegel, dan zag je niet welk vakje los lag)
+function tileLooseCells(tid){
+  const m = tileLookup[tid];
+  const left = new Set(m.keys());
+  let biggest = [];
+  while (left.size){
+    const start = left.values().next().value;
+    const part = [start]; left.delete(start);
+    for (let i = 0; i < part.length; i++){
+      const [dr, dc] = part[i].split('_').map(Number);
+      for (const [ddr, ddc] of [[-1,0],[1,0],[0,-1],[0,1]]){
+        const nk = (dr+ddr)+'_'+(dc+ddc);
+        if (left.has(nk)){ left.delete(nk); part.push(nk); }
+      }
+    }
+    if (part.length > biggest.length) biggest = part;
+  }
+  const inBig = new Set(biggest);
+  return [...m.keys()].filter(k => !inBig.has(k));
+}
 // alle regels uit "Regels tegel editor.xlsx" voor 1 tegel; elk issue draagt de betrokken
 // vakjes bij zodat we ze in de editor rood met een ! kunnen markeren
 function tileValidationIssues(tid){
@@ -7710,7 +7751,7 @@ function tileValidationIssues(tid){
     }
   }
   if (!tileIsConnected(tid)){
-    issues.push({ category: 'connected', cells: [...m.keys()], message: `patroon is niet aaneengesloten — er hangen losse vakjes buiten de rest van de tegel.` });
+    issues.push({ category: 'connected', cells: tileLooseCells(tid), message: `patroon is niet aaneengesloten — er hangen losse vakjes buiten de rest van de tegel.` });
   }
   if (openDegree(tid) < 2){
     issues.push({ category: 'exits', cells: [], message: `tegel moet minimaal 2 doorgangen (zijden) hebben — nu ${openDegree(tid)}.` });
@@ -7796,10 +7837,18 @@ function updateCloseButtonLabel(){
 }
 function setEditorMsg(text){ editorMsg.textContent = text || ''; }
 
+// hoeveel tegels kunnen op een hoek liggen? (zie isCornerCapable in 10-rules.js; het bord heeft er 4 nodig)
+let editorCornerWarned = false;
+function cornerCapableCount(){
+  let n = 0;
+  for (let tid = 1; tid <= 20; tid++) if (isCornerCapable(tid)) n++;
+  return n;
+}
 // tegel Hibernatie (#8) bevat de 4 vaste startposities en mag niet bewerkt worden
 function openTileEditor(tid){
   if (tid === START_TILE) return;
   if (genRunning) return;   // niet tijdens het genereren, zie tryRotate in 80-controls.js
+  editorCornerWarned = false;
   editorTile = tid;
   editorTouchedTiles = new Map();
   rememberTouchedTile(tid);
@@ -7842,6 +7891,14 @@ function attemptCloseTileEditor(){
       setEditorMsg(`Nog niet opslaan: ${ROOM_NAMES[tid] || ('Gang ' + tid)} — ${other[0].message}`);
       return;
     }
+  }
+  // het bord heeft 4 hoektegels nodig; zakt dat eronder, dan lukt geen enkele kaart meer. Eén keer
+  // waarschuwen (nog een klik op Opslaan = toch opslaan), want misschien maak je er zo een nieuwe.
+  const corners = cornerCapableCount();
+  if (corners < CORNER_SLOTS.length && !editorCornerWarned){
+    editorCornerWarned = true;
+    setEditorMsg(`Let op: nog maar ${corners} hoektegels, dan lukt geen kaart. Nog eens Opslaan = toch opslaan.`);
+    return;
   }
   editorOverlay.hidden = true;
   editorTile = null;
@@ -7960,6 +8017,7 @@ function paintCell(key){
     m.set(key, label);
   }
   editorDirty = true;
+  editorCornerWarned = false;   // na een nieuwe wijziging opnieuw waarschuwen
   updateCloseButtonLabel();
   applyTileEdits();
   drawEditorGrid();
@@ -9934,7 +9992,11 @@ function simCountStep(dir, size = SIM_COUNT_STEP){
   }
   if (simDigitsEl) simDigitsEl.addEventListener('keydown', (e) => {
     const dir = { ArrowUp: 1, ArrowRight: 1, ArrowDown: -1, ArrowLeft: -1 }[e.key];
-    if (dir){ e.preventDefault(); simCountStep(dir); }
+    if (dir){ e.preventDefault(); simCountStep(dir); return; }
+    // wat je bij een spinbutton verwacht: PageUp/PageDown = grote stap, Home/End = minimum/maximum
+    if (e.key === 'PageUp' || e.key === 'PageDown'){ e.preventDefault(); simCountStep(e.key === 'PageUp' ? 1 : -1, 1000); }
+    else if (e.key === 'Home'){ e.preventDefault(); simCountSet(SIM_COUNT_MIN); }
+    else if (e.key === 'End'){ e.preventDefault(); simCountSet(SIM_COUNT_MAX); }
   });
   if (simPresetsEl) simPresetsEl.addEventListener('click', (e) => {
     const b = e.target.closest('[data-sim-preset]');
@@ -10909,10 +10971,13 @@ function walkPauseStopSyncVisibility(){
   const autoBtn = document.getElementById('walkModeAuto');
   const isAuto = !!autoBtn && autoBtn.classList.contains('active') && !window.mpGameActive;
   const show = onWalkTab && playing && isAuto;
-  if (btnWalkPause) btnWalkPause.hidden = !show;
+  // na afloop (of na een stop) alleen nog "Terug naar lobby": Pauze en Tempo hebben dan geen zin
+  // meer en lieten de rij verspringen toen de knop breder werd
+  const live = show && walkRunning;
+  if (btnWalkPause) btnWalkPause.hidden = !live;
   if (btnWalkStop) btnWalkStop.hidden = !show;
   const tempo = document.getElementById('walkSpeedPlayWrap');
-  if (tempo) tempo.hidden = !show;
+  if (tempo) tempo.hidden = !live;
   // speelweergave over het hele scherm (alle modi): kop wordt een smalle balk, tabbladen in het
   // uitschuifmenu, bord zo groot als past — zie body.is-playing in styles.css
   const inGame = onWalkTab && playing;
@@ -11742,6 +11807,9 @@ async function walkRunOpening(graph, players, rand, aborted){
     op.picks[p.idx] = choice;
     walkLog(`${p.name} kiest startpositie <b>${choice}</b> — eerste opdracht ${label} ${QUEST_NAMES[label] || ''}.`, null, p);
     // komeet naar het startvak; de pion staat pas op het bord als hij geland is
+    // tijdens een pauze geen nieuwe komeet laten vertrekken (die liep anders gewoon door en landde)
+    await walkPauseGate();
+    if (aborted()) return null;
     walkFlyingIdx.add(p.idx);
     await walkCometToStart(graph, p, p.pos);
     walkFlyingIdx.delete(p.idx);
@@ -11926,6 +11994,7 @@ function setWalkRunning(on){
   btnWalkStop.disabled = !on;
   if (on) btnWalkStop.textContent = 'Stoppen';
   if (btnWalkPause) btnWalkPause.disabled = !on;
+  walkPauseStopSyncVisibility();   // Pauze/Tempo alleen zolang er echt gespeeld wordt
   if (walkPlayersSel) walkPlayersSel.disabled = on;
   if (walkEnergyModeEl) walkEnergyModeEl.disabled = on;
 }
@@ -12257,6 +12326,8 @@ async function runWalkSimulation(){
           statsUseEnergy(player, pre.kind);
         }
         if (preIsPortal(pre)){
+          await walkPauseGate();   // tijdens een pauze geen nieuw portaalschot afvuren
+          if (aborted()) return;
           const placed = portalPlace(graph, pre.shot.key, pre.shot.color, pIdx);
           player.stats.portalShots = (player.stats.portalShots || 0) + 1;   // voor de Statistieken-pop-up
           walkLog(walkPortalShotText(player.name, pre.shot, placed.stolen), null, player);
@@ -12504,6 +12575,7 @@ async function runWalkSimulation(){
   // "Stoppen" was na afloop grijs, waardoor je niet meer terug kon naar de lobby. Zelfde knop,
   // zelfde handler (stopWalkSimulation + walkFadeToLobby); setWalkRunning(true) zet de tekst terug.
   if (btnWalkStop){ btnWalkStop.disabled = false; btnWalkStop.textContent = 'Terug naar lobby'; }
+  walkPauseStopSyncVisibility();   // Pauze en Tempo weg, alleen "Terug naar lobby" blijft
 }
 
 if (btnWalkStart) btnWalkStart.addEventListener('click', () => walkTryStart(runWalkSimulation));

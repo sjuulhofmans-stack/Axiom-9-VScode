@@ -243,9 +243,13 @@ async function applyGeneratedLayout(seed){
   // Geen tekst meer onder de knoppen (gebruikerswens); alleen als het NIET gelukt is volgt er
   // een korte waarschuwing. De seed staat in het seed-veld en rechtsboven in de kop.
   const conn = computeConnectivity();
+  // te weinig hoektegels (na het bewerken van tegels)? Dan helpt een nieuwe map nooit: zeg dat
+  const cornersOk = cornerCapableCount() >= CORNER_SLOTS.length;
   swapHint.innerHTML = conn.groups.length === 1 && conn.brokenCount === 0
     ? ''
-    : `<span style="color:var(--danger)">Beste poging: ${conn.brokenCount} doodlopende naad/naden — probeer een nieuwe map.</span>`;
+    : !cornersOk
+      ? `<span style="color:var(--danger)">Geen geldige kaart mogelijk: er zijn minder dan ${CORNER_SLOTS.length} tegels die op een hoek passen (2 doorgangen als een L). Pas een tegel aan in de tegel-editor.</span>`
+      : `<span style="color:var(--danger)">Beste poging: ${conn.brokenCount} doodlopende naad/naden — probeer een nieuwe map.</span>`;
   renderBoard();
   // eerst het (nog onzichtbare) nieuwe bord laten opbouwen en tekenen, pas dán infaden — anders
   // valt dat zware eerste tekenwerk precies in de eerste frames van de overgang en hapert die
