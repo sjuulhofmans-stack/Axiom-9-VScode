@@ -420,7 +420,8 @@ Check minimaal:
     links boven de avatar-maker (van boven tot aan de knoppen), links onder in de hoek de knoppen
     (Spel starten/afbreken of wachtstatus/Verlaten), midden de brug (`mpRenderBridge`: tafel met
     code + Kopieer + "x / y aan boord" die als sonar pulst, 4 stoelen in de hoeken), rechts de chat
-    over de volle hoogte. Komt er iemand binnen: **BAM** (`mpBridgeJoin`) — dikke ring in zijn
+    over de volle hoogte. Onder 900 breed (telefoon) één kolom: brug (kleinere stoelen/tafel),
+    knoppen, chat, avatar-maker (sinds 2026-11). Komt er iemand binnen: **BAM** (`mpBridgeJoin`) — dikke ring in zijn
     kleur, tafel flitst, stoel klapt open, naam groot in beeld + chatregel "X is aan boord"; pas
     bijhouden zodra je zelf aan boord bent (anders kreeg een gast een BAM voor iedereen + zichzelf).
     Avatar = { c, e, g, h }: 12 karakters (nieuw: Luna, Krak, Pixel, Comet, Rots, Kristal, Baard),

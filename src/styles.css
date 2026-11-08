@@ -264,6 +264,15 @@
   body.is-playing .play-menu-btn{
     display:inline-flex !important; align-items:center; gap:6px; padding:5px 12px;
     font-family:var(--font-mono); font-size:12px; letter-spacing:.14em; text-transform:uppercase;
+    white-space:nowrap;
+  }
+  /* telefoon: Tempo + Pauze/Stoppen passen niet naast ☰ Menu + logo (de schuif lag eroverheen en
+     schoof na afloop buiten beeld) — dan op een eigen regel eronder, rechts uitgelijnd */
+  @media (max-width: 640px){
+    body.is-playing header{grid-template-columns:minmax(0, 1fr); row-gap:6px;}
+    body.is-playing .header-right{order:1; justify-content:flex-end; flex-wrap:wrap; gap:8px;}
+    body.is-playing .header-right .tab-bar-actions{flex-wrap:wrap; justify-content:flex-end;}
+    body.is-playing .tab-bar-tempo input[type=range]{width:80px;}
   }
   /* het menu zelf: de tabbladenbalk, nu als paneel tegen de linkerrand */
   body.is-playing header .tab-bar{
@@ -948,6 +957,11 @@
   .seg-group.is-vert .seg-btn.is-on{background:rgba(79,184,224,.18); border-color:rgba(79,184,224,.6);}
   .seg-group.is-vert .seg-btn > span{flex:1;}
   .seg-btn > span{overflow:hidden; text-overflow:ellipsis;}
+  /* telefoon: vijf knoppen naast elkaar (Tempo) werden "HEE…", "NOR…" — kleiner en mag over 2 regels */
+  @media (max-width: 640px){
+    .seg-group:not(.is-vert):not(.is-num) .seg-btn{padding:0 3px; font-size:10.5px; letter-spacing:0; white-space:normal; line-height:1.1; text-align:center;}
+    .seg-group:not(.is-vert):not(.is-num) .seg-btn > span{overflow:visible; text-overflow:clip;}
+  }
   .seg-bolt{display:inline-flex; align-items:center; gap:2px; flex:none; font-style:normal; color:var(--amber); font-variant-numeric:tabular-nums; letter-spacing:0;}
   .seg-bolt svg{width:11px; height:11px; fill:currentColor;}
   /* regeltje onder de rail: wat je gekozen hebt in één zin */
@@ -3120,6 +3134,12 @@
     flex:1; min-width:0; height:2.9em; overflow:hidden; display:flex; align-items:center;
     font-family:var(--font-mono); font-size:11.5px; line-height:1.45; color:var(--danger);
   }
+  /* telefoon: tussen Herstel en Opslaan bleef maar 48px over voor de melding — dan de melding op
+     een eigen regel boven de knoppen, met een vaste hoogte (4 regels), zodat er niets verschuift */
+  @media (max-width: 640px){
+    .editor-foot{flex-wrap:wrap; justify-content:space-between; row-gap:8px;}
+    .editor-msg{order:-1; flex:1 1 100%; height:5.8em;}
+  }
   select{
     width:100%; background:var(--hull); border:1px solid var(--line); color:var(--amber);
     font-family:var(--font-mono); font-size:14px; padding:9px 10px; border-radius:4px;
@@ -3313,7 +3333,9 @@
        marge + 28px paneel-marge (zie hierboven in dit blok), plus een marge van 8px omdat
        we liever een fractie te klein zitten dan alsnog moeten scrollen.
        Boven de 640px-grens (waar dit blok niet geldt) gelden de vaste desktopwaarden. */
-    #board{ --cell: clamp(5px, calc((100vw - 95px) / 40), 18px); }
+    /* -135px: ook het bordvak (.map-board-panel .board-outer) heeft nu 10px padding + 10px rand aan
+       weerszijden; met -95px was het bord ±44px te breed en viel de rechterkolom tegels weg */
+    #board{ --cell: clamp(5px, calc((100vw - 140px) / 40), 18px); }
     /* +40px t.o.v. #board hierboven: de rand rondom #walkBoard (.walk-board-col .board-outer
        — 10px padding + 10px rand, aan weerszijden) telt hier ook mee als chrome. */
     #walkBoard{ --cell: clamp(5px, calc((100vw - 135px) / 40), 16px); }
@@ -4160,6 +4182,15 @@
     grid-template-areas:"editor bridge chat" "info bridge chat";
   }
   @media (max-width:1300px){ #mpRoomLayout.is-room{grid-template-columns:270px minmax(0,1fr) 320px;} }
+  /* smal scherm (telefoon, staande tablet): één kolom — brug, knoppen, chat, avatar-maker. Met de
+     drie vaste kolommen was de brug op 400 breed 0px en viel de chat rechts weg. */
+  @media (max-width:900px){
+    #mpRoomLayout.is-room{
+      grid-template-columns:minmax(0,1fr); grid-template-rows:auto;
+      grid-template-areas:"bridge" "info" "chat" "editor";
+    }
+    #mpRoomLayout.is-room > #mpChatPanel{min-height:320px;}
+  }
   #mpRoomLayout.is-room > .mp-room-info{grid-area:info;}
   #mpRoomLayout.is-room > #mpMidCol{grid-area:bridge;}
   #mpRoomLayout.is-room > #mpChatPanel{grid-area:chat;}
@@ -4253,6 +4284,18 @@
   .mp-chair-tags{display:flex; gap:4px; min-height:16px;}
   .mp-chair-tag{font-family:var(--font-mono); font-size:9px; letter-spacing:.12em; text-transform:uppercase; padding:2px 6px; border-radius:3px;}
   .mp-chair-tag.host{color:#0b0f14; background:var(--amber);}
+  /* smal scherm (zie de kamer in één kolom hierboven): kleinere stoelen en tafel, en de brug hoog
+     genoeg dat de stoelen in de hoeken niet over de tafel vallen. Staat bewust NA de stoelregels. */
+  @media (max-width:900px){
+    .mp-bridge{min-height:520px;}
+    .mp-bridge-table{width:170px; height:170px;}
+    .mp-bridge-code{font-size:20px;}
+    .mp-chair{width:120px; gap:3px;}
+    .mp-chair.k0, .mp-chair.k1{top:12px;} .mp-chair.k2, .mp-chair.k3{bottom:12px;}
+    .mp-chair.k0, .mp-chair.k2{left:10px;} .mp-chair.k1, .mp-chair.k3{right:10px;}
+    .mp-chair-pic{width:72px; height:72px;}
+    .mp-chair-name{font-size:15px; max-width:120px;}
+  }
   .mp-chair-tag.you{color:var(--pc); border:1px solid var(--pc);}
   .mp-chair.is-empty .mp-chair-pic{box-shadow:none; background:transparent; border:2px dashed var(--line);}
   .mp-chair.is-empty .mp-chair-pic .av-svg{opacity:.12; filter:grayscale(1);}
