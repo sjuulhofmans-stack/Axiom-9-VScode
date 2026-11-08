@@ -6251,45 +6251,78 @@ function layoutIsConnected(lay){
 // Dat is nodig omdat achteraf de minst geklonterde kandidaat kiezen (compareLayoutQuality) te
 // weinig deed: gemeten bleef de slechtste uitschieter op 9 van de 10 kamers tegen elkaar, simpelweg
 // omdat álle 60 kandidaten in de pool al even sterk geklonterd waren.
+// Snelheid (nr. 31 uit analyse.md, 2026-11): elke zoekstap kijkt in een vooraf berekende tabel
+// (SLOT_OPEN_MASK: per positie en tegel welke zijden open zijn, als bitjes) in plaats van telkens
+// slotOpenDir aan te roepen. De volgorde van de rand()-aanroepen en het aantal stappen zijn exact
+// gelijk gebleven, dus dezelfde seed geeft nog steeds precies hetzelfde bord (gecontroleerd op 8
+// seeds, bord + draaiing). Samen met layoutCellGrid hieronder: gemiddeld 5,8 → 1,7 s rekenen per klik.
+// Niet "slimmer snoeien" zonder dat te beseffen: elke andere zoekvolgorde of stappentelling
+// verandert welk bord bij een seed hoort.
+const GEN_DIR_BIT = { N: 1, S: 2, E: 4, W: 8 };
+// per positie de buren als [buurpositie, mijn bitje, zijn bitje]
+const SLOT_NEIGHBOR_BITS = SLOT_NEIGHBORS.map(nb => nb.map(([dir, n]) => [n, GEN_DIR_BIT[dir], GEN_DIR_BIT[OPPOSITE[dir]]]));
+let slotOpenMaskCache = null, slotOpenMaskSource = null;
+// de tabel hangt af van de tegelvormen: opnieuw zodra recomputeOpenEdges een nieuw object neerzet
+// (tegel-editor), anders hergebruiken
+function slotOpenMasks(){
+  if (slotOpenMaskCache && slotOpenMaskSource === OPEN_EDGES_STATIC) return slotOpenMaskCache;
+  const masks = [];
+  for (let s=0; s<20; s++){
+    const row = new Array(21).fill(0);
+    for (let tid=1; tid<=20; tid++){
+      let m = 0;
+      for (const dir in GEN_DIR_BIT) if (slotOpenDir(s, tid, dir)) m |= GEN_DIR_BIT[dir];
+      row[tid] = m;
+    }
+    masks.push(row);
+  }
+  slotOpenMaskCache = masks; slotOpenMaskSource = OPEN_EDGES_STATIC;
+  return masks;
+}
+
 function attemptSeamlessLayout(rand, stepBudget, roomColorPref){
   const SOLVE_ORDER = solveOrder();
+  const MASK = slotOpenMasks();
   const lay = new Array(20).fill(null);
-  const usedTiles = new Set();
+  const used = new Array(21).fill(false);
   let steps = 0;
   function consistent(slotIdx, tid){
-    for (const [dir,n] of SLOT_NEIGHBORS[slotIdx]){
-      if (lay[n] !== null){
-        if (slotOpenDir(slotIdx, tid, dir) !== slotOpenDir(n, lay[n], OPPOSITE[dir])) return false;
-      }
+    const mine = MASK[slotIdx][tid];
+    for (const [n, myBit, theirBit] of SLOT_NEIGHBOR_BITS[slotIdx]){
+      const other = lay[n];
+      if (other !== null && ((mine & myBit) === 0) !== ((MASK[n][other] & theirBit) === 0)) return false;
     }
     return true;
   }
-  function shuffled(arr){
-    const a = arr.slice();
-    for (let i=a.length-1; i>0; i--){ const j=Math.floor(rand()*(i+1)); [a[i],a[j]]=[a[j],a[i]]; }
+  // in-place: de lijst is altijd al een vers gemaakte kopie
+  function shuffleInPlace(a){
+    for (let i=a.length-1; i>0; i--){ const j=Math.floor(rand()*(i+1)); const t=a[i]; a[i]=a[j]; a[j]=t; }
     return a;
   }
   // kandidaten die bij de schaakbordkleur van deze positie passen eerst, de rest daarna —
   // binnen elke groep nog steeds willekeurig, zodat dezelfde seed gevarieerde borden blijft geven
   function orderedCandidates(arr, slotIdx){
-    if (roomColorPref !== 0 && roomColorPref !== 1) return shuffled(arr);
-    const [row, col] = [Math.floor(slotIdx/TILE_COLS), slotIdx%TILE_COLS];
-    const wantRoom = ((row + col) % 2) === roomColorPref;
+    if (roomColorPref !== 0 && roomColorPref !== 1) return shuffleInPlace(arr);
+    const wantRoom = ((Math.floor(slotIdx/TILE_COLS) + slotIdx%TILE_COLS) % 2) === roomColorPref;
     const fits = [], rest = [];
     for (const t of arr) (!!ROOM_NAMES[t] === wantRoom ? fits : rest).push(t);
-    return shuffled(fits).concat(shuffled(rest));
+    shuffleInPlace(fits); shuffleInPlace(rest);
+    for (const t of rest) fits.push(t);
+    return fits;
   }
   function backtrack(i){
     steps++;
     if (steps > stepBudget) return false;
     if (i === SOLVE_ORDER.length) return true;
     const slotIdx = SOLVE_ORDER[i];
-    const candidates = ALLOWED_TILES[slotIdx].filter(t => !usedTiles.has(t));
+    const allowed = ALLOWED_TILES[slotIdx];
+    const candidates = [];
+    for (const t of allowed) if (!used[t]) candidates.push(t);
     for (const tid of orderedCandidates(candidates, slotIdx)){
       if (consistent(slotIdx, tid)){
-        lay[slotIdx] = tid; usedTiles.add(tid);
+        lay[slotIdx] = tid; used[tid] = true;
         if (backtrack(i+1)) return true;
-        lay[slotIdx] = null; usedTiles.delete(tid);
+        lay[slotIdx] = null; used[tid] = false;
       }
     }
     return false;
@@ -6411,10 +6444,8 @@ function roomSpreadScore(lay){
 // daar verandert dit niets aan het gedrag — alleen de score ná de flip klopt nu ook.
 function startBalanceScore(lay){
   const H = TILE_ROWS*TILE_H, W = TILE_COLS*TILE_W;
-  function cellValue(R, C){
-    const slotIdx = Math.floor(R/TILE_H)*TILE_COLS + Math.floor(C/TILE_W);
-    return getDisplayValue(lay[slotIdx], R%TILE_H, C%TILE_W);
-  }
+  const grid = layoutCellGrid(lay);
+  function cellValue(R, C){ return grid[R*W+C]; }
   const starts = [];
   const roomSlots = [];
   for (let s=0; s<20; s++) if (ROOM_NAMES[lay[s]]) roomSlots.push(s);
@@ -6477,10 +6508,8 @@ function startBalanceScore(lay){
 // score niet meer zodra applyRandomBoardFlip() de tegels 180° gedraaid heeft.)
 function questCoverageScore(lay){
   const H = TILE_ROWS*TILE_H, W = TILE_COLS*TILE_W;
-  function cellValue(R, C){
-    const slotIdx = Math.floor(R/TILE_H)*TILE_COLS + Math.floor(C/TILE_W);
-    return getDisplayValue(lay[slotIdx], R%TILE_H, C%TILE_W);
-  }
+  const grid = layoutCellGrid(lay);
+  function cellValue(R, C){ return grid[R*W+C]; }
   const dist = new Int32Array(H*W).fill(-1);
   const queue = [];
   for (let R=0; R<H; R++) for (let C=0; C<W; C++){
@@ -6531,12 +6560,20 @@ function questCoverageScore(lay){
 //
 // Kosten: ~13 bronnen x BFS(530 vakjes) + 78 paren x 1280 vakjes ~ 100k bewerkingen per
 // kandidaat; met 6 kandidaten niet merkbaar op de knop.
+// alle vakjes van een indeling in één keer opzoeken (zelfde waarde als getDisplayValue, dus met de
+// huidige tileRotation) — de metingen hieronder vroegen elk vakje anders tot ±5x per buur opnieuw op
+function layoutCellGrid(lay){
+  const H = TILE_ROWS*TILE_H, W = TILE_COLS*TILE_W;
+  const grid = new Array(H*W);
+  for (let R=0; R<H; R++) for (let C=0; C<W; C++){
+    grid[R*W+C] = getDisplayValue(lay[Math.floor(R/TILE_H)*TILE_COLS + Math.floor(C/TILE_W)], R%TILE_H, C%TILE_W);
+  }
+  return grid;
+}
 function tileBetweennessCounts(lay){
   const H = TILE_ROWS*TILE_H, W = TILE_COLS*TILE_W;
-  function cellValue(R, C){
-    const slotIdx = Math.floor(R/TILE_H)*TILE_COLS + Math.floor(C/TILE_W);
-    return getDisplayValue(lay[slotIdx], R%TILE_H, C%TILE_W);
-  }
+  const grid = layoutCellGrid(lay);
+  function cellValue(R, C){ return grid[R*W+C]; }
   const sources = [];
   for (let R=0; R<H; R++) for (let C=0; C<W; C++){
     if (typeof cellValue(R,C) === 'string') sources.push(R*W+C);
@@ -6587,15 +6624,18 @@ function tileBetweennessCounts(lay){
   }
   return countPerSlot;
 }
+// beide lezen dezelfde telling: via scored() maar één keer per kandidaat uitgerekend (was 2x).
+// Mag alleen via scored() aangeroepen worden (dat is ook de enige plek), want scored zet de
+// hoekrotaties van deze kandidaat.
 function deadTileCount(lay){
-  return tileBetweennessCounts(lay).filter(c => c === 0).length;
+  return scored(lay, tileBetweennessCounts).filter(c => c === 0).length;
 }
 // de tegel met de MINSTE steun (kleinste som van paar-kortste-pad-telling over al zijn vakjes) —
 // hoe hoger, hoe minder kwetsbaar de zwakste tegel is voor "bijna dood" verkeer. Vult
 // deadTileCount aan: die stopt bij "niet letterlijk 0 paren", dit dwingt ook een marge daarboven
 // af (zie de hoek-gangen 1/16 hierboven — vaak precies 1, wat deadTileCount niet ziet).
 function minTileBetweenness(lay){
-  return Math.min(...tileBetweennessCounts(lay));
+  return Math.min(...scored(lay, tileBetweennessCounts));
 }
 
 // ---------- kamers onderling verbonden ----------
@@ -6650,10 +6690,8 @@ function roomAdjacencyCount(lay){
 // stappen van elkaar zitten, want dan zijn ze in de praktijk één bestemming.
 function questSpacingScore(lay){
   const H = TILE_ROWS*TILE_H, W = TILE_COLS*TILE_W;
-  function cellValue(R, C){
-    const slotIdx = Math.floor(R/TILE_H)*TILE_COLS + Math.floor(C/TILE_W);
-    return getDisplayValue(lay[slotIdx], R%TILE_H, C%TILE_W);
-  }
+  const grid = layoutCellGrid(lay);
+  function cellValue(R, C){ return grid[R*W+C]; }
   const questCells = [];
   for (let R=0; R<H; R++) for (let C=0; C<W; C++){
     const v = cellValue(R,C);

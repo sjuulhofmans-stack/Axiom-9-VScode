@@ -324,6 +324,7 @@ sessies.
 - **Wat is er mis:** het commentaar en CLAUDE.md zeggen ±2 s. Ruim drie kwart van de tijd gaat naar pogingen die mislukken: 99 van de 159.
 - **Waar:** `src/js/70-generator.js` r. 54–98 en 600.
 - **Voorstel:** een lager stappenbudget per poging proberen en meten hoeveel kandidaten er dan nog uitkomen. De pool van 60 is een bewuste keuze en blijft.
+- **Opgelost (2026-11):** niet via het stappenbudget (dat verandert welk bord bij een seed hoort), maar door elke stap goedkoper te maken: een tabel met open zijden, het bord één keer opzoeken per meting, en de telling van dode tegels één keer per kandidaat in plaats van twee. Gemiddeld 5,8 → 1,7 s rekenen per klik, en op 8 seeds precies hetzelfde bord.
 
 ### 32. Een hoektegel bewerken tot drie doorgangen: geen waarschuwing, en elke nieuwe kaart mislukt
 - **Onderdeel:** Speelbord / tegel-editor · **Zekerheid:** zeker · **Klus:** klein

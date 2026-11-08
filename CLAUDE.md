@@ -148,8 +148,10 @@ aangeroepen (functiedeclaraties worden gehoist, `const`/`let` niet).
   (6) `roomSpreadScore.avgDist`; (7) `questSpacingScore.minDist` — kortste
   loopafstand tussen twee opdrachtvakjes, zo groot mogelijk; (8)
   `questCoverageScore.maxDist`; (9) eerlijkheid startposities; (10)
-  `questSpacingScore.avgDist`. Zie `70-generator.js`. Eén klik kost gemeten 7–13 s (2026-11; de
-  meeste tijd gaat naar pogingen die mislukken), niet de ±2 s uit het commentaar daar.
+  `questSpacingScore.avgDist`. Zie `70-generator.js`. Eén klik rekent gemeten ±1–2 s (±2,7 s met
+  animatie; was 5–7 s, versneld 2026-11 met een open-zijden-tabel en `layoutCellGrid`). Dezelfde seed
+  geeft nog exact hetzelfde bord; de zoekvolgorde en het stappenbudget (15000) bewust NIET veranderd,
+  want dat verandert welk bord bij een seed hoort.
   **Waarom `deadTileCount` bovenaan staat:** "dicht bij een opdracht" bleek niet
   genoeg — een buitenrand-lus kan 5 stappen van een opdracht liggen en toch 0
   bezoeken krijgen, omdat spelers alleen van opdracht naar opdracht reizen. De
