@@ -1416,6 +1416,9 @@ function simulateOneGame(graph, rand, heatmap, questStats, extra){
       //    beurt uit (zie de tijdsregels bovenaan). `pendingEnergy` wordt na de zet bijgeschreven.
       //    Het niveau hieronder is dus precies wat deze speler deze beurt kan inzetten.
       let energyRoll = 0, pendingEnergy = 0;
+      // onthouden vóór het terugzetten: Dubbele steen mag niet als je energiesteen is uitgeschakeld
+      // (net als bij de mens, soloCardBlockReason)
+      const shorted = player.skipEnergyRoll;
       if (player.skipEnergyRoll){
         player.skipEnergyRoll = false;
       } else {
@@ -1459,7 +1462,7 @@ function simulateOneGame(graph, rand, heatmap, questStats, extra){
         }
       }
       // Dubbele steen (vóór de worp): een tweede energiesteen, telt net als de eerste pas na de zet
-      if (!cardActionUsed && player.cards.includes('twin') && botWantsTwinEnergy(player, pendingEnergy)){
+      if (!cardActionUsed && !shorted && player.cards.includes('twin') && botWantsTwinEnergy(player, pendingEnergy)){
         const second = simRollEnergy(rand);
         pendingEnergy += second;
         extra.energyRolled += second;
@@ -2011,6 +2014,16 @@ function clearSimResults(){
   // een lopende stap-voor-stap-pion hoort niet op een bord dat onder hem vandaan verandert
   stopWalkSimulation();
   stopSoloGame();
+  // het potje is gestopt, dus ook het speelscherm dicht en terug naar de lobby (zonder fade: je
+  // staat op een ander tabblad). Anders zat je terug op Spelen vast in een leeg speelscherm met
+  // grijze Pauze/Stoppen en geen weg terug. Multiplayer niet: daar zitten de andere tabbladen op slot.
+  if (!window.mpGameActive && typeof walkPlayAreaEl !== 'undefined' && walkPlayAreaEl && !walkPlayAreaEl.hidden){
+    walkPlayAreaEl.hidden = true;
+    walkPlayAreaEl.classList.remove('walk-fade-hidden');
+    if (walkLobbyEl){ walkLobbyEl.hidden = false; walkLobbyEl.classList.remove('walk-fade-hidden'); }
+    walkFooterSyncVisibility();
+    walkPauseStopSyncVisibility();
+  }
   // de batch-simulatie rekent nu in brokken (zie runSimulationBatch), dus loopt niet meer
   // per se blokkerend af vóórdat de gebruiker iets anders kan aanklikken — een lopende reeks
   // potjes voor de OUDE indeling mag straks niet alsnog deze melding overschrijven

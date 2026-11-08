@@ -188,6 +188,7 @@ function setEditorMsg(text){ editorMsg.textContent = text || ''; }
 // tegel Hibernatie (#8) bevat de 4 vaste startposities en mag niet bewerkt worden
 function openTileEditor(tid){
   if (tid === START_TILE) return;
+  if (genRunning) return;   // niet tijdens het genereren, zie tryRotate in 80-controls.js
   editorTile = tid;
   editorTouchedTiles = new Map();
   rememberTouchedTile(tid);
@@ -220,6 +221,16 @@ function attemptCloseTileEditor(){
     // in de editor zelf (vak met vaste hoogte), niet meer onder de knoppen achter de pop-up
     setEditorMsg('Nog niet opslaan: ' + issues[0].message + (issues.length > 1 ? ` (en nog ${issues.length - 1})` : ''));
     return;
+  }
+  // ook de andere tegels die deze bewerking raakte (een nummer weggehaald via paintCell): die
+  // mogen niet stuk achterblijven, want dat zag je nergens tot Simulatie/Spelen het meldde
+  for (const tid of (editorTouchedTiles ? editorTouchedTiles.keys() : [])){
+    if (tid === editorTile) continue;
+    const other = tileValidationIssues(tid);
+    if (other.length){
+      setEditorMsg(`Nog niet opslaan: ${ROOM_NAMES[tid] || ('Gang ' + tid)} — ${other[0].message}`);
+      return;
+    }
   }
   editorOverlay.hidden = true;
   editorTile = null;
@@ -317,7 +328,15 @@ function paintCell(key){
     if (!label) return;
     // stond er op de doelcel al een ANDER label, dan mag dat niet zomaar verdwijnen —
     // het wordt teruggezet op de plek waar `label` vandaan komt (echte swap)
-    const oldLabel = (typeof cur === 'string' && cur !== label) ? cur : null;
+    let oldLabel = (typeof cur === 'string' && cur !== label) ? cur : null;
+    // Pak je een nummer dat al op een ANDERE tegel ligt terwijl deze tegel er zelf al een heeft
+    // (op een ander vakje), dan ruilen ze: die andere tegel krijgt het oude nummer van deze tegel.
+    // Anders hield die tegel niets over (een kamer zonder opdrachtvakje) en stond deze tegel met twee.
+    if (oldLabel === null){
+      const takenElsewhere = [...Array(20).keys()].some(i => i + 1 !== editorTile && [...tileLookup[i + 1].values()].includes(label));
+      const own = [...m.entries()].find(([k, v]) => k !== key && typeof v === 'string' && v.startsWith(prefix) && v !== label);
+      if (takenElsewhere && own){ oldLabel = own[1]; m.set(own[0], 1); }
+    }
     // hetzelfde label mag maar één keer voorkomen op het HELE bord (niet alleen deze
     // tegel) — anders mist de simulatie straks een opdracht-/startvakje en loopt vast
     for (let tid = 1; tid <= 20; tid++){

@@ -914,6 +914,9 @@ function mpOnPeerLeave(peerId, explicit){
   }
   if (mp.phase !== 'in-game') return;
   if (mp.isHost){
+    // ook uit de kamer halen: anders stond hij na het potje nog op zijn stoel, telde hij in het
+    // volgende potje weer als mens (dat dan eeuwig op zijn worp wachtte) en was zijn naam "bezet"
+    mp.seats = mp.seats.filter(s => s.peerId !== peerId);
     const p = soloPlayers.find(pl => pl.peerId === peerId);
     if (!p || !p.isHuman) return;
     // neem de speler over met de bestaande bot-logica — geen nieuwe spellogica nodig
@@ -1622,6 +1625,9 @@ function mpEnterPlayView(){
   if (mpChatPanelGameEl) mpChatPanelGameEl.hidden = false;
   mpRenderChat();
   renderWalkBoard();
+  // renderWalkBoard() wist de portalen (walkClearPortals); ze waren al gezet (host: mpHostStartGame,
+  // gast: mpApplyPortals) en anders stonden ze tot het eerste portaalschot niet op het bord
+  if (soloGraph && soloGraph.portals) walkPaintPortals(soloGraph);
 }
 function mpExitPlayView(){
   window.mpGameActive = false;
@@ -1656,6 +1662,8 @@ function mpLeaveGame(){
   if (mp.active && mp.gameOverView){
     mpExitPlayView();
     mpRenderLobby();
+    // wie tijdens het potje vertrok, is uit mp.seats gehaald (mpOnPeerLeave): stoelen bijwerken
+    if (mp.isHost){ mpBroadcastLobby(); mpRenderHostSeats(); }
     return;
   }
   if (!mp.active || mp.phase !== 'in-game') return;
@@ -1668,6 +1676,8 @@ function mpLeaveGame(){
     mp.phase = 'hosting';
     mpExitPlayView();
     mpRenderLobby();
+    mpBroadcastLobby();
+    mpRenderHostSeats();
   } else {
     mpExitPlayView();
     mpTeardown();   // stuurt zelf een 'leave'-bericht, zie mpTeardown — host zet deze speler dan om in een bot

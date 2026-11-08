@@ -6070,6 +6070,7 @@ function fixableByRotation(tid, slotIdx){
 }
 
 function trySwap(slotA, slotB){
+  if (typeof genRunning !== 'undefined' && genRunning) return;   // niet tijdens het genereren, zie tryRotate
   const tileA = layout[slotA], tileB = layout[slotB];
   if (!swapAllowed(slotA, slotB)){
     if (fixableByRotation(tileA, slotB) || fixableByRotation(tileB, slotA)){
@@ -7248,7 +7249,7 @@ async function applyGeneratedLayout(seed){
 // "Genereer nieuwe map": altijd een willekeurige nieuwe kaart (gebruikerswens — het losse
 // dobbelsteentje ernaast is weg). Het seed-veld toont alleen nog welke seed er nu ligt.
 function generateRandomMap(){
-  if (genRunning) return;
+  if (genRunning || prevSwapping) return;   // niet midden in "Vorige indeling" (die zet straks nog layout + draaiingen)
   const seed = randomSeedName();
   seedInput.value = seed;
   applyGeneratedLayout(seed);
@@ -7288,7 +7289,11 @@ if (btnPrevLayout) btnPrevLayout.addEventListener('click', async () => {
   prevSwapping = false;
 });
 
+// Tijdens het genereren (genRunning) liggen draaien, wisselen en de tegel-editor stil: de generator
+// rekent met dezelfde tileRotation, en ingrijpen brak het genereren af met een half bord (alle
+// draaiingen op 0, doodlopende naden). Zelfde blokkade in trySwap (40-board.js) en openTileEditor.
 function tryRotate(delta){
+  if (genRunning) return;
   if (selectedSlot === null) return;
   const tid = layout[selectedSlot];
   const prevRotation = tileRotation[tid] || 0;
@@ -7715,6 +7720,7 @@ function setEditorMsg(text){ editorMsg.textContent = text || ''; }
 // tegel Hibernatie (#8) bevat de 4 vaste startposities en mag niet bewerkt worden
 function openTileEditor(tid){
   if (tid === START_TILE) return;
+  if (genRunning) return;   // niet tijdens het genereren, zie tryRotate in 80-controls.js
   editorTile = tid;
   editorTouchedTiles = new Map();
   rememberTouchedTile(tid);
@@ -7747,6 +7753,16 @@ function attemptCloseTileEditor(){
     // in de editor zelf (vak met vaste hoogte), niet meer onder de knoppen achter de pop-up
     setEditorMsg('Nog niet opslaan: ' + issues[0].message + (issues.length > 1 ? ` (en nog ${issues.length - 1})` : ''));
     return;
+  }
+  // ook de andere tegels die deze bewerking raakte (een nummer weggehaald via paintCell): die
+  // mogen niet stuk achterblijven, want dat zag je nergens tot Simulatie/Spelen het meldde
+  for (const tid of (editorTouchedTiles ? editorTouchedTiles.keys() : [])){
+    if (tid === editorTile) continue;
+    const other = tileValidationIssues(tid);
+    if (other.length){
+      setEditorMsg(`Nog niet opslaan: ${ROOM_NAMES[tid] || ('Gang ' + tid)} — ${other[0].message}`);
+      return;
+    }
   }
   editorOverlay.hidden = true;
   editorTile = null;
@@ -7844,7 +7860,15 @@ function paintCell(key){
     if (!label) return;
     // stond er op de doelcel al een ANDER label, dan mag dat niet zomaar verdwijnen —
     // het wordt teruggezet op de plek waar `label` vandaan komt (echte swap)
-    const oldLabel = (typeof cur === 'string' && cur !== label) ? cur : null;
+    let oldLabel = (typeof cur === 'string' && cur !== label) ? cur : null;
+    // Pak je een nummer dat al op een ANDERE tegel ligt terwijl deze tegel er zelf al een heeft
+    // (op een ander vakje), dan ruilen ze: die andere tegel krijgt het oude nummer van deze tegel.
+    // Anders hield die tegel niets over (een kamer zonder opdrachtvakje) en stond deze tegel met twee.
+    if (oldLabel === null){
+      const takenElsewhere = [...Array(20).keys()].some(i => i + 1 !== editorTile && [...tileLookup[i + 1].values()].includes(label));
+      const own = [...m.entries()].find(([k, v]) => k !== key && typeof v === 'string' && v.startsWith(prefix) && v !== label);
+      if (takenElsewhere && own){ oldLabel = own[1]; m.set(own[0], 1); }
+    }
     // hetzelfde label mag maar één keer voorkomen op het HELE bord (niet alleen deze
     // tegel) — anders mist de simulatie straks een opdracht-/startvakje en loopt vast
     for (let tid = 1; tid <= 20; tid++){
@@ -9358,6 +9382,9 @@ function simulateOneGame(graph, rand, heatmap, questStats, extra){
       //    beurt uit (zie de tijdsregels bovenaan). `pendingEnergy` wordt na de zet bijgeschreven.
       //    Het niveau hieronder is dus precies wat deze speler deze beurt kan inzetten.
       let energyRoll = 0, pendingEnergy = 0;
+      // onthouden vóór het terugzetten: Dubbele steen mag niet als je energiesteen is uitgeschakeld
+      // (net als bij de mens, soloCardBlockReason)
+      const shorted = player.skipEnergyRoll;
       if (player.skipEnergyRoll){
         player.skipEnergyRoll = false;
       } else {
@@ -9401,7 +9428,7 @@ function simulateOneGame(graph, rand, heatmap, questStats, extra){
         }
       }
       // Dubbele steen (vóór de worp): een tweede energiesteen, telt net als de eerste pas na de zet
-      if (!cardActionUsed && player.cards.includes('twin') && botWantsTwinEnergy(player, pendingEnergy)){
+      if (!cardActionUsed && !shorted && player.cards.includes('twin') && botWantsTwinEnergy(player, pendingEnergy)){
         const second = simRollEnergy(rand);
         pendingEnergy += second;
         extra.energyRolled += second;
@@ -9953,6 +9980,16 @@ function clearSimResults(){
   // een lopende stap-voor-stap-pion hoort niet op een bord dat onder hem vandaan verandert
   stopWalkSimulation();
   stopSoloGame();
+  // het potje is gestopt, dus ook het speelscherm dicht en terug naar de lobby (zonder fade: je
+  // staat op een ander tabblad). Anders zat je terug op Spelen vast in een leeg speelscherm met
+  // grijze Pauze/Stoppen en geen weg terug. Multiplayer niet: daar zitten de andere tabbladen op slot.
+  if (!window.mpGameActive && typeof walkPlayAreaEl !== 'undefined' && walkPlayAreaEl && !walkPlayAreaEl.hidden){
+    walkPlayAreaEl.hidden = true;
+    walkPlayAreaEl.classList.remove('walk-fade-hidden');
+    if (walkLobbyEl){ walkLobbyEl.hidden = false; walkLobbyEl.classList.remove('walk-fade-hidden'); }
+    walkFooterSyncVisibility();
+    walkPauseStopSyncVisibility();
+  }
   // de batch-simulatie rekent nu in brokken (zie runSimulationBatch), dus loopt niet meer
   // per se blokkerend af vóórdat de gebruiker iets anders kan aanklikken — een lopende reeks
   // potjes voor de OUDE indeling mag straks niet alsnog deze melding overschrijven
@@ -10850,7 +10887,16 @@ function walkTryStart(startFn){
   // meteen (achter het nog zwarte scherm) naar het speelscherm wisselen, zonder crossfade —
   // anders schemerde de lobby nog door terwijl de animatie wegfaadde.
   if (introEnabled()){
+    // waar stond je bij de klik? Wissel je tijdens de animatie van tabblad of modus, dan start het
+    // potje NIET (anders liep er een Automatisch-potje in het tabblad Multiplayer, zonder Stoppen)
+    const where = () => {
+      const tab = document.querySelector('[data-tab].active');
+      const mode = [walkModeAutoBtn, walkModeSoloBtn, walkModeMultiBtn].find(b => b && b.classList.contains('active'));
+      return (tab ? tab.dataset.tab : '') + '|' + (mode ? mode.id : '');
+    };
+    const startedAt = where();
     if (!introRunning) playStartIntro(() => {
+      if (where() !== startedAt) return;
       if (walkLobbyEl) walkLobbyEl.hidden = true;
       if (walkPlayAreaEl){ walkPlayAreaEl.classList.remove('walk-fade-hidden'); walkPlayAreaEl.hidden = false; }
       walkFooterSyncVisibility();
@@ -11923,6 +11969,7 @@ async function runWalkSimulation(){
       // het eind van de beurt bij — wat je nu gooit geef je pas volgende beurt uit, zelfde
       // tijdsregels als simulateOneGame() en de mens (zie bovenaan 95-simulate.js)
       let energyRoll = 0, pendingEnergy = 0;
+      const shorted = player.skipEnergyRoll;   // Kortsluiting: dan ook geen Dubbele steen (zie simulateOneGame)
       if (player.skipEnergyRoll){
         player.skipEnergyRoll = false;
       } else {
@@ -11962,7 +12009,7 @@ async function runWalkSimulation(){
         }
       }
       // Dubbele steen: een tweede energiesteen, telt net als de eerste pas na de zet
-      if (!cardActionUsed && player.cards.includes('twin') && botWantsTwinEnergy(player, pendingEnergy)){
+      if (!cardActionUsed && !shorted && player.cards.includes('twin') && botWantsTwinEnergy(player, pendingEnergy)){
         const second = simRollEnergy(rand);
         pendingEnergy += second;
         player.stats.energyRolled += second;
@@ -12241,7 +12288,9 @@ async function runWalkSimulation(){
         // horen al bij de EERSTE (die stond immers al als doel op het bord vóór deze beurt);
         // eventuele volgende gebankte opdrachten deze beurt lezen we vers uit player.deck.
         const bankedLabels = [];
-        for (let i = player.nextIdx, n = 0; n < move.bankedCount; i++, n++) bankedLabels.push(player.deck[i]);
+        // nooit verder dan 6 (anders "7/6" en een kristal te veel; de simulatie stopt ook bij 6)
+        const bankN = Math.min(move.bankedCount, SIM_QUESTS_TO_WIN - player.completed);
+        for (let i = player.nextIdx, n = 0; n < bankN; i++, n++) bankedLabels.push(player.deck[i]);
         player.doneCells.push(targetKey);
         targetDiv.classList.remove('walk-target');
         targetDiv.classList.add('walk-done');
@@ -14925,6 +14974,8 @@ function soloRenderActionPanel(){
   // waarom kan een actie nu niet (naast te weinig energie)? Zelfde paren als in de simulatie:
   // Stuwlading/Stuwstoot en de laarzen-kaart/-actie sluiten elkaar uit.
   const blockReason = (id) => {
+    // Vergrendeling (soloBeginHumanTurn zet soloUsedEnergyId = 'locked'): deze beurt geen enkele energie-actie
+    if (soloLockedThisTurn) return 'je bent vergrendeld';
     if (id === 'boost' && boostcellUsed) return 'je hebt deze beurt al Stuwlading gespeeld';
     if (id === 'gravity' && soloUsedBoots) return 'je hebt deze beurt al gesprint';
     if (id === 'gravity' && !soloDashOptions().length) return 'in geen enkele richting ruimte';
@@ -15028,6 +15079,7 @@ function soloCardBlockReason(id){
   // 'start': na het gooien, maar alleen zolang je nog geen stap hebt gezet (Koerscorrectie,
   // Zelf kiezen en Zonnezeil kijken naar je worp)
   if (when === 'start' && soloMove && soloMove.stepsLeft !== soloMove.roll) return 'je bent al begonnen met lopen';
+  if (soloLockedThisTurn) return 'je bent vergrendeld';
   if (soloCardActionUsed()) return 'je hebt deze beurt al een kristal gebruikt';
   // één sprint per beurt: de kaart en de energie-actie Zwaartekracht-laarzen sluiten elkaar uit
   if (id === 'boots' && soloUsedBoots) return 'je hebt deze beurt al gesprint';
@@ -15373,6 +15425,8 @@ function soloUseEnergyAction(id){
   if (mpIntercept('useEnergy', { id })) return;
   const p = solo();
   const act = ENERGY_ACTIONS[id];
+  // hooguit één energie-actie per beurt, en geen als je vergrendeld bent (soloUsedEnergyId = 'locked')
+  if (soloPhase !== 'choose-action' || soloEnergyActionUsed()) return;
   if (p.energy < act.cost) return;
   // de laarzen alleen als er ook echt een richting vrij is (anders betaal je voor niets)
   if (id === 'gravity' && (soloUsedBoots || !soloDashOptions().length)) return;
@@ -15684,7 +15738,8 @@ function soloEnterJumpTarget(){
   soloHideStepCounter();
   btnWalkSoloSkip.hidden = true;
   btnWalkSoloRoll.hidden = true;
-  const stamp = simBfsDistances(soloGraph, solo().pos);
+  // true = niet door een portaal: Noodtransport negeert portalen (net als de bot, resolveEnergyJump)
+  const stamp = simBfsDistances(soloGraph, solo().pos, true);
   const occ = soloOccupied();
   const keys = [];
   for (let k = 0; k < soloGraph.N; k++){
@@ -15863,9 +15918,39 @@ if (btnWalkSoloSkip) btnWalkSoloSkip.addEventListener('click', () => {
   if (soloPhase === 'choose-action') soloSkipToRoll();
 });
 
+// Blinde Vlek: "loop door spelers heen, maar stop er niet op". Een bezet vakje mag alleen als je
+// daarna nog verder kunt zonder op een pion te eindigen (zelfde regel als endBlockedSet bij de bots
+// in resolveMove). Een vrij vakje is altijd veilig: loop je daarna vast, dan stop je op een vrij vakje.
+// Een portaal-ingang is ook veilig: je komt uit het andere portaal, en dat werkt alleen als daar geen pion staat.
+function soloBlindLegal(){
+  const occ = soloOccupied();
+  const memo = new Map();
+  const canFinish = (k, dir, steps) => {
+    if (!occ.has(k)) return true;
+    if (steps <= 0) return false;
+    const id = k * 100 + dir * 25 + steps;
+    if (memo.has(id)) return memo.get(id);
+    memo.set(id, false);
+    const ok = soloLegalNextCells(soloGraph, k, dir, null)
+      .some(n => n.portal !== undefined || canFinish(n.key, n.dir, steps - 1));
+    memo.set(id, ok);
+    return ok;
+  };
+  return soloLegalNextCells(soloGraph, solo().pos, soloMove.lastDir, null)
+    .filter(n => n.portal !== undefined || canFinish(n.key, n.dir, soloMove.stepsLeft - 1));
+}
 function soloAdvanceMovePhase(){
   const occ = soloOccupied();
-  const legal = soloLegalNextCells(soloGraph, solo().pos, soloMove.lastDir, occ);
+  const blind = soloUsedCardId === 'blind';
+  const legal = blind ? soloBlindLegal() : soloLegalNextCells(soloGraph, solo().pos, soloMove.lastDir, occ);
+  if (!legal.length && blind){
+    // met Blinde Vlek geen enkele stap die niet op een pion eindigt: de zet stopt hier
+    soloHideStepCounter();
+    walkLog(`Geen vervolgstap meer mogelijk.`, null, solo());
+    if (soloBankCountThisTurn > 0) soloEndMoveAlreadyBanked();
+    else soloFinishTurn(false);
+    return;
+  }
   if (!legal.length){
     // geen vervolgstap: ofwel een muur (echt doodlopend), ofwel puur tegenstanders in de weg
     // — in dat laatste geval mag Blinde Vlek de blokkade negeren, als je 'm hebt en nog geen
@@ -15921,11 +16006,7 @@ function soloResolveBlindOffer(yes){
     soloUsedCardId = 'blind';
     walkLog(`Je speelt <b>Blinde Vlek</b>: bezette vakjes tellen deze beurt niet mee.`, null, solo());
     soloPhase = 'moving';
-    const legal = soloLegalNextCells(soloGraph, solo().pos, soloMove.lastDir, null);
-    soloMarkClickable(soloGraph, legal.map(l => l.key));
-    soloRenderStepCounter(legal);
-    renderSoloMeta(soloMove.stepsLeft);
-    soloRefreshCardVault();   // cardActionUsed is nu true (blind gespeeld), dus niets meer speelbaar
+    soloAdvanceMovePhase();   // rekent met soloBlindLegal: door pionnen heen, maar er niet op eindigen
   } else {
     walkLog(`Doodlopend — geen vervolgstap meer mogelijk.`, null, solo());
     if (soloBankCountThisTurn > 0) soloEndMoveAlreadyBanked();
@@ -16002,7 +16083,9 @@ function soloEndMoveAlreadyBanked(){
 
 function soloHandleMoveClick(key){
   const occ = soloOccupied();
-  const legal = soloLegalNextCells(soloGraph, solo().pos, soloMove.lastDir, soloPhase === 'moving' && soloUsedCardId === 'blind' ? null : occ);
+  const legal = soloPhase === 'moving' && soloUsedCardId === 'blind'
+    ? soloBlindLegal()
+    : soloLegalNextCells(soloGraph, solo().pos, soloMove.lastDir, occ);
   const match = legal.find(l => l.key === key);
   if (!match) return;
   if (mpIntercept('moveClick', { key })) return;
@@ -16226,6 +16309,7 @@ function soloResolveBotTurn(player){
   // energiesteen rolt mee, maar telt pas na de zet bij (zelfde tijdsregels als de mens en
   // simulateOneGame — wat je nu gooit geef je pas volgende beurt uit)
   let energyRoll = 0, pendingEnergy = 0;
+  const shorted = player.skipEnergyRoll;   // Kortsluiting: dan ook geen Dubbele steen (zie simulateOneGame)
   if (player.skipEnergyRoll){ player.skipEnergyRoll = false; }
   else {
     energyRoll = simRollEnergy(soloRand);
@@ -16264,7 +16348,7 @@ function soloResolveBotTurn(player){
     }
   }
   // Dubbele steen: een tweede energiesteen, telt net als de eerste pas na de zet
-  if (!cardActionUsed && player.cards.includes('twin') && botWantsTwinEnergy(player, pendingEnergy)){
+  if (!cardActionUsed && !shorted && player.cards.includes('twin') && botWantsTwinEnergy(player, pendingEnergy)){
     const second = simRollEnergy(soloRand);
     pendingEnergy += second;
     player.stats.energyRolled += second;
@@ -16441,17 +16525,23 @@ function soloResolveBotTurn(player){
   if (move.bankedQuest){
     // meestal 1 opdracht, zelden 2 (de resterende stappen na de 1e voerden toevallig ook door
     // de 2e) — zie resolveMove in 95-simulate.js.
+    // nooit verder dan 6 (anders "7/6", zie de simulatie die ook bij 6 stopt)
     const bankedLabels = [];
-    for (let i = player.nextIdx, n = 0; n < move.bankedCount; i++, n++) bankedLabels.push(player.deck[i]);
+    const bankN = Math.min(move.bankedCount, SIM_QUESTS_TO_WIN - player.completed);
+    for (let i = player.nextIdx, n = 0; n < bankN; i++, n++) bankedLabels.push(player.deck[i]);
     player.doneCells.push(targetKey);
     for (let i = 1; i < bankedLabels.length; i++) player.doneCells.push(soloGraph.questCells[bankedLabels[i]]);
     player.completed += bankedLabels.length;
     player.nextIdx += bankedLabels.length;
-    if (player.cards.length < ACTION_CARD_HAND_MAX){
-      const drawn = drawActionCard(soloDeck, soloRand);
-      if (drawn){ player.cards.push(drawn); crystalEvent(player, targetKey, 'gain'); }
-    } else {
-      crystalEvent(player, targetKey, 'full');
+    // één kristal per voltooide opdracht, net als de mens, de simulatie en Automatisch
+    for (let n = 0; n < bankedLabels.length; n++){
+      const cellKey = n === 0 ? targetKey : soloGraph.questCells[bankedLabels[n]];
+      if (player.cards.length < ACTION_CARD_HAND_MAX){
+        const drawn = drawActionCard(soloDeck, soloRand);
+        if (drawn){ player.cards.push(drawn); crystalEvent(player, cellKey, 'gain'); }
+      } else {
+        crystalEvent(player, cellKey, 'full');
+      }
     }
     const chainNote = bankedLabels.length > 1
       ? ` en meteen ook <span class="hit">${bankedLabels.slice(1).map(l => `${l} ${QUEST_NAMES[l] || ''}`).join(', ')}</span>`
@@ -19657,6 +19747,9 @@ function mpOnPeerLeave(peerId, explicit){
   }
   if (mp.phase !== 'in-game') return;
   if (mp.isHost){
+    // ook uit de kamer halen: anders stond hij na het potje nog op zijn stoel, telde hij in het
+    // volgende potje weer als mens (dat dan eeuwig op zijn worp wachtte) en was zijn naam "bezet"
+    mp.seats = mp.seats.filter(s => s.peerId !== peerId);
     const p = soloPlayers.find(pl => pl.peerId === peerId);
     if (!p || !p.isHuman) return;
     // neem de speler over met de bestaande bot-logica — geen nieuwe spellogica nodig
@@ -20365,6 +20458,9 @@ function mpEnterPlayView(){
   if (mpChatPanelGameEl) mpChatPanelGameEl.hidden = false;
   mpRenderChat();
   renderWalkBoard();
+  // renderWalkBoard() wist de portalen (walkClearPortals); ze waren al gezet (host: mpHostStartGame,
+  // gast: mpApplyPortals) en anders stonden ze tot het eerste portaalschot niet op het bord
+  if (soloGraph && soloGraph.portals) walkPaintPortals(soloGraph);
 }
 function mpExitPlayView(){
   window.mpGameActive = false;
@@ -20399,6 +20495,8 @@ function mpLeaveGame(){
   if (mp.active && mp.gameOverView){
     mpExitPlayView();
     mpRenderLobby();
+    // wie tijdens het potje vertrok, is uit mp.seats gehaald (mpOnPeerLeave): stoelen bijwerken
+    if (mp.isHost){ mpBroadcastLobby(); mpRenderHostSeats(); }
     return;
   }
   if (!mp.active || mp.phase !== 'in-game') return;
@@ -20411,6 +20509,8 @@ function mpLeaveGame(){
     mp.phase = 'hosting';
     mpExitPlayView();
     mpRenderLobby();
+    mpBroadcastLobby();
+    mpRenderHostSeats();
   } else {
     mpExitPlayView();
     mpTeardown();   // stuurt zelf een 'leave'-bericht, zie mpTeardown — host zet deze speler dan om in een bot

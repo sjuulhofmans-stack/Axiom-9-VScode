@@ -239,6 +239,7 @@ function fixableByRotation(tid, slotIdx){
 }
 
 function trySwap(slotA, slotB){
+  if (typeof genRunning !== 'undefined' && genRunning) return;   // niet tijdens het genereren, zie tryRotate
   const tileA = layout[slotA], tileB = layout[slotB];
   if (!swapAllowed(slotA, slotB)){
     if (fixableByRotation(tileA, slotB) || fixableByRotation(tileB, slotA)){

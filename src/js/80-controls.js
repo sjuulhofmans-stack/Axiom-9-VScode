@@ -257,7 +257,7 @@ async function applyGeneratedLayout(seed){
 // "Genereer nieuwe map": altijd een willekeurige nieuwe kaart (gebruikerswens — het losse
 // dobbelsteentje ernaast is weg). Het seed-veld toont alleen nog welke seed er nu ligt.
 function generateRandomMap(){
-  if (genRunning) return;
+  if (genRunning || prevSwapping) return;   // niet midden in "Vorige indeling" (die zet straks nog layout + draaiingen)
   const seed = randomSeedName();
   seedInput.value = seed;
   applyGeneratedLayout(seed);
@@ -297,7 +297,11 @@ if (btnPrevLayout) btnPrevLayout.addEventListener('click', async () => {
   prevSwapping = false;
 });
 
+// Tijdens het genereren (genRunning) liggen draaien, wisselen en de tegel-editor stil: de generator
+// rekent met dezelfde tileRotation, en ingrijpen brak het genereren af met een half bord (alle
+// draaiingen op 0, doodlopende naden). Zelfde blokkade in trySwap (40-board.js) en openTileEditor.
 function tryRotate(delta){
+  if (genRunning) return;
   if (selectedSlot === null) return;
   const tid = layout[selectedSlot];
   const prevRotation = tileRotation[tid] || 0;

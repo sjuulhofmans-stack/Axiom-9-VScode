@@ -892,6 +892,8 @@ function soloRenderActionPanel(){
   // waarom kan een actie nu niet (naast te weinig energie)? Zelfde paren als in de simulatie:
   // Stuwlading/Stuwstoot en de laarzen-kaart/-actie sluiten elkaar uit.
   const blockReason = (id) => {
+    // Vergrendeling (soloBeginHumanTurn zet soloUsedEnergyId = 'locked'): deze beurt geen enkele energie-actie
+    if (soloLockedThisTurn) return 'je bent vergrendeld';
     if (id === 'boost' && boostcellUsed) return 'je hebt deze beurt al Stuwlading gespeeld';
     if (id === 'gravity' && soloUsedBoots) return 'je hebt deze beurt al gesprint';
     if (id === 'gravity' && !soloDashOptions().length) return 'in geen enkele richting ruimte';
@@ -995,6 +997,7 @@ function soloCardBlockReason(id){
   // 'start': na het gooien, maar alleen zolang je nog geen stap hebt gezet (Koerscorrectie,
   // Zelf kiezen en Zonnezeil kijken naar je worp)
   if (when === 'start' && soloMove && soloMove.stepsLeft !== soloMove.roll) return 'je bent al begonnen met lopen';
+  if (soloLockedThisTurn) return 'je bent vergrendeld';
   if (soloCardActionUsed()) return 'je hebt deze beurt al een kristal gebruikt';
   // één sprint per beurt: de kaart en de energie-actie Zwaartekracht-laarzen sluiten elkaar uit
   if (id === 'boots' && soloUsedBoots) return 'je hebt deze beurt al gesprint';
@@ -1340,6 +1343,8 @@ function soloUseEnergyAction(id){
   if (mpIntercept('useEnergy', { id })) return;
   const p = solo();
   const act = ENERGY_ACTIONS[id];
+  // hooguit één energie-actie per beurt, en geen als je vergrendeld bent (soloUsedEnergyId = 'locked')
+  if (soloPhase !== 'choose-action' || soloEnergyActionUsed()) return;
   if (p.energy < act.cost) return;
   // de laarzen alleen als er ook echt een richting vrij is (anders betaal je voor niets)
   if (id === 'gravity' && (soloUsedBoots || !soloDashOptions().length)) return;
@@ -1651,7 +1656,8 @@ function soloEnterJumpTarget(){
   soloHideStepCounter();
   btnWalkSoloSkip.hidden = true;
   btnWalkSoloRoll.hidden = true;
-  const stamp = simBfsDistances(soloGraph, solo().pos);
+  // true = niet door een portaal: Noodtransport negeert portalen (net als de bot, resolveEnergyJump)
+  const stamp = simBfsDistances(soloGraph, solo().pos, true);
   const occ = soloOccupied();
   const keys = [];
   for (let k = 0; k < soloGraph.N; k++){
@@ -1830,9 +1836,39 @@ if (btnWalkSoloSkip) btnWalkSoloSkip.addEventListener('click', () => {
   if (soloPhase === 'choose-action') soloSkipToRoll();
 });
 
+// Blinde Vlek: "loop door spelers heen, maar stop er niet op". Een bezet vakje mag alleen als je
+// daarna nog verder kunt zonder op een pion te eindigen (zelfde regel als endBlockedSet bij de bots
+// in resolveMove). Een vrij vakje is altijd veilig: loop je daarna vast, dan stop je op een vrij vakje.
+// Een portaal-ingang is ook veilig: je komt uit het andere portaal, en dat werkt alleen als daar geen pion staat.
+function soloBlindLegal(){
+  const occ = soloOccupied();
+  const memo = new Map();
+  const canFinish = (k, dir, steps) => {
+    if (!occ.has(k)) return true;
+    if (steps <= 0) return false;
+    const id = k * 100 + dir * 25 + steps;
+    if (memo.has(id)) return memo.get(id);
+    memo.set(id, false);
+    const ok = soloLegalNextCells(soloGraph, k, dir, null)
+      .some(n => n.portal !== undefined || canFinish(n.key, n.dir, steps - 1));
+    memo.set(id, ok);
+    return ok;
+  };
+  return soloLegalNextCells(soloGraph, solo().pos, soloMove.lastDir, null)
+    .filter(n => n.portal !== undefined || canFinish(n.key, n.dir, soloMove.stepsLeft - 1));
+}
 function soloAdvanceMovePhase(){
   const occ = soloOccupied();
-  const legal = soloLegalNextCells(soloGraph, solo().pos, soloMove.lastDir, occ);
+  const blind = soloUsedCardId === 'blind';
+  const legal = blind ? soloBlindLegal() : soloLegalNextCells(soloGraph, solo().pos, soloMove.lastDir, occ);
+  if (!legal.length && blind){
+    // met Blinde Vlek geen enkele stap die niet op een pion eindigt: de zet stopt hier
+    soloHideStepCounter();
+    walkLog(`Geen vervolgstap meer mogelijk.`, null, solo());
+    if (soloBankCountThisTurn > 0) soloEndMoveAlreadyBanked();
+    else soloFinishTurn(false);
+    return;
+  }
   if (!legal.length){
     // geen vervolgstap: ofwel een muur (echt doodlopend), ofwel puur tegenstanders in de weg
     // — in dat laatste geval mag Blinde Vlek de blokkade negeren, als je 'm hebt en nog geen
@@ -1888,11 +1924,7 @@ function soloResolveBlindOffer(yes){
     soloUsedCardId = 'blind';
     walkLog(`Je speelt <b>Blinde Vlek</b>: bezette vakjes tellen deze beurt niet mee.`, null, solo());
     soloPhase = 'moving';
-    const legal = soloLegalNextCells(soloGraph, solo().pos, soloMove.lastDir, null);
-    soloMarkClickable(soloGraph, legal.map(l => l.key));
-    soloRenderStepCounter(legal);
-    renderSoloMeta(soloMove.stepsLeft);
-    soloRefreshCardVault();   // cardActionUsed is nu true (blind gespeeld), dus niets meer speelbaar
+    soloAdvanceMovePhase();   // rekent met soloBlindLegal: door pionnen heen, maar er niet op eindigen
   } else {
     walkLog(`Doodlopend — geen vervolgstap meer mogelijk.`, null, solo());
     if (soloBankCountThisTurn > 0) soloEndMoveAlreadyBanked();
@@ -1969,7 +2001,9 @@ function soloEndMoveAlreadyBanked(){
 
 function soloHandleMoveClick(key){
   const occ = soloOccupied();
-  const legal = soloLegalNextCells(soloGraph, solo().pos, soloMove.lastDir, soloPhase === 'moving' && soloUsedCardId === 'blind' ? null : occ);
+  const legal = soloPhase === 'moving' && soloUsedCardId === 'blind'
+    ? soloBlindLegal()
+    : soloLegalNextCells(soloGraph, solo().pos, soloMove.lastDir, occ);
   const match = legal.find(l => l.key === key);
   if (!match) return;
   if (mpIntercept('moveClick', { key })) return;
@@ -2193,6 +2227,7 @@ function soloResolveBotTurn(player){
   // energiesteen rolt mee, maar telt pas na de zet bij (zelfde tijdsregels als de mens en
   // simulateOneGame — wat je nu gooit geef je pas volgende beurt uit)
   let energyRoll = 0, pendingEnergy = 0;
+  const shorted = player.skipEnergyRoll;   // Kortsluiting: dan ook geen Dubbele steen (zie simulateOneGame)
   if (player.skipEnergyRoll){ player.skipEnergyRoll = false; }
   else {
     energyRoll = simRollEnergy(soloRand);
@@ -2231,7 +2266,7 @@ function soloResolveBotTurn(player){
     }
   }
   // Dubbele steen: een tweede energiesteen, telt net als de eerste pas na de zet
-  if (!cardActionUsed && player.cards.includes('twin') && botWantsTwinEnergy(player, pendingEnergy)){
+  if (!cardActionUsed && !shorted && player.cards.includes('twin') && botWantsTwinEnergy(player, pendingEnergy)){
     const second = simRollEnergy(soloRand);
     pendingEnergy += second;
     player.stats.energyRolled += second;
@@ -2408,17 +2443,23 @@ function soloResolveBotTurn(player){
   if (move.bankedQuest){
     // meestal 1 opdracht, zelden 2 (de resterende stappen na de 1e voerden toevallig ook door
     // de 2e) — zie resolveMove in 95-simulate.js.
+    // nooit verder dan 6 (anders "7/6", zie de simulatie die ook bij 6 stopt)
     const bankedLabels = [];
-    for (let i = player.nextIdx, n = 0; n < move.bankedCount; i++, n++) bankedLabels.push(player.deck[i]);
+    const bankN = Math.min(move.bankedCount, SIM_QUESTS_TO_WIN - player.completed);
+    for (let i = player.nextIdx, n = 0; n < bankN; i++, n++) bankedLabels.push(player.deck[i]);
     player.doneCells.push(targetKey);
     for (let i = 1; i < bankedLabels.length; i++) player.doneCells.push(soloGraph.questCells[bankedLabels[i]]);
     player.completed += bankedLabels.length;
     player.nextIdx += bankedLabels.length;
-    if (player.cards.length < ACTION_CARD_HAND_MAX){
-      const drawn = drawActionCard(soloDeck, soloRand);
-      if (drawn){ player.cards.push(drawn); crystalEvent(player, targetKey, 'gain'); }
-    } else {
-      crystalEvent(player, targetKey, 'full');
+    // één kristal per voltooide opdracht, net als de mens, de simulatie en Automatisch
+    for (let n = 0; n < bankedLabels.length; n++){
+      const cellKey = n === 0 ? targetKey : soloGraph.questCells[bankedLabels[n]];
+      if (player.cards.length < ACTION_CARD_HAND_MAX){
+        const drawn = drawActionCard(soloDeck, soloRand);
+        if (drawn){ player.cards.push(drawn); crystalEvent(player, cellKey, 'gain'); }
+      } else {
+        crystalEvent(player, cellKey, 'full');
+      }
     }
     const chainNote = bankedLabels.length > 1
       ? ` en meteen ook <span class="hit">${bankedLabels.slice(1).map(l => `${l} ${QUEST_NAMES[l] || ''}`).join(', ')}</span>`

@@ -174,7 +174,16 @@ function walkTryStart(startFn){
   // meteen (achter het nog zwarte scherm) naar het speelscherm wisselen, zonder crossfade —
   // anders schemerde de lobby nog door terwijl de animatie wegfaadde.
   if (introEnabled()){
+    // waar stond je bij de klik? Wissel je tijdens de animatie van tabblad of modus, dan start het
+    // potje NIET (anders liep er een Automatisch-potje in het tabblad Multiplayer, zonder Stoppen)
+    const where = () => {
+      const tab = document.querySelector('[data-tab].active');
+      const mode = [walkModeAutoBtn, walkModeSoloBtn, walkModeMultiBtn].find(b => b && b.classList.contains('active'));
+      return (tab ? tab.dataset.tab : '') + '|' + (mode ? mode.id : '');
+    };
+    const startedAt = where();
     if (!introRunning) playStartIntro(() => {
+      if (where() !== startedAt) return;
       if (walkLobbyEl) walkLobbyEl.hidden = true;
       if (walkPlayAreaEl){ walkPlayAreaEl.classList.remove('walk-fade-hidden'); walkPlayAreaEl.hidden = false; }
       walkFooterSyncVisibility();
@@ -1247,6 +1256,7 @@ async function runWalkSimulation(){
       // het eind van de beurt bij — wat je nu gooit geef je pas volgende beurt uit, zelfde
       // tijdsregels als simulateOneGame() en de mens (zie bovenaan 95-simulate.js)
       let energyRoll = 0, pendingEnergy = 0;
+      const shorted = player.skipEnergyRoll;   // Kortsluiting: dan ook geen Dubbele steen (zie simulateOneGame)
       if (player.skipEnergyRoll){
         player.skipEnergyRoll = false;
       } else {
@@ -1286,7 +1296,7 @@ async function runWalkSimulation(){
         }
       }
       // Dubbele steen: een tweede energiesteen, telt net als de eerste pas na de zet
-      if (!cardActionUsed && player.cards.includes('twin') && botWantsTwinEnergy(player, pendingEnergy)){
+      if (!cardActionUsed && !shorted && player.cards.includes('twin') && botWantsTwinEnergy(player, pendingEnergy)){
         const second = simRollEnergy(rand);
         pendingEnergy += second;
         player.stats.energyRolled += second;
@@ -1565,7 +1575,9 @@ async function runWalkSimulation(){
         // horen al bij de EERSTE (die stond immers al als doel op het bord vóór deze beurt);
         // eventuele volgende gebankte opdrachten deze beurt lezen we vers uit player.deck.
         const bankedLabels = [];
-        for (let i = player.nextIdx, n = 0; n < move.bankedCount; i++, n++) bankedLabels.push(player.deck[i]);
+        // nooit verder dan 6 (anders "7/6" en een kristal te veel; de simulatie stopt ook bij 6)
+        const bankN = Math.min(move.bankedCount, SIM_QUESTS_TO_WIN - player.completed);
+        for (let i = player.nextIdx, n = 0; n < bankN; i++, n++) bankedLabels.push(player.deck[i]);
         player.doneCells.push(targetKey);
         targetDiv.classList.remove('walk-target');
         targetDiv.classList.add('walk-done');
