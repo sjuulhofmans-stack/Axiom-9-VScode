@@ -183,6 +183,11 @@ aangeroepen (functiedeclaraties worden gehoist, `const`/`let` niet).
   `botPickDieValue`; Portaalsleutel via `botPreRollMove` als kind 'portalCard').
   Meting: de simulatie toont per kristal "Wint wie hem speelt" (25% = gemiddeld, >31% te sterk,
   <19% zwak). Eerste meting (2000 potjes): alle 15 tussen 22,7 en 27,7%.
+  Gelijkgetrokken mens/bot (2026-11): een bot krijgt de buit van Energielek pas na zijn zet
+  (`energyLeakTake` → pendingEnergy), een Condensator blijft bij een energieworp van 0 staan (ook bij
+  bots), Kortsluiting blokkeert ook de Dubbele steen van een bot, en bij Dubbele steen rekent de bot
+  met de verwachte worp (`BOT_TWIN_EXPECTED_ROLL`). Gemeten daarna (4000 potjes): kristallen
+  21,3–27,9%, energie-acties 23,5–26,3%.
   Kortsluiting op een mens deed tot 2026-10 niets (alleen bots misten hun steen); nu ook voor de
   mens, in `soloRollEnergyForTurn`. In de code heten ze nog `ACTION_CARDS`, `p.cards`,
   `actionCells` enz. — bewust niet hernoemd. Nieuwe zichtbare tekst dus altijd "kristal".

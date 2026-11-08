@@ -1264,7 +1264,7 @@ async function runWalkSimulation(){
         pendingEnergy = energyRoll;
         player.stats.energyRolled += energyRoll;
         // vorige beurt een Condensator gespeeld: deze steen telt dubbel (zie simulateOneGame)
-        if (player.condenserPending){
+        if (player.condenserPending && energyRoll > 0){   // bij een 0 blijft hij staan, net als bij de mens
           player.condenserPending = false;
           pendingEnergy += energyRoll;
           walkLog(`${player.name} verzilvert de <b>Condensator</b>: energiesteen ${energyRoll} telt dubbel.`, null, player);
@@ -1289,14 +1289,15 @@ async function runWalkSimulation(){
       if (!cardActionUsed && player.cards.includes('leak') && player.energy < ENERGY_MAX){
         const victim = pickEnergyLeakTarget(players, pIdx, rand);
         if (victim && victim.energy >= ENERGY_LEAK_AMOUNT){
-          const r = applyEnergyLeak(player, victim);
+          const r = { taken: energyLeakTake(victim) };   // pas na de zet erbij, zie energyLeakTake
+          pendingEnergy += r.taken;
           useActionCard(player, 'leak', deck);
           cardActionUsed = true; usedCardId = 'leak';
           walkLog(`${player.name} gebruikt <b>Energielek</b> en pakt ${r.taken} energie van ${victim.name}.`, null, player);
         }
       }
       // Dubbele steen: een tweede energiesteen, telt net als de eerste pas na de zet
-      if (!cardActionUsed && !shorted && player.cards.includes('twin') && botWantsTwinEnergy(player, pendingEnergy)){
+      if (!cardActionUsed && !shorted && player.cards.includes('twin') && botWantsTwinEnergy(player, BOT_TWIN_EXPECTED_ROLL)){
         const second = simRollEnergy(rand);
         pendingEnergy += second;
         player.stats.energyRolled += second;
@@ -1438,6 +1439,7 @@ async function runWalkSimulation(){
         }
         if (preIsPortal(pre)){
           const placed = portalPlace(graph, pre.shot.key, pre.shot.color, pIdx);
+          player.stats.portalShots = (player.stats.portalShots || 0) + 1;   // voor de Statistieken-pop-up
           walkLog(walkPortalShotText(player.name, pre.shot, placed.stolen), null, player);
           await walkPortalShotFx(graph, pre.shot.path, pre.shot.color, placed.from, walkSpeed().stepMs < 140);
           if (aborted()) return;
@@ -1555,7 +1557,9 @@ async function runWalkSimulation(){
         bank.limit = (pre ? pre.bankedCount : 0) + rollMove.bankedCount;
         if (!await walkPath(rollMove.path, false)) return;
         diceProgressDone();
-        player.stats.walkSteps += rollMove.path.length - 1 - pathPortalJumps(graph, rollMove.path);
+        const portalJumps = pathPortalJumps(graph, rollMove.path);
+        player.stats.walkSteps += rollMove.path.length - 1 - portalJumps;
+        player.stats.portalJumps = (player.stats.portalJumps || 0) + portalJumps;
         move = mergePreRollMove(pre, rollMove);
       }
       // de energiesteen van deze beurt telt nu pas bij: volgende beurt uit te geven

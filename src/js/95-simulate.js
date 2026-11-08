@@ -820,6 +820,9 @@ function botPreRollMove(graph, player, occupied, targets, canEnergy, canCard){
   if (canEnergy && botStrategyNow(graph, player) === 'portal' && player.energy >= ENERGY_ACTIONS.portal.cost){
     const shot = botPortalShot(graph, player, occupied, targets);
     if (shot) return { kind: 'portal', shot, path: [player.pos], key: player.pos, bankedCount: 0, wasBlocked: false, endsTurn: false };
+    // met de pionnen erbij kan het schot toch niet (botPortalWanted rekent zonder pionnen): dan
+    // deze beurt terug naar de eigen strategie, anders deed een vaste-strategie-bot helemaal niets
+    player._portalWant = false;
   }
   if (canEnergy && botStrategyNow(graph, player) === 'jump' && player.energy >= ENERGY_ACTIONS.jump.cost){
     const stamp = simBfsDistances(graph, targetKey);
@@ -889,16 +892,26 @@ function pickEnergyLeakTarget(players, selfIdx, rand){
 }
 // pakt hooguit ENERGY_LEAK_AMOUNT energie af; boven het plafond valt het weg (net als elke winst)
 function applyEnergyLeak(thief, victim){
-  const taken = Math.min(ENERGY_LEAK_AMOUNT, victim.energy);
-  victim.energy -= taken;
+  const taken = energyLeakTake(victim);
   const gain = simGainEnergy(thief, taken);
   return { taken, gained: gain.gained };
+}
+// Bots spelen Energielek vóór hun worp (de mens pas erna, `when: 'post'`). Daarom pakken ze het af
+// maar krijgen ze het pas na de zet bij, samen met hun energiesteen (pendingEnergy): zo geven ze het,
+// net als de mens, pas volgende beurt uit. Vroeger betaalden ze er dezelfde beurt al een actie mee.
+function energyLeakTake(victim){
+  const taken = Math.min(ENERGY_LEAK_AMOUNT, victim.energy);
+  victim.energy -= taken;
+  return taken;
 }
 // Dubbele steen: een bot speelt hem als de tweede energiesteen niet tegen het plafond wegvalt
 // (`pending` = wat hij deze beurt al gooide en nog bij krijgt) en zijn steen niet uitgeschakeld is.
 function botWantsTwinEnergy(player, pending){
   return !player.skipEnergyRoll && player.energy + (pending || 0) + 3 <= ENERGY_MAX;
 }
+// Dubbele steen mag alleen vóór het gooien: een mens weet zijn energiesteen dan nog niet. De bot
+// rekent daarom met de gemiddelde worp (0-1-1-2-2-3 → 1,5, afgerond 2) i.p.v. met wat hij al gooide.
+const BOT_TWIN_EXPECTED_ROLL = 2;
 // Zonnezeil: energie gelijk aan de laagste loopsteen (2 of 3 stenen)
 function solarGain(dieVals){ return dieVals.length ? Math.min(...dieVals) : 0; }
 // Hoe goed is een zet voor de bot? Eerst het aantal gepakte opdrachten, dan hoe dicht hij bij
@@ -1321,6 +1334,9 @@ function statsRecordRoll(player, sum){
 }
 function statsUseEnergy(player, kind){
   if (player && player.stats && player.stats.energyUse) player.stats.energyUse[kind] = (player.stats.energyUse[kind] || 0) + 1;
+  // echt uitgegeven energie (voor "Energie verbruikt"): vroeger berekend als erbij − over, en dan
+  // telde energie die een ander je met Energielek afpakte als "verbruikt"
+  if (player && player.stats && ENERGY_ACTIONS[kind]) player.stats.energySpent = (player.stats.energySpent || 0) + ENERGY_ACTIONS[kind].cost;
 }
 
 // "Pech-reeksen": zoektochten van 12 beurten of langer komen in één bak
@@ -1427,7 +1443,8 @@ function simulateOneGame(graph, rand, heatmap, questStats, extra){
         // Condensator die vorige beurt gespeeld is: deze steen telt dubbel. Rolt de speler deze
         // beurt helemaal niet (Kortsluiting), dan blijft de Condensator staan voor de
         // eerstvolgende beurt waarin hij wél gooit — er valt nu immers niets te verdubbelen.
-        if (player.condenserPending){
+        // bij een 0 blijft hij staan voor de volgende worp, net als bij de mens (soloRollEnergyForTurn)
+        if (player.condenserPending && energyRoll > 0){
           player.condenserPending = false;
           pendingEnergy += energyRoll;
         }
@@ -1456,13 +1473,13 @@ function simulateOneGame(graph, rand, heatmap, questStats, extra){
       if (!cardActionUsed && player.cards.includes('leak') && player.energy < ENERGY_MAX){
         const victim = pickEnergyLeakTarget(players, pIdx, rand);
         if (victim && victim.energy >= ENERGY_LEAK_AMOUNT){
-          applyEnergyLeak(player, victim);
+          pendingEnergy += energyLeakTake(victim);   // pas na de zet erbij, zie energyLeakTake
           useActionCard(player, 'leak', deck, extra);
           cardActionUsed = true;
         }
       }
       // Dubbele steen (vóór de worp): een tweede energiesteen, telt net als de eerste pas na de zet
-      if (!cardActionUsed && !shorted && player.cards.includes('twin') && botWantsTwinEnergy(player, pendingEnergy)){
+      if (!cardActionUsed && !shorted && player.cards.includes('twin') && botWantsTwinEnergy(player, BOT_TWIN_EXPECTED_ROLL)){
         const second = simRollEnergy(rand);
         pendingEnergy += second;
         extra.energyRolled += second;

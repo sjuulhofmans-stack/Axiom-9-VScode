@@ -1011,7 +1011,7 @@ function soloCardBlockReason(id){
   if (soloPlayers.length === 1 && WALK_SOLO_NO_OPPONENT_CARDS.includes(id)) return 'geen tegenstanders in dit potje';
   if (id === 'shove' && !soloShoveTargets().length) return 'geen tegenstander naast je om weg te duwen';
   if (id === 'short' && !soloOthers().length) return 'geen tegenstanders meer over';
-  if ((id === 'ration' || id === 'solar') && p.energy >= ENERGY_MAX) return 'je energie zit al vol';
+  if ((id === 'ration' || id === 'solar' || id === 'leak') && p.energy >= ENERGY_MAX) return 'je energie zit al vol';
   if (id === 'twin' && p.skipEnergyRoll) return 'je energiesteen is deze beurt uitgeschakeld';
   if (id === 'portalkey' && soloUsedEnergyId === 'portal') return 'je hebt deze beurt al een portaal geschoten';
   if (id === 'portalkey' && !soloPortalCannonNow().length) return 'in geen enkele richting ruimte';
@@ -2242,7 +2242,7 @@ function soloResolveBotTurn(player){
     pendingEnergy = energyRoll;
     player.stats.energyRolled += energyRoll;
     // vorige beurt een Condensator gespeeld: deze steen telt dubbel (zie simulateOneGame)
-    if (player.condenserPending){
+    if (player.condenserPending && energyRoll > 0){   // bij een 0 blijft hij staan, net als bij de mens
       player.condenserPending = false;
       pendingEnergy += energyRoll;
       walkLog(`${player.name} verzilvert de <b>Condensator</b>: energiesteen ${energyRoll} telt dubbel.`, null, player);
@@ -2268,13 +2268,14 @@ function soloResolveBotTurn(player){
   if (!cardActionUsed && player.cards.includes('leak') && player.energy < ENERGY_MAX){
     const victim = pickEnergyLeakTarget(soloPlayers, pIdx, soloRand);
     if (victim && victim.energy >= ENERGY_LEAK_AMOUNT){
-      const r = applyEnergyLeak(player, victim);
+      const r = { taken: energyLeakTake(victim) };   // pas na de zet erbij, zie energyLeakTake
+      pendingEnergy += r.taken;
       useActionCard(player, 'leak', soloDeck); cardActionUsed = true;
       walkLog(`${player.name} gebruikt <b>Energielek</b> en pakt ${r.taken} energie van ${victim.name}.`, null, player);
     }
   }
   // Dubbele steen: een tweede energiesteen, telt net als de eerste pas na de zet
-  if (!cardActionUsed && !shorted && player.cards.includes('twin') && botWantsTwinEnergy(player, pendingEnergy)){
+  if (!cardActionUsed && !shorted && player.cards.includes('twin') && botWantsTwinEnergy(player, BOT_TWIN_EXPECTED_ROLL)){
     const second = simRollEnergy(soloRand);
     pendingEnergy += second;
     player.stats.energyRolled += second;
@@ -2764,8 +2765,8 @@ const SOLO_STATS_GROUPS = [
   ]},
   { title: 'Energie-acties', rows: [
     { label: 'Ingezet', best: 'max', get: p => p.actionUses || 0 },
-    { label: 'Energie verbruikt', best: 'max', get: p => p.stats.energyGained - p.energy },
-    { label: 'Gemiddeld per actie', get: p => perOf(p.stats.energyGained - p.energy, p.actionUses || 0), fmt: v => v ? nl(v, 1) : '—' },
+    { label: 'Energie verbruikt', best: 'max', get: p => p.stats.energySpent || 0 },
+    { label: 'Gemiddeld per actie', get: p => perOf(p.stats.energySpent || 0, p.actionUses || 0), fmt: v => v ? nl(v, 1) : '—' },
     // één rij (de groep blijft zo 4 hoog, net als de rest: de pop-up past zonder scrollen)
     { label: 'Portalen geschoten / door gestapt', get: p => (p.stats.portalShots || 0) * 1000 + (p.stats.portalJumps || 0),
       fmt: v => `${Math.floor(v / 1000)} / ${v % 1000}` },
