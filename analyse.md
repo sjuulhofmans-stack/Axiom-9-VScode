@@ -15,7 +15,7 @@ Datum: 2026-11-08.
 | 7 | **opgelost** 2026-11-08 | 28 (hoektegels draaien bij het wisselen vanzelf goed), 32, 45, 46, 47, 56 |
 | 8 | **opgelost** 2026-11-08 | 33, 34, 57, 58. Gemeten in een potje (ook kristal oprapen en kluis vol): alleen nog transform/opacity. Ongeveer 80 dode CSS-regels en 6 dode JS-functies/-namen weg; CLAUDE.md bijgewerkt (generator, bestanden, statistiek-categorie) |
 | 9 | **opgelost** 2026-11-08 | 35 (bot-beurt op één plek, 800 batch-potjes exact gelijk), 31 (generator 5,8 → 1,7 s, zelfde seed = zelfde bord). Ook de keuzes 15, 21 en 49 zijn opgelost |
-| — | **nog open** | 50 (klik van een gast soms genegeerd): stond in geen enkele portie, vergeten bij het indelen |
+| — | **opgelost** 2026-11-08 | 50 (klik van een gast soms genegeerd): stond in geen enkele portie, achteraf opgelost |
 
 Getest in Chrome: console leeg, Zelf spelen en Automatisch helemaal uitgespeeld, 500 potjes simulatie,
 Multiplayer host + gast (gast vertrekt, nieuw potje start gewoon, portalen staan op het bord).
@@ -447,6 +447,9 @@ sessies.
 - **Wat is er mis:** de host neemt een klik alleen aan als de stand niet net veranderd is.
 - **Waar:** `src/js/99-multiplayer.js` r. 1573.
 - **Voorstel:** een verouderde klik opnieuw beoordelen in plaats van weggooien. De handlers controleren zelf al of hij nog geldig is.
+- **Opgelost (2026-11):** de gast stuurt bij elke klik mee waar die van afhangt (`mpIntentContext`: fase, plek,
+  stappen, energie, kristallen, openstaande keuze). Is dat bij de host nog gelijk, dan voert hij een "verouderde"
+  klik alsnog uit; een dubbele klik blijft geweigerd, want de eerste klik verandert altijd een van die dingen.
 
 ### 51. Spelregels: hoofdstuk 12 "Einde van het potje" licht in de navigatie nooit op
 - **Zekerheid:** zeker · **Klus:** klein · **Waar:** `src/js/98c-rules.js` r. 240–250.

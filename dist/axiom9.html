@@ -20197,8 +20197,25 @@ function mpIntercept(action, args){
   const ownerIsMe = !!owner && owner.peerId === mp.myPeerId;
   if (mp.isHost) return !ownerIsMe;   // eigen beurt: gewoon lokaal uitvoeren; andermans beurt: niks doen, wacht op hun intent
   if (!ownerIsMe) return true;         // niet mijn beurt: negeren
-  mp.actions.intent.send({ action, args, stateVersion: mp.stateVersion });
+  mp.actions.intent.send({ action, args, stateVersion: mp.stateVersion, ctx: mpIntentContext() });
   return true;
+}
+
+// Waar een klik van de speler aan zet van afhangt (nr. 50 uit analyse.md, 2026-11). De host gooide
+// een klik weg zodra de stateVersion niet meer gelijk was, maar die versie gaat ook omhoog door
+// dingen die er voor de klik niet toe doen (een logregel, een kristal-animatie, de stapel): ±1 op
+// de 300 kliks verdween zo. Nu stuurt de gast dit mee, en de host voert een "verouderde" klik
+// alsnog uit als dit bij hem nog precies hetzelfde is. Een dubbele klik blijft geweigerd: de eerste
+// verandert altijd fase, plek, stappen, energie of kristallen. Alleen velden die host en gast
+// allebei exact zo hebben (de gast krijgt ze 1-op-1 uit de stand, mpApplyState).
+function mpIntentContext(){
+  const p = soloPlayers && soloPlayers[soloActiveIdx];
+  return JSON.stringify([soloActiveIdx, soloPhase, soloTurn, soloMove, soloBootsOptions,
+    soloPortalOptions || [], soloPortalAim || null, soloCurrentLegalMoves, soloPendingBoost, soloUsedBoots,
+    soloUsedJump, soloTargetSwapped, soloUsedEnergyId, soloUsedCardId, soloDiscardedCardId,
+    soloBlindOfferAvailable, soloLockedThisTurn, soloOpening || null,
+    p ? [p.pos, p.energy, p.cards ? p.cards.length : 0] : null,
+    walkCardActionsEl ? (walkCardActionsEl.dataset.pendingCard || '') : '']);
 }
 
 const MP_INTENT_HANDLERS = {
@@ -20222,7 +20239,8 @@ const MP_INTENT_HANDLERS = {
 };
 function mpHandleIntent(peerId, msg){
   if (!mp.isHost || mp.phase !== 'in-game') return;
-  if (msg.stateVersion !== mp.stateVersion) return;   // verouderd, host is intussen verder
+  // verouderd = host is intussen verder; tenzij alles waar de klik van afhangt nog gelijk is (nr. 50)
+  if (msg.stateVersion !== mp.stateVersion && msg.ctx !== mpIntentContext()) return;
   const owner = soloPlayers[soloActiveIdx];
   if (!owner || owner.peerId !== peerId) return;       // niet aan zet, negeren
   const handler = MP_INTENT_HANDLERS[msg.action];

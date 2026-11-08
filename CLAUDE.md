@@ -254,6 +254,10 @@ aangeroepen (functiedeclaraties worden gehoist, `const`/`let` niet).
   (host + gast) en een nagebootste Trystero via BroadcastChannel (`mpTrysteroMod` vervangen vóór
   mpHostCreate/mpJoinConnect) + een automatische speler per venster vond beide fouten; na de
   oplossing 5 potjes van 48–67 beurten zonder vastlopen of fouten.
+  **Klik van een gast** (`mpHandleIntent`): de host voert hem uit bij dezelfde `stateVersion`, óf als
+  `mpIntentContext()` (fase, plek, stappen, energie, kristallen, openstaande keuze) bij de host nog gelijk
+  is aan wat de gast meestuurde. Zonder dat laatste verdween ±1 op de 300 kliks (2026-11). Nieuwe
+  beurt-toestand die bepaalt of een klik nog klopt? Ook in `mpIntentContext` zetten.
   **Geheim in multiplayer**: de host stuurt de stand per gast apart (`mpSendPerGuest`); in
   `mpPublicPlayer` ziet elke gast alleen zijn eigen kristallen, van anderen alleen het aantal.
   Logregels noemen in multiplayer en bij bots nooit welk kristal er werd opgeraapt.
