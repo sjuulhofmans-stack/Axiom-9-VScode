@@ -506,6 +506,13 @@ function mpNameKey(name){ return soloCleanName(name || '').toLowerCase(); }
 function mpHostOnHello(peerId, data){
   // al binnen (herhaalde 'hello' van mpJoinWatchdog): kennelijk mist hij de lijst nog — stuur 'm opnieuw
   if (mp.seats.some(s => s.peerId === peerId)){ mpHostOnPeerJoin(peerId); return; }
+  // tijdens een potje (en de startanimatie) niemand nieuw toelaten: een plek erbij midden in het
+  // spel gaf rommel (lobby-berichten naar spelende gasten). Wie het potje verliet, kan terug
+  // zodra het voorbij is — zie mpLeaveGame.
+  if (mp.phase === 'in-game' || (typeof introRunning !== 'undefined' && introRunning)){
+    mp.actions.leave.send({ reason: 'bezig' }, peerId);
+    return;
+  }
   if (mp.seats.length >= mp.totalSeats){
     mp.actions.leave.send({ reason: 'vol' }, peerId);
     return;
@@ -871,6 +878,8 @@ function mpJoinRejected(data){
     if (nameInput){ nameInput.classList.add('mp-field-invalid'); nameInput.focus(); nameInput.select(); }
   } else if (data.reason === 'vol'){
     mpSetStatus('Deze kamer is al vol.', 'bad');
+  } else if (data.reason === 'bezig'){
+    mpSetStatus('Er loopt nog een potje in deze kamer. Probeer het opnieuw zodra het voorbij is.', 'bad');
   } else {
     mpSetStatus('De host heeft je niet toegelaten.', 'bad');
   }
@@ -1680,9 +1689,20 @@ function mpLeaveGame(){
     mpBroadcastLobby();
     mpRenderHostSeats();
   } else {
+    // Gast: helemaal uit de kamer (gekozen 2026-11 als de versie zonder haperingen — in de kamer
+    // blijven terwijl de host doorspeelt, gaf standen van een potje waar je niet meer in zit). De
+    // host maakt van je plek een bot en haalt je uit de kamer (mpOnPeerLeave). Code en naam blijven
+    // ingevuld: zodra het potje voorbij is, klik je op Deelnemen en zit je weer aan boord.
+    const code = mp.roomCode, name = mp.pendingName;
     mpExitPlayView();
     mpTeardown();   // stuurt zelf een 'leave'-bericht, zie mpTeardown — host zet deze speler dan om in een bot
+    mp.phase = 'join-form';
     mpRenderLobby();
+    const codeInput = document.getElementById('mpJoinCode');
+    const nameInput = document.getElementById('mpJoinName');
+    if (codeInput && code) codeInput.value = code;
+    if (nameInput && name && !nameInput.value) nameInput.value = name;
+    mpSetStatus('Je hebt het potje verlaten. Zodra het voorbij is, kun je met Deelnemen terug in de kamer.', '');
   }
 }
 // Gast ontvangt het "host heeft het potje gestopt"-bericht: de room blijft intact (anders dan

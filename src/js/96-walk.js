@@ -1406,7 +1406,9 @@ async function runWalkSimulation(){
       // (Noodtransport, Zwaartekracht-laarzen) met een ander spoor. `bank.limit` zegt hoeveel
       // opdrachten dit pad pakt (zie walkAdvanceShownTarget).
       const bank = { seq: player.deck.slice(player.nextIdx), completed: player.completed, limit: 0, shown: 0 };
-      async function walkPath(path, special){
+      // `landOnly`: Noodtransport — je springt, dus alleen het vakje waar je landt telt voor een
+      // kristal, niet wat je overvliegt (spelregel van de maker, 2026-11; zie crystalPathOf)
+      async function walkPath(path, special, landOnly){
         for (let i = 1; i < path.length; i++){
           if (aborted()) return false;
           const leaving = walkCellDiv(graph, player.pos);
@@ -1420,7 +1422,7 @@ async function runWalkSimulation(){
           walkAdvanceShownTarget(graph, bank, player.pos, player.color, occupiedNow(), true);
           // actiekaartvakje (gang): onderbreekt de zet niet, levert hooguit 1x per beurt een
           // beloningskaart op — ook als je onderweg meerdere van deze vakjes passeert
-          if (!actionCellDrawnThisTurn && graph.actionCells.has(player.pos)){
+          if (!actionCellDrawnThisTurn && graph.actionCells.has(player.pos) && (!landOnly || i === path.length - 1)){
             actionCellDrawnThisTurn = true;
             const reward = drawActionCellReward(player, deck, rand);
             if (reward.drawn){
@@ -1479,7 +1481,7 @@ async function runWalkSimulation(){
           walkLog(`${player.name} schiet met <b>Zwaartekracht-laarzen</b>${pre.kind === 'bootsCard' ? ' (kristal)' : ''} ${pre.path.length - 1} vakjes rechtdoor naar het ${namen[dir] || ''}.`, null, player);
         }
         bank.limit = pre.bankedCount;
-        if (!await walkPath(pre.path, true)) return;
+        if (!await walkPath(pre.path, true, pre.kind === 'jump')) return;
         if (pre.kind !== 'jump' && !preIsPortal(pre)) player.stats.dashSteps += pre.path.length - 1;
       }
       const rollTargets = pre ? targets.slice(pre.bankedCount) : targets;

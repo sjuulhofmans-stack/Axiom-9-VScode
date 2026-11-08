@@ -2448,7 +2448,9 @@ function soloResolveBotTurn(player){
 
   player.pos = move.key;
   paintWalkPawns(soloGraph, soloPlayers, pIdx);
-  if (pathHasActionCell(soloGraph, move.path)) soloGrantActionCellReward(player, false, pathFirstActionCell(soloGraph, move.path));
+  // Noodtransport: alleen het landingsvakje telt (crystalPathOf, 95-simulate.js)
+  const crystalPath = crystalPathOf(move.path, pre);
+  if (pathHasActionCell(soloGraph, crystalPath)) soloGrantActionCellReward(player, false, pathFirstActionCell(soloGraph, crystalPath));
   // de energiesteen van deze beurt telt nu pas bij: volgende beurt uit te geven
   if (pendingEnergy) simGainEnergy(player, pendingEnergy);
   // voor soloAnimateBotTurn: welke opdrachten deze zet pakt, zodat het naspelen het doel al

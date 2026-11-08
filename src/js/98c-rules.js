@@ -151,6 +151,7 @@ function rulesSections(){
         <li>Je krijgt een kristal als je een <b>opdracht voltooit</b>.</li>
         <li>Loop je over het paarse <b>kristalvakje</b> van een gang, dan krijg je er ook een. Je zet stopt daar niet voor.</li>
         <li>Kristalvakjes geven hooguit <b>1 kristal per beurt</b>, ook als je er meer passeert.</li>
+        <li>Met <b>Noodtransport</b> spring je: alleen een kristalvakje waar je óp landt telt, niet wat je overvliegt.</li>
         <li>Je kluis houdt hoogstens <b>${hand} kristallen</b>. Is hij vol, dan krijg je niets en blijft het kristal op de stapel.</li>
         <li>Je mag per beurt hooguit 1 kristal spelen of afleggen.</li>
         <li>Gebruikte kristallen gaan naar de aflegstapel. Is de stapel op, dan schud je de aflegstapel.</li>

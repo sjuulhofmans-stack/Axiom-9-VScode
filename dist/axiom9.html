@@ -8557,6 +8557,14 @@ function pathHasActionCell(graph, path){
   for (let i = 1; i < path.length; i++) if (graph.actionCells.has(path[i])) return true;
   return false;
 }
+// Welke vakjes van een zet tellen voor een kristal? Bij Noodtransport (pre.kind 'jump') spring je
+// vrij: alleen het vakje waar je landt telt, niet wat je overvliegt (spelregel van de maker, 2026-11;
+// de mens kreeg al alleen het landingsvakje). `path` = de hele zet (mergePreRollMove: eerst het
+// sprongpad, dan de worp vanaf de landing).
+function crystalPathOf(path, pre){
+  if (!pre || pre.kind !== 'jump' || !pre.path || pre.path.length < 2) return path;
+  return [pre.path[0]].concat(path.slice(pre.path.length - 1));
+}
 // welk kristalvakje werd als eerste betreden (voor de animatie: daar komt het kristal vandaan)
 function pathFirstActionCell(graph, path){
   for (let i = 1; i < path.length; i++) if (graph.actionCells.has(path[i])) return path[i];
@@ -9522,7 +9530,7 @@ function simulateOneGame(graph, rand, heatmap, questStats, extra){
       extra.totalTurns++;
       if (move.wasBlocked) extra.blockedTurns++;
       for (let p = 1; p < move.path.length; p++) heatmap[move.path[p]]++;
-      if (pathHasActionCell(graph, move.path)) actionCellCrossed = true;
+      if (pathHasActionCell(graph, crystalPathOf(move.path, pre))) actionCellCrossed = true;
       // "Wat levert een energie-actie op?": haalde deze beurt een opdracht, mét of zonder actie
       // portalen: sprongen tellen, en wie er gebruik van maakt (eigen portaal of dat van een ander)
       if (extra.portal){
@@ -12037,7 +12045,9 @@ async function runWalkSimulation(){
       // (Noodtransport, Zwaartekracht-laarzen) met een ander spoor. `bank.limit` zegt hoeveel
       // opdrachten dit pad pakt (zie walkAdvanceShownTarget).
       const bank = { seq: player.deck.slice(player.nextIdx), completed: player.completed, limit: 0, shown: 0 };
-      async function walkPath(path, special){
+      // `landOnly`: Noodtransport — je springt, dus alleen het vakje waar je landt telt voor een
+      // kristal, niet wat je overvliegt (spelregel van de maker, 2026-11; zie crystalPathOf)
+      async function walkPath(path, special, landOnly){
         for (let i = 1; i < path.length; i++){
           if (aborted()) return false;
           const leaving = walkCellDiv(graph, player.pos);
@@ -12051,7 +12061,7 @@ async function runWalkSimulation(){
           walkAdvanceShownTarget(graph, bank, player.pos, player.color, occupiedNow(), true);
           // actiekaartvakje (gang): onderbreekt de zet niet, levert hooguit 1x per beurt een
           // beloningskaart op — ook als je onderweg meerdere van deze vakjes passeert
-          if (!actionCellDrawnThisTurn && graph.actionCells.has(player.pos)){
+          if (!actionCellDrawnThisTurn && graph.actionCells.has(player.pos) && (!landOnly || i === path.length - 1)){
             actionCellDrawnThisTurn = true;
             const reward = drawActionCellReward(player, deck, rand);
             if (reward.drawn){
@@ -12110,7 +12120,7 @@ async function runWalkSimulation(){
           walkLog(`${player.name} schiet met <b>Zwaartekracht-laarzen</b>${pre.kind === 'bootsCard' ? ' (kristal)' : ''} ${pre.path.length - 1} vakjes rechtdoor naar het ${namen[dir] || ''}.`, null, player);
         }
         bank.limit = pre.bankedCount;
-        if (!await walkPath(pre.path, true)) return;
+        if (!await walkPath(pre.path, true, pre.kind === 'jump')) return;
         if (pre.kind !== 'jump' && !preIsPortal(pre)) player.stats.dashSteps += pre.path.length - 1;
       }
       const rollTargets = pre ? targets.slice(pre.bankedCount) : targets;
@@ -16492,7 +16502,9 @@ function soloResolveBotTurn(player){
 
   player.pos = move.key;
   paintWalkPawns(soloGraph, soloPlayers, pIdx);
-  if (pathHasActionCell(soloGraph, move.path)) soloGrantActionCellReward(player, false, pathFirstActionCell(soloGraph, move.path));
+  // Noodtransport: alleen het landingsvakje telt (crystalPathOf, 95-simulate.js)
+  const crystalPath = crystalPathOf(move.path, pre);
+  if (pathHasActionCell(soloGraph, crystalPath)) soloGrantActionCellReward(player, false, pathFirstActionCell(soloGraph, crystalPath));
   // de energiesteen van deze beurt telt nu pas bij: volgende beurt uit te geven
   if (pendingEnergy) simGainEnergy(player, pendingEnergy);
   // voor soloAnimateBotTurn: welke opdrachten deze zet pakt, zodat het naspelen het doel al
@@ -18286,6 +18298,7 @@ function rulesSections(){
         <li>Je krijgt een kristal als je een <b>opdracht voltooit</b>.</li>
         <li>Loop je over het paarse <b>kristalvakje</b> van een gang, dan krijg je er ook een. Je zet stopt daar niet voor.</li>
         <li>Kristalvakjes geven hooguit <b>1 kristal per beurt</b>, ook als je er meer passeert.</li>
+        <li>Met <b>Noodtransport</b> spring je: alleen een kristalvakje waar je óp landt telt, niet wat je overvliegt.</li>
         <li>Je kluis houdt hoogstens <b>${hand} kristallen</b>. Is hij vol, dan krijg je niets en blijft het kristal op de stapel.</li>
         <li>Je mag per beurt hooguit 1 kristal spelen of afleggen.</li>
         <li>Gebruikte kristallen gaan naar de aflegstapel. Is de stapel op, dan schud je de aflegstapel.</li>
@@ -19324,6 +19337,13 @@ function mpNameKey(name){ return soloCleanName(name || '').toLowerCase(); }
 function mpHostOnHello(peerId, data){
   // al binnen (herhaalde 'hello' van mpJoinWatchdog): kennelijk mist hij de lijst nog — stuur 'm opnieuw
   if (mp.seats.some(s => s.peerId === peerId)){ mpHostOnPeerJoin(peerId); return; }
+  // tijdens een potje (en de startanimatie) niemand nieuw toelaten: een plek erbij midden in het
+  // spel gaf rommel (lobby-berichten naar spelende gasten). Wie het potje verliet, kan terug
+  // zodra het voorbij is — zie mpLeaveGame.
+  if (mp.phase === 'in-game' || (typeof introRunning !== 'undefined' && introRunning)){
+    mp.actions.leave.send({ reason: 'bezig' }, peerId);
+    return;
+  }
   if (mp.seats.length >= mp.totalSeats){
     mp.actions.leave.send({ reason: 'vol' }, peerId);
     return;
@@ -19689,6 +19709,8 @@ function mpJoinRejected(data){
     if (nameInput){ nameInput.classList.add('mp-field-invalid'); nameInput.focus(); nameInput.select(); }
   } else if (data.reason === 'vol'){
     mpSetStatus('Deze kamer is al vol.', 'bad');
+  } else if (data.reason === 'bezig'){
+    mpSetStatus('Er loopt nog een potje in deze kamer. Probeer het opnieuw zodra het voorbij is.', 'bad');
   } else {
     mpSetStatus('De host heeft je niet toegelaten.', 'bad');
   }
@@ -20498,9 +20520,20 @@ function mpLeaveGame(){
     mpBroadcastLobby();
     mpRenderHostSeats();
   } else {
+    // Gast: helemaal uit de kamer (gekozen 2026-11 als de versie zonder haperingen — in de kamer
+    // blijven terwijl de host doorspeelt, gaf standen van een potje waar je niet meer in zit). De
+    // host maakt van je plek een bot en haalt je uit de kamer (mpOnPeerLeave). Code en naam blijven
+    // ingevuld: zodra het potje voorbij is, klik je op Deelnemen en zit je weer aan boord.
+    const code = mp.roomCode, name = mp.pendingName;
     mpExitPlayView();
     mpTeardown();   // stuurt zelf een 'leave'-bericht, zie mpTeardown — host zet deze speler dan om in een bot
+    mp.phase = 'join-form';
     mpRenderLobby();
+    const codeInput = document.getElementById('mpJoinCode');
+    const nameInput = document.getElementById('mpJoinName');
+    if (codeInput && code) codeInput.value = code;
+    if (nameInput && name && !nameInput.value) nameInput.value = name;
+    mpSetStatus('Je hebt het potje verlaten. Zodra het voorbij is, kun je met Deelnemen terug in de kamer.', '');
   }
 }
 // Gast ontvangt het "host heeft het potje gestopt"-bericht: de room blijft intact (anders dan

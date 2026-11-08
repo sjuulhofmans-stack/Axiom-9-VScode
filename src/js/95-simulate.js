@@ -699,6 +699,14 @@ function pathHasActionCell(graph, path){
   for (let i = 1; i < path.length; i++) if (graph.actionCells.has(path[i])) return true;
   return false;
 }
+// Welke vakjes van een zet tellen voor een kristal? Bij Noodtransport (pre.kind 'jump') spring je
+// vrij: alleen het vakje waar je landt telt, niet wat je overvliegt (spelregel van de maker, 2026-11;
+// de mens kreeg al alleen het landingsvakje). `path` = de hele zet (mergePreRollMove: eerst het
+// sprongpad, dan de worp vanaf de landing).
+function crystalPathOf(path, pre){
+  if (!pre || pre.kind !== 'jump' || !pre.path || pre.path.length < 2) return path;
+  return [pre.path[0]].concat(path.slice(pre.path.length - 1));
+}
 // welk kristalvakje werd als eerste betreden (voor de animatie: daar komt het kristal vandaan)
 function pathFirstActionCell(graph, path){
   for (let i = 1; i < path.length; i++) if (graph.actionCells.has(path[i])) return path[i];
@@ -1664,7 +1672,7 @@ function simulateOneGame(graph, rand, heatmap, questStats, extra){
       extra.totalTurns++;
       if (move.wasBlocked) extra.blockedTurns++;
       for (let p = 1; p < move.path.length; p++) heatmap[move.path[p]]++;
-      if (pathHasActionCell(graph, move.path)) actionCellCrossed = true;
+      if (pathHasActionCell(graph, crystalPathOf(move.path, pre))) actionCellCrossed = true;
       // "Wat levert een energie-actie op?": haalde deze beurt een opdracht, mét of zonder actie
       // portalen: sprongen tellen, en wie er gebruik van maakt (eigen portaal of dat van een ander)
       if (extra.portal){

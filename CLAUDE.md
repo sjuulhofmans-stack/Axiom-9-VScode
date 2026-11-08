@@ -184,7 +184,10 @@ aangeroepen (functiedeclaraties worden gehoist, `const`/`let` niet).
   kristalvak, fase 'die-pick', multiplayer-intent 'pickDie'). Verstoring: Kortsluiting,
   Duwstoot, Vergrendeling, Stroomonderbreking. **Weggehaald, niet terugzetten zonder de maker**:
   Snelroute, Herkalibratie, Kristalruil, Vooruitblik, Prioriteitspas, Noodbarrière,
-  Terugtrekbevel (= dubbel met Duwstoot), Signaalstoring. Bot-keuzes voor de nieuwe zitten in
+  Terugtrekbevel (= dubbel met Duwstoot), Signaalstoring.
+  Kristalvakje bij Noodtransport (spelregel van de maker, 2026-11): alleen het vakje waar je LANDT
+  telt, niet wat je overvliegt — voor mens en bot (`crystalPathOf` in 95-simulate.js).
+  Bot-keuzes voor de nieuwe zitten in
   gedeelde functies in 95-simulate.js (`pickEnergyLeakTarget`, `botWantsTwinEnergy`,
   `botPickDieValue`; Portaalsleutel via `botPreRollMove` als kind 'portalCard').
   Meting: de simulatie toont per kristal "Wint wie hem speelt" (25% = gemiddeld, >31% te sterk,
@@ -404,9 +407,12 @@ Check minimaal:
     staat eronder (niet meer ernaast). Laat een tweede speler meedoen, start
     een potje (de chat staat dan als eigen 4e kolom rechts, de zijkolom met
     dobbelen/energie/kaarten blijft volledig zichtbaar; "Verlaat potje" staat
-    rechtsboven in de kop), en klik daarna (als host én als gast) op "Verlaat potje" —
-    dat moet terugkeren naar déze multiplayer-lobby (kamercode/spelers nog
-    intact), niet naar de modus Automatisch. Speel ook een potje uit: host én
+    rechtsboven in de kop), en klik daarna op "Verlaat potje". **Host**: terug naar déze
+    multiplayer-lobby (kamercode/spelers nog intact), niet naar de modus Automatisch. **Gast**
+    (gekozen 2026-11, "wat het beste is zonder glitches"): gaat helemaal uit de kamer, met code en
+    naam nog ingevuld; de host maakt van zijn plek een bot en haalt hem uit de kamer
+    (`mpOnPeerLeave`). Tijdens een potje laat de host niemand nieuw toe (reden 'bezig'); na het
+    potje kan de gast met Deelnemen terug (zelfde naam mag weer). Speel ook een potje uit: host én
     gast krijgen het winscherm met klassement, en "Terug naar lobby" (dezelfde
     knop) brengt beiden terug naar de kamer. Een gast met een naam die al in
     de kamer zit (ook met andere hoofdletters) wordt geweigerd: terug naar het
