@@ -44,7 +44,6 @@ function openDegree(tid){ return Object.values(OPEN_EDGES_RAW[tid]).filter(Boole
 const CORNER_SLOTS = [0, TILE_COLS-1, (TILE_ROWS-1)*TILE_COLS, TILE_ROWS*TILE_COLS-1]; // A, E, P, T
 const INNER_SLOTS = [];
 for (let r=1; r<TILE_ROWS-1; r++) for (let c=1; c<TILE_COLS-1; c++) INNER_SLOTS.push(r*TILE_COLS+c); // G,H,I,L,M,N
-const OTHER_SLOTS = Array.from({length:20},(_,i)=>i).filter(i => !CORNER_SLOTS.includes(i) && !INNER_SLOTS.includes(i));
 
 // welke windrichtingen wijzen vanaf een positie het bord af
 function offBoardDirs(slotIdx){
@@ -194,8 +193,6 @@ function canTileGoInSlotNow(tid, slotIdx){
 }
 
 const boardEl = document.getElementById('board');
-const paletteRoomsEl = document.getElementById('paletteRooms');
-const paletteCorrEl  = document.getElementById('paletteCorridors');
 const seedInput = document.getElementById('seedInput');
 const layoutCodeEl = document.getElementById('layoutCode');
 const statSeed = document.getElementById('statSeed');

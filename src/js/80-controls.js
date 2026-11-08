@@ -177,6 +177,21 @@ const genLoader = createProgressLoader(genOverlayEl);
 // met het toetsenbord: disabled); ze rekenen allemaal op de kaart die er nog niet is (gebruikerswens
 // 2026-10). Ze staan in index.html al op slot, want bij het openen wordt er meteen gegenereerd.
 const GEN_LOCKED_TABS = ['tabBtnSimulate', 'tabBtnWalk', 'tabBtnMulti'];
+// Kop rechts: de spelknoppen (Pauze/Stoppen/Tempo, Nieuw potje, Verlaat potje) óf de status. Was
+// een CSS-:has(); nu zet een MutationObserver (alleen op het hidden-attribuut van die knoppen) de
+// klasse .has-actions, zie styles.css en Prestatie in CLAUDE.md.
+{
+  const right = document.querySelector('.header-right');
+  const actions = right && right.querySelector('.tab-bar-actions');
+  if (right && actions){
+    const sync = () => {
+      const on = [...actions.children].some(el => !el.hidden);
+      if (right.classList.contains('has-actions') !== on) right.classList.toggle('has-actions', on);
+    };
+    new MutationObserver(sync).observe(actions, { subtree: true, childList: true, attributes: true, attributeFilter: ['hidden'] });
+    sync();
+  }
+}
 function genLockTabs(on){
   for (const id of GEN_LOCKED_TABS){
     const b = document.getElementById(id);

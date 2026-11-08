@@ -76,7 +76,7 @@ const btnWalkEndgameShowResult = document.getElementById('btnWalkEndgameShowResu
 // verandert (klasse erbij, knoppen opnieuw getekend) — ook voor elementen uit 96-walk.js, die
 // zelf niets van deze synchronisatie hoeven te weten. Gepauzeerde animaties (Pauze in
 // Automatisch) blijven met rust: starttijd zetten zou ze weer laten lopen.
-const PULSE_DURATION_MS = 1900;   // moet gelijk blijven aan axPulse/walkRoomPulse in styles.css
+// (de pulsduur zelf staat als DICE_PULSE_MS in 96d-dice.js: 1,9 s, gelijk aan axPulse/walkRoomPulse in styles.css)
 // ecSpend: het knipperen van de knooppunten die een actie gaat kosten — ook op één ritme,
 // anders knipperen net bijgekomen knooppunten uit de pas met de rest
 // crystalPulse: het gekozen kristal in de kluis (zeshoek-versie van axPulseBtn)
@@ -570,7 +570,7 @@ function soloRenderStatusExtras(){
   if (!p || !walkStatTilesEl || p.questHidden){
     if (walkStatTilesEl){ walkStatTilesEl.innerHTML = ''; walkStatTilesEl.dataset.html = ''; }
     if (walkInfoPanelEl) walkInfoPanelEl.classList.remove('is-mission');
-    if (walkQuestChecklistEl) walkQuestChecklistEl.innerHTML = '';
+    if (walkQuestChecklistEl){ walkQuestChecklistEl.innerHTML = ''; walkQuestChecklistEl.dataset.html = ''; }
     return;
   }
   const html = soloMissionHtml(p);
@@ -595,18 +595,20 @@ function soloRenderQuestChecklist(){
   // Dit zet 'm meteen (niet vertraagd, zie soloPeekReset) veilig terug — geen effect als er toch
   // niet gespiekt werd; staat de muis na de render nog steeds op dezelfde plek, dan pakt de
   // eerstvolgende mousemove het spieken vanzelf weer op via de listener hieronder.
-  soloPeekReset();
+  // Sinds 2026-11 alleen opnieuw in de DOM als er echt iets veranderde (dataset.html, zoals de
+  // missiestrook): vroeger bij ELKE stap, wat syncAllPulses liet lopen en spieken tijdens het lopen
+  // steeds even liet wegvallen. Het terugzetten van spieken gebeurt dan ook alleen bij een echte wissel.
   const p = soloViewer();   // in Multiplayer altijd je eigen opdrachten
-  if (!p){ walkQuestChecklistEl.innerHTML = ''; return; }
+  if (!p){ soloPeekReset(); walkQuestChecklistEl.innerHTML = ''; walkQuestChecklistEl.dataset.html = ''; return; }
   const done = new Set(p.deck.slice(0, p.nextIdx));
-  const current = p.rank ? null : p.deck[p.nextIdx];
+  const current = (p.rank || soloPhase === 'game-over') ? null : p.deck[p.nextIdx];
   // afvinklijst met kleurstroken (gebruikerswens): geen 2.x-nummer meer, alleen naam + kamer —
   // de opdrachtkaarten krijgen later alleen nog een naam en een opdracht. Opmaak: zie het
   // CSS-blok bij .walk-quest-checklist. --pc = jouw kleur, voor de hover-rand (spieken).
   walkQuestChecklistEl.style.setProperty('--pc', p.color);
   // (de zes lampjes rechtsboven zijn weg: de voortgang staat nu in de missiestrook erboven)
   const head = `<div class="quest-check-head"><span class="quest-check-title">Opdrachten</span></div>`;
-  walkQuestChecklistEl.innerHTML = head + Object.keys(QUEST_NAMES).map(label => {
+  const html = head + Object.keys(QUEST_NAMES).map(label => {
     const isDone = done.has(label);
     const isCurrent = label === current;
     const cls = 'quest-check-row' + (isDone ? ' is-done' : '') + (isCurrent ? ' is-current' : '');
@@ -627,6 +629,10 @@ function soloRenderQuestChecklist(){
       (!isDone && !isCurrent ? '<svg class="quest-check-eye" viewBox="0 0 24 24" aria-hidden="true"><path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12z"></path><circle cx="12" cy="12" r="3"></circle></svg>' : '') +
     `</div>`;
   }).join('');
+  if (walkQuestChecklistEl.dataset.html === html) return;
+  soloPeekReset();
+  walkQuestChecklistEl.innerHTML = html;
+  walkQuestChecklistEl.dataset.html = html;
 }
 // Los, duidelijk overzicht van je energie t.o.v. het plafond (ENERGY_MAX) — het kleine
 // ⚡-badge in de spelersrij (walkScoreActive) verdwijnt daar te makkelijk tussen de rest.
@@ -2838,7 +2844,7 @@ if (walkStatsBodyEl){
 // Gegevens komen uit newPlayerStats (95-simulate.js): hist (stand bij het begin van elke eigen
 // beurt), rolls (som van de 2 loopstenen), energyUse en cardUse, plus walkSteps/dashSteps.
 const STATS_ENERGY_COLORS = { boost: '#ffb545', reorder: '#4fb8e0', gravity: '#b98cff', portal: '#ff6b5d', jump: '#55d68a' };
-// genoeg verschillende tinten voor alle 18 actiekaarten (met 8 deelden sommige kaarten een kleur)
+// genoeg verschillende tinten voor alle kristallen (15 soorten; met 8 deelden sommige een kleur)
 const STATS_CARD_PALETTE = ['#4fb8e0', '#ffb545', '#b98cff', '#55d68a', '#ff7a45', '#ff4fd8', '#e6e15a', '#8fa3b8',
   '#2f7fff', '#c46b2b', '#7a5cff', '#1fb39a', '#ff9db0', '#a3d65c', '#d4a4ff', '#5ad1e6', '#b8865a', '#e85d5d'];
 function statsEsc(s){ return String(s).replace(/[<>&"]/g, ''); }
@@ -3457,7 +3463,7 @@ function stopSoloGame(){
   if (walkSoloHintEl && soloModeOn) walkSoloHintEl.hidden = false;
   if (walkStatTilesEl){ walkStatTilesEl.innerHTML = ''; walkStatTilesEl.dataset.html = ''; }
   if (walkInfoPanelEl) walkInfoPanelEl.classList.remove('is-mission');
-  if (walkQuestChecklistEl) walkQuestChecklistEl.innerHTML = '';
+  if (walkQuestChecklistEl){ walkQuestChecklistEl.innerHTML = ''; walkQuestChecklistEl.dataset.html = ''; }
   if (walkSoloActionsEl) walkSoloActionsEl.innerHTML = '';
   soloClearCardActionsPanel();
   if (btnWalkSoloRoll) btnWalkSoloRoll.hidden = true;

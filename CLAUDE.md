@@ -37,10 +37,12 @@ src/
   assets/logo.b64     logo als base64 — hier zelden iets aan doen
   assets/favicon.svg  tabbladicoon (kruistegel met opdrachtvakje); build.py bakt hem in als data-URI ({{FAVICON}})
   assets/orbitron900.b64  lettertype Orbitron 900 voor de startanimatie (ingebakken, werkt offline)
+  assets/bigdaddy.b64, partycar-*.b64, kaboem.b64, chants/  plaatjes en geluiden voor de taunts (06-chants.js)
   data/tiles.json     de 20 tegels + de vorm van een tegel (pattern)
   js/
     00-data.js        laadt tiles.json, bouwt tileLookup, globale state (layout, selectedSlot)
-    05-card-art.js    kleur + icoon per opdrachtkaart (de oude Canva-plaatjes van de actiekaarten zijn weg)
+    05-card-art.js    kleur + icoon per opdrachtkaart
+    06-chants.js      de taunts (playChant): typ een cijfer in de chat; plaatjes/geluiden uit assets/ (de oude Canva-plaatjes van de actiekaarten zijn weg)
     10-rules.js       plaatsingsregels, rotatie, kamer-/opdrachtnamen, welke tegel mag waar
     20-connectivity.js naden tussen tegels + bereikbaarheid op vakjesniveau
     30-random.js      seeded random (mulberry32) — zelfde seed = zelfde bord
@@ -137,12 +139,16 @@ aangeroepen (functiedeclaraties worden gehoist, `const`/`let` niet).
   Als enige kamertegel heeft hij bewust **geen** opdrachtvakje — de tegel-editor
   staat dat uitzonderlijk toe (zie `tileValidationIssues` in `90-editor.js`).
 - De generator zoekt een indeling **zonder doodlopende naden** en waarbij alle
-  20 tegels met elkaar verbonden zijn. Kandidaten (pool van 20) worden daarna
-  gerangschikt op (1) `deadTileCount`; (2) kamers achter een wurgpunt;
-  (3) `roomIsolationScore` — hoeveel gangen je hoogstens moet passeren van een
-  kamer naar de dichtstbijzijnde andere kamer; (4) `questSpacingScore.minDist` —
-  kortste loopafstand tussen twee opdrachtvakjes, zo groot mogelijk;
-  (5) `questCoverageScore`; (6) eerlijkheid startposities. Zie `70-generator.js`.
+  20 tegels met elkaar verbonden zijn. Kandidaten (pool van 60, `CANDIDATE_POOL`) worden
+  daarna gerangschikt (`compareLayoutQuality`) op (1) `deadTileCount`; (2)
+  `minTileBetweenness` (zo hoog mogelijk); (3) kamers achter een wurgpunt;
+  (4) `roomIsolationScore` — hoeveel gangen je hoogstens moet passeren van een
+  kamer naar de dichtstbijzijnde andere kamer; (5) `roomAdjacencyCount`;
+  (6) `roomSpreadScore.avgDist`; (7) `questSpacingScore.minDist` — kortste
+  loopafstand tussen twee opdrachtvakjes, zo groot mogelijk; (8)
+  `questCoverageScore.maxDist`; (9) eerlijkheid startposities; (10)
+  `questSpacingScore.avgDist`. Zie `70-generator.js`. Eén klik kost gemeten 7–13 s (2026-11; de
+  meeste tijd gaat naar pogingen die mislukken), niet de ±2 s uit het commentaar daar.
   **Waarom `deadTileCount` bovenaan staat:** "dicht bij een opdracht" bleek niet
   genoeg — een buitenrand-lus kan 5 stappen van een opdracht liggen en toch 0
   bezoeken krijgen, omdat spelers alleen van opdracht naar opdracht reizen. De
@@ -537,7 +543,7 @@ Check minimaal:
 14. Winscherm → knop "Statistieken" opent een grote pop-up over het scherm
     (Escape/klik ernaast/Sluiten = dicht): bovenaan elke speler een eigen
     kolom, daaronder 6 categorieën (Algemeen, Dobbelstenen, Verplaatsing,
-    Energie, Energie-acties, Actiekaarten) elk als eigen tabel met vakjes,
+    Energie, Energie-acties, Kristallen) elk als eigen tabel met vakjes,
     hoogstens 3 naast elkaar. Past zonder scrollen op ±1400px. Tellers:
     `newPlayerStats` (95-simulate.js), lopen mee via `simRollD6(rand, player)`,
     `simGainEnergy` en `useActionCard`; afgeleide waarden en de indeling in

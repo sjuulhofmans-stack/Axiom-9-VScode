@@ -81,6 +81,24 @@ function walkFooterSyncVisibility(){
   walkPauseStopSyncVisibility();
 }
 
+// De linkerkolom (.walk-info-panel) verbergt zich als alle vijf de vakken erin leeg zijn (vóór een
+// potje). Was een vijfvoudige CSS-:has(...:empty), die bij elke stap de stijl liet herberekenen;
+// nu een MutationObserver die alleen kijkt of er iets in staat (zie Prestatie in CLAUDE.md).
+{
+  const ids = ['walkMeta', 'walkScoreActive', 'walkStatus', 'walkStatTiles', 'walkQuestCard'];
+  const els = ids.map(id => document.getElementById(id)).filter(Boolean);
+  const panel = els.length ? els[0].closest('.walk-info-panel') : null;
+  if (panel){
+    const sync = () => {
+      const empty = els.every(el => !el.firstChild);
+      if (panel.classList.contains('is-empty') !== empty) panel.classList.toggle('is-empty', empty);
+    };
+    const mo = new MutationObserver(sync);
+    for (const el of els) mo.observe(el, { childList: true });
+    sync();
+  }
+}
+
 // Pauze/Stoppen staan rechtsboven in de globale tabbladenbalk (index.html, .tab-bar-actions),
 // die anders dan #tabWalk niet vanzelf meeverbergt — dus zelf bijhouden: alleen op dit
 // tabblad, alleen in modus Automatisch, alleen terwijl het speelscherm in beeld is.
@@ -1670,7 +1688,7 @@ async function runWalkSimulation(){
   clearWalkTarget();
   walkClearClass('walk-trail');
   renderWalkScore(players, -1);
-  // linkerkolom helemaal leeg -> .walk-info-panel verbergt zichzelf (styles.css, :has(...:empty));
+  // linkerkolom helemaal leeg -> .walk-info-panel verbergt zichzelf (.is-empty, zie bovenaan dit bestand);
   // de spelersbalk boven het bord (#walkScore) blijft gewoon staan
   if (walkScoreActiveEl) walkScoreActiveEl.innerHTML = '';
   if (walkMetaEl) walkMetaEl.innerHTML = '';

@@ -163,10 +163,9 @@ function crystalRenderVault(cards, { reason = () => null, canDiscard = false, id
     crystalVaultFocusEl.innerHTML = id
       ? renderCrystal(id, { state: r ? 'is-locked' : '' })
       : renderCrystalEmpty({ size: 'lg', hint: true });
-    if (swapped){
-      crystalVaultFocusEl.classList.remove('is-swap'); void crystalVaultFocusEl.offsetWidth;
-      crystalVaultFocusEl.classList.add('is-swap');
-    }
+    // het kristal is net nieuw in de DOM gezet, dus zijn animatie start vanzelf opnieuw: geen
+    // offsetWidth-truc nodig (die dwong midden in een beurt de opmaak opnieuw, zie Prestatie in CLAUDE.md)
+    crystalVaultFocusEl.classList.toggle('is-swap', !!swapped);
   }
   if (crystalVaultWhyEl.classList.contains('is-no') !== !!r) crystalVaultWhyEl.classList.toggle('is-no', !!r);
   // .crystal-vault-sel (de naam) is alleen te zien in de compacte kluis (vóór het dobbelen, als het
@@ -396,7 +395,8 @@ function crystalFxGain(fromKey, slot, owner){
     const el = crystalSlotEl(slot);
     if (el) el.classList.add('is-landing');
     const vault = document.getElementById('walkCardVault');
-    if (vault){ vault.classList.remove('is-glow'); void vault.offsetWidth; vault.classList.add('is-glow'); crystalLater(() => vault.classList.remove('is-glow'), 900); }
+    // gloed = laagje dat in opacity in/uit faadt (styles.css), dus geen herstart via offsetWidth nodig
+    if (vault){ vault.classList.add('is-glow'); crystalLater(() => vault.classList.remove('is-glow'), 900); }
   };
   if (crystalReduceMotion() || !cell){ land(); return; }
   crystalHiddenSlots.add(slot);
@@ -461,7 +461,13 @@ function crystalFxFull(fromKey){
   const vault = document.getElementById('walkCardVault');
   const shake = () => {
     if (!vault) return;
-    vault.classList.remove('is-full'); void vault.offsetWidth; vault.classList.add('is-full');
+    // rode gloed via de klasse (opacity), het schudden als Web Animation: die start elke keer
+    // opnieuw zonder offsetWidth-truc (zie Prestatie in CLAUDE.md)
+    vault.classList.add('is-full');
+    if (!crystalReduceMotion() && typeof vault.animate === 'function'){
+      vault.animate([{ transform: 'none' }, { transform: 'translateX(-6px)', offset: .15 }, { transform: 'translateX(6px)', offset: .35 },
+        { transform: 'translateX(-4px)', offset: .55 }, { transform: 'translateX(3px)', offset: .75 }, { transform: 'none' }], { duration: 500 });
+    }
     crystalLater(() => vault.classList.remove('is-full'), 1100);
   };
   const cell = crystalCellEl(fromKey);

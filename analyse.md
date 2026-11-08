@@ -13,7 +13,8 @@ Datum: 2026-11-08.
 | 5 | **opgelost** 2026-11-08 | 18, 25, 26, 27, 41, 43, 44, 51, 52, 53, 54, 55, en 29 (legenda-uitleg past nu op 1280/1366/1440/1920) |
 | 6 | **opgelost** 2026-11-08 | 22, 23, 24, 30, 48. Gemeten op 400×800 en 360×740: geen zijwaarts scrollen, niets afgekapt |
 | 7 | **opgelost** 2026-11-08 | 28 (hoektegels draaien bij het wisselen vanzelf goed), 32, 45, 46, 47, 56 |
-| 8 en 9 | nog te doen | zie onderaan |
+| 8 | **opgelost** 2026-11-08 | 33, 34, 57, 58. Gemeten in een potje (ook kristal oprapen en kluis vol): alleen nog transform/opacity. Ongeveer 80 dode CSS-regels en 6 dode JS-functies/-namen weg; CLAUDE.md bijgewerkt (generator, bestanden, statistiek-categorie) |
+| 9 | nog te doen | 35 (bot-beurt samenvoegen) en 31 (generator sneller): groot |
 
 Getest in Chrome: console leeg, Zelf spelen en Automatisch helemaal uitgespeeld, 500 potjes simulatie,
 Multiplayer host + gast (gast vertrekt, nieuw potje start gewoon, portalen staan op het bord).

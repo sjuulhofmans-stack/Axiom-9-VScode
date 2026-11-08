@@ -799,7 +799,7 @@ function botPickGravityDash(graph, fromKey, occupied, targets){
 }
 
 // Gedeelde bot-beslissing VÓÓR de worp, voor alle drie de spelmodi (simulatie, Automatisch,
-// bot-beurten in Zelf spelen), zodat die nooit uit elkaar lopen. Volgorde: Noodtransport
+// bot-beurten in Zelf spelen), zodat die nooit uit elkaar lopen. Volgorde: eerst een portaalschot (Portaalsleutel-kristal, dan het Portaalkanon), dan Noodtransport
 // (alleen de jump-strategie), dan de laarzen — de kaart (gratis) gaat voor de energie-actie en
 // ze sluiten elkaar uit, één sprint per beurt. Betaalt/verbruikt NIETS: de aanroeper doet dat
 // (en logt/animeert op zijn eigen manier). Geeft null of een verplaatsing terug:
@@ -874,7 +874,7 @@ function lastStepDirection(graph, path){
 }
 
 // Kortsluiting: raakt de speler die op dit moment de meeste opdrachten heeft (bij gelijke
-// stand de eerste in spelervolgorde), voor zover die nog meespeelt en niet al geraakt is.
+// stand wordt er geloot, zie pickLeaderTarget), voor zover die nog meespeelt en niet al geraakt is.
 function pickShortCircuitTarget(players, selfIdx, rand){
   return pickLeaderTarget(players, selfIdx, p => p.skipEnergyRoll, rand);
 }
@@ -2596,11 +2596,6 @@ const SIM_PROGRESS_CHECK_EVERY = 1;
 // aan de browser — 30ms geeft de voortgangsbalk een vloeiende, ~30fps-achtige update zonder
 // dat de duizenden setTimeout-overgangen zelf noemenswaardige tijd kosten
 const SIM_CHUNK_BUDGET_MS = 30;
-
-function formatSimSeconds(ms){
-  const s = ms / 1000;
-  return s < 10 ? `${nl(s, 1)} seconden` : `${Math.round(s)} seconden`;
-}
 
 function updateSimProgress(done, n, elapsedMs){
   if (!simLoader) return;

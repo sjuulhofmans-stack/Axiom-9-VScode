@@ -174,10 +174,7 @@
 
   </div>
 
-  <div id="connStatus" style="display:none;"></div>
-
-  <!-- (vakken "Opdrachten" en "Actiekaartvakjes" weggehaald, gebruikerswens: irrelevant;
-       renderQuestRegister/renderActionCellRegister in 60-palette.js doen dan vanzelf niets) -->
+  <!-- (vakken "Opdrachten" en "Actiekaartvakjes" weggehaald, gebruikerswens: irrelevant) -->
   <div class="register-grid">
     <div class="panel palette-strip">
       <h2>Kamers <span class="count" id="countRooms"></span></h2>
@@ -325,8 +322,8 @@
         <!-- (uitlegtekst #walkMultiHint weggehaald, gebruikerswens: alleen de twee knoppen) -->
         <div class="walk-controls walk-lobby-fields" id="walkMultiControls" hidden>
           <!-- .mp-room-layout is 1 kolom zolang er geen kamer is (chat staat dan uit, zie
-               mpRenderLobby in 99-multiplayer.js) en wordt met puur CSS (:has(), al eerder
-               gebruikt bij .walk-mp-leave-row in styles.css) vanzelf 2 kolommen zodra
+               mpRenderLobby in 99-multiplayer.js) en wordt met puur CSS (:has(); mag hier, dit
+               is de lobby en niet het speelscherm) vanzelf 2 kolommen zodra
                #mpChatPanel zichtbaar wordt — links alle informatie, rechts de chat (gebruikers-
                wens). .walk-lobby-col zelf verbreedt dan mee (zie styles.css), anders is er in de
                normale 560px-kolombreedte geen ruimte voor twee leesbare kolommen naast elkaar. -->

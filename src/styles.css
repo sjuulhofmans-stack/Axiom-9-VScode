@@ -203,8 +203,10 @@
   }
   .header-right{justify-content:flex-end; gap:18px; padding-left:28px;}
   .header-right .tab-bar-actions{margin-left:0; align-items:center;}
-  .header-right .tab-bar-actions:not(:has(> :not([hidden]))){display:none;}
-  .header-right:has(.tab-bar-actions > :not([hidden])) .status{display:none;}
+  /* .has-actions zet headerActionsSync (80-controls.js) — was :has(), dat ook tijdens een potje
+     (de kop blijft dan als smalle balk staan) bij elke DOM-wijziging werd herberekend */
+  .header-right:not(.has-actions) .tab-bar-actions{display:none;}
+  .header-right.has-actions .status{display:none;}
   /* tabbladen: losse, wat grotere knoppen i.p.v. "tabjes" die aan de lijn eronder hingen */
   header .tab-btn{
     font-size:13px; letter-spacing:.14em; padding:11px 20px; margin:0;
@@ -376,13 +378,6 @@
   @media (prefers-reduced-motion: reduce){
     .gen-net *{animation:none !important;}
   }
-  .gen-title{
-    font-family:var(--font-mono); font-size:17px; letter-spacing:.32em; text-transform:uppercase; color:#dff4ff;
-    text-shadow:0 0 10px rgba(79,184,224,.6);
-  }
-  .gen-dots i{font-style:normal; animation:genDot 1.2s infinite;}
-  .gen-dots i:nth-child(2){animation-delay:.2s;}
-  .gen-dots i:nth-child(3){animation-delay:.4s;}
   @keyframes genDot{0%,100%{opacity:.15;} 40%{opacity:1;}}
   .gen-sub{font-family:var(--font-mono); font-size:13px; letter-spacing:.12em; color:var(--text-dim);}
   #tabMap .right-col > .panel:last-child{flex:1 1 auto;}
@@ -1256,7 +1251,6 @@
     background:var(--panel-2);
   }
   .walk-stats-table td.is-best{color:var(--amber); font-weight:700; background:rgba(255,181,69,.10);}
-  .walk-stats-dot{display:inline-block; width:9px; height:9px; border-radius:50%; background:var(--pc); margin-right:5px; vertical-align:0;}
   .walk-stats-foot{margin:0; font-size:11.5px; color:var(--text-dim);}
   /* Tabellen | Grafieken */
   .walk-stats-switch{display:flex; justify-content:center; gap:6px;}
@@ -1346,7 +1340,6 @@
   #walkPlayArea.mp-not-my-turn #walkCardActions,
   #walkPlayArea.mp-not-my-turn .walk-or-sep{display:none !important;}
   #walkPlayArea.mp-not-my-turn .cell.walk-clickable{box-shadow:none !important; cursor:default;}
-  #walkPlayArea.mp-not-my-turn .walk-die-pending{animation:none;}
   .mp-wait-turn{
     margin:4px 0 0; padding:12px; text-align:center; border-radius:6px;
     border:1px dashed color-mix(in srgb, var(--pc, var(--line)) 55%, transparent);
@@ -1585,7 +1578,7 @@
      zachtjes half wegzakt en weer terugkomt. Een eerdere versie (gloed 18px + 6px spreiding,
      1,2s) was "too much" en liep over de knoppen ernaast heen.
      --glow is de kleur; standaard de kleur van wie aan zet is (--pc). Duur gelijk houden aan
-     PULSE_DURATION_MS in 97-solo.js — syncAllPulses() daar zet alle lopende pulsen op
+     DICE_PULSE_MS in 96d-dice.js — syncAllPulses() daar zet alle lopende pulsen op
      hetzelfde ritme, ook elementen die later worden aangemaakt. */
   /* Prestatie (gemeten, zie CLAUDE.md): de gloed staat VAST op een eigen laagje en alleen de
      doorzichtigheid daarvan pulst. Eerst pulste de box-shadow zelf, en dan moest de browser die
@@ -1630,8 +1623,6 @@
      de bestaande .walk-die.rolling/walkShake-animatie hieronder, die is voor Automatisch-
      modus se snelle "de dobbelstenen rollen nu"-effect en blijft in solo ongebruikt. */
   @keyframes walkDiceBob{0%,100%{transform:translateY(0);} 50%{transform:translateY(-4px);}}
-  .walk-die-pending{animation:walkDiceBob 2.2s ease-in-out infinite;}
-  #tabWalk.walk-is-paused .walk-die-pending{animation-play-state:paused;}
 
   /* Missiestrook bovenin de linkerkolom (gekozen ontwerp D uit 4, soloMissionHtml in 97-solo.js):
      Beurt + Stand als twee pillen (inhoud precies in het midden), 6 zeshoekjes aan een lijn en
@@ -2093,9 +2084,9 @@
      staat — een beurtregel, een stand of een statusmelding — komt het paneel vanzelf weer
      terug. (Het solo-actiepaneel staat sinds de herstructurering los van dit paneel, dus
      telt hier niet meer mee.) */
-  .walk-info-panel:has(#walkMeta:empty):has(#walkScoreActive:empty):has(#walkStatus:empty):has(#walkStatTiles:empty):has(#walkQuestCard:empty){
-    display:none;
-  }
+  /* .is-empty zet walkInfoPanelSync (96-walk.js) — was een vijfvoudige :has(), die in het
+     speelscherm bij elke stap de stijl liet herberekenen (zie Prestatie in CLAUDE.md) */
+  .walk-info-panel.is-empty{display:none;}
 
   /* Opdrachtenoverzicht als AFVINKLIJST met kleurstroken (gebruikerswens, gekozen uit 4
      ontwerpen): alle 9 opdrachten in een vaste volgorde (de geheime volgorde van je stapel blijft
@@ -2121,11 +2112,6 @@
     padding:2px 4px 8px; margin-bottom:2px; border-bottom:1px solid var(--line-dim);
   }
   .quest-check-title{font-family:var(--font-mono); font-size:11px; letter-spacing:.16em; text-transform:uppercase; color:var(--text-dim);}
-  .quest-check-score{display:flex; align-items:center; gap:8px; font-family:var(--font-mono); font-size:12px; color:var(--text-dim); white-space:nowrap;}
-  .quest-check-score b{color:var(--start); font-size:14px;}
-  .quest-check-lamps{display:flex; gap:4px;}
-  .quest-check-lamps i{width:10px; height:10px; border-radius:50%; box-shadow:inset 0 0 0 2px #33424f;}
-  .quest-check-lamps i.is-on{background:var(--start-glow); box-shadow:0 0 6px rgba(85,214,138,.8);}
   .quest-check-row{
     flex:1 1 auto; min-height:40px; max-height:52px; box-sizing:border-box;
     display:flex; align-items:center; gap:10px; padding:0 10px 0 14px; border-radius:7px;
@@ -2178,7 +2164,6 @@
   @media (min-width: 1361px) and (max-height: 865px), (min-width: 1361px) and (max-width: 1630px){
     .walk-quest-checklist{gap:3px; padding:8px;}
     .quest-check-head{padding:0 4px 6px;}
-    .quest-check-lamps i{width:8px; height:8px;}
     .quest-check-row{min-height:0; max-height:40px; gap:8px; padding:0 8px 0 11px; box-shadow:inset 3px 0 0 var(--qtint, var(--quest));}
     .quest-check-row.is-done{box-shadow:inset 3px 0 0 color-mix(in srgb, var(--qtint, var(--quest)) 45%, transparent);}
     .quest-check-dot{width:15px; height:15px;}
@@ -2220,52 +2205,21 @@
      (gebruikerswens) — ze wisselen elkaar toch af in dezelfde rij, dus allebei even breed
      voorkomt ook dat de knop van breedte verspringt tussen beurten. */
   #btnWalkSoloRoll, #btnWalkSoloSkip{width:100%;}
-  /* de "verlaat potje"-rij (alleen relevant tijdens multiplayer) mag buiten multiplayer om geen
-     40px lege ruimte claimen — anders dan de dobbel-/sla-over-rij hierboven, die haar min-height
-     WEL altijd nodig heeft (zie het commentaar bij .walk-hud .btn-row): dat voorkomt dat het
-     paneel eronder springt op het moment dat BEIDE knoppen daar even verborgen zijn. Vandaar een
-     eigen klasse i.p.v. dezelfde regel op alle btn-rows. */
-  .walk-hud .btn-row.walk-mp-leave-row:not(:has(> :not([hidden]))){display:none;}
   /* Twee vaste regels: loopstenen boven, energiesteen eronder. De vaste min-height dekt
      allebei de regels, zodat het blok niet van hoogte verandert als de Stuwstoot een derde
      loopsteen toevoegt. */
   .walk-dice{display:flex; flex-direction:column; align-items:flex-start; gap:6px; min-height:82px;}
-  .walk-dice-row{display:flex; align-items:center; gap:8px; min-height:38px;}
-  .walk-dice-row .walk-die.energy{margin-left:0;}
-  .walk-die{
-    /* flex:none — zonder dit knijpt de rij de stenen samen zodra hij niet meer past in de
-       300px-zijkolom, en dan is een steen ineens 31px breed in plaats van 38 */
-    flex:none;
-    width:38px; height:38px; border-radius:6px; display:flex; align-items:center; justify-content:center;
-    font-family:var(--font-mono); font-size:19px; font-weight:700;
-    background:linear-gradient(180deg,#f2f6fa,#c9d4de); color:#10161d;
-    box-shadow:0 2px 5px rgba(0,0,0,.45);
-  }
-  .walk-die.rolling{animation:walkShake .28s ease-in-out infinite;}
   @keyframes walkShake{
     0%,100%{transform:translateY(0) rotate(0deg);}
     25%{transform:translateY(-3px) rotate(-7deg);}
     75%{transform:translateY(-3px) rotate(7deg);}
   }
-  .walk-die-sum{
-    font-family:var(--font-mono); font-size:12.5px; color:var(--amber); letter-spacing:.04em;
-  }
   /* Stroomonderbreking-straf achter de som (renderWalkDice in 96-walk.js) */
-  .walk-die-penalty{color:#ff6b6b;}
   /* energiesteen: zelfde vorm, andere kleur én een bliksemschichtje naast het cijfer, zodat
      je 'm niet voor een loopsteen aanziet */
-  .walk-die.energy{
-    background:linear-gradient(180deg,#3d6b52,#20402f); color:#c9ffdf;
-    box-shadow:0 2px 5px rgba(0,0,0,.45), inset 0 0 0 1px rgba(155,255,198,.35);
-    margin-left:10px; gap:2px;
-  }
   /* de viewBox is 14x24 (staand), dus dezelfde verhouding aanhouden — anders schaalt de
      schicht naar de smalste kant en staat er een postzegeltje in een hoge steen */
-  .walk-die-bolt{width:9.5px; height:16px; flex:none; fill:currentColor;}
-  .walk-die-num{font-family:var(--font-mono); font-weight:700; font-size:17px; line-height:1;}
-  .walk-die-sum.energy{color:var(--start);}
   /* derde loopsteen van de Stuwstoot: zelfde witte steen, amberen rand als "die is gekocht" */
-  .walk-die.boost{box-shadow:0 2px 5px rgba(0,0,0,.45), 0 0 0 2px var(--amber);}
   .walk-meta{
     font-family:var(--font-mono); font-size:12px; color:var(--text-dim);
     display:flex; flex-direction:column; gap:3px; line-height:1.5;
@@ -2289,7 +2243,6 @@
   .walk-paused-flag[hidden]{display:none;}
   /* tijdens een pauze horen de lopende CSS-animaties ook stil te staan, anders lijkt het
      bord door te draaien terwijl er niets meer gebeurt */
-  #tabWalk.walk-is-paused .walk-die.rolling,
   #tabWalk.walk-is-paused .cell.walk-target::after{animation-play-state:paused;}
   #tabWalk.walk-is-paused .walk-paused-flag{animation-play-state:running;}
 
@@ -2389,11 +2342,6 @@
 
   /* ---------- kaart-illustraties ---------- */
   /* tint-kleur per kaarttype: amber=beweging, groen=energie, blauw=nut, rood=verstoring */
-  .action-card--amber{ --card-tint: var(--amber); --card-glow: rgba(255,181,69,.35); }
-  .action-card--start{ --card-tint: var(--start); --card-glow: rgba(85,214,138,.35); }
-  .action-card--quest{ --card-tint: var(--quest); --card-glow: rgba(79,184,224,.35); }
-  .action-card--danger{ --card-tint: var(--danger); --card-glow: rgba(255,93,93,.35); }
-  .action-card--dim{ --card-tint: var(--text-dim); --card-glow: rgba(111,128,146,.25); }
 
   .action-card{
     position:relative; display:flex; flex-direction:column; align-items:center;
@@ -2409,11 +2357,6 @@
     box-shadow: inset 0 0 14px var(--card-glow);
     clip-path: inherit;
   }
-  .action-card-cost{
-    position:absolute; top:5px; right:8px; font-family:var(--font-mono); font-size:9.5px;
-    letter-spacing:.04em; color:var(--card-tint); opacity:.85;
-  }
-  .action-card-icon{flex:none;}
   .action-card-name{
     font-weight:700; letter-spacing:.02em; text-transform:uppercase; color:var(--text);
     line-height:1.2;
@@ -2425,18 +2368,10 @@
     font-family:var(--font-mono); color:var(--text-dim); line-height:1.35;
   }
 
-  .action-card--sm{
-    width:26px; height:26px; padding:2px; justify-content:center;
-  }
-  .action-card--sm .action-card-icon{width:15px; height:15px;}
-  .action-card--sm .action-card-name, .action-card--sm .action-card-cost{display:none;}
-
-
   .action-card--lg{
     width:108px; padding:10px 8px 9px; gap:4px;
     transition:transform .12s, box-shadow .12s, border-color .12s;
   }
-  .action-card--lg .action-card-icon{width:44px; height:44px; margin-top:4px;}
   .action-card--lg .action-card-name{font-size:11.5px;}
   .action-card--lg .action-card-hint{font-size:9.5px;}
   button.action-card--lg:not(.is-disabled):not(:disabled){cursor:pointer;}
@@ -2688,30 +2623,7 @@
   /* ---------- tegel-editor ---------- */
   /* ---------- kaartkluis + kaartvenster (solo-modus) ---------- */
   /* het klikbare vlak onder de dobbelstenen; alleen zichtbaar als je kaarten hebt */
-  .walk-card-vault{
-    display:flex; align-items:center; gap:11px; width:100%; text-align:left;
-    border:1px solid var(--line-dim); border-radius:5px;
-    padding:9px 12px; cursor:pointer;
-    transition:border-color .15s, box-shadow .15s, background .15s;
-  }
-  .walk-card-vault[hidden]{display:none;}
-  .walk-card-vault:hover{
-    border-color:var(--quest); background:rgba(79,184,224,.07);
-    box-shadow:0 0 12px rgba(79,184,224,.18);
-  }
-  .walk-card-vault-thumbs{display:flex; flex:none;}
   /* de kaartjes overlappen elkaar als een waaier in je hand */
-  .walk-card-vault-thumbs img{
-    width:26px; height:36px; object-fit:cover; border-radius:3px;
-    border:1px solid var(--line); margin-left:-9px; background:var(--hull);
-    box-shadow:0 1px 4px rgba(0,0,0,.5);
-  }
-  .walk-card-vault-thumbs img:first-child{margin-left:0;}
-  .walk-card-vault-text{display:flex; flex-direction:column; gap:2px; min-width:0;}
-  .walk-card-vault-text b{
-    font-family:var(--font-mono); font-size:11.5px; color:var(--text); letter-spacing:.04em;
-  }
-  .walk-card-vault-text .sub{font-family:var(--font-mono); font-size:10px; color:var(--text-dim);}
 
   /* vervolgkeuze van een gespeelde actiekaart (doelwit/richting/Blinde-Vlek-aanbod) — hoort nu
      bij de kaartkluis i.p.v. de energiekolom (gebruikerswens). Geen vaste hoogte zoals
@@ -2797,9 +2709,7 @@
     transition:box-shadow .13s;
   }
   .card-show:hover{transform:translateY(-4px);}
-  .card-show:hover .card-show-face img,
-  .card-show:hover .card-show-face > .card-drawn,
-  .card-show:hover .card-show-face > .quest-card{
+  .card-show:hover .card-show-face img, .card-show:hover .card-show-face > .quest-card{
     box-shadow:0 0 0 2px var(--card-tint), 0 0 26px var(--card-glow, transparent), 0 10px 22px rgba(0,0,0,.5);
   }
   /* Het bijschrift is omrand en ziet er daarmee uit als de knop die het ook is — op een
@@ -2928,91 +2838,19 @@
     font-family:var(--font-mono); font-size:11px; letter-spacing:.2em; text-transform:uppercase;
     color:var(--text-dim); margin:0;
   }
-  .card-grid{
-    display:flex; gap:16px; flex-wrap:wrap; justify-content:center; padding:6px 0 2px;
-  }
   /* elke kaart draagt zijn eigen accentkleur via --card-tint (zie de action-card--*-klassen
      die de kaarten hergebruiken), zodat gloed en selectierand vanzelf bij het ontwerp passen */
   /* De knop is de kaart PLUS een strook eronder voor de reden waarom hij niet speelbaar is.
      Die strook staat bewust ONDER de kaart en niet eroverheen: de kaart vertelt zelf wat hij
      doet, en dat wil je juist kunnen lezen op het moment dat je 'm nog niet mag spelen. */
-  .card-pick{
-    position:relative; padding:0; background:none; border:none; cursor:pointer;
-    border-radius:10px; display:flex; flex-direction:column; align-items:stretch; gap:7px;
-    width:230px; max-width:42vw;
-    transition:transform .13s, box-shadow .13s;
-  }
-  .card-pick img{
-    width:100%; aspect-ratio:63/88; object-fit:cover;
-    border-radius:10px; display:block;
-    box-shadow:0 4px 14px rgba(0,0,0,.55);
-  }
-  .card-pick:hover{
-    transform:translateY(-4px);
-    box-shadow:0 0 0 2px var(--card-tint), 0 0 26px var(--card-glow), 0 10px 22px rgba(0,0,0,.5);
-  }
-  .card-pick.is-selected{
-    transform:translateY(-4px);
-    box-shadow:0 0 0 3px var(--card-tint), 0 0 34px var(--card-glow), 0 10px 22px rgba(0,0,0,.5);
-  }
   /* Niet speelbaar: licht gedempt, zodat je nog goed kunt lezen wat de kaart doet. Wél gewoon
      aanklikbaar — afleggen kan met elke kaart in je hand, ook met eentje die je nu niet mag
      spelen. */
-  .card-pick.is-locked img{opacity:.72;}
-  .card-pick-reason{
-    font-family:var(--font-mono); font-size:10px; line-height:1.35; text-align:center;
-    color:var(--text-dim); background:var(--hull); border:1px solid var(--line-dim);
-    border-radius:4px; padding:5px 7px;
-  }
 
   /* Kaart zonder fotokaart: dezelfde indeling nagetekend met het inline SVG-icoon, zodat het
      venster ook werkt voor kaarten waarvoor nog geen Canva-ontwerp bestaat. */
-  .card-drawn{
-    position:relative; display:flex; flex-direction:column; align-items:center;
-    width:100%; aspect-ratio:63/88; border-radius:10px; padding:14px 12px 12px;
-    background:linear-gradient(168deg, var(--panel-2) 0%, var(--hull) 78%);
-    box-shadow:0 4px 14px rgba(0,0,0,.55), inset 0 0 0 1px var(--card-tint);
-    color:var(--card-tint); text-align:center; overflow:hidden;
-  }
-  .card-drawn::before{                       /* accentstreepje bovenaan, als op de fotokaarten */
-    content:''; position:absolute; top:0; left:50%; transform:translateX(-50%);
-    width:52px; height:3px; background:var(--card-tint);
-  }
-  .card-drawn-kicker{
-    font-family:var(--font-mono); font-size:8px; letter-spacing:.34em; color:var(--text-dim);
-  }
-  .card-drawn-title{
-    font-family:var(--font-display); font-weight:700; text-transform:uppercase;
-    font-size:16px; line-height:1.1; color:#eef3f8; margin-top:3px;
-  }
-  .card-drawn-icon{width:64px; height:64px; margin:auto 0;}
-  .card-drawn-rule{width:70%; height:1px; background:var(--card-tint); opacity:.35; margin-bottom:9px;}
-  .card-drawn-text{
-    font-family:var(--font-display); font-size:12.5px; line-height:1.25; color:var(--text);
-    margin-bottom:6px;
-  }
-  .card-drawn-cat{
-    align-self:flex-end; font-family:var(--font-mono); font-size:7px; letter-spacing:.14em;
-    color:var(--card-tint); border:1px solid var(--card-tint); border-radius:3px; padding:4px 5px;
-  }
   /* miniatuur in de kluis voor een kaart zonder fotokaart */
-  .walk-card-vault-blank{
-    width:26px; height:36px; border-radius:3px; margin-left:-9px; flex:none;
-    background:linear-gradient(168deg, var(--panel-2), var(--hull));
-    border:1px solid var(--card-tint); box-shadow:0 1px 4px rgba(0,0,0,.5);
-  }
   /* duidelijk vinkje op de gekozen kaart, zodat selectie niet te verwarren is met hover */
-  .card-pick.is-selected::after{
-    content:'✓'; position:absolute; top:9px; left:9px; z-index:2;
-    width:24px; height:24px; border-radius:50%;
-    display:flex; align-items:center; justify-content:center;
-    font-size:14px; font-weight:700; color:var(--hull);
-    background:var(--card-tint); box-shadow:0 2px 8px rgba(0,0,0,.6);
-  }
-  .card-panel-actions{
-    display:flex; gap:10px; justify-content:center; flex-wrap:wrap;
-    border-top:1px solid var(--line-dim); padding-top:14px; margin-top:2px;
-  }
 
   .editor-overlay{
     position:fixed; inset:0; background:rgba(4,7,10,.82); backdrop-filter:blur(3px);
@@ -3161,10 +2999,6 @@
 
   .slot-hit{position:relative; cursor:grab; touch-action:none;}
   #board.dragging .slot-hit{cursor:grabbing;}
-  .slot-hit .slot-label{
-    position:absolute; top:1px; left:2px; font-family:var(--font-mono);
-    font-size:8px; color:rgba(255,255,255,.55); pointer-events:none; line-height:1;
-  }
   .cell.has-badge{position:relative; z-index:3;}
   .letter-badge{
     position:absolute; top:-1px; left:-1px; width:18px; height:18px;
@@ -3292,7 +3126,6 @@
   .thumb-cell.actioncell{background:var(--actioncell);}
   .thumb-cell.start{background:var(--start);}
   .thumb-cell.empty-slot{background:var(--slot-empty);}
-
 
   /* ---------- mobiel: grotere tekst, ruimere tikgebieden ---------- */
   @media (max-width: 640px){
@@ -3484,11 +3317,9 @@
   .mp-wait-status.is-ready{cursor:pointer; color:#eafcff; border-color:var(--amber); background:rgba(255,181,69,.12);
     box-shadow:0 0 10px rgba(255,181,69,.25);}
   .mp-wait-status.is-ready:hover{background:rgba(255,181,69,.2);}
-  .mp-seat-you{color:var(--start) !important;}
-  .mp-seat-host{color:var(--amber) !important;}
 
-  /* .mp-room-layout: 1 kolom zolang er geen kamer is (chat staat dan uit); met :has() (zelfde
-     techniek als .walk-mp-leave-row verderop in dit bestand) vanzelf 2 kolommen zodra de chat
+  /* .mp-room-layout: 1 kolom zolang er geen kamer is (chat staat dan uit); met :has() (mag hier:
+     dit is de lobby, niet het speelscherm) vanzelf 2 kolommen zodra de chat
      verschijnt — links alle host/deelnemen-informatie, rechts de chat (gebruikerswens: "geef
      me terug de 2 kolommen, maar dan binnen de kolom die vast staat"). De informatiekolom staat
      op een VASTE breedte (i.p.v. flexibel/1fr) — precies genoeg voor de spelerskaartjes, niet
@@ -3529,29 +3360,7 @@
   .mp-mid-col[hidden]{display:none;}
   .mp-mid-col > .mp-chat-panel{flex:1 1 auto;}
 
-
   /* ---------- avatars (98b-avatar.js) ---------- */
-  /* begrensd en gecentreerd, zodat de 4 vakjes niet de hele middenkolom breed worden */
-  .mp-avatars{display:grid; grid-template-columns:repeat(4, minmax(0,1fr)); gap:10px; flex:0 0 auto;
-    width:100%; max-width:600px; margin:0 auto;}
-  .mp-avatar{
-    position:relative; aspect-ratio:1; border-radius:8px; overflow:hidden;
-    border:1px solid var(--line); border-top:3px solid var(--pc);
-    background:radial-gradient(circle at 50% 42%, color-mix(in srgb, var(--pc) 16%, transparent), transparent 70%), var(--hull);
-    display:flex; align-items:center; justify-content:center;
-  }
-  .mp-avatar .av-svg{width:88%; height:88%; margin-bottom:10%;}
-  .mp-avatar.is-you{box-shadow:0 0 0 1px var(--pc), 0 0 14px color-mix(in srgb, var(--pc) 35%, transparent);}
-  .mp-avatar.is-empty{border:1px dashed var(--line); background:var(--hull);}
-  .mp-avatar.is-unused{opacity:.35;}
-  .mp-avatar-name{
-    position:absolute; left:0; right:0; bottom:0; padding:4px 6px 5px; text-align:center;
-    font-size:12px; font-weight:700; color:var(--pc); line-height:14px;
-    background:linear-gradient(transparent, rgba(0,0,0,.75) 45%);
-    white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
-  }
-  .mp-avatar-none{font-size:11px; color:var(--text-dim); text-align:center; line-height:15px; margin-bottom:14px;}
-
   .mp-avatar-editor{display:flex; flex-direction:column; gap:14px; min-height:0; min-width:0; overflow:hidden;}
   .mp-avatar-editor[hidden]{display:none;}
   .av-tabs{display:grid; grid-template-columns:1fr 1fr; gap:8px;}
@@ -3565,10 +3374,6 @@
   /* de keuzevakjes rekken mee tot onderaan de editor (gebruikerswens: hele kolom gebruiken) —
      karakters 2 per rij, brillen en hoedjes elk een blok van 3 per rij */
   .av-grid{display:grid; gap:10px; flex:1 1 auto; min-height:0;}
-  .av-grid-chars{grid-template-columns:repeat(2, minmax(0,1fr)); grid-auto-rows:minmax(0,1fr);}
-  .av-grid-items{display:flex; flex-direction:column; gap:14px;}
-  .av-row{display:grid; grid-template-columns:repeat(3, minmax(0,1fr)); grid-auto-rows:minmax(0,1fr); gap:10px; flex:1 1 0; min-height:0;}
-  .av-row + .av-row{padding-top:14px; border-top:1px solid var(--line-dim);}
   .av-pick{
     min-height:0; padding:8%; border-radius:8px; cursor:pointer;
     background:var(--hull); border:1px solid var(--line-dim);
@@ -3813,9 +3618,12 @@
   .crystal-vault{
     display:grid; grid-template-columns:auto minmax(0,1fr); gap:12px; align-items:center;
     border:1px solid var(--line-dim); border-radius:6px; padding:10px 12px 10px 10px;
-    transition:box-shadow 1.2s;
+    position:relative;   /* voor de gloedlaagjes (::before/::after) hieronder */
   }
   .crystal-vault[hidden]{display:none !important;}
+  /* Gebruik/Afleggen gaan tijdens een beurt vaak aan/uit: zonder de kleur-/schaduwovergang van de
+     algemene knopstijl (prestatieregel: in het speelscherm alleen transform/opacity animeren) */
+  .crystal-vault-btns button{transition:none;}
   /* niets in de kluis of aan een kristal is selecteerbaar (anders kleurt alles blauw bij slepen/dubbelklikken) */
   .crystal-vault, .crystal, .crystal-pips, .crystal-flyer-label{-webkit-user-select:none; user-select:none;}
   /* altijd onderaan de zijkolom, zodat hij niet verspringt als het energievak erboven krimpt */
@@ -3880,13 +3688,18 @@
   .crystal-vault-why.is-no b{color:var(--danger);}
   .crystal-vault-btns{display:flex; flex-direction:column; gap:6px;}
   .crystal-vault-btns button{width:100%; margin:0;}
-  .crystal-vault.is-glow{box-shadow:0 0 0 1px var(--actioncell), 0 0 24px color-mix(in srgb, var(--actioncell) 40%, transparent); transition:box-shadow .3s;}
-  .crystal-vault.is-full{
-    animation:crystalVaultShake .5s;
-    box-shadow:0 0 0 1px var(--danger), 0 0 24px color-mix(in srgb, var(--danger) 40%, transparent); transition:box-shadow .2s;
+  /* gloed bij oprapen (paars) en bij een volle kluis (rood): een vaste gloed op een laagje dat alleen
+     in opacity in- en uitfaadt (was een transition op box-shadow, tegen de prestatieregel) */
+  .crystal-vault::before, .crystal-vault::after{
+    content:""; position:absolute; inset:0; border-radius:inherit; pointer-events:none; z-index:0;
+    opacity:0; transition:opacity 1.2s; will-change:opacity;   /* rustig uitfaden, snel aan (hieronder) */
   }
+  .crystal-vault::before{box-shadow:0 0 0 1px var(--actioncell), 0 0 24px color-mix(in srgb, var(--actioncell) 40%, transparent);}
+  .crystal-vault::after{box-shadow:0 0 0 1px var(--danger), 0 0 24px color-mix(in srgb, var(--danger) 40%, transparent); transition-duration:.2s;}
+  .crystal-vault.is-glow::before{opacity:1; transition-duration:.3s;}
+  .crystal-vault.is-full::after{opacity:1; transition-duration:.2s;}
+  /* het schudden zelf is een Web Animation in crystalFxFull (96c-crystals.js) */
   .crystal-vault.is-full .crystal-vault-head b{color:var(--danger);}
-  @keyframes crystalVaultShake{15%{translate:-6px 0;} 35%{translate:6px 0;} 55%{translate:-4px 0;} 75%{translate:3px 0;}}
 
   /* ---------- zeshoekjes op de spelerskaartjes ---------- */
   .crystal-pips{display:inline-flex; gap:3px; align-items:center; height:18px; vertical-align:middle;}
@@ -3895,7 +3708,7 @@
   .crystal-pip.on{background:var(--tint, var(--crystal-anon)); opacity:1;}
   .crystal-pip.on.anon{--tint:var(--crystal-anon);}
   .crystal-pip.is-landing{animation:crystalPipIn .6s cubic-bezier(.3,1.8,.5,1);}
-  @keyframes crystalPipIn{0%{transform:scale(2.4); filter:drop-shadow(0 0 6px #fff);} 100%{transform:none;}}
+  @keyframes crystalPipIn{0%{transform:scale(2.4); opacity:.6;} 100%{transform:none; opacity:1;}}   /* geen filter (prestatieregel) */
 
   /* ---------- kristalvakje op het bord: een zeshoekje binnen het vierkante vakje ---------- */
   .swatch-crystal{background:var(--actioncell); clip-path:polygon(50% 1.4%,98% 21.4%,98% 78.6%,50% 98.6%,2% 78.6%,2% 21.4%); width:11px !important; border-radius:0 !important;}
@@ -3938,11 +3751,11 @@
   .crystal-anon::after{
     content:""; position:absolute; inset:0; opacity:0;
     clip-path:polygon(50% 1.4%,98% 21.4%,98% 78.6%,50% 98.6%,2% 78.6%,2% 21.4%);
-    background:linear-gradient(115deg, transparent 35%, rgba(255,255,255,.85) 50%, transparent 65%);
-    background-size:300% 100%; background-position:130% 0;
+    background:linear-gradient(115deg, transparent 30%, rgba(255,255,255,.75) 50%, transparent 70%);
   }
   .crystal-anon.is-shine::after{animation:crystalSheen .55s ease-out forwards;}
-  @keyframes crystalSheen{0%{background-position:130% 0; opacity:1;} 100%{background-position:-30% 0; opacity:1;}}
+  /* alleen opacity (prestatieregel): was een schuivende background-position */
+  @keyframes crystalSheen{0%{opacity:0;} 35%{opacity:1;} 100%{opacity:0;}}
 
   /* ---------- tabblad Speelkaarten: de kristallen in de vitrine ---------- */
   .crystal-shelf .card-show-face{display:flex; justify-content:center; border-radius:0;}
@@ -3965,7 +3778,7 @@
   /* VASTE hoogte, vóór én na de worp: anders schoof alles eronder bij het dobbelen een paar px
      (gebruikersmelding). De teller is daarom zo gemaakt dat hij precies in deze hoogte past. */
   .walk-hud{height:134px; min-height:0; align-content:flex-start; box-sizing:border-box;}
-  .walk-hud.has-result > .btn-row:not(.walk-mp-leave-row){display:none;}
+  .walk-hud.has-result > .btn-row{display:none;}
   /* de losse "gezet / nog"-vakjes zitten nu in de teller */
   .walk-step-counter{display:none !important;}
   .sd-row{display:flex; align-items:center; gap:8px; height:46px; width:100%;}
@@ -4047,7 +3860,9 @@
   @keyframes sdPop{0%{transform:scale(1.25);} 100%{transform:none;}}
   /* stappenbalk: één streepje per stap, de volgende knippert zachtjes, straf doorgestreept */
   .sd-track{display:flex; gap:3px; height:8px;}
-  .sd-track i{position:relative; flex:1; border-radius:2px; background:var(--line); transition:background .2s, box-shadow .2s;}
+  /* geen transition: dit verandert bij elke stap, en background/box-shadow animeren is tegen de
+     prestatieregel (zie CLAUDE.md) */
+  .sd-track i{position:relative; flex:1; border-radius:2px; background:var(--line);}
   .sd-track i.is-done{background:var(--amber); box-shadow:0 0 6px color-mix(in srgb, var(--amber) 60%, transparent);}
   /* de volgende stap knippert via een laagje dat alleen in doorzichtigheid verandert (goedkoop) */
   .sd-track i.is-next{background:color-mix(in srgb, var(--amber) 30%, var(--line));}
@@ -4385,14 +4200,12 @@
   .walk-portal-comet.is-red.is-tail{background:radial-gradient(closest-side, #ffb0a6, rgba(255,90,78,.5) 55%, transparent);}
   /* staat er een pion op het portaal, dan blijft de pion zichtbaar: ring iets lichter */
   #walkBoard .cell.walk-pawn > .walk-portal{opacity:.7;}
-  .walk-portal-burst, .walk-portal-beam{
+  .walk-portal-burst{
     position:absolute; inset:0; border-radius:50%; pointer-events:none; z-index:8; opacity:0;
     will-change:transform, opacity;
   }
   .walk-portal-burst{border:2px solid #8fd2ff; box-shadow:0 0 8px #3fa9ff;}
   .walk-portal-burst.is-red{border-color:#ffb0a6; box-shadow:0 0 8px #ff5a4e;}
-  .walk-portal-beam{inset:22%; background:radial-gradient(closest-side, #eaf6ff, #3fa9ff 60%, transparent);}
-  .walk-portal-beam.is-red{background:radial-gradient(closest-side, #fff0ee, #ff5a4e 60%, transparent);}
   /* kleurkeuze bij het Portaalkanon: het icoontje in de kleur van het portaal */
   #walkSoloPanel .energy-pick.portal-pick .energy-pick-icon{color:#8fd2ff; background:rgba(63,169,255,.16); box-shadow:inset 0 0 0 1px rgba(63,169,255,.6);}
   #walkSoloPanel .energy-pick.portal-pick.is-red .energy-pick-icon{color:#ffb0a6; background:rgba(255,90,78,.16); box-shadow:inset 0 0 0 1px rgba(255,90,78,.6);}

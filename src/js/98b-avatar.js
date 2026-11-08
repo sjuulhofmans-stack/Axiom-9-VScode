@@ -343,23 +343,3 @@ function avatarRenderEditor(){
   avatarRenderEditor();
 }
 
-// ---------- de 4 vakjes boven de chat ----------
-// seats = mp.seats (naam, peerId, avatar); altijd 4 vakjes, plekken voorbij het spelersaantal
-// van de kamer blijven leeg en gedimd
-function avatarRowHtml(seats, total, myPeerId){
-  let html = '';
-  for (let i = 0; i < 4; i++){
-    const seat = seats[i];
-    const color = WALK_PLAYER_COLORS[i % WALK_PLAYER_COLORS.length];
-    if (!seat){
-      html += `<div class="mp-avatar is-empty${i >= total ? ' is-unused' : ''}" style="--pc:${color}"></div>`;
-      continue;
-    }
-    const svg = avatarSvg(seat.avatar);
-    const you = seat.peerId === myPeerId;
-    html += `<div class="mp-avatar${you ? ' is-you' : ''}" style="--pc:${color}">` +
-      (svg || `<span class="mp-avatar-none">${you ? 'Kies rechts<br>een karakter' : 'Nog geen<br>avatar'}</span>`) +
-      `<span class="mp-avatar-name">${mpEscapeHtml(seat.name)}</span></div>`;
-  }
-  return html;
-}

@@ -77,7 +77,7 @@ const diceSign = i => i % 2 ? -1 : 1;
 
 // Wachten = puls: alle stenen tegelijk iets groter en weer kleiner (in stukjes, lineair ertussen,
 // zodat dicePulseScale precies kan zeggen hoe groot een steen op een moment is). Zelfde ritme als
-// de dobbelknop (axPulseBtn, PULSE_DURATION_MS in 97-solo.js, gebruikerswens): 1,9 s, en net als
+// de dobbelknop (axPulseBtn, DICE_PULSE_MS in 96d-dice.js, gebruikerswens): 1,9 s, en net als
 // die knop vast op de tijdlijn (starttijd 0, zoals syncAllPulses doet), dus het grootst als de
 // gloed van de knop het felst is. De starttijd van de puls is daarom altijd 0.
 const DICE_PULSE_MS = 1900, DICE_PULSE_AMP = .08;

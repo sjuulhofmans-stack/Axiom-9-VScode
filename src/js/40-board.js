@@ -153,43 +153,11 @@ function renderBoard(){
     }
   }
 
-  const connStatusEl = document.getElementById('connStatus');
-  const totalSeams = conn.seams.length;
-  let html = '';
-  if (conn.groups.length === 1){
-    html += `<p class="hint" style="color:var(--start)"><b>✓ Eén aaneengesloten schip.</b> Alle 20 tegels sluiten via minstens één naad op elkaar aan.</p>`;
-  } else {
-    html += `<p class="hint" style="color:var(--danger)"><b>✕ Opgesplitst in ${conn.groups.length} losse secties</b> — deze groepen tegels zijn onderling niet bereikbaar:</p>`;
-    html += `<div class="btn-row" style="margin:8px 0;">` + conn.groups.map((g,i)=>
-      `<span class="code-box" style="padding:5px 9px;">Sectie ${i+1}: ${g.slice().sort((a,b)=>a-b).join(', ')}</span>`
-    ).join('') + `</div>`;
-  }
-  // De regel meldde alleen een getal, in rood, ook als dat getal 0 was — naast een groene
-  // "✓ Eén aaneengesloten schip" las dat als twee tegenstrijdige oordelen over hetzelfde bord.
-  const brokenNote = conn.brokenCount === 0
-    ? `<b style="color:var(--start)">geen</b> — elke doorgang komt uit op een andere doorgang`
-    : `<b style="color:var(--danger)">${conn.brokenCount}</b> — daar komt een deur uit op een muur`;
-  html += `<p class="hint">Open naden: <b style="color:var(--amber)">${conn.openCount}</b> / ${totalSeams} &nbsp;·&nbsp; Doodlopende naden: ${brokenNote}</p>`;
-  connStatusEl.innerHTML = html;
-
-  // ---- bereikbaarheid op vakjesniveau ----
-  const reachEl = document.getElementById('reachStatus');
-  if (reachEl){
-    if (reach.unreachable.length === 0){
-      reachEl.innerHTML = `<span class="ok">✓ Alle ${reach.total} vakjes bereikbaar</span>`;
-    } else {
-      const slots = [...reach.affectedSlots].sort((a,b)=>a-b).map(letterForSlot).join(', ');
-      const special = reach.unreachableSpecial.length
-        ? ` waaronder <b>${[...new Set(reach.unreachableSpecial)].sort().join(', ')}</b>` : '';
-      reachEl.innerHTML = `<span class="bad">✕ ${reach.unreachable.length} van ${reach.total} vakjes onbereikbaar${special}</span>` +
-        `<span class="sub">Afgesloten gebied op tegel ${slots} — roze omrand op het bord</span>`;
-    }
-  }
-
+  // (de verborgen statusregel #connStatus, #reachStatus en de opdracht-/kristalvakregisters zijn
+  // weg: die stonden niet meer op de pagina. De enige aanwijzing is nu het bord zelf: rode naden en
+  // roze omrande onbereikbare vakjes, zie CLAUDE.md "Controleren of het nog werkt" punt 2.)
   renderSelectedBox();
   renderPalette();
-  renderQuestRegister();
-  renderActionCellRegister();
 }
 
 function renderSelectedBox(){
