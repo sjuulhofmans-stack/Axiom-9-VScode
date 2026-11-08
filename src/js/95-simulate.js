@@ -2229,9 +2229,14 @@ function coldZoneRows(graph, heatmap){
   return rows;
 }
 
+// drempels voor het oordeel "Dode tegels" (aandeel van al het verkeer; gemiddeld is 5% per tegel)
+const SIM_DEAD_TILE_SHARE = 0.5;   // daaronder: dood (rood)
+const SIM_WEAK_TILE_SHARE = 1.0;   // daaronder: erg stil (oranje)
 function renderColdZones(graph, heatmap){
   const rows = coldZoneRows(graph, heatmap);
-  const tableRows = rows.slice(0, 5).map(r => {
+  // gesorteerd op de kolom die er staat (aandeel verkeer); vroeger op bezoeken per vakje, waardoor
+  // de tabel ongesorteerd leek (0,1 · 0,1 · 2,9 · 3,7 · 3,0)
+  const tableRows = rows.slice().sort((a, b) => a.share - b.share).slice(0, 5).map(r => {
     const name = ROOM_NAMES[r.tid] || ('Gang ' + r.tid);
     return `<tr><td>${letterForSlot(r.slotIdx)} — ${name}</td><td class="num">${nl(r.share, 1)}%</td><td class="num">${r.questDist}</td></tr>`;
   }).join('');
@@ -2321,7 +2326,12 @@ function renderSimResults({ n, stuckCount, startWins, startTurnsSum, startRanks,
 
   // De twaalf secties hieronder zijn het bewijsmateriaal; deze vier vakjes beantwoorden de
   // vraag waar je de simulatie eigenlijk voor draait — is dit bord goed genoeg om te spelen?
-  const coldest = coldZoneRows(graph, heatmap)[0];
+  // "Dode tegels": niet alleen 0% telt. Een tegel met minder dan SIM_DEAD_TILE_SHARE% van het verkeer
+  // (gemiddeld is 5% per tegel) is in de praktijk ook dood — vroeger stond er groen "geen" bij 0,1%.
+  const coldRows = coldZoneRows(graph, heatmap).slice().sort((a, b) => a.share - b.share);
+  const coldest = coldRows[0];
+  const deadTiles = coldRows.filter(r => r.share < SIM_DEAD_TILE_SHARE).length;
+  const weakTiles = coldRows.filter(r => r.share < SIM_WEAK_TILE_SHARE).length;
   const verdictItem = (state, label, value, sub) =>
     `<div class="sim-verdict-item ${state}"><span class="lbl">${label}</span><span class="val">${value}</span><span class="sub">${sub}</span></div>`;
   html += `<div class="sim-verdict">` +
@@ -2334,9 +2344,9 @@ function renderSimResults({ n, stuckCount, startWins, startTurnsSum, startRanks,
       'Vastgelopen',
       stuckCount === 0 ? 'geen' : `${stuckCount}×`,
       stuckCount === 0 ? `alle ${played} potjes speelden uit` : `afgekapt na ${SIM_MAX_TURNS} beurten`) +
-    verdictItem(coldest && coldest.share > 0 ? 'ok' : 'bad',
+    verdictItem(!coldest ? 'warn' : deadTiles ? 'bad' : weakTiles ? 'warn' : 'ok',
       'Dode tegels',
-      coldest && coldest.share > 0 ? 'geen' : 'ja',
+      !coldest ? '—' : deadTiles ? `${deadTiles}` : weakTiles ? `${weakTiles} stil` : 'geen',
       coldest
         ? `stilste tegel: ${letterForSlot(coldest.slotIdx)} — ${ROOM_NAMES[coldest.tid] || ('Gang ' + coldest.tid)} met ${nl(coldest.share, 1)}% van het verkeer`
         : '—') +
@@ -2470,8 +2480,8 @@ function renderSimResults({ n, stuckCount, startWins, startTurnsSum, startRanks,
       `<td class="num">${nl(usesPerGame, 1)}</td></tr>`;
   }).join('');
   html += simSectionOpen('Welke energie-actie wint?');
-  html += `<table class="sim-table"><thead><tr><th>Strategie</th><th>Winst% (±95%-marge)</th><th>Top 2</th><th>Gem. plaats</th><th>Keer ingezet</th></tr></thead><tbody>${stratRows}</tbody></table>`;
-  html += `<p class="hint">4 spelers, ${ENERGY_STRATEGIES.length} strategieën — elk potje speelt elke strategie één keer, geloot over de startposities (zie pickEnergyStrategies). "Geen energie" (nooit uitgeven) telt niet mee: dat komt in het echt niet voor en trok het plafondverlies hierboven kunstmatig omhoog. Bots spelen met dezelfde tijdsregels als jij: een energie-actie kies je vóór de worp, en de energiesteen van deze beurt geef je pas volgende beurt uit. Herprioritering zet een bot in als zijn opdracht verder dan ${REORDER_PEEK_THRESHOLD} vakjes weg ligt (hij bekijkt dan zijn volgende kaart en wisselt als die dichterbij ligt), de laarzen als een rechte lijn hem dichter bij zijn doel brengt, en Noodtransport als zijn doel verder dan ${JUMP_BOT_MIN_DIST} vakjes weg ligt. Bij gelijkwaardige strategieën staat iedereen op 25% winst en gemiddelde plaats 2,50; wie daar significant boven zit, is te sterk.</p>`;
+  html += `<table class="sim-table"><thead><tr><th>Strategie</th><th>Winst% (±95%-marge)</th><th>Top 2</th><th>Gem. plaats</th><th>Keer ingezet <span class="sub">(incl. portaalschoten)</span></th></tr></thead><tbody>${stratRows}</tbody></table>`;
+  html += `<p class="hint">4 spelers, ${ENERGY_STRATEGIES.length} strategieën — elk potje speelt elke strategie één keer, geloot over de startposities. "Geen energie" (nooit uitgeven) telt niet mee: dat komt in het echt niet voor en trok het plafondverlies hierboven kunstmatig omhoog. Bots spelen met dezelfde tijdsregels als jij: een energie-actie kies je vóór de worp, en de energiesteen van deze beurt geef je pas volgende beurt uit. Herprioritering zet een bot in als zijn opdracht verder dan ${REORDER_PEEK_THRESHOLD} vakjes weg ligt (hij bekijkt dan zijn volgende kaart en wisselt als die dichterbij ligt), de laarzen als een rechte lijn hem dichter bij zijn doel brengt, en Noodtransport als zijn doel verder dan ${JUMP_BOT_MIN_DIST} vakjes weg ligt. Bij gelijkwaardige strategieën staat iedereen op 25% winst en gemiddelde plaats 2,50; wie daar significant boven zit, is te sterk.</p>`;
 
   // ---------- Wat levert een energie-actie op? ----------
   const pctOf = (a, b) => b ? a / b * 100 : 0;

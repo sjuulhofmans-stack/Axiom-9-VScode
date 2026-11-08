@@ -46,12 +46,18 @@ function crystalShapeSvg(empty){
 const crystalIconSvg = inner =>
   `<svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round">${inner}</svg>`;
 
+// waar een te lange kristalnaam mag afbreken (met streepje); nieuwe lange naam? hier toevoegen
+const CRYSTAL_NAME_BREAKS = {
+  'Stroomonderbreking': 'Stroom&shy;onderbreking',
+};
 // Eén kristal. size 'lg' = alles erop, 'sm' = alleen het icoon (de plekjes in de kluis).
 // `tag`/`attrs` maken er een knop van; `state` zijn extra klassen (is-locked, is-picked, is-new).
 function renderCrystal(id, { size = 'lg', state = '', tag = 'div', attrs = '' } = {}){
   const c = ACTION_CARDS[id];
   const cat = ACTION_CARD_TINTS[id];
-  const name = c.name.replace('-', '-&#8203;');   // "Zwaartekracht-laarzen" breekt na het streepje
+  // "Zwaartekracht-laarzen" breekt na het streepje; lange namen zonder streepje krijgen een zacht
+  // afbreekpunt (&shy;), anders stond er "STROOMONDERBR / EKING"
+  const name = (CRYSTAL_NAME_BREAKS[c.name] || c.name).replace('-', '-&#8203;');
   return `<${tag} class="crystal crystal--${size} crystal--${cat} ${state}" ${attrs}>
     ${crystalShapeSvg(false)}
     <span class="crystal-layer">

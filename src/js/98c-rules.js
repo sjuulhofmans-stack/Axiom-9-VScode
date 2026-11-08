@@ -19,7 +19,7 @@ const RULES_ENERGY_TEXT = {
   reorder: 'Bekijk je volgende opdracht en kies welke van de twee je eerst doet.',
   gravity: `Schiet eerst rechtdoor tot een muur of pion, hooguit ${typeof GRAVITY_DASH_STEPS !== 'undefined' ? GRAVITY_DASH_STEPS : 8} vakjes. Kom je op je opdracht, dan stop je daar. Daarna gooi je.`,
   portal:  'Schiet een portaal rechtdoor tot de muur of tot vóór een pion, en kies welke kleur je verplaatst. Daarna gooi je.',
-  jump:    `Spring eerst vrij naar een vakje binnen ${typeof ENERGY_JUMP_RANGE !== 'undefined' ? ENERGY_JUMP_RANGE : 11} stappen, over pionnen heen. Daarna gooi je.`,
+  jump:    `Spring eerst vrij naar een vakje binnen ${typeof ENERGY_JUMP_RANGE !== 'undefined' ? ENERGY_JUMP_RANGE : 11} stappen, over pionnen heen. Land je op je opdracht, dan is je beurt klaar; anders gooi je daarna.`,
 };
 const RULES_TINT_COLOR = { amber: 'var(--amber)', start: 'var(--start)', quest: 'var(--quest)', danger: 'var(--danger)', dim: 'var(--text-dim)' };
 const RULES_WHEN_TEXT = {
@@ -56,14 +56,14 @@ function rulesSections(){
     { id: 'doel', title: 'Doel van het spel', scene: 'goal', html: `
       <ul class="rules-list">
         <li>Voltooi als eerste <b>${win} opdrachten</b>.</li>
-        <li>Je speelt met 2 tot 4 spelers. Iedereen heeft een eigen stapel van 9 opdrachten.</li>
+        <li>Je speelt met 2 tot 4 spelers (alleen oefenen kan ook). Iedereen heeft een eigen stapel van 9 opdrachten.</li>
         <li>Je doet je opdrachten één voor één, in de volgorde van je stapel.</li>
       </ul>` },
 
     { id: 'bord', title: 'Het bord opbouwen', scene: 'board', html: `
       <ul class="rules-list">
         <li>Het bord bestaat uit <b>20 tegels</b> van 8 × 8 vakjes, in 4 rijen van 5. De plekken heten A t/m T.</li>
-        <li>Er zijn <b>10 kamers</b> en <b>10 gangen</b>. Een kamer heeft een opdrachtvakje, een gang een kristalvakje.</li>
+        <li>Er zijn <b>10 kamers</b> en <b>10 gangen</b>. Elke kamer behalve Hibernatie heeft een opdrachtvakje (9 in totaal), elke gang een kristalvakje.</li>
         <li>Je mag elke tegel een kwartslag draaien, zo vaak als je wilt.</li>
         <li><b>Hibernatie</b> heeft de 4 startvakjes en ligt binnenin: op G, H, I, L, M of N.</li>
         <li>Op een <b>hoek</b> (A, E, P en T) mag geen doorgang naar de rand van het bord wijzen.</li>
@@ -143,7 +143,7 @@ function rulesSections(){
         <li>Met de energie-actie <b>Portaalkanon</b> of het kristal <b>Portaalsleutel</b> verplaats je een portaal. Het vliegt rechtdoor tot de muur of tot vóór een pion. Hooguit één schot per beurt.</li>
         <li>Je kiest zelf welke kleur je verplaatst, ook als een ander hem legde.</li>
         <li>Een portaal landt nooit op een opdracht-, start- of kristalvakje.</li>
-        <li>Noodtransport, de laarzen en duwkaarten gaan gewoon over een portaal heen.</li>
+        <li>Noodtransport, de laarzen en het kristal Duwstoot gaan gewoon over een portaal heen.</li>
       </ul>` },
 
     { id: 'kristal', title: 'Kristallen', scene: 'crystal', html: `
@@ -165,7 +165,7 @@ function rulesSections(){
 
     { id: 'einde', title: 'Einde van het potje', scene: 'end', html: `
       <ul class="rules-list">
-        <li>Wie als eerste ${win} opdrachten voltooit, is <b>1e</b> en gaat van het bord.</li>
+        <li>Wie ${win} opdrachten voltooit, gaat van het bord. Aan het eind van die ronde worden de plaatsen verdeeld: haalt alleen jij het, dan ben je <b>1e</b>.</li>
         <li>De anderen spelen door tot alleen de laatste plaats nog over is.</li>
         <li>Een ronde wordt altijd helemaal uitgespeeld. Haalt iemand anders in dezelfde ronde ook zijn ${win}e opdracht, dan wint wie de meeste energie over heeft.</li>
         <li>Nog gelijk? Dan telt het aantal kristallen. Is ook dat gelijk, dan delen ze de plaats.</li>
@@ -247,6 +247,16 @@ function rulesWatchNav(sections){
     }
   }, { rootMargin: '-20% 0px -70% 0px' });
   sections.forEach(s => { const el = document.getElementById('rules-' + s.id); if (el) io.observe(el); });
+  // het laatste hoofdstuk komt nooit zo hoog in beeld (de pagina is dan al op zijn eind): helemaal
+  // onderaan = laatste hoofdstuk actief. Alleen als het tabblad open staat.
+  const last = sections[sections.length - 1];
+  window.addEventListener('scroll', () => {
+    const tab = document.getElementById('tabRules');
+    if (!tab || tab.hidden || !last) return;
+    if (window.scrollY + window.innerHeight >= document.documentElement.scrollHeight - 4){
+      links.forEach(l => l.classList.toggle('active', l.dataset.rulesId === last.id));
+    }
+  }, { passive: true });
 }
 
 // ---------- hulpjes voor de animaties ----------
@@ -661,8 +671,8 @@ const RULES_SCENES = {
       anims.push(...rShow(tag, p.done || 0.74, 0.93, D, true));
     });
     anims.push(...rCaption(stage, [
-      [0.02, 0.37, 'Wie als eerste 6 opdrachten heeft…'],
-      [0.38, 0.72, '…is 1e. De rest speelt door'],
+      [0.02, 0.37, 'Wie 6 opdrachten heeft…'],
+      [0.38, 0.72, '…is binnen. De rest speelt door'],
       [0.74, 0.95, 'Plaats 4 ligt vast: het potje is klaar'],
     ], D));
     return anims;

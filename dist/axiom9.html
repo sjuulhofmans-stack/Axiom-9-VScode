@@ -4377,8 +4377,14 @@
      Los bestand, door build.py achter styles.css geplakt. Links een inhoudsopgave die blijft
      staan, in het midden de hoofdstukken; een hoofdstuk met animatie is twee kolommen (tekst |
      scène). De scènes bewegen alleen via Web Animations op transform/opacity. */
+  /* --rules-top = hoogte van de (sticky) kop + wat lucht. Onder 1300 breed komen de tabbladen op
+     een eigen regel en is de kop hoger (124px; op een telefoon 138px): dan schoof de titel van een
+     hoofdstuk na een klik in de inhoudsopgave onder de kop. */
+  #tabRules{--rules-top:96px;}
+  @media (max-width: 1300px){ #tabRules{--rules-top:134px;} }
+  @media (max-width: 820px){ #tabRules{--rules-top:148px;} }
   .rules-layout{display:grid; grid-template-columns:220px minmax(0, 1fr); gap:18px; align-items:start;}
-  .rules-nav{position:sticky; top:96px; display:flex; flex-direction:column; gap:2px; padding:12px;}
+  .rules-nav{position:sticky; top:var(--rules-top); display:flex; flex-direction:column; gap:2px; padding:12px;}
   .rules-nav-title{font-size:12px; letter-spacing:.14em; text-transform:uppercase; color:var(--text-dim); margin:0 0 8px 6px;}
   .rules-nav a{
     display:flex; align-items:center; gap:10px; padding:7px 8px; border-radius:6px;
@@ -4397,7 +4403,7 @@
   .rules-intro h2{margin-bottom:4px;}
   .rules-section{
     background:var(--panel); border:1px solid var(--line-dim); border-radius:12px;
-    padding:20px 22px; scroll-margin-top:96px;
+    padding:20px 22px; scroll-margin-top:var(--rules-top);
   }
   .rules-section.has-scene{display:grid; grid-template-columns:minmax(0, 1fr) 340px; gap:24px; align-items:start;}
   .rules-text h3{
@@ -4433,7 +4439,7 @@
   .rules-energy-row{display:flex; gap:12px; align-items:flex-start; padding:9px 12px; background:var(--panel-2); border-radius:8px; font-size:16px; line-height:1.4;}
   .rules-energy-row b{color:#fff;}
   .rules-cost{
-    flex:0 0 auto; min-width:42px; text-align:center; padding:2px 8px; border-radius:999px;
+    flex:0 0 58px; text-align:center;   /* vaste breedte: "10 ⚡" duwde de naam Noodtransport opzij */ padding:2px 8px; border-radius:999px;
     background:rgba(85,214,138,.12); color:var(--start); font-family:var(--font-mono); font-size:13px; font-weight:700;
   }
   .rules-cost::after{content:' ⚡'; font-size:11px;}
@@ -4453,7 +4459,7 @@
 
   /* ---------- scènes ---------- */
   .rules-stage{
-    position:sticky; top:96px; height:300px; border-radius:10px; overflow:hidden;
+    position:sticky; top:var(--rules-top); height:300px; border-radius:10px; overflow:hidden;
     background:radial-gradient(ellipse at 50% 30%, #16212d 0%, #0b1016 75%); border:1px solid var(--line-dim);
     display:flex; flex-direction:column;
   }
@@ -4789,8 +4795,8 @@
           <button type="button" class="legend-row" data-key="start" aria-pressed="true" data-info="De vier startplekken. Ze liggen allemaal in Hibernatie."><span class="legend-bar"></span><span class="swatch" style="background:var(--start)"></span><span class="legend-text">Startpositie</span><i class="legend-code">3.x</i></button>
           <button type="button" class="legend-row" data-key="empty" aria-pressed="true" data-info="Hier ligt geen vloer. Je kunt er niet staan of doorheen lopen."><span class="legend-bar"></span><span class="swatch swatch-empty"></span><span class="legend-text">Leeg vakje</span><i class="legend-code">niet beloopbaar</i></button>
           <button type="button" class="legend-row" data-key="seamopen" aria-pressed="true" data-info="Twee tegels sluiten hier op elkaar aan, dus je kunt van de ene naar de andere lopen."><span class="legend-bar"></span><span class="swatch swatch-seam" style="--sc:var(--amber)"></span><span class="legend-text">Naad open</span><i class="legend-code">sluit aan</i></button>
-          <button type="button" class="legend-row" data-key="seambroken" aria-pressed="true" data-info="Een doorgang die op een dichte wand uitkomt. Hier loop je vast. Op een goede kaart zie je er geen."><span class="legend-bar"></span><span class="swatch swatch-seam" style="--sc:var(--danger)"></span><span class="legend-text">Naad geblokkeerd</span><i class="legend-code">loopt dood</i></button>
-          <button type="button" class="legend-row" data-key="letters" aria-pressed="true" data-info="Waar de tegel op het bord ligt: A t/m T, rij voor rij van links naar rechts. Rood = hoek, groen = binnenin."><span class="legend-bar"></span><span class="swatch swatch-letter">A</span><span class="legend-text">Positieletter</span><i class="legend-code">A–T</i></button>
+          <button type="button" class="legend-row" data-key="seambroken" aria-pressed="true" data-info="Een doorgang die op een dichte wand uitkomt: hier loop je vast. Hoort er niet te zijn."><span class="legend-bar"></span><span class="swatch swatch-seam" style="--sc:var(--danger)"></span><span class="legend-text">Naad geblokkeerd</span><i class="legend-code">loopt dood</i></button>
+          <button type="button" class="legend-row" data-key="letters" aria-pressed="true" data-info="Waar de tegel ligt: A t/m T, rij voor rij. Rood = hoek, oranje = rand, groen = binnenin."><span class="legend-bar"></span><span class="swatch swatch-letter">A</span><span class="legend-text">Positieletter</span><i class="legend-code">A–T</i></button>
         </div>
         <div class="legend-explain" id="legendExplain" aria-live="polite"><b>Wijs een regel aan</b>Dan licht dat deel van het bord op. Klik om het aan of uit te zetten.</div>
       </div>
@@ -5331,7 +5337,8 @@
 
     <div class="panel">
       <h2>Kristallen</h2>
-      <p class="hint">Alle vijftien kristallen, gegroepeerd per soort. Van elk kristal zitten er <b>twee</b> in de gedeelde stapel, van de Portaalsleutel <b>vijf</b> (33 kristallen); je krijgt er een zodra je een opdracht voltooit of over het kristalvakje van een gang loopt (hooguit 1x per beurt), en bewaart er hoogstens drie in je kluis. Tik of klik een kristal aan om het groot te bekijken.</p>
+      <!-- de getallen in deze zin vult renderCardsTab (98-cards.js) uit de spelgegevens in -->
+      <p class="hint" id="cardsCrystalHint">Alle vijftien kristallen, gegroepeerd per soort. Van elk kristal zitten er <b>twee</b> in de gedeelde stapel, van de Portaalsleutel <b>vijf</b> (33 kristallen); je krijgt er een zodra je een opdracht voltooit of over het kristalvakje van een gang loopt (hooguit 1x per beurt), en bewaart er hoogstens drie in je kluis. Tik of klik een kristal aan om het groot te bekijken.</p>
       <div id="cardsActionWrap"></div>
     </div>
   </div>
@@ -10224,9 +10231,14 @@ function coldZoneRows(graph, heatmap){
   return rows;
 }
 
+// drempels voor het oordeel "Dode tegels" (aandeel van al het verkeer; gemiddeld is 5% per tegel)
+const SIM_DEAD_TILE_SHARE = 0.5;   // daaronder: dood (rood)
+const SIM_WEAK_TILE_SHARE = 1.0;   // daaronder: erg stil (oranje)
 function renderColdZones(graph, heatmap){
   const rows = coldZoneRows(graph, heatmap);
-  const tableRows = rows.slice(0, 5).map(r => {
+  // gesorteerd op de kolom die er staat (aandeel verkeer); vroeger op bezoeken per vakje, waardoor
+  // de tabel ongesorteerd leek (0,1 · 0,1 · 2,9 · 3,7 · 3,0)
+  const tableRows = rows.slice().sort((a, b) => a.share - b.share).slice(0, 5).map(r => {
     const name = ROOM_NAMES[r.tid] || ('Gang ' + r.tid);
     return `<tr><td>${letterForSlot(r.slotIdx)} — ${name}</td><td class="num">${nl(r.share, 1)}%</td><td class="num">${r.questDist}</td></tr>`;
   }).join('');
@@ -10316,7 +10328,12 @@ function renderSimResults({ n, stuckCount, startWins, startTurnsSum, startRanks,
 
   // De twaalf secties hieronder zijn het bewijsmateriaal; deze vier vakjes beantwoorden de
   // vraag waar je de simulatie eigenlijk voor draait — is dit bord goed genoeg om te spelen?
-  const coldest = coldZoneRows(graph, heatmap)[0];
+  // "Dode tegels": niet alleen 0% telt. Een tegel met minder dan SIM_DEAD_TILE_SHARE% van het verkeer
+  // (gemiddeld is 5% per tegel) is in de praktijk ook dood — vroeger stond er groen "geen" bij 0,1%.
+  const coldRows = coldZoneRows(graph, heatmap).slice().sort((a, b) => a.share - b.share);
+  const coldest = coldRows[0];
+  const deadTiles = coldRows.filter(r => r.share < SIM_DEAD_TILE_SHARE).length;
+  const weakTiles = coldRows.filter(r => r.share < SIM_WEAK_TILE_SHARE).length;
   const verdictItem = (state, label, value, sub) =>
     `<div class="sim-verdict-item ${state}"><span class="lbl">${label}</span><span class="val">${value}</span><span class="sub">${sub}</span></div>`;
   html += `<div class="sim-verdict">` +
@@ -10329,9 +10346,9 @@ function renderSimResults({ n, stuckCount, startWins, startTurnsSum, startRanks,
       'Vastgelopen',
       stuckCount === 0 ? 'geen' : `${stuckCount}×`,
       stuckCount === 0 ? `alle ${played} potjes speelden uit` : `afgekapt na ${SIM_MAX_TURNS} beurten`) +
-    verdictItem(coldest && coldest.share > 0 ? 'ok' : 'bad',
+    verdictItem(!coldest ? 'warn' : deadTiles ? 'bad' : weakTiles ? 'warn' : 'ok',
       'Dode tegels',
-      coldest && coldest.share > 0 ? 'geen' : 'ja',
+      !coldest ? '—' : deadTiles ? `${deadTiles}` : weakTiles ? `${weakTiles} stil` : 'geen',
       coldest
         ? `stilste tegel: ${letterForSlot(coldest.slotIdx)} — ${ROOM_NAMES[coldest.tid] || ('Gang ' + coldest.tid)} met ${nl(coldest.share, 1)}% van het verkeer`
         : '—') +
@@ -10465,8 +10482,8 @@ function renderSimResults({ n, stuckCount, startWins, startTurnsSum, startRanks,
       `<td class="num">${nl(usesPerGame, 1)}</td></tr>`;
   }).join('');
   html += simSectionOpen('Welke energie-actie wint?');
-  html += `<table class="sim-table"><thead><tr><th>Strategie</th><th>Winst% (±95%-marge)</th><th>Top 2</th><th>Gem. plaats</th><th>Keer ingezet</th></tr></thead><tbody>${stratRows}</tbody></table>`;
-  html += `<p class="hint">4 spelers, ${ENERGY_STRATEGIES.length} strategieën — elk potje speelt elke strategie één keer, geloot over de startposities (zie pickEnergyStrategies). "Geen energie" (nooit uitgeven) telt niet mee: dat komt in het echt niet voor en trok het plafondverlies hierboven kunstmatig omhoog. Bots spelen met dezelfde tijdsregels als jij: een energie-actie kies je vóór de worp, en de energiesteen van deze beurt geef je pas volgende beurt uit. Herprioritering zet een bot in als zijn opdracht verder dan ${REORDER_PEEK_THRESHOLD} vakjes weg ligt (hij bekijkt dan zijn volgende kaart en wisselt als die dichterbij ligt), de laarzen als een rechte lijn hem dichter bij zijn doel brengt, en Noodtransport als zijn doel verder dan ${JUMP_BOT_MIN_DIST} vakjes weg ligt. Bij gelijkwaardige strategieën staat iedereen op 25% winst en gemiddelde plaats 2,50; wie daar significant boven zit, is te sterk.</p>`;
+  html += `<table class="sim-table"><thead><tr><th>Strategie</th><th>Winst% (±95%-marge)</th><th>Top 2</th><th>Gem. plaats</th><th>Keer ingezet <span class="sub">(incl. portaalschoten)</span></th></tr></thead><tbody>${stratRows}</tbody></table>`;
+  html += `<p class="hint">4 spelers, ${ENERGY_STRATEGIES.length} strategieën — elk potje speelt elke strategie één keer, geloot over de startposities. "Geen energie" (nooit uitgeven) telt niet mee: dat komt in het echt niet voor en trok het plafondverlies hierboven kunstmatig omhoog. Bots spelen met dezelfde tijdsregels als jij: een energie-actie kies je vóór de worp, en de energiesteen van deze beurt geef je pas volgende beurt uit. Herprioritering zet een bot in als zijn opdracht verder dan ${REORDER_PEEK_THRESHOLD} vakjes weg ligt (hij bekijkt dan zijn volgende kaart en wisselt als die dichterbij ligt), de laarzen als een rechte lijn hem dichter bij zijn doel brengt, en Noodtransport als zijn doel verder dan ${JUMP_BOT_MIN_DIST} vakjes weg ligt. Bij gelijkwaardige strategieën staat iedereen op 25% winst en gemiddelde plaats 2,50; wie daar significant boven zit, is te sterk.</p>`;
 
   // ---------- Wat levert een energie-actie op? ----------
   const pctOf = (a, b) => b ? a / b * 100 : 0;
@@ -13031,12 +13048,18 @@ function crystalShapeSvg(empty){
 const crystalIconSvg = inner =>
   `<svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round">${inner}</svg>`;
 
+// waar een te lange kristalnaam mag afbreken (met streepje); nieuwe lange naam? hier toevoegen
+const CRYSTAL_NAME_BREAKS = {
+  'Stroomonderbreking': 'Stroom&shy;onderbreking',
+};
 // Eén kristal. size 'lg' = alles erop, 'sm' = alleen het icoon (de plekjes in de kluis).
 // `tag`/`attrs` maken er een knop van; `state` zijn extra klassen (is-locked, is-picked, is-new).
 function renderCrystal(id, { size = 'lg', state = '', tag = 'div', attrs = '' } = {}){
   const c = ACTION_CARDS[id];
   const cat = ACTION_CARD_TINTS[id];
-  const name = c.name.replace('-', '-&#8203;');   // "Zwaartekracht-laarzen" breekt na het streepje
+  // "Zwaartekracht-laarzen" breekt na het streepje; lange namen zonder streepje krijgen een zacht
+  // afbreekpunt (&shy;), anders stond er "STROOMONDERBR / EKING"
+  const name = (CRYSTAL_NAME_BREAKS[c.name] || c.name).replace('-', '-&#8203;');
   return `<${tag} class="crystal crystal--${size} crystal--${cat} ${state}" ${attrs}>
     ${crystalShapeSvg(false)}
     <span class="crystal-layer">
@@ -15274,7 +15297,7 @@ function soloEnterTargetPicker(cardId){
     `<div class="action-card-row">` + targets.map(t =>
       `<button type="button" class="action-card action-card--lg action-card--plain" data-target="${t.idx}" style="--card-tint:${t.color}" title="${t.name}">
         <span class="action-card-name" style="margin-top:22px;">${t.name}</span>
-        <span class="action-card-hint">${cardId === 'leak' ? `${t.energy} energie` : `${t.startLabel} · ${t.completed}/${SIM_QUESTS_TO_WIN}`}</span>
+        <span class="action-card-hint">${cardId === 'leak' ? `${t.energy} energie` : `${t.completed}/${SIM_QUESTS_TO_WIN} · ${t.energy} energie`}</span>
       </button>`
     ).join('') + `</div>`
   );
@@ -15755,7 +15778,7 @@ function soloEnterReorderPeek(){
   const row = (label, d, choice, verb) =>
     `<button type="button" class="energy-pick walk-pulse-affordable" data-reorder="${choice}">
       <span class="energy-pick-cost">${d}</span>
-      <span class="energy-pick-text"><b>${verb} ${label} · ${QUEST_NAMES[label] || ''}</b><span>${d} vakjes lopen vanaf hier</span></span>
+      <span class="energy-pick-text"><b>${verb} ${QUEST_NAMES[label] || label}</b><span>${d} vakjes lopen vanaf hier</span></span>
     </button>`;
   walkSoloActionsEl.innerHTML =
     `<p class="hint energy-pick-head">Welke opdracht doe je eerst?</p>` +
@@ -15770,12 +15793,12 @@ function soloResolveReorder(swap){
   if (mpIntercept('reorderChoice', { swap })) return;
   const p = solo();
   if (!swap){
-    walkLog(`Je houdt ${p.deck[p.nextIdx]} als eerstvolgende opdracht.`, null, p);
+    walkLog(`Je houdt <b>${QUEST_NAMES[p.deck[p.nextIdx]] || p.deck[p.nextIdx]}</b> als eerstvolgende opdracht.`, null, p);
   } else {
     soloUnconditionalSwap();
     soloTargetSwapped = true;
     soloRefreshTarget();
-    walkLog(`Je haalt ${p.deck[p.nextIdx]} naar voren.`, null, p);
+    walkLog(`Je haalt <b>${QUEST_NAMES[p.deck[p.nextIdx]] || p.deck[p.nextIdx]}</b> naar voren.`, null, p);
   }
   soloProceedToRoll();
 }
@@ -17808,7 +17831,24 @@ function closeCardsZoom(){ cardsZoom.hidden = true; }
 
 // Wordt opnieuw gedraaid zodra je het tabblad opent: de kamernaam op een opdrachtkaart
 // hangt aan de tegel, en die kan intussen bewerkt of verplaatst zijn.
+// uitleg boven de kristallen, uit de spelgegevens (liep anders uit de pas bij een nieuw kristal of aantal)
+function cardsCrystalHintHtml(){
+  const words = ['nul', 'één', 'twee', 'drie', 'vier', 'vijf', 'zes', 'zeven', 'acht', 'negen', 'tien',
+    'elf', 'twaalf', 'dertien', 'veertien', 'vijftien', 'zestien', 'zeventien', 'achttien', 'negentien', 'twintig'];
+  const w = n => words[n] || String(n);
+  const ids = ACTION_CARD_IDS;
+  const total = ids.reduce((n, id) => n + actionCardCopies(id), 0);
+  const counts = ids.map(id => actionCardCopies(id));
+  const usual = counts.sort((a, b) => counts.filter(x => x === b).length - counts.filter(x => x === a).length)[0];
+  const extra = ids.filter(id => actionCardCopies(id) !== usual).map(id => `van de ${ACTION_CARDS[id].name} <b>${w(actionCardCopies(id))}</b>`);
+  return `Alle ${w(ids.length)} kristallen, gegroepeerd per soort. Van elk kristal zitten er <b>${w(usual)}</b> in de gedeelde stapel` +
+    (extra.length ? `, ${extra.join(', ')}` : '') + ` (${total} kristallen); je krijgt er een zodra je een opdracht voltooit, ` +
+    `of als je over het kristalvakje van een gang loopt (dat hooguit 1x per beurt), en bewaart er hoogstens ${w(ACTION_CARD_HAND_MAX)} in je kluis. ` +
+    `Tik of klik een kristal aan om het groot te bekijken.`;
+}
 function renderCardsTab(){
+  const hintEl = document.getElementById('cardsCrystalHint');
+  if (hintEl) hintEl.innerHTML = cardsCrystalHintHtml();
   cardsQuestGrid.innerHTML = '';
   for (const label of QUEST_CARD_IDS){
     const tint = QUEST_CARD_ART[label].tint;
@@ -18239,7 +18279,7 @@ const RULES_ENERGY_TEXT = {
   reorder: 'Bekijk je volgende opdracht en kies welke van de twee je eerst doet.',
   gravity: `Schiet eerst rechtdoor tot een muur of pion, hooguit ${typeof GRAVITY_DASH_STEPS !== 'undefined' ? GRAVITY_DASH_STEPS : 8} vakjes. Kom je op je opdracht, dan stop je daar. Daarna gooi je.`,
   portal:  'Schiet een portaal rechtdoor tot de muur of tot vóór een pion, en kies welke kleur je verplaatst. Daarna gooi je.',
-  jump:    `Spring eerst vrij naar een vakje binnen ${typeof ENERGY_JUMP_RANGE !== 'undefined' ? ENERGY_JUMP_RANGE : 11} stappen, over pionnen heen. Daarna gooi je.`,
+  jump:    `Spring eerst vrij naar een vakje binnen ${typeof ENERGY_JUMP_RANGE !== 'undefined' ? ENERGY_JUMP_RANGE : 11} stappen, over pionnen heen. Land je op je opdracht, dan is je beurt klaar; anders gooi je daarna.`,
 };
 const RULES_TINT_COLOR = { amber: 'var(--amber)', start: 'var(--start)', quest: 'var(--quest)', danger: 'var(--danger)', dim: 'var(--text-dim)' };
 const RULES_WHEN_TEXT = {
@@ -18276,14 +18316,14 @@ function rulesSections(){
     { id: 'doel', title: 'Doel van het spel', scene: 'goal', html: `
       <ul class="rules-list">
         <li>Voltooi als eerste <b>${win} opdrachten</b>.</li>
-        <li>Je speelt met 2 tot 4 spelers. Iedereen heeft een eigen stapel van 9 opdrachten.</li>
+        <li>Je speelt met 2 tot 4 spelers (alleen oefenen kan ook). Iedereen heeft een eigen stapel van 9 opdrachten.</li>
         <li>Je doet je opdrachten één voor één, in de volgorde van je stapel.</li>
       </ul>` },
 
     { id: 'bord', title: 'Het bord opbouwen', scene: 'board', html: `
       <ul class="rules-list">
         <li>Het bord bestaat uit <b>20 tegels</b> van 8 × 8 vakjes, in 4 rijen van 5. De plekken heten A t/m T.</li>
-        <li>Er zijn <b>10 kamers</b> en <b>10 gangen</b>. Een kamer heeft een opdrachtvakje, een gang een kristalvakje.</li>
+        <li>Er zijn <b>10 kamers</b> en <b>10 gangen</b>. Elke kamer behalve Hibernatie heeft een opdrachtvakje (9 in totaal), elke gang een kristalvakje.</li>
         <li>Je mag elke tegel een kwartslag draaien, zo vaak als je wilt.</li>
         <li><b>Hibernatie</b> heeft de 4 startvakjes en ligt binnenin: op G, H, I, L, M of N.</li>
         <li>Op een <b>hoek</b> (A, E, P en T) mag geen doorgang naar de rand van het bord wijzen.</li>
@@ -18363,7 +18403,7 @@ function rulesSections(){
         <li>Met de energie-actie <b>Portaalkanon</b> of het kristal <b>Portaalsleutel</b> verplaats je een portaal. Het vliegt rechtdoor tot de muur of tot vóór een pion. Hooguit één schot per beurt.</li>
         <li>Je kiest zelf welke kleur je verplaatst, ook als een ander hem legde.</li>
         <li>Een portaal landt nooit op een opdracht-, start- of kristalvakje.</li>
-        <li>Noodtransport, de laarzen en duwkaarten gaan gewoon over een portaal heen.</li>
+        <li>Noodtransport, de laarzen en het kristal Duwstoot gaan gewoon over een portaal heen.</li>
       </ul>` },
 
     { id: 'kristal', title: 'Kristallen', scene: 'crystal', html: `
@@ -18385,7 +18425,7 @@ function rulesSections(){
 
     { id: 'einde', title: 'Einde van het potje', scene: 'end', html: `
       <ul class="rules-list">
-        <li>Wie als eerste ${win} opdrachten voltooit, is <b>1e</b> en gaat van het bord.</li>
+        <li>Wie ${win} opdrachten voltooit, gaat van het bord. Aan het eind van die ronde worden de plaatsen verdeeld: haalt alleen jij het, dan ben je <b>1e</b>.</li>
         <li>De anderen spelen door tot alleen de laatste plaats nog over is.</li>
         <li>Een ronde wordt altijd helemaal uitgespeeld. Haalt iemand anders in dezelfde ronde ook zijn ${win}e opdracht, dan wint wie de meeste energie over heeft.</li>
         <li>Nog gelijk? Dan telt het aantal kristallen. Is ook dat gelijk, dan delen ze de plaats.</li>
@@ -18467,6 +18507,16 @@ function rulesWatchNav(sections){
     }
   }, { rootMargin: '-20% 0px -70% 0px' });
   sections.forEach(s => { const el = document.getElementById('rules-' + s.id); if (el) io.observe(el); });
+  // het laatste hoofdstuk komt nooit zo hoog in beeld (de pagina is dan al op zijn eind): helemaal
+  // onderaan = laatste hoofdstuk actief. Alleen als het tabblad open staat.
+  const last = sections[sections.length - 1];
+  window.addEventListener('scroll', () => {
+    const tab = document.getElementById('tabRules');
+    if (!tab || tab.hidden || !last) return;
+    if (window.scrollY + window.innerHeight >= document.documentElement.scrollHeight - 4){
+      links.forEach(l => l.classList.toggle('active', l.dataset.rulesId === last.id));
+    }
+  }, { passive: true });
 }
 
 // ---------- hulpjes voor de animaties ----------
@@ -18881,8 +18931,8 @@ const RULES_SCENES = {
       anims.push(...rShow(tag, p.done || 0.74, 0.93, D, true));
     });
     anims.push(...rCaption(stage, [
-      [0.02, 0.37, 'Wie als eerste 6 opdrachten heeft…'],
-      [0.38, 0.72, '…is 1e. De rest speelt door'],
+      [0.02, 0.37, 'Wie 6 opdrachten heeft…'],
+      [0.38, 0.72, '…is binnen. De rest speelt door'],
       [0.74, 0.95, 'Plaats 4 ligt vast: het potje is klaar'],
     ], D));
     return anims;

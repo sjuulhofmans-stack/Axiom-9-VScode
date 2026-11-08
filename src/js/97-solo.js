@@ -1142,7 +1142,7 @@ function soloEnterTargetPicker(cardId){
     `<div class="action-card-row">` + targets.map(t =>
       `<button type="button" class="action-card action-card--lg action-card--plain" data-target="${t.idx}" style="--card-tint:${t.color}" title="${t.name}">
         <span class="action-card-name" style="margin-top:22px;">${t.name}</span>
-        <span class="action-card-hint">${cardId === 'leak' ? `${t.energy} energie` : `${t.startLabel} · ${t.completed}/${SIM_QUESTS_TO_WIN}`}</span>
+        <span class="action-card-hint">${cardId === 'leak' ? `${t.energy} energie` : `${t.completed}/${SIM_QUESTS_TO_WIN} · ${t.energy} energie`}</span>
       </button>`
     ).join('') + `</div>`
   );
@@ -1623,7 +1623,7 @@ function soloEnterReorderPeek(){
   const row = (label, d, choice, verb) =>
     `<button type="button" class="energy-pick walk-pulse-affordable" data-reorder="${choice}">
       <span class="energy-pick-cost">${d}</span>
-      <span class="energy-pick-text"><b>${verb} ${label} · ${QUEST_NAMES[label] || ''}</b><span>${d} vakjes lopen vanaf hier</span></span>
+      <span class="energy-pick-text"><b>${verb} ${QUEST_NAMES[label] || label}</b><span>${d} vakjes lopen vanaf hier</span></span>
     </button>`;
   walkSoloActionsEl.innerHTML =
     `<p class="hint energy-pick-head">Welke opdracht doe je eerst?</p>` +
@@ -1638,12 +1638,12 @@ function soloResolveReorder(swap){
   if (mpIntercept('reorderChoice', { swap })) return;
   const p = solo();
   if (!swap){
-    walkLog(`Je houdt ${p.deck[p.nextIdx]} als eerstvolgende opdracht.`, null, p);
+    walkLog(`Je houdt <b>${QUEST_NAMES[p.deck[p.nextIdx]] || p.deck[p.nextIdx]}</b> als eerstvolgende opdracht.`, null, p);
   } else {
     soloUnconditionalSwap();
     soloTargetSwapped = true;
     soloRefreshTarget();
-    walkLog(`Je haalt ${p.deck[p.nextIdx]} naar voren.`, null, p);
+    walkLog(`Je haalt <b>${QUEST_NAMES[p.deck[p.nextIdx]] || p.deck[p.nextIdx]}</b> naar voren.`, null, p);
   }
   soloProceedToRoll();
 }

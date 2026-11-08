@@ -3,8 +3,14 @@
      Los bestand, door build.py achter styles.css geplakt. Links een inhoudsopgave die blijft
      staan, in het midden de hoofdstukken; een hoofdstuk met animatie is twee kolommen (tekst |
      scène). De scènes bewegen alleen via Web Animations op transform/opacity. */
+  /* --rules-top = hoogte van de (sticky) kop + wat lucht. Onder 1300 breed komen de tabbladen op
+     een eigen regel en is de kop hoger (124px; op een telefoon 138px): dan schoof de titel van een
+     hoofdstuk na een klik in de inhoudsopgave onder de kop. */
+  #tabRules{--rules-top:96px;}
+  @media (max-width: 1300px){ #tabRules{--rules-top:134px;} }
+  @media (max-width: 820px){ #tabRules{--rules-top:148px;} }
   .rules-layout{display:grid; grid-template-columns:220px minmax(0, 1fr); gap:18px; align-items:start;}
-  .rules-nav{position:sticky; top:96px; display:flex; flex-direction:column; gap:2px; padding:12px;}
+  .rules-nav{position:sticky; top:var(--rules-top); display:flex; flex-direction:column; gap:2px; padding:12px;}
   .rules-nav-title{font-size:12px; letter-spacing:.14em; text-transform:uppercase; color:var(--text-dim); margin:0 0 8px 6px;}
   .rules-nav a{
     display:flex; align-items:center; gap:10px; padding:7px 8px; border-radius:6px;
@@ -23,7 +29,7 @@
   .rules-intro h2{margin-bottom:4px;}
   .rules-section{
     background:var(--panel); border:1px solid var(--line-dim); border-radius:12px;
-    padding:20px 22px; scroll-margin-top:96px;
+    padding:20px 22px; scroll-margin-top:var(--rules-top);
   }
   .rules-section.has-scene{display:grid; grid-template-columns:minmax(0, 1fr) 340px; gap:24px; align-items:start;}
   .rules-text h3{
@@ -59,7 +65,7 @@
   .rules-energy-row{display:flex; gap:12px; align-items:flex-start; padding:9px 12px; background:var(--panel-2); border-radius:8px; font-size:16px; line-height:1.4;}
   .rules-energy-row b{color:#fff;}
   .rules-cost{
-    flex:0 0 auto; min-width:42px; text-align:center; padding:2px 8px; border-radius:999px;
+    flex:0 0 58px; text-align:center;   /* vaste breedte: "10 ⚡" duwde de naam Noodtransport opzij */ padding:2px 8px; border-radius:999px;
     background:rgba(85,214,138,.12); color:var(--start); font-family:var(--font-mono); font-size:13px; font-weight:700;
   }
   .rules-cost::after{content:' ⚡'; font-size:11px;}
@@ -79,7 +85,7 @@
 
   /* ---------- scènes ---------- */
   .rules-stage{
-    position:sticky; top:96px; height:300px; border-radius:10px; overflow:hidden;
+    position:sticky; top:var(--rules-top); height:300px; border-radius:10px; overflow:hidden;
     background:radial-gradient(ellipse at 50% 30%, #16212d 0%, #0b1016 75%); border:1px solid var(--line-dim);
     display:flex; flex-direction:column;
   }

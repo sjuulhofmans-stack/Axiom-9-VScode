@@ -75,7 +75,24 @@ function closeCardsZoom(){ cardsZoom.hidden = true; }
 
 // Wordt opnieuw gedraaid zodra je het tabblad opent: de kamernaam op een opdrachtkaart
 // hangt aan de tegel, en die kan intussen bewerkt of verplaatst zijn.
+// uitleg boven de kristallen, uit de spelgegevens (liep anders uit de pas bij een nieuw kristal of aantal)
+function cardsCrystalHintHtml(){
+  const words = ['nul', 'één', 'twee', 'drie', 'vier', 'vijf', 'zes', 'zeven', 'acht', 'negen', 'tien',
+    'elf', 'twaalf', 'dertien', 'veertien', 'vijftien', 'zestien', 'zeventien', 'achttien', 'negentien', 'twintig'];
+  const w = n => words[n] || String(n);
+  const ids = ACTION_CARD_IDS;
+  const total = ids.reduce((n, id) => n + actionCardCopies(id), 0);
+  const counts = ids.map(id => actionCardCopies(id));
+  const usual = counts.sort((a, b) => counts.filter(x => x === b).length - counts.filter(x => x === a).length)[0];
+  const extra = ids.filter(id => actionCardCopies(id) !== usual).map(id => `van de ${ACTION_CARDS[id].name} <b>${w(actionCardCopies(id))}</b>`);
+  return `Alle ${w(ids.length)} kristallen, gegroepeerd per soort. Van elk kristal zitten er <b>${w(usual)}</b> in de gedeelde stapel` +
+    (extra.length ? `, ${extra.join(', ')}` : '') + ` (${total} kristallen); je krijgt er een zodra je een opdracht voltooit, ` +
+    `of als je over het kristalvakje van een gang loopt (dat hooguit 1x per beurt), en bewaart er hoogstens ${w(ACTION_CARD_HAND_MAX)} in je kluis. ` +
+    `Tik of klik een kristal aan om het groot te bekijken.`;
+}
 function renderCardsTab(){
+  const hintEl = document.getElementById('cardsCrystalHint');
+  if (hintEl) hintEl.innerHTML = cardsCrystalHintHtml();
   cardsQuestGrid.innerHTML = '';
   for (const label of QUEST_CARD_IDS){
     const tint = QUEST_CARD_ART[label].tint;

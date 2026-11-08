@@ -10,7 +10,8 @@ Datum: 2026-11-08.
 | 2 | **opgelost** 2026-11-08 | 9 (draaien/wisselen/editor liggen stil tijdens het genereren, plus V8), 10 (echte ruil + controle van de andere tegel bij Opslaan), 11, 12 |
 | 3 | **opgelost** 2026-11-08 | 8 (keuzevak als laag in de kluis), 13 (chat onder het bord op 1361–1520 breed), 19, 20, 42. Gemeten op 1920×960 en 1440×780 |
 | 4 | **opgelost** 2026-11-08 | 14, 16, 17, 36, 37, 39, 40 (38 al in portie 1). **15 wacht op een keuze.** Balans daarna (4000 potjes): kristallen 21,3–27,9%, energie-acties 23,5–26,3%, startposities 23,9–26,3% |
-| 5 t/m 9 | nog te doen | zie onderaan |
+| 5 | **opgelost** 2026-11-08 | 18, 25, 26, 27, 41, 43, 44, 51, 52, 53, 54, 55, en 29 (legenda-uitleg past nu op 1280/1366/1440/1920) |
+| 6 t/m 9 | nog te doen | zie onderaan |
 
 Getest in Chrome: console leeg, Zelf spelen en Automatisch helemaal uitgespeeld, 500 potjes simulatie,
 Multiplayer host + gast (gast vertrekt, nieuw potje start gewoon, portalen staan op het bord).
