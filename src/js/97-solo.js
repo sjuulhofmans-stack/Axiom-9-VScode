@@ -3,8 +3,8 @@
 // of handkaart in. Hergebruikt dezelfde spelregels als de batch/auto-modus (resolveMove,
 // ENERGY_ACTIONS, ACTION_CARDS, buildActionDeck, resolveRoundFinishers), maar zonder bot-AI
 // voor JOUW beurten — de bot-beurten (als je die toevoegt) worden wél automatisch en meteen
-// afgehandeld (`soloResolveBotTurn`, een niet-geanimeerde kopie van de bot-logica uit
-// 96-walk.js), zodat jij niet op ze hoeft te wachten.
+// afgehandeld (`soloResolveBotTurn`, via de gedeelde botPlanTurn/botFinishTurn uit
+// 95-simulate.js), zodat jij niet op ze hoeft te wachten.
 //
 // Met 1 speler (geen bots) is er niemand die je blokkeert, en hebben Kortsluiting, Blinde Vlek,
 // Duwstoot, Vergrendeling, Stroomonderbreking en Energielek een tegenstander nodig — die staan
@@ -1540,7 +1540,10 @@ function soloResolvePortalColor(color){
 function soloGrantActionCellReward(player, isHuman, key){
   if (soloActionCellDrawnThisTurn) return;
   soloActionCellDrawnThisTurn = true;
-  const reward = drawActionCellReward(player, soloDeck, soloRand);
+  soloShowActionCellReward(player, isHuman, key, drawActionCellReward(player, soloDeck, soloRand));
+}
+// log + animatie voor een al getrokken kristalvakje-beloning (bots: getrokken in botFinishTurn)
+function soloShowActionCellReward(player, isHuman, key, reward){
   if (reward.drawn){
     const name = soloCrystalSecret(player) ? '' : `: <b>${ACTION_CARDS[reward.drawn].name}</b> — ${ACTION_CARDS[reward.drawn].hint}`;
     walkLog(isHuman && !mp.active
@@ -2272,262 +2275,46 @@ function soloResolveBotTurn(player){
   player.myTurn++;   // eigen beurtenteller, net als bij een mens (soloBeginHumanTurn)
   soloActionCellDrawnThisTurn = false;
   const pIdx = player.idx;
-  const startPos = player.pos;
-  // Energie-acties en kaarten hebben ELK hun eigen actie-slot per beurt (max 1 van elk) —
-  // zelfde opzet als simulateOneGame() in 95-simulate.js, zie de uitgebreide toelichting daar
-  // voor de paren (Stuwlading/Stuwstoot, laarzen, Portaalsleutel/Portaalkanon) die elkaar nog
-  // wél uitsluiten binnen hún ene bewegingsmoment.
-  let energyActionUsed = false;
-  let cardActionUsed = false;
-  if (player.lockedNextTurn){
-    player.lockedNextTurn = false;
-    energyActionUsed = true;
-    cardActionUsed = true;
-    walkLog(`${player.name} is <b>vergrendeld</b> en slaat zijn energie- en kristalactie over.`, null, player);
+  // De hele beurt (keuzes, worp, zet, kristallen, energie, opdrachten) staat in botPlanTurn en
+  // botFinishTurn (95-simulate.js), gedeeld met de simulatie en Automatisch. Hier alleen nog het
+  // log, de bord-effecten en wat soloAnimateBotTurn nodig heeft om de beurt na te spelen.
+  // De bot vertelt niet WELKE opdracht hij heeft of wisselt: die is geheim voor de anderen.
+  const ctx = { graph: soloGraph, players: soloPlayers, player, rand: soloRand, deck: soloDeck, queue: player.deck };
+  const r = botPlanTurn(ctx);
+  const pre = r.pre;
+  for (const line of botTurnOpeningLog(player, r, false)) walkLog(line, null, player);
+  let portalShot = null;   // voor het naspelen: het schot + hoe de portalen er vóór en na lagen
+  if (r.portal){
+    portalShot = { path: pre.shot.path, key: pre.shot.key, color: pre.shot.color, from: r.portal.placed.from,
+                   before: r.portal.before, after: r.portal.after };
   }
+  const preLine = botTurnPreLog(player, r, soloGraph);
+  if (preLine) walkLog(preLine, null, player);
+  // meteen afgehandeld (geen naspelen): portalen nu tekenen
+  if (r.portal && soloBotViewSpeed === null){
+    walkPaintPortals(soloGraph);
+    walkPortalBurst(soloGraph, pre.shot.key, pre.shot.color, true);
+  }
+  for (const line of botTurnRollLog(player, r)) walkLog(line, null, player);
+  if (r.portalJumps) walkLog(`${player.name} stapt door een portaal.`, null, player);
 
-  // energiesteen rolt mee, maar telt pas na de zet bij (zelfde tijdsregels als de mens en
-  // simulateOneGame — wat je nu gooit geef je pas volgende beurt uit)
-  let energyRoll = 0, pendingEnergy = 0;
-  const shorted = player.skipEnergyRoll;   // Kortsluiting: dan ook geen Dubbele steen (zie simulateOneGame)
-  if (player.skipEnergyRoll){ player.skipEnergyRoll = false; }
-  else {
-    energyRoll = simRollEnergy(soloRand);
-    pendingEnergy = energyRoll;
-    player.stats.energyRolled += energyRoll;
-    // vorige beurt een Condensator gespeeld: deze steen telt dubbel (zie simulateOneGame)
-    if (player.condenserPending && energyRoll > 0){   // bij een 0 blijft hij staan, net als bij de mens
-      player.condenserPending = false;
-      pendingEnergy += energyRoll;
-      walkLog(`${player.name} verzilvert de <b>Condensator</b>: energiesteen ${energyRoll} telt dubbel.`, null, player);
-    }
-  }
-
-  // de Condensator wordt klaargezet voor de VOLGENDE beurt
-  if (!cardActionUsed && player.cards.includes('condenser') && !player.condenserPending && player.energy < ENERGY_MAX){
-    player.condenserPending = true;
-    useActionCard(player, 'condenser', soloDeck);
-    cardActionUsed = true;
-  }
-  if (!cardActionUsed && player.cards.includes('short')){
-    const victim = pickShortCircuitTarget(soloPlayers, pIdx, soloRand);
-    if (victim){
-      victim.skipEnergyRoll = true;
-      useActionCard(player, 'short', soloDeck);
-      cardActionUsed = true;
-      walkLog(`${player.name} gebruikt <b>Kortsluiting</b> op ${victim.name}.`, null, player);
-    }
-  }
-  // Energielek: alleen als er bij een ander genoeg te halen valt (zie simulateOneGame)
-  if (!cardActionUsed && player.cards.includes('leak') && player.energy < ENERGY_MAX){
-    const victim = pickEnergyLeakTarget(soloPlayers, pIdx, soloRand);
-    if (victim && victim.energy >= ENERGY_LEAK_AMOUNT){
-      const r = { taken: energyLeakTake(victim) };   // pas na de zet erbij, zie energyLeakTake
-      pendingEnergy += r.taken;
-      useActionCard(player, 'leak', soloDeck); cardActionUsed = true;
-      walkLog(`${player.name} gebruikt <b>Energielek</b> en pakt ${r.taken} energie van ${victim.name}.`, null, player);
-    }
-  }
-  // Dubbele steen: een tweede energiesteen, telt net als de eerste pas na de zet
-  if (!cardActionUsed && !shorted && player.cards.includes('twin') && botWantsTwinEnergy(player, BOT_TWIN_EXPECTED_ROLL)){
-    const second = simRollEnergy(soloRand);
-    pendingEnergy += second;
-    player.stats.energyRolled += second;
-    useActionCard(player, 'twin', soloDeck); cardActionUsed = true;
-    walkLog(`${player.name} gooit met <b>Dubbele steen</b> een tweede energiesteen: ${second}.`, null, player);
-  }
-  if (!cardActionUsed && player.cards.includes('ration') && player.energy < ENERGY_MAX){
-    simGainEnergy(player, 3);
-    useActionCard(player, 'ration', soloDeck);
-    cardActionUsed = true;
-  }
-  if (!cardActionUsed && player.cards.includes('lockdown')){
-    const victim = pickLeaderTarget(soloPlayers, pIdx, q => q.lockedNextTurn, soloRand);
-    if (victim){
-      victim.lockedNextTurn = true;
-      useActionCard(player, 'lockdown', soloDeck); cardActionUsed = true;
-      walkLog(`${player.name} gebruikt <b>Vergrendeling</b> op ${victim.name}.`, null, player);
-    }
-  }
-  if (!cardActionUsed && player.cards.includes('outage')){
-    const victim = pickLeaderTarget(soloPlayers, pIdx, q => q.rollPenalty > 0, soloRand);
-    if (victim){
-      victim.rollPenalty = 2;
-      useActionCard(player, 'outage', soloDeck); cardActionUsed = true;
-      walkLog(`${player.name} gebruikt <b>Stroomonderbreking</b> op ${victim.name}.`, null, player);
-    }
-  }
-  let targetLabel = player.deck[player.nextIdx];
-  // energyReorderTarget() leest/schrijft player.order — de batch-speler heet zijn stapel zo,
-  // maar hier (net als in 96-walk.js) heet 'ie deck. Een shim die naar dezelfde array wijst
-  // (geen kopie) laat de swap gewoon doorwerken op player.deck. Zie de kanttekening bij
-  // pickShoveMove hierboven — dit is precies de val die daar staat beschreven.
-  const shim = { order: player.deck, nextIdx: player.nextIdx };
-  if (!cardActionUsed && player.cards.includes('shove')){
-    const shove = pickShoveMove(soloGraph, soloPlayers, pIdx, soloRand);
-    if (shove){
-      shove.player.pos = shove.toKey;
-      useActionCard(player, 'shove', soloDeck);
-      cardActionUsed = true;
-      walkLog(`${player.name} gebruikt <b>Duwstoot</b> op ${shove.player.name}.`, null, player);
-    }
-  }
-  // Herprioritering: betalen, volgende kaart bekijken, wisselen als die dichterbij ligt (zie
-  // botWantsReorderPeek in 95-simulate.js). De bot vertelt niet WELKE kaart hij zag — die is
-  // voor de andere spelers net zo geheim als in het echt.
-  if (!energyActionUsed && botStrategyNow(soloGraph, player) === 'reorder' && player.energy >= ENERGY_ACTIONS.reorder.cost
-      && botWantsReorderPeek(soloGraph, shim, player.pos)){
-    player.energy -= ENERGY_ACTIONS.reorder.cost; player.actionUses++; energyActionUsed = true;
-    statsUseEnergy(player, 'reorder');
-    const swapped = energyReorderTarget(soloGraph, shim, player.pos);
-    if (swapped === null){
-      walkLog(`${player.name} bekijkt met <b>Herprioritering</b> zijn volgende opdracht en houdt zijn huidige.`, null, player);
-    } else {
-      targetLabel = swapped;
-      walkLog(`${player.name} wisselt met <b>Herprioritering</b> van opdracht.`, null, player);
-    }
-  }
-  const targetKey = soloGraph.questCells[targetLabel];
-  // volledige rij nog te halen opdrachtvakjes, te beginnen bij het huidige doel — zie de
-  // toelichting bij `targets` in simulateOneGame() (95-simulate.js)
-  const targets = [];
-  for (let i = player.nextIdx; i < player.deck.length; i++) targets.push(soloGraph.questCells[player.deck[i]]);
-
-  const occupied = new Set();
-  for (const other of soloPlayers) if (other.idx !== pIdx && simOnBoard(other)) occupied.add(other.pos);
-
-  // Vóór de worp: Noodtransport of Zwaartekracht-laarzen (energie of de gratis kaart) — dezelfde
-  // keuze als in simulateOneGame (botPreRollMove in 95-simulate.js). Daarna gooit de bot vanaf
-  // zijn nieuwe plek; een sprong precies op de opdracht beëindigt de beurt. d1/d2/d3 en de twee
-  // losse paden worden bewaard voor het zichtbaar naspelen (soloAnimateBotTurn).
-  let move, roll = 0, d1 = 0, d2 = 0, d3 = null, rollPenalty = 0, rollMove = null;
-  const pre = botPreRollMove(soloGraph, player, occupied, targets, !energyActionUsed, !cardActionUsed);
-  let portalShot = null;   // voor het naspelen: het schot + hoe de portalen er vóór lagen
-  if (pre){
-    if (pre.kind === 'bootsCard' || pre.kind === 'portalCard'){
-      useActionCard(player, pre.kind === 'bootsCard' ? 'boots' : 'portalkey', soloDeck); cardActionUsed = true;
-    } else {
-      player.energy -= ENERGY_ACTIONS[pre.kind].cost; player.actionUses++; energyActionUsed = true;
-      statsUseEnergy(player, pre.kind);
-    }
-    if (preIsPortal(pre)){
-      const before = { cells: soloGraph.portals.cells.slice(), owner: soloGraph.portals.owner.slice() };
-      const placed = portalPlace(soloGraph, pre.shot.key, pre.shot.color, pIdx);
-      portalShot = { path: pre.shot.path, key: pre.shot.key, color: pre.shot.color, from: placed.from, before,
-                     after: { cells: soloGraph.portals.cells.slice(), owner: soloGraph.portals.owner.slice() } };
-      if (player.stats) player.stats.portalShots = (player.stats.portalShots || 0) + 1;
-      walkLog(walkPortalShotText(player.name, pre.shot, placed.stolen), null, player);
-      // meteen afgehandeld (geen naspelen): portalen nu tekenen
-      if (soloBotViewSpeed === null){
-        walkPaintPortals(soloGraph);
-        walkPortalBurst(soloGraph, pre.shot.key, pre.shot.color, true);
-      }
-    } else {
-      walkLog(pre.kind === 'jump'
-        ? `${player.name} springt met <b>Noodtransport</b> ${pre.path.length - 1} vakjes${pre.endsTurn ? ', precies op zijn opdracht' : ''}.`
-        : `${player.name} schiet met <b>Zwaartekracht-laarzen</b>${pre.kind === 'bootsCard' ? ' (kristal)' : ''} ${pre.path.length - 1} vakjes rechtdoor.`, null, player);
-    }
-  }
-  const rollFrom = pre ? pre.key : player.pos;
-  const rollTargets = pre ? targets.slice(pre.bankedCount) : targets;
-  if (pre && (pre.endsTurn || player.completed + pre.bankedCount >= SIM_QUESTS_TO_WIN)){
-    move = { key: pre.key, path: pre.path, stepsUsed: pre.path.length - 1, bankedCount: pre.bankedCount,
-             bankedQuest: pre.bankedCount > 0, wasBlocked: pre.wasBlocked };
-  } else {
-    let dice = 2;
-    d1 = simRollD6(soloRand, player); d2 = simRollD6(soloRand, player);
-    statsRecordRoll(player, d1 + d2);
-    roll = d1 + d2;
-    if (!cardActionUsed && player.cards.includes('boostcell')){
-      d3 = simRollD6(soloRand, player); roll += d3; dice = 3; useActionCard(player, 'boostcell', soloDeck); cardActionUsed = true;
-    } else if (!energyActionUsed && botStrategyNow(soloGraph, player) === 'boost' && player.energy >= ENERGY_ACTIONS.boost.cost){
-      d3 = simRollD6(soloRand, player); roll += d3; dice = 3; player.energy -= ENERGY_ACTIONS.boost.cost; player.actionUses++; energyActionUsed = true;
-      statsUseEnergy(player, 'boost');
-    }
-    if (player.rollPenalty){ rollPenalty = player.rollPenalty; roll = Math.max(1, roll - rollPenalty); player.rollPenalty = 0; }
-    rollMove = resolveMove(soloGraph, rollFrom, roll, occupied, rollTargets, soloRand);
-    // Zelf kiezen: één steen een andere waarde geven (zie botPickDieValue in 95-simulate.js)
-    if (!rollMove.bankedQuest && !cardActionUsed && player.cards.includes('pick')){
-      const vals = d3 !== null ? [d1, d2, d3] : [d1, d2];
-      const pk = botPickDieValue(soloGraph, rollFrom, vals, rollPenalty, occupied, rollTargets, soloRand, rollMove);
-      if (pk){
-        const was = vals[pk.idx];
-        if (pk.idx === 0) d1 = pk.value; else if (pk.idx === 1) d2 = pk.value; else d3 = pk.value;
-        roll = pk.roll;
-        rollMove = pk.move;
-        useActionCard(player, 'pick', soloDeck); cardActionUsed = true;
-        walkLog(`${player.name} gebruikt <b>Zelf kiezen</b>: een ${was} wordt een ${pk.value} → ${roll} stappen.`, null, player);
-      }
-    }
-    // Koerscorrectie: tegenvallende worp overdoen (zie simulateOneGame voor de drempel)
-    if (!rollMove.bankedQuest && !cardActionUsed && player.cards.includes('reroll') && roll < dice * 3.5){
-      d1 = simRollD6(soloRand, player); d2 = simRollD6(soloRand, player);
-      statsRecordRoll(player, d1 + d2);
-      if (dice === 3) d3 = simRollD6(soloRand, player);
-      roll = d1 + d2 + (dice === 3 ? d3 : 0);
-      if (rollPenalty) roll = Math.max(1, roll - rollPenalty);   // Stroomonderbreking blijft gelden
-      useActionCard(player, 'reroll', soloDeck);
-      cardActionUsed = true;
-      walkLog(`${player.name} gebruikt <b>Koerscorrectie</b> en gooit opnieuw: ${roll}.`, null, player);
-      rollMove = resolveMove(soloGraph, rollFrom, roll, occupied, rollTargets, soloRand);
-    }
-    // Zonnezeil: energie gelijk aan de laagste loopsteen, als er ruimte is
-    if (!cardActionUsed && player.cards.includes('solar') && player.energy + pendingEnergy < ENERGY_MAX){
-      const g = simGainEnergy(player, solarGain(d3 !== null ? [d1, d2, d3] : [d1, d2]));
-      useActionCard(player, 'solar', soloDeck); cardActionUsed = true;
-      walkLog(`${player.name} gebruikt <b>Zonnezeil</b>: +${g.gained} energie.`, null, player);
-    }
-    // Blinde Vlek: geblokkeerde worp opnieuw uitrekenen, door tegenstanders heen
-    if (!rollMove.bankedQuest && !cardActionUsed && player.cards.includes('blind') && rollMove.wasBlocked){
-      const retry = resolveMove(soloGraph, rollFrom, roll, SIM_EMPTY_SET, rollTargets, soloRand, occupied);
-      if (retry && retry.key !== rollMove.key){ rollMove = retry; useActionCard(player, 'blind', soloDeck); cardActionUsed = true; }
-    }
-    move = mergePreRollMove(pre, rollMove);
-  }
-  if (pre && pre.kind !== 'jump' && !preIsPortal(pre)) player.stats.dashSteps += pre.path.length - 1;
-  if (rollMove){
-    const jumps = pathPortalJumps(soloGraph, rollMove.path);
-    player.stats.walkSteps += rollMove.path.length - 1 - jumps;
-    if (jumps){
-      player.stats.portalJumps = (player.stats.portalJumps || 0) + jumps;
-      walkLog(`${player.name} stapt door een portaal.`, null, player);
-    }
-  }
-
-  player.pos = move.key;
+  botFinishTurn(ctx, r);
   paintWalkPawns(soloGraph, soloPlayers, pIdx);
-  // Noodtransport: alleen het landingsvakje telt (crystalPathOf, 95-simulate.js)
-  const crystalPath = crystalPathOf(move.path, pre);
-  if (pathHasActionCell(soloGraph, crystalPath)) soloGrantActionCellReward(player, false, pathFirstActionCell(soloGraph, crystalPath));
-  // de energiesteen van deze beurt telt nu pas bij: volgende beurt uit te geven
-  if (pendingEnergy) simGainEnergy(player, pendingEnergy);
-  // voor soloAnimateBotTurn: welke opdrachten deze zet pakt, zodat het naspelen het doel al
-  // doorschuift zodra de pion erop stapt (walkAdvanceShownTarget, 96-walk.js)
-  const bank = { seq: player.deck.slice(player.nextIdx), completed: player.completed };
-
-  if (move.bankedQuest){
-    // meestal 1 opdracht, zelden 2 (de resterende stappen na de 1e voerden toevallig ook door
-    // de 2e) — zie resolveMove in 95-simulate.js.
-    // nooit verder dan 6 (anders "7/6", zie de simulatie die ook bij 6 stopt)
-    const bankedLabels = [];
-    const bankN = Math.min(move.bankedCount, SIM_QUESTS_TO_WIN - player.completed);
-    for (let i = player.nextIdx, n = 0; n < bankN; i++, n++) bankedLabels.push(player.deck[i]);
-    player.doneCells.push(targetKey);
-    for (let i = 1; i < bankedLabels.length; i++) player.doneCells.push(soloGraph.questCells[bankedLabels[i]]);
-    player.completed += bankedLabels.length;
-    player.nextIdx += bankedLabels.length;
-    // één kristal per voltooide opdracht, net als de mens, de simulatie en Automatisch
-    for (let n = 0; n < bankedLabels.length; n++){
-      const cellKey = n === 0 ? targetKey : soloGraph.questCells[bankedLabels[n]];
-      if (player.cards.length < ACTION_CARD_HAND_MAX){
-        const drawn = drawActionCard(soloDeck, soloRand);
-        if (drawn){ player.cards.push(drawn); crystalEvent(player, cellKey, 'gain'); }
-      } else {
-        crystalEvent(player, cellKey, 'full');
-      }
+  if (r.cellReward){
+    soloActionCellDrawnThisTurn = true;
+    soloShowActionCellReward(player, false, r.cellReward.key, r.cellReward);
+  }
+  const targetLabel = r.targetLabel, targetKey = r.targetKey;
+  if (r.banked.length){
+    // meestal 1 opdracht, zelden 2 (de resterende stappen na de 1e voerden toevallig ook door de 2e)
+    for (const ev of r.banked) player.doneCells.push(ev.key);
+    // één kristal per voltooide opdracht (al getrokken in botFinishTurn), hier alleen de animatie
+    for (const ev of r.banked){
+      if (ev.drawn) crystalEvent(player, ev.key, 'gain');
+      else if (ev.full) crystalEvent(player, ev.key, 'full');
     }
-    const chainNote = bankedLabels.length > 1
-      ? ` en meteen ook <span class="hit">${bankedLabels.slice(1).map(l => `${l} ${QUEST_NAMES[l] || ''}`).join(', ')}</span>`
+    const chainNote = r.banked.length > 1
+      ? ` en meteen ook <span class="hit">${r.banked.slice(1).map(ev => `${ev.label} ${QUEST_NAMES[ev.label] || ''}`).join(', ')}</span>`
       : '';
     walkLog(`Beurt ${soloTurn}: <b>${player.name}</b> voltooit <span class="hit">${targetLabel} ${QUEST_NAMES[targetLabel] || ''}</span>${chainNote} · ${player.completed}/${SIM_QUESTS_TO_WIN}`, 'hit', player);
     if (player.completed >= SIM_QUESTS_TO_WIN){
@@ -2536,16 +2323,16 @@ function soloResolveBotTurn(player){
       walkLog(`<b>${player.name} heeft alle ${SIM_QUESTS_TO_WIN} opdrachten voltooid</b> en verlaat het bord — wacht op de rest van deze ronde.`, 'hit', player);
     }
   } else {
-    walkLog(`Beurt ${soloTurn}: <b>${player.name}</b> onderweg naar ${targetLabel}${move.wasBlocked ? ' · liep tegen een bezette route aan' : ''}`, null, player);
+    walkLog(`Beurt ${soloTurn}: <b>${player.name}</b> onderweg naar ${targetLabel}${r.move.wasBlocked ? ' · liep tegen een bezette route aan' : ''}`, null, player);
   }
   renderWalkScore(soloPlayers, -1);
-  return { startPos, d1, d2, d3, roll, energyRoll, targetLabel, targetKey, bank,
+  return { startPos: r.startPos, d1: r.d1, d2: r.d2, d3: r.d3, roll: r.roll, energyRoll: r.energyRoll,
+           targetLabel, targetKey, bank: r.bank,
            // verplaatsing vóór de worp (sprong/sprint) en de gelopen worp, los, voor het naspelen
            prePath: pre && !preIsPortal(pre) ? pre.path : null, preBanked: pre ? pre.bankedCount : 0,
-           rollPath: rollMove ? rollMove.path : null, rollBanked: rollMove ? rollMove.bankedCount : 0,
+           rollPath: r.rollMove ? r.rollMove.path : null, rollBanked: r.rollMove ? r.rollMove.bankedCount : 0,
            portalShot };
 }
-
 // ---------- bot-beurt zichtbaar naspelen (lobby-optie "Beurten van de bots") ----------
 // soloResolveBotTurn() heeft de beurt al volledig afgehandeld; dit speelt 'm alleen nog na op
 // het bord: bot oplichten in de spelersbalk, doel markeren, dobbelstenen laten rollen, pion

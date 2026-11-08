@@ -1373,6 +1373,300 @@ function recordGameEndStats(players, halfway, extra){
 // (hoe lang duurde het om elk opdrachtvakje te bereiken) en `extra` (blokkeren,
 // voorsprong bij winst) — allemaal gedeeld over de hele batch, dus geen allocatie
 // per potje nodig.
+// ---------- één bot-beurt, gedeeld door alle drie de modi (nr. 35 uit analyse.md, 2026-11) ----------
+// Vroeger stond deze beurt drie keer bijna gelijk in de code (simulateOneGame, de lus van
+// Automatisch in 96-walk.js en soloResolveBotTurn in 97-solo.js), en elke afwijking daartussen was
+// een fout (bots die in de ene modus wél en in de andere niet iets mochten). Nu:
+//   botPlanTurn   = alle keuzes en spelregels tot en met de zet (kristallen, energie-actie, worp,
+//                   Zelf kiezen, Koerscorrectie, Zonnezeil, Blinde Vlek). De pion staat daarna nog
+//                   op zijn oude plek; geduwde tegenstanders en portalen zijn al verplaatst.
+//   botFinishTurn = de zet afronden: pion neerzetten, kristalvakje, energiesteen bijschrijven,
+//                   opdrachten afboeken met hun kristal.
+// Elke modus doet daarna ALLEEN nog log, animatie en zijn eigen telling. Een spelregel voor bots
+// aanpassen = hier, en nergens anders.
+// ctx = { graph, players, player, rand, deck, queue, extra }
+//   queue: de opdrachtenstapel van de speler (batch: player.order, Zelf spelen/Automatisch: player.deck)
+//   extra: alleen de batch-simulatie (tellers voor de uitslag); anders weglaten.
+// De tellers per speler (player.stats) lopen hier ook mee; de batch-speler heeft er geen.
+function botPlanTurn(ctx){
+  const { graph, players, player, rand, deck, queue, extra } = ctx;
+  const pIdx = player.idx;
+  const r = { startPos: player.pos, locked: false, energyRoll: 0, condenserCashed: false, pendingEnergy: 0,
+              cards: [], energyUsed: null, reorder: null, pre: null, portal: null,
+              dice: [], d1: 0, d2: 0, d3: null, roll: 0, rollPenalty: 0, rollMove: null, move: null,
+              portalJumps: 0, cellIdx: -1, targets: null, targetLabel: null, targetKey: undefined };
+  // Energie-acties en kristallen hebben ELK hun eigen slot per beurt (max 1 van elk). Drie
+  // kristallen zijn een GRATIS variant van een energie-actie (Stuwlading↔Stuwstoot: allebei een 3e
+  // loopsteen; laarzen-kristal↔laarzen: één sprint; Portaalsleutel↔Portaalkanon: één portaalschot)
+  // — die blijven elkaar binnen hún ene moment uitsluiten (kristal gaat voor, is gratis).
+  let energyActionUsed = false, cardActionUsed = false;
+  const playCard = (id, info) => {
+    useActionCard(player, id, deck, extra);
+    cardActionUsed = true;
+    r.cards.push(Object.assign({ id }, info));
+  };
+  const payEnergy = (id) => {
+    player.energy -= ENERGY_ACTIONS[id].cost;
+    player.actionUses++;
+    energyActionUsed = true;
+    r.energyUsed = id;
+    statsUseEnergy(player, id);
+  };
+  const has = id => player.cards.includes(id);
+
+  // Vergrendeling: geraakt in een vorige beurt = NU geen energie- en geen kristalslot
+  if (player.lockedNextTurn){
+    player.lockedNextTurn = false;
+    energyActionUsed = cardActionUsed = true;
+    r.locked = true;
+  }
+
+  // 1. energiesteen rolt mee (tenzij Kortsluiting), maar telt pas NA de zet bij — wat je nu gooit,
+  //    geef je pas volgende beurt uit (zie de tijdsregels bovenaan dit bestand)
+  const shorted = player.skipEnergyRoll;   // dan ook geen Dubbele steen (net als bij de mens)
+  let pendingEnergy = 0;
+  if (player.skipEnergyRoll){
+    player.skipEnergyRoll = false;
+  } else {
+    r.energyRoll = simRollEnergy(rand);
+    pendingEnergy = r.energyRoll;
+    if (player.stats) player.stats.energyRolled += r.energyRoll;
+    // Condensator van vorige beurt: deze steen telt dubbel; bij een 0 blijft hij staan (net als bij de mens)
+    if (player.condenserPending && r.energyRoll > 0){
+      player.condenserPending = false;
+      pendingEnergy += r.energyRoll;
+      r.condenserCashed = true;
+    }
+  }
+  if (extra) extra.energyRolled += pendingEnergy;
+
+  // 1b. kristallen rond de energiefase. De Condensator is een investering voor je VOLGENDE beurt:
+  //     een bot zet hem in zodra er ruimte is om te groeien en er nog geen klaarstaat.
+  if (!cardActionUsed && has('condenser') && !player.condenserPending && player.energy < ENERGY_MAX){
+    player.condenserPending = true;
+    playCard('condenser');
+  }
+  if (!cardActionUsed && has('short')){
+    const victim = pickShortCircuitTarget(players, pIdx, rand);
+    if (victim){ victim.skipEnergyRoll = true; playCard('short', { victim }); }
+  }
+  // Energielek: alleen als er bij een ander minstens 2 te halen valt en er bij jezelf ruimte is
+  if (!cardActionUsed && has('leak') && player.energy < ENERGY_MAX){
+    const victim = pickEnergyLeakTarget(players, pIdx, rand);
+    if (victim && victim.energy >= ENERGY_LEAK_AMOUNT){
+      const taken = energyLeakTake(victim);   // pas na de zet erbij, zie energyLeakTake
+      pendingEnergy += taken;
+      playCard('leak', { victim, taken });
+    }
+  }
+  // Dubbele steen (vóór de worp): een tweede energiesteen, telt net als de eerste pas na de zet
+  if (!cardActionUsed && !shorted && has('twin') && botWantsTwinEnergy(player, BOT_TWIN_EXPECTED_ROLL)){
+    const second = simRollEnergy(rand);
+    pendingEnergy += second;
+    if (extra) extra.energyRolled += second;
+    if (player.stats) player.stats.energyRolled += second;
+    playCard('twin', { second });
+  }
+  if (!cardActionUsed && has('ration') && player.energy < ENERGY_MAX){
+    simGainEnergy(player, 3);
+    playCard('ration');
+  }
+  // 1c. hinder-kristallen tegen de koploper (zelfde eerlijke keuze als Kortsluiting)
+  if (!cardActionUsed && has('lockdown')){
+    const victim = pickLeaderTarget(players, pIdx, p => p.lockedNextTurn, rand);
+    if (victim){ victim.lockedNextTurn = true; playCard('lockdown', { victim }); }
+  }
+  if (!cardActionUsed && has('outage')){
+    const victim = pickLeaderTarget(players, pIdx, p => p.rollPenalty > 0, rand);
+    if (victim){ victim.rollPenalty = 2; playCard('outage', { victim }); }
+  }
+  // Duwstoot: vereist een AANGRENZENDE tegenstander
+  if (!cardActionUsed && has('shove')){
+    const shove = pickShoveMove(graph, players, pIdx, rand);
+    if (shove){ shove.player.pos = shove.toKey; playCard('shove', { victim: shove.player }); }
+  }
+
+  // 2. doel: Herprioritering (energie) = betalen, volgende opdracht bekijken, wisselen als die
+  //    dichterbij ligt. Je betaalt ook als wisselen niets oplevert (zie botWantsReorderPeek).
+  //    energyReorderTarget werkt op `order`: dit hulpje wijst naar dezelfde stapel (geen kopie).
+  let targetLabel = queue[player.nextIdx];
+  const shim = { order: queue, nextIdx: player.nextIdx };
+  if (!energyActionUsed && botStrategyNow(graph, player) === 'reorder' && player.energy >= ENERGY_ACTIONS.reorder.cost
+      && botWantsReorderPeek(graph, shim, player.pos)){
+    payEnergy('reorder');
+    const before = targetLabel;
+    const swapped = energyReorderTarget(graph, shim, player.pos);
+    r.reorder = { before, swapped };
+    if (swapped !== null){
+      if (extra){
+        // voor "Wat levert een energie-actie op?": hoeveel vakjes scheelt de wissel?
+        const stamp = simBfsDistances(graph, player.pos);
+        const st = extra.energyStats.reorder;
+        st.swaps++;
+        st.saved += simDistLookup(stamp, graph.questCells[before]) - simDistLookup(stamp, graph.questCells[swapped]);
+      }
+      targetLabel = swapped;
+    }
+  }
+  r.targetLabel = targetLabel;
+  r.targetKey = graph.questCells[targetLabel];
+  // volledige rij nog te halen opdrachtvakjes, te beginnen bij het huidige doel — resolveMove loopt
+  // na targets[0] door en toetst de resterende stappen meteen aan targets[1], enz.
+  const targets = [];
+  for (let i = player.nextIdx; i < queue.length; i++) targets.push(graph.questCells[queue[i]]);
+  r.targets = targets;
+
+  const occupied = new Set();
+  for (const other of players) if (other.idx !== pIdx && simOnBoard(other)) occupied.add(other.pos);
+
+  // 3. vóór de worp: Noodtransport, Zwaartekracht-laarzen of een portaalschot (energie of kristal),
+  //    de keuze in botPreRollMove. Een sprong precies op je opdracht beëindigt de beurt; anders gooi
+  //    je daarna vanaf je nieuwe plek. Haalt een sprint je 6e opdracht, dan valt er niets meer te gooien.
+  const pre = botPreRollMove(graph, player, occupied, targets, !energyActionUsed, !cardActionUsed);
+  r.pre = pre;
+  if (pre){
+    if (pre.kind === 'bootsCard' || pre.kind === 'portalCard'){
+      playCard(pre.kind === 'bootsCard' ? 'boots' : 'portalkey');
+    } else {
+      payEnergy(pre.kind);
+      const st = extra && extra.energyStats[pre.kind];
+      if (st){
+        st.steps += pre.path.length - 1;
+        if (pre.bankedCount) st.direct++;
+      }
+    }
+    if (preIsPortal(pre)){
+      const before = { cells: graph.portals.cells.slice(), owner: graph.portals.owner.slice() };
+      const placed = portalPlace(graph, pre.shot.key, pre.shot.color, pIdx);
+      r.portal = { placed, before, after: { cells: graph.portals.cells.slice(), owner: graph.portals.owner.slice() } };
+      if (extra && extra.portal){ extra.portal.shots++; if (placed.stolen) extra.portal.steals++; }
+      if (player.stats) player.stats.portalShots = (player.stats.portalShots || 0) + 1;
+    } else if (pre.kind !== 'jump' && player.stats){
+      player.stats.dashSteps += pre.path.length - 1;
+    }
+  }
+  const rollFrom = pre ? pre.key : player.pos;
+  const rollTargets = pre ? targets.slice(pre.bankedCount) : targets;
+  if (pre && (pre.endsTurn || player.completed + pre.bankedCount >= SIM_QUESTS_TO_WIN)){
+    r.move = { key: pre.key, path: pre.path, stepsUsed: pre.path.length - 1, bankedCount: pre.bankedCount,
+               bankedQuest: pre.bankedCount > 0, wasBlocked: pre.wasBlocked, teleported: pre.kind === 'jump' };
+  } else {
+    // 4. de worp: loopstenen, met Stuwlading (kristal) of Stuwstoot (energie) als derde steen.
+    //    Stroomonderbreking trekt er ná alle stenen 2 stappen af (minimaal 1 blijft over).
+    const dieVals = [simRollD6(rand, player), simRollD6(rand, player)];
+    statsRecordRoll(player, dieVals[0] + dieVals[1]);
+    if (!cardActionUsed && has('boostcell')){
+      dieVals.push(simRollD6(rand, player));
+      playCard('boostcell');
+    } else if (!energyActionUsed && botStrategyNow(graph, player) === 'boost' && player.energy >= ENERGY_ACTIONS.boost.cost){
+      const extraDie = simRollD6(rand, player);
+      dieVals.push(extraDie);
+      payEnergy('boost');
+      if (extra) extra.energyStats.boost.steps += extraDie;
+    }
+    const dice = dieVals.length;
+    const sum = () => dieVals.reduce((a, b) => a + b, 0);
+    let roll = sum(), rollPenalty = 0;
+    if (player.rollPenalty){
+      rollPenalty = player.rollPenalty;
+      roll = Math.max(1, roll - rollPenalty);
+      player.rollPenalty = 0;
+    }
+    r.dice.push({ vals: dieVals.slice(), roll, why: 'roll' });
+    let move = resolveMove(graph, rollFrom, roll, occupied, rollTargets, rand);
+    // Zelf kiezen: één steen een andere waarde als dat een opdracht of duidelijk winst oplevert
+    if (!move.bankedQuest && !cardActionUsed && has('pick')){
+      const pk = botPickDieValue(graph, rollFrom, dieVals, rollPenalty, occupied, rollTargets, rand, move);
+      if (pk){
+        const was = dieVals[pk.idx];
+        dieVals[pk.idx] = pk.value;
+        roll = pk.roll;
+        move = pk.move;
+        playCard('pick', { was, value: pk.value, roll });
+        r.dice.push({ vals: dieVals.slice(), roll, why: 'pick' });
+      }
+    }
+    // Koerscorrectie: een tegenvallende worp (onder 3,5 per steen) overdoen; de nieuwe telt, ook
+    // als die slechter is. Een Stroomonderbreking geldt ook voor de nieuwe worp.
+    if (!move.bankedQuest && !cardActionUsed && has('reroll') && roll < dice * 3.5){
+      for (let d = 0; d < dice; d++){
+        dieVals[d] = simRollD6(rand, player);
+        if (d === 1) statsRecordRoll(player, dieVals[0] + dieVals[1]);
+      }
+      roll = sum();
+      if (rollPenalty) roll = Math.max(1, roll - rollPenalty);
+      playCard('reroll', { roll });
+      r.dice.push({ vals: dieVals.slice(), roll, why: 'reroll' });
+      move = resolveMove(graph, rollFrom, roll, occupied, rollTargets, rand);
+    }
+    // Zonnezeil (direct na de worp): energie gelijk aan de laagste steen, als er ruimte is
+    if (!cardActionUsed && has('solar') && player.energy + pendingEnergy < ENERGY_MAX){
+      const g = simGainEnergy(player, solarGain(dieVals));
+      if (extra) extra.energyWasted += g.wasted;
+      playCard('solar', { gained: g.gained });
+    }
+    // 5. Blinde Vlek: een geblokkeerde worp opnieuw uitrekenen, door tegenstanders heen (maar er
+    //    niet op eindigen). Geen enkel vrij eindvakje = resolveMove geeft null, de zet blijft staan.
+    if (!move.bankedQuest && !cardActionUsed && has('blind') && move.wasBlocked){
+      const retry = resolveMove(graph, rollFrom, roll, SIM_EMPTY_SET, rollTargets, rand, occupied);
+      if (retry && retry.key !== move.key){ move = retry; playCard('blind'); }
+    }
+    r.rollMove = move;
+    r.move = mergePreRollMove(pre, move);
+    r.d1 = dieVals[0]; r.d2 = dieVals[1]; r.d3 = dice > 2 ? dieVals[2] : null;
+    r.roll = roll; r.rollPenalty = rollPenalty;
+    r.portalJumps = pathPortalJumps(graph, move.path);
+    if (player.stats){
+      player.stats.walkSteps += move.path.length - 1 - r.portalJumps;
+      if (r.portalJumps) player.stats.portalJumps = (player.stats.portalJumps || 0) + r.portalJumps;
+    }
+  }
+  r.pendingEnergy = pendingEnergy;
+  // het kristalvakje van deze beurt (hooguit 1), als plek in r.move.path. Noodtransport: alleen het
+  // vakje waar je LANDT telt, niet wat je overvliegt (spelregel van de maker, zie crystalPathOf).
+  const path = r.move.path;
+  const from = pre && pre.kind === 'jump' ? Math.max(1, pre.path.length - 1) : 1;
+  for (let i = from; i < path.length; i++) if (graph.actionCells.has(path[i])){ r.cellIdx = i; break; }
+  return r;
+}
+
+// De zet van botPlanTurn afronden. Volgorde: kristalvakje, energiesteen, opdrachten (elk met een
+// kristal als de kluis niet vol is; nooit verder dan 6). Vult r.cellReward, r.energyGain, r.bank
+// (stapel en stand vóór het afboeken, voor het naspelen) en r.banked aan.
+function botFinishTurn(ctx, r){
+  const { graph, player, rand, deck, queue, extra } = ctx;
+  player.pos = r.move.key;
+  r.cellReward = null;
+  if (r.cellIdx >= 0){
+    const reward = drawActionCellReward(player, deck, rand);
+    r.cellReward = { key: r.move.path[r.cellIdx], idx: r.cellIdx, drawn: reward.drawn, handFull: reward.handFull };
+    if (extra){
+      if (reward.drawn) extra.actionCellDraws++;
+      else if (reward.handFull) extra.handFullOnActionCell++;
+    }
+  }
+  r.energyGain = r.pendingEnergy ? simGainEnergy(player, r.pendingEnergy) : { gained: 0, wasted: 0 };
+  if (extra) extra.energyWasted += r.energyGain.wasted;
+  r.bank = { seq: queue.slice(player.nextIdx), completed: player.completed };
+  r.banked = [];
+  const bankN = Math.min(r.move.bankedCount, SIM_QUESTS_TO_WIN - player.completed);
+  for (let n = 0; n < bankN; n++){
+    const label = queue[player.nextIdx];
+    const ev = { label, key: graph.questCells[label], drawn: null, full: false };
+    player.completed++;
+    player.nextIdx++;
+    if (player.cards.length < ACTION_CARD_HAND_MAX){
+      const drawn = drawActionCard(deck, rand);
+      if (drawn){ player.cards.push(drawn); ev.drawn = drawn; if (extra) extra.cardDraws++; }
+    } else {
+      ev.full = true;
+      if (extra) extra.handFullOnBank++;
+    }
+    r.banked.push(ev);
+  }
+  return r;
+}
+
 function simulateOneGame(graph, rand, heatmap, questStats, extra){
   const players = SIM_START_LABELS.map((label, idx) => ({
     idx,
@@ -1416,264 +1710,15 @@ function simulateOneGame(graph, rand, heatmap, questStats, extra){
       if (player.rank) continue;   // binnen: speelt niet meer mee en staat niemand in de weg
       turnCount++;
       player.ownTurns = (player.ownTurns || 0) + 1;   // per-beurt-keuzes van de bot (botPortalWanted)
-      // Energie-acties en kaarten hebben ELK hun eigen actie-slot per beurt (max 1 van elk) —
-      // vroeger deelden ze één gezamenlijk slot ("hooguit 1 actie per beurt, kaart of energie").
-      // Drie kristallen zijn een GRATIS variant van een energie-actie (Stuwlading↔Stuwstoot:
-      // allebei een 3e loopsteen; laarzen-kristal↔laarzen: één sprint; Portaalsleutel↔Portaalkanon:
-      // één portaalschot) — die blijven elkaar binnen hún ene moment uitsluiten (kristal gaat voor,
-      // is gratis), ook al staan ze op verschillende sloten.
-      let energyActionUsed = false;   // hooguit 1 energie-actie per beurt
-      let energyUsedId = null;        // welke energie-actie deze beurt (voor de statistiek)
-      let cardActionUsed = false;     // hooguit 1 kaart spelen per beurt
-      let actionCellCrossed = false;  // hooguit 1 beloningskaart per beurt via een actiekaartvakje
-      // Vergrendeling: geraakt in een vorige beurt betekent dat je NU zowel je energie- als je
-      // kaartslot mist. Beide sloten meteen op "gebruikt" zetten blokkeert vanzelf elke
-      // `!energyActionUsed`/`!cardActionUsed`-check hieronder — geen aparte if-ketting nodig.
-      if (player.lockedNextTurn){
-        player.lockedNextTurn = false;
-        energyActionUsed = true;
-        cardActionUsed = true;
-      }
+      extra.energyLevels[player.energy]++;   // energie aan het begin van de beurt
+      // de hele beurt: keuzes, worp en zet (gedeeld met Automatisch en Zelf spelen, zie botPlanTurn)
+      const ctx = { graph, players, player, rand, deck, queue: player.order, extra };
+      const r = botFinishTurn(ctx, botPlanTurn(ctx));
+      const move = r.move;
 
-      // 1. energiesteen rolt mee met de loopstenen (tenzij Kortsluiting die deze beurt blokkeert),
-      //    maar telt pas AAN HET EIND van de beurt bij — wat je nu gooit, geef je pas volgende
-      //    beurt uit (zie de tijdsregels bovenaan). `pendingEnergy` wordt na de zet bijgeschreven.
-      //    Het niveau hieronder is dus precies wat deze speler deze beurt kan inzetten.
-      let energyRoll = 0, pendingEnergy = 0;
-      // onthouden vóór het terugzetten: Dubbele steen mag niet als je energiesteen is uitgeschakeld
-      // (net als bij de mens, soloCardBlockReason)
-      const shorted = player.skipEnergyRoll;
-      if (player.skipEnergyRoll){
-        player.skipEnergyRoll = false;
-      } else {
-        energyRoll = simRollEnergy(rand);
-        pendingEnergy = energyRoll;
-        // Condensator die vorige beurt gespeeld is: deze steen telt dubbel. Rolt de speler deze
-        // beurt helemaal niet (Kortsluiting), dan blijft de Condensator staan voor de
-        // eerstvolgende beurt waarin hij wél gooit — er valt nu immers niets te verdubbelen.
-        // bij een 0 blijft hij staan voor de volgende worp, net als bij de mens (soloRollEnergyForTurn)
-        if (player.condenserPending && energyRoll > 0){
-          player.condenserPending = false;
-          pendingEnergy += energyRoll;
-        }
-      }
-      extra.energyRolled += pendingEnergy;
-      extra.energyLevels[player.energy]++;
-
-      // 1b. kaarten die bij de energiefase horen: Kortsluiting raakt de leider, Noodrantsoen
-      //     vult aan, en de Condensator wordt klaargezet voor je VOLGENDE beurt.
-      // Die laatste is dus een investering: je weet nog niet wat je dan gooit. Een bot zet 'm
-      // in zodra er ruimte is om te groeien en er nog geen andere klaarstaat.
-      if (!cardActionUsed && player.cards.includes('condenser') && !player.condenserPending && player.energy < ENERGY_MAX){
-        player.condenserPending = true;
-        useActionCard(player, 'condenser', deck, extra);
-        cardActionUsed = true;
-      }
-      if (!cardActionUsed && player.cards.includes('short')){
-        const victim = pickShortCircuitTarget(players, pIdx, rand);
-        if (victim){
-          victim.skipEnergyRoll = true;
-          useActionCard(player, 'short', deck, extra);
-          cardActionUsed = true;
-        }
-      }
-      // Energielek: alleen als er bij een ander minstens 2 te halen valt en er bij jezelf ruimte is
-      if (!cardActionUsed && player.cards.includes('leak') && player.energy < ENERGY_MAX){
-        const victim = pickEnergyLeakTarget(players, pIdx, rand);
-        if (victim && victim.energy >= ENERGY_LEAK_AMOUNT){
-          pendingEnergy += energyLeakTake(victim);   // pas na de zet erbij, zie energyLeakTake
-          useActionCard(player, 'leak', deck, extra);
-          cardActionUsed = true;
-        }
-      }
-      // Dubbele steen (vóór de worp): een tweede energiesteen, telt net als de eerste pas na de zet
-      if (!cardActionUsed && !shorted && player.cards.includes('twin') && botWantsTwinEnergy(player, BOT_TWIN_EXPECTED_ROLL)){
-        const second = simRollEnergy(rand);
-        pendingEnergy += second;
-        extra.energyRolled += second;
-        useActionCard(player, 'twin', deck, extra);
-        cardActionUsed = true;
-      }
-      if (!cardActionUsed && player.cards.includes('ration') && player.energy < ENERGY_MAX){
-        simGainEnergy(player, 3);
-        useActionCard(player, 'ration', deck, extra);
-        cardActionUsed = true;
-      }
-
-      // 1c. hinder-kaarten die een tegenstander raken zonder dat de eigen worp of het eigen doel
-      //     verandert: Vergrendeling/Stroomonderbreking pakken de koploper (zelfde eerlijke
-      //     heuristiek als Kortsluiting). Duwstoot staat verderop: die vereist een AANGRENZENDE tegenstander.
-      if (!cardActionUsed && player.cards.includes('lockdown')){
-        const victim = pickLeaderTarget(players, pIdx, p => p.lockedNextTurn, rand);
-        if (victim){
-          victim.lockedNextTurn = true;
-          useActionCard(player, 'lockdown', deck, extra);
-          cardActionUsed = true;
-        }
-      }
-      if (!cardActionUsed && player.cards.includes('outage')){
-        const victim = pickLeaderTarget(players, pIdx, p => p.rollPenalty > 0, rand);
-        if (victim){
-          victim.rollPenalty = 2;
-          useActionCard(player, 'outage', deck, extra);
-          cardActionUsed = true;
-        }
-      }
-      // 2. doel bepalen: Herprioritering (betaald, energie) kan je doel wisselen
-      let targetLabel = player.order[player.nextIdx];
-      if (!cardActionUsed && player.cards.includes('shove')){
-        const shove = pickShoveMove(graph, players, pIdx, rand);
-        if (shove){
-          shove.player.pos = shove.toKey;
-          useActionCard(player, 'shove', deck, extra);
-          cardActionUsed = true;
-        }
-      }
-      // Herprioritering: betalen, volgende kaart bekijken, wisselen als die dichterbij ligt.
-      // Je betaalt ook als wisselen niets oplevert (zie botWantsReorderPeek).
-      if (!energyActionUsed && botStrategyNow(graph, player) === 'reorder' && player.energy >= ENERGY_ACTIONS.reorder.cost
-          && botWantsReorderPeek(graph, player, player.pos)){
-        player.energy -= ENERGY_ACTIONS.reorder.cost;
-        player.actionUses++;
-        energyActionUsed = true;
-        energyUsedId = 'reorder';
-        const swapped = energyReorderTarget(graph, player, player.pos);
-        if (swapped !== null){
-          // voor "Wat levert een energie-actie op?": hoeveel vakjes scheelt de wissel?
-          const stamp = simBfsDistances(graph, player.pos);
-          const st = extra.energyStats.reorder;
-          st.swaps++;
-          st.saved += simDistLookup(stamp, graph.questCells[targetLabel]) - simDistLookup(stamp, graph.questCells[swapped]);
-          targetLabel = swapped;
-        }
-      }
-      const targetKey = graph.questCells[targetLabel];
-      // volledige rij nog te halen opdrachtvakjes, te beginnen bij het huidige doel — resolveMove
-      // loopt na targets[0] door en toetst de resterende stappen meteen aan targets[1], enz.,
-      // zodat je zelden maar soms wél een 2e opdracht in dezelfde beurt kunt pakken
-      const targets = [];
-      for (let i = player.nextIdx; i < player.order.length; i++) targets.push(graph.questCells[player.order[i]]);
-
-      const occupied = new Set();
-      for (let j = 0; j < 4; j++) if (j !== pIdx && simOnBoard(players[j])) occupied.add(players[j].pos);
-
-      // 3. vóór de worp: Noodtransport of Zwaartekracht-laarzen (de energie-actie of de gratis
-      //    kaart) — de keuze zit in botPreRollMove(), gedeeld met 96-walk.js en 97-solo.js. Een
-      //    sprong die precies op je opdracht landt beëindigt je beurt; anders gooi je daarna
-      //    gewoon vanaf je nieuwe plek, met de opdrachten die de verplaatsing nog niet pakte. Haalt
-      //    een sprint je 6e opdracht, dan ben je binnen en valt er niets meer te gooien.
-      let move, roll = 0, rollPenalty = 0;
-      const pre = botPreRollMove(graph, player, occupied, targets, !energyActionUsed, !cardActionUsed);
-      if (pre){
-        if (pre.kind === 'bootsCard' || pre.kind === 'portalCard'){
-          useActionCard(player, pre.kind === 'bootsCard' ? 'boots' : 'portalkey', deck, extra);
-          cardActionUsed = true;
-          if (pre.kind === 'portalCard'){
-            const placed = portalPlace(graph, pre.shot.key, pre.shot.color, pIdx);
-            if (extra.portal){ extra.portal.shots++; if (placed.stolen) extra.portal.steals++; }
-          }
-        } else {
-          player.energy -= ENERGY_ACTIONS[pre.kind].cost;
-          player.actionUses++;
-          energyActionUsed = true;
-          energyUsedId = pre.kind;
-          const st = extra.energyStats[pre.kind];
-          if (st){
-            st.steps += pre.path.length - 1;
-            if (pre.bankedCount) st.direct++;
-          }
-          if (pre.kind === 'portal'){
-            const placed = portalPlace(graph, pre.shot.key, pre.shot.color, pIdx);
-            if (extra.portal){ extra.portal.shots++; if (placed.stolen) extra.portal.steals++; }
-          }
-        }
-      }
-      const rollFrom = pre ? pre.key : player.pos;
-      const rollTargets = pre ? targets.slice(pre.bankedCount) : targets;
-      if (pre && (pre.endsTurn || player.completed + pre.bankedCount >= SIM_QUESTS_TO_WIN)){
-        move = { key: pre.key, path: pre.path, stepsUsed: pre.path.length - 1, bankedCount: pre.bankedCount,
-                 bankedQuest: pre.bankedCount > 0, wasBlocked: pre.wasBlocked, teleported: pre.kind === 'jump' };
-      } else {
-        // 4. de worp: loopstenen, met Stuwlading (kaart) of Stuwstoot (energie) als derde steen —
-        //    die twee doen hetzelfde (een 3e loopsteen) en blijven via else-if elkaar uitsluiten.
-        //    Stroomonderbreking trekt er ná alle stenen 2 stappen af (minimaal 1 blijft over).
-        //    De losse stenen staan in `dieVals` (Zelf kiezen en Zonnezeil kijken per steen).
-        const dieVals = [simRollD6(rand), simRollD6(rand)];
-        if (!cardActionUsed && player.cards.includes('boostcell')){
-          dieVals.push(simRollD6(rand));
-          useActionCard(player, 'boostcell', deck, extra);
-          cardActionUsed = true;
-        } else if (!energyActionUsed && botStrategyNow(graph, player) === 'boost' && player.energy >= ENERGY_ACTIONS.boost.cost){
-          const extraDie = simRollD6(rand);
-          dieVals.push(extraDie);
-          player.energy -= ENERGY_ACTIONS.boost.cost;
-          player.actionUses++;
-          energyActionUsed = true;
-          energyUsedId = 'boost';
-          extra.energyStats.boost.steps += extraDie;
-        }
-        const dice = dieVals.length;
-        roll = dieVals.reduce((a, b) => a + b, 0);
-        if (player.rollPenalty){
-          rollPenalty = player.rollPenalty;
-          roll = Math.max(1, roll - rollPenalty);
-          player.rollPenalty = 0;
-        }
-        move = resolveMove(graph, rollFrom, roll, occupied, rollTargets, rand);
-        // Zelf kiezen: één steen een andere waarde geven als dat een opdracht of duidelijk winst oplevert
-        if (!move.bankedQuest && !cardActionUsed && player.cards.includes('pick')){
-          const pk = botPickDieValue(graph, rollFrom, dieVals, rollPenalty, occupied, rollTargets, rand, move);
-          if (pk){
-            dieVals[pk.idx] = pk.value;
-            roll = pk.roll;
-            move = pk.move;
-            useActionCard(player, 'pick', deck, extra);
-            cardActionUsed = true;
-          }
-        }
-        // Koerscorrectie: een tegenvallende worp overdoen. Alleen zinvol als deze worp de
-        // opdracht niet al pakt, en alleen onder de verwachtingswaarde (3,5 per steen) — dan
-        // is opnieuw gooien in verwachting winst. De nieuwe worp telt, ook als die slechter is.
-        // Een Stroomonderbreking geldt ook voor de nieuwe worp — anders wiste Koerscorrectie
-        // die straf stilletjes uit.
-        if (!move.bankedQuest && !cardActionUsed && player.cards.includes('reroll') && roll < dice * 3.5){
-          for (let d = 0; d < dice; d++) dieVals[d] = simRollD6(rand);
-          roll = dieVals.reduce((a, b) => a + b, 0);
-          if (rollPenalty) roll = Math.max(1, roll - rollPenalty);
-          useActionCard(player, 'reroll', deck, extra);
-          cardActionUsed = true;
-          move = resolveMove(graph, rollFrom, roll, occupied, rollTargets, rand);
-        }
-        // Zonnezeil (direct na de worp): energie gelijk aan de laagste steen, als er ruimte is
-        if (!cardActionUsed && player.cards.includes('solar') && player.energy + pendingEnergy < ENERGY_MAX){
-          extra.energyWasted += simGainEnergy(player, solarGain(dieVals)).wasted;
-          useActionCard(player, 'solar', deck, extra);
-          cardActionUsed = true;
-        }
-        // 5. Blinde Vlek (kaart) lost een blokkade op door de worp opnieuw uit te rekenen vanaf
-        //    dezelfde plek, door tegenstanders heen (maar er niet op eindigen) — levert dat geen
-        //    enkel vrij eindvakje op, dan geeft resolveMove null terug en blijft de gewone,
-        //    geblokkeerde zet staan.
-        if (!move.bankedQuest && !cardActionUsed && player.cards.includes('blind') && move.wasBlocked){
-          const retry = resolveMove(graph, rollFrom, roll, SIM_EMPTY_SET, rollTargets, rand, occupied);
-          if (retry && retry.key !== move.key){
-            move = retry;
-            useActionCard(player, 'blind', deck, extra);
-            cardActionUsed = true;
-          }
-        }
-        move = mergePreRollMove(pre, move);
-      }
-      // de energiesteen van deze beurt telt nu pas bij (zie stap 1): volgende beurt uit te geven
-      if (pendingEnergy) extra.energyWasted += simGainEnergy(player, pendingEnergy).wasted;
-
-      player.pos = move.key;
-      player.turnsOnTarget++;
       extra.totalTurns++;
       if (move.wasBlocked) extra.blockedTurns++;
       for (let p = 1; p < move.path.length; p++) heatmap[move.path[p]]++;
-      if (pathHasActionCell(graph, crystalPathOf(move.path, pre))) actionCellCrossed = true;
-      // "Wat levert een energie-actie op?": haalde deze beurt een opdracht, mét of zonder actie
       // portalen: sprongen tellen, en wie er gebruik van maakt (eigen portaal of dat van een ander)
       if (extra.portal){
         const jumps = pathPortalJumps(graph, move.path);
@@ -1686,8 +1731,9 @@ function simulateOneGame(graph, rand, heatmap, questStats, extra){
           portalJumpsBy[pIdx] += jumps;
         }
       }
-      if (energyUsedId){
-        const st = extra.energyStats[energyUsedId];
+      // "Wat levert een energie-actie op?": haalde deze beurt een opdracht, mét of zonder actie
+      if (r.energyUsed){
+        const st = extra.energyStats[r.energyUsed];
         if (st){
           st.uses++;
           if (move.bankedQuest) st.banked++;
@@ -1697,21 +1743,11 @@ function simulateOneGame(graph, rand, heatmap, questStats, extra){
         if (move.bankedQuest) extra.noEnergyBanked++;
       }
 
-      // actiekaartvakje (gang): levert een kaart op net als een opdracht, maar onderbreekt de
-      // zet niet en levert hooguit 1x per beurt op, ook als je onderweg meerdere van deze
-      // vakjes passeerde.
-      if (actionCellCrossed){
-        const reward = drawActionCellReward(player, deck, rand);
-        if (reward.drawn) extra.actionCellDraws++;
-        else if (reward.handFull) extra.handFullOnActionCell++;
-      }
-
-      // meestal 0 of 1 opdracht; zelden 2 (de resterende stappen na de 1e voerden toevallig
-      // ook door de 2e) — zie resolveMove. Elke gebankte opdracht krijgt zijn eigen boekhouding
-      // (stats, kaarttrekking, winst-check), in de volgorde waarin ze onderweg geraakt zijn.
-      for (let b = 0; b < move.bankedCount; b++){
-        const label = player.order[player.nextIdx];
-        const qs = questStats[label];
+      // afgeboekte opdrachten (meestal 0 of 1, zelden 2): elk zijn eigen boekhouding, in de
+      // volgorde waarin ze onderweg geraakt zijn. Het kristal is al getrokken (botFinishTurn).
+      player.turnsOnTarget++;
+      for (const ev of r.banked){
+        const qs = questStats[ev.label];
         qs.turns += player.turnsOnTarget;
         qs.count++;
         // "Pech-reeksen": hoeveel beurten zat deze speler achter deze opdracht aan? (0 = een 2e
@@ -1721,23 +1757,13 @@ function simulateOneGame(graph, rand, heatmap, questStats, extra){
           if (player.turnsOnTarget > player.longestSearch) player.longestSearch = player.turnsOnTarget;
           if (player.turnsOnTarget > extra.longestSearch) extra.longestSearch = player.turnsOnTarget;
         }
-        player.completed++;
-        player.nextIdx++;
         player.turnsOnTarget = 0;
-        // beloning: een kaart trekken, als de hand niet al vol is
-        if (player.cards.length < ACTION_CARD_HAND_MAX){
-          const drawn = drawActionCard(deck, rand);
-          if (drawn){ player.cards.push(drawn); extra.cardDraws++; }
-        } else {
-          extra.handFullOnBank++;
-        }
-        // rank wordt NIET meteen toegekend — pas ná deze hele ronde (zie resolveRoundFinishers
-        // hierboven), zodat wie later in de beurtvolgorde zit deze ronde nog evenveel kans krijgt
-        if (player.completed >= SIM_QUESTS_TO_WIN){
-          player.finishTurn = turnCount;
-          roundFinishers.push(player);
-          break; // binnen: een eventuele 2e bank in dezelfde beurt doet er niet meer toe
-        }
+      }
+      // rank wordt NIET meteen toegekend — pas ná deze hele ronde (zie resolveRoundFinishers),
+      // zodat wie later in de beurtvolgorde zit deze ronde nog evenveel kans krijgt
+      if (r.banked.length && player.completed >= SIM_QUESTS_TO_WIN){
+        player.finishTurn = turnCount;
+        roundFinishers.push(player);
       }
       if (turnCount >= SIM_MAX_TURNS){ hitTurnCap = true; break; }
     }

@@ -359,6 +359,11 @@ sessies.
 - **Waar:** `src/js/95-simulate.js` r. 1387–1715 · `src/js/96-walk.js` r. 1216–1620 · `src/js/97-solo.js` r. 2173–2441.
 - **Voorstel:** de beslis- en rekenkant van een bot-beurt in één gedeelde functie in 95-simulate.js, zoals
   `botPreRollMove` al is. Die geeft een verslag terug, en elke modus doet alleen nog log, animatie en statistiek.
+- **Opgelost (2026-11):** `botPlanTurn` (keuzes, worp, zet) en `botFinishTurn` (kristalvakje, energie, opdrachten)
+  in 95-simulate.js; de drie modi lezen alleen nog het verslag. Ruim 1000 regels kopie weg. Controle: 800
+  batch-potjes op een vaste seed gaven exact dezelfde uitkomst als ervoor; Automatisch en Zelf spelen met bots
+  speelden hele potjes uit zonder fouten. Logregels van bots komen nu uit één plek, dus Automatisch noemt nu
+  ook Kortsluiting en Koerscorrectie, en Zelf spelen ook een Stroomonderbreking.
 
 ---
 
