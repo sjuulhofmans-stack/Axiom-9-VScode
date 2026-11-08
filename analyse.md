@@ -433,6 +433,7 @@ sessies.
 - **Wat is er mis:** links staat een lege donkere kaart en rechts niets, dus het beeld oogt scheef.
 - **Waar:** `.walk-status-col` in styles.css · `src/js/96-walk.js` r. 569–581.
 - **Voorstel:** **keuze voor de maker** (kan bewust zijn): de kaart doorzichtig maken als hij leeg is. De breedte blijft dan gelijk.
+- **Opgelost (2026-11):** kaart onzichtbaar tijdens "Wie begint?" en na afloop; de breedte blijft, het bord verschuift niet.
 
 ### 50. Multiplayer: een klik van de gast wordt af en toe genegeerd
 - **Zekerheid:** zeker (1 van de 304 klikken) · **Klus:** klein
@@ -541,7 +542,7 @@ sessies.
 | 8 | **Prestatie en opruimen** | 33, 34, 57, 58 | middel |
 | 9 | **Groot, later** | 35 (bot-beurt samenvoegen, voorkomt nieuwe afwijkingen), 31 (generator sneller) | groot |
 
-**Eerst een keuze van de maker nodig:**
-- nr. 15: telt een kristal op de route van Noodtransport mee?
-- nr. 21: moet een gast na "Verlaat potje" in de kamer blijven?
-- nr. 49: blijft de lege linkerkaart staan?
+**Keuzes van de maker (gemaakt en opgelost, 2026-11):**
+- nr. 15: alleen het vakje waar je landt telt, ook voor bots. Opgelost.
+- nr. 21: een gast gaat helemaal uit de kamer, de host maakt van zijn plek een bot. Opgelost.
+- nr. 49: de lege linkerkaart wordt onzichtbaar, net als rechts. Opgelost.

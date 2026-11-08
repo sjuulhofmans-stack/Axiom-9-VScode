@@ -4007,6 +4007,11 @@
   body.is-playing .walk-chat-col::before{display:none;}
   /* na afloop is de rechterkolom leeg: dan ook geen lege kaart laten staan */
   body.is-playing .walk-play-layout.is-game-over .walk-side-stack{background:none; box-shadow:none;}
+  /* de linkerkolom ook (gebruikerswens 2026-11, "onzichtbaar net als de rechterkant"): tijdens
+     "Wie begint?" en na afloop staat er niets in. Alleen de kaart verdwijnt; de breedte blijft,
+     dus het bord verschuift niet. */
+  body.is-playing .walk-status-col.is-opening,
+  body.is-playing .walk-play-layout.is-game-over .walk-status-col{background:none; box-shadow:none;}
 
   /* ================= MULTIPLAYER-KAMER "DE BRUG" (gekozen ontwerp, 2026-10) =================
      Links boven de avatar-maker (#mpAvatarEditor, van boven tot aan de knoppen), links onder in
@@ -11289,6 +11294,9 @@ function walkSetOpeningMode(on){
   // (gebruikersmelding) — zie .walk-info-panel.is-opening in styles.css
   const info = document.querySelector('.walk-info-panel');
   if (info) info.classList.toggle('is-opening', on);
+  // de linkerkolom zelf is dan leeg: geen lege kaart laten staan (gebruikerswens 2026-11, zie styles.css)
+  const statusCol = document.querySelector('.walk-status-col');
+  if (statusCol) statusCol.classList.toggle('is-opening', on);
   if (walkOpeningPanelEl){
     walkOpeningPanelEl.hidden = !on;
     if (!on){ walkOpeningPanelEl.innerHTML = ''; walkOpeningPanelEl.dataset.html = ''; }

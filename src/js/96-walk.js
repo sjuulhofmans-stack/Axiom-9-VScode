@@ -603,6 +603,9 @@ function walkSetOpeningMode(on){
   // (gebruikersmelding) — zie .walk-info-panel.is-opening in styles.css
   const info = document.querySelector('.walk-info-panel');
   if (info) info.classList.toggle('is-opening', on);
+  // de linkerkolom zelf is dan leeg: geen lege kaart laten staan (gebruikerswens 2026-11, zie styles.css)
+  const statusCol = document.querySelector('.walk-status-col');
+  if (statusCol) statusCol.classList.toggle('is-opening', on);
   if (walkOpeningPanelEl){
     walkOpeningPanelEl.hidden = !on;
     if (!on){ walkOpeningPanelEl.innerHTML = ''; walkOpeningPanelEl.dataset.html = ''; }
