@@ -889,33 +889,73 @@
      tekst + marge er hard nodig om zelf niet af te snijden (gebruikersmelding: "Spel starten"-
      knop viel weg). */
   .walk-lobby-col:has(.mp-chat-panel:not([hidden])) #walkMultiHint{display:none;}
-  .walk-lobby-fields{flex-direction:column; align-items:stretch; gap:14px;}
-  .walk-lobby-fields .field{min-width:0; width:100%;}
-  /* margin-top:auto: de startknop staat altijd onderaan de (vaste-hoogte) kolom, dus in
-     Automatisch en Zelf spelen op precies dezelfde plek (gebruikersmelding: "elke subtab een
-     andere plek") */
-  .walk-lobby-start-row{display:flex; flex-direction:column; margin-top:auto;}
-  /* een stuk hoger dan helemaal onderaan (gebruikerswens): zelfde ruimte als boven de tabs, × 2 */
-  .walk-lobby-col > .walk-lobby-start-row{margin-bottom:calc(var(--lobby-space, 36px) * 2);}
-  /* "Spel starten"/"Spel afbreken" van de host: even dik als "Start spel", maar niet over de
-     hele breedte */
-  /* Multiplayer: alleen de twee keuzeknoppen, even groot als de modus-tabs erboven (een tab is
-     een derde van de rij min de 4px tussenruimtes) en in het midden — geen uitlegtekst meer */
-  /* het middenstuk van de lobby: alles van de gekozen modus verticaal gecentreerd tussen de
-     tabs en de startknop (gebruikerswens); de startknop zelf blijft onderaan op zijn vaste plek */
-  /* Bovenaan uitgelijnd op een vaste afstand onder de tabs (i.p.v. verticaal gecentreerd): zo
-     begint het eerste keuzeveld in alle drie de modi op dezelfde hoogte, en springt er niets
-     als je bij Zelf spelen het aantal spelers verandert (er komt dan een kaartje bij, en met
-     centreren schoof alles erboven mee — gebruikersmelding: "schots en scheef", "floept"). */
+  /* Middenstuk van de lobby: 20px onder de balk (12px kolom-gap + 8px) beginnen de drie kaarten
+     en ze lopen door tot 2× --lobby-space boven de onderrand (daar stond vroeger "Start spel"). */
   .walk-lobby-body{
     flex:1 1 auto; min-height:0; display:flex; flex-direction:column; justify-content:flex-start;
-    gap:12px; padding-top:var(--lobby-space, 36px);
+    gap:12px; padding-top:8px; padding-bottom:calc(var(--lobby-space, 36px) * 2);
   }
   .walk-lobby-body > .reach-status:empty, .mp-room-info > .reach-status:empty{display:none;}
-  /* ook in de Multiplayer-formulieren: naamveld net zo breed als de keuzelijsten, knoppen in
-     het midden */
-  /* even breed én even hoog als de keuzelijsten (tekstveld was 37px, een select 39px) */
-  .walk-lobby-body .field input[type=text]{width:100%; height:39px;}
+  /* tekstvelden even hoog als de knoppen (44px), zodat alle rijen in de kaarten gelijk lopen */
+  .walk-lobby-body .field input[type=text]{width:100%; height:44px;}
+
+  /* ---------- LOBBY "DRIE KAARTEN" (gekozen variant 6 uit 10, artifact "Axiom-9 Lobby-eenheid",
+     2026-11) ----------
+     Elk scherm (Automatisch, Zelf spelen, Spel hosten, Deelnemen) = .lobby-cards met drie even
+     brede kaarten: Wie speelt er | Spelregels | Vertrek. Vertrek heeft onderaan (margin-top:auto)
+     de foutregel, het vinkje en de grote knop, dus die knop staat in alle vier op dezelfde plek.
+     Lijsten onder elkaar (Energie-inzet, Tempo, Beurten van de bots) hebben rijen van --lobby-row
+     (36px op Full HD, kleiner op een laptop, zie de media-query bij .walk-lobby-col). Iets
+     toevoegen in een kaart? Meet opnieuw op 1920×945 en 1440×780: niets mag onder de kaart uit. */
+  .lobby-cards{flex:1 1 auto; min-height:0; display:grid; grid-template-columns:repeat(3, minmax(0, 1fr)); gap:16px;}
+  .lobby-cards[hidden]{display:none;}
+  .lobby-card{
+    display:flex; flex-direction:column; gap:14px; min-width:0; min-height:0; padding:18px; box-sizing:border-box;
+    background:#0d131a; border:1px solid var(--line-dim); border-radius:10px;
+  }
+  .lobby-card-title{
+    margin:0; font-family:var(--font-display); font-weight:700; font-size:14px; line-height:18px;
+    letter-spacing:.16em; text-transform:uppercase; color:var(--text);
+  }
+  .lobby-card .field{margin:0; min-width:0; width:100%;}
+  .lobby-card .field-label{
+    display:block; font-family:var(--font-mono); font-size:10.5px; letter-spacing:.14em;
+    text-transform:uppercase; color:var(--text-dim); margin-bottom:6px;
+  }
+  .lobby-card .seg-group.is-vert .seg-btn{height:var(--lobby-row, 36px);}
+  /* de uitleg onder Energie-inzet past niet in de kaart (de knop zegt het al) */
+  .lobby-card #walkEnergyMode ~ .seg-cap{display:none;}
+  /* bemanningslijst in een smalle kaart: rolvak 64px i.p.v. 96px */
+  .lobby-card .walk-solo-setup{margin:0;}
+  .lobby-card .crew-row{grid-template-columns:22px 10px minmax(0, 1fr) 64px 38px; column-gap:8px;}
+  .lobby-card .crew-list.is-ro .crew-row{grid-template-columns:22px 10px minmax(0, 1fr) 64px;}
+  .lobby-card .crew-list.is-ro .crew-row.is-free{display:flex;}
+  /* samenvatting in de Vertrek-kaart */
+  .lobby-sum{margin:0; display:flex; flex-direction:column;}
+  .lobby-sum > div{display:flex; justify-content:space-between; align-items:baseline; gap:12px; padding:10px 0; border-bottom:1px solid var(--line-dim);}
+  .lobby-sum dt{font-family:var(--font-mono); font-size:10.5px; letter-spacing:.14em; text-transform:uppercase; color:var(--text-dim); white-space:nowrap;}
+  .lobby-sum dd{
+    margin:0; min-width:0; font-family:var(--font-display); font-weight:700; font-size:15px; letter-spacing:.06em;
+    text-transform:uppercase; color:var(--text); text-align:right; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+  }
+  .lobby-sum-text{
+    margin:0; padding:14px; border:1px dashed var(--line); border-radius:9px;
+    font-family:var(--font-mono); font-size:12px; line-height:1.6; color:var(--text-dim);
+  }
+  .lobby-depart-foot{margin-top:auto; display:flex; flex-direction:column; gap:12px;}
+  .lobby-intro-slot{display:flex; justify-content:center; min-height:18px;}
+  .lobby-intro-slot .walk-intro-toggle{margin:0;}
+  .walk-intro-toggle.is-text{cursor:default;}
+  .lobby-status-slot .reach-status{margin:0; text-align:center;}
+  .lobby-status-slot .reach-status:empty, .lobby-status-slot:empty{display:none;}
+  /* Multiplayer: de kaarten (hosten/deelnemen) of de kamer vullen de hele hoogte */
+  #walkMultiControls{display:flex; flex-direction:column; min-height:0;}
+  #walkMultiControls[hidden], .mp-room-layout[hidden]{display:none;}
+  /* smal scherm: kaarten onder elkaar */
+  @media (max-width: 900px){
+    .lobby-cards{grid-template-columns:minmax(0, 1fr);}
+    .lobby-depart-foot{margin-top:6px;}
+  }
   /* host-kamer en deelnameformulier beginnen op dezelfde hoogte als het eerste veld in de
      andere modi en als de chat ernaast (de 14px bovenmarge van .mp-setup zette ze lager) */
   .walk-lobby-body .mp-setup{margin-top:0;}
@@ -961,64 +1001,32 @@
   .seg-bolt svg{width:11px; height:11px; fill:currentColor;}
   /* regeltje onder de rail: wat je gekozen hebt in één zin */
   .seg-cap{margin-top:7px; font-family:var(--font-mono); font-size:11.5px; line-height:1.45; color:var(--text-dim);}
-  /* modusknoppen Automatisch / Zelf spelen: twee consoleknoppen met alleen tekst (zelfde 45px
-     hoogte als "Spel hosten"), gekozen = glas zoals .seg-btn.is-on. Multiplayer staat hier altijd verborgen. */
-  .walk-mode-toggle:not(.mp-host-toggle) .walk-mode-btn{border-radius:7px;}
-  .walk-mode-toggle:not(.mp-host-toggle) .walk-mode-btn.active,
-  .walk-mode-toggle:not(.mp-host-toggle) .walk-mode-btn.active:hover{
+  /* modusbalk: Automatisch | Zelf spelen (tabblad Spelen) en Spel hosten | Deelnemen (tabblad
+     Multiplayer, .mp-host-toggle) — zelfde knoppen, 45px, gekozen = glas zoals .seg-btn.is-on */
+  .walk-mode-toggle .walk-mode-btn{border-radius:7px;}
+  .walk-mode-toggle .walk-mode-btn.active,
+  .walk-mode-toggle .walk-mode-btn.active:hover{
     color:#eafcff; background:rgba(79,184,224,.18); border-color:rgba(79,184,224,.6);
     box-shadow:inset 0 1px 0 rgba(255,255,255,.12), 0 0 14px rgba(79,184,224,.25);
   }
-  /* "Startanimatie tonen" precies in het midden tussen de laatste balk en "Start spel"
-     (gebruikerswens): de inhoud groeit niet meer mee, de startrij neemt de vrije ruimte en het
-     vinkje staat daarin met margin:auto boven én onder. De negatieve marge heft de kolom-gap op,
-     zodat het midden echt tussen de balk en de knop ligt. Niet in Multiplayer (eigen opbouw). */
-  #tabWalk:not(.is-multi-tab) .walk-lobby-body{flex:0 1 auto;}
-  #tabWalk:not(.is-multi-tab) .walk-lobby-col > .walk-lobby-start-row{flex:1 1 auto; margin-top:calc(-1 * var(--lobby-gap, 16px));}
-  #tabWalk:not(.is-multi-tab) .walk-lobby-start-row > .walk-intro-toggle{margin:auto 0;}
-  .walk-lobby-body .mp-setup .btn-row, .walk-lobby-body #mpJoinWaiting .btn-row,
-  .walk-lobby-body #mpHostRoom .btn-row{justify-content:center;}
-  /* (de oude 2-koloms spelerskaartjes van #walkSoloSetupPlayers stonden hier; nu bemanningslijst,
-     zie .walk-solo-setup verderop) */
-  /* Tabblad Multiplayer (gebruikerswens): "Spel hosten" als balk op exact de plek en hoogte
-     van de modusknoppen bij Spelen (.mp-host-toggle heeft dezelfde klasse .walk-mode-toggle,
-     dus dezelfde marges), en "Jouw naam"/"Spelcode" op exact de hoogte van "Aantal spelers"/
-     "Energie-inzet": #mpChoice neemt zelf geen hoogte in (de "of"-lijn zweeft in de ruimte
-     erboven), zodat het formulier begint waar bij Spelen de velden beginnen. */
-  .mp-host-toggle{display:none;}
-  #mpChoice{position:relative; height:0; margin:0;}
-  #mpChoice[hidden]{display:none;}
-  .mp-or-line{
-    /* midden in de ruimte tussen de balk en het eerste veld (12px rij-afstand + --lobby-space) */
-    position:absolute; left:0; right:0; bottom:calc(var(--lobby-space, 50px) / 2);
-    display:flex; align-items:center; gap:14px;
-    font-family:var(--font-mono); font-size:11px; letter-spacing:.2em; text-transform:uppercase; color:var(--text-dim);
-  }
-  .mp-or-line::before, .mp-or-line::after{content:''; flex:1; height:1px; background:var(--line);}
-  /* overflow zichtbaar: de "of"-lijn zweeft boven dit blok en werd anders weggeknipt */
-  .mp-room-info:has(> #mpChoice:not([hidden])){gap:0; overflow:visible;}
-  #btnMpHost{flex:1; height:45px; padding:0 12px; white-space:nowrap;}
-  .mp-join-row > #btnMpJoinConnect{width:100%; padding:13px; white-space:nowrap;}
-  .btn-row.mp-join-row{display:flex; margin-top:4px;}
-  /* Spelen heeft alleen nog Automatisch en Zelf spelen (Multiplayer is een eigen tabblad) */
+  .walk-lobby-body #mpJoinWaiting .btn-row, .walk-lobby-body #mpHostRoom .btn-row{justify-content:center;}
+  /* Spelen heeft alleen Automatisch en Zelf spelen (Multiplayer is een eigen tabblad); op het
+     tabblad Multiplayer staat op dezelfde plek de balk Spel hosten | Deelnemen, behalve in de kamer */
   #walkModeMulti{display:none;}
-  /* tabblad Multiplayer: de modusknoppen niet tonen maar wel hun ruimte houden (zelfde
-     begin-hoogte als bij Spelen); zolang je kiest staat op die plek de balk "Spel hosten" */
-  #tabWalk.is-multi-tab .walk-mode-toggle{visibility:hidden;}
-  #tabWalk.is-multi-tab .walk-lobby-col:has(#mpChoice:not([hidden])) .walk-mode-toggle:not(.mp-host-toggle){display:none;}
-  #tabWalk.is-multi-tab .walk-lobby-col:has(#mpChoice:not([hidden])) .mp-host-toggle{display:flex; visibility:visible;}
-  .walk-lobby-start-row #walkSoloStartRow{display:flex; flex-direction:column;}
-  .walk-lobby-start-row #walkSoloStartRow[hidden]{display:none;}
-  .walk-lobby-start{width:100%; padding:13px;}
-  /* vinkje "Startanimatie tonen" boven de startknop (96b-intro.js); weg zolang er geen
-     startknop te zien is (modus Multiplayer heeft zijn eigen start, zonder animatie) */
+  .mp-host-toggle{display:none;}
+  #tabWalk.is-multi-tab .walk-mode-toggle:not(.mp-host-toggle){display:none;}
+  #tabWalk.is-multi-tab .mp-host-toggle{display:flex;}
+  #tabWalk.is-multi-tab #walkLobby.is-mp-room .mp-host-toggle{display:none;}
+  #walkSoloStartRow{display:flex; flex-direction:column;}
+  #walkSoloStartRow[hidden]{display:none;}
+  .walk-lobby-start{width:100%; height:45px; padding:0 13px; white-space:nowrap;}
+  /* vinkje "Startanimatie tonen" (96b-intro.js) in de Vertrek-kaart, zie lobbyPlaceFoot */
   .walk-intro-toggle{
     display:flex; align-items:center; justify-content:center; gap:8px; margin:0 0 10px;
     font-family:var(--font-mono); font-size:11px; letter-spacing:.12em; text-transform:uppercase;
     color:var(--text-dim); cursor:pointer; user-select:none;
   }
   .walk-intro-toggle input{width:16px; height:16px; margin:0; accent-color:var(--start); cursor:pointer;}
-  .walk-lobby-start-row:not(:has(> #btnWalkStart:not([hidden]), > #walkSoloStartRow:not([hidden]))) .walk-intro-toggle{display:none;}
 
   /* ---------- startanimatie (96b-intro.js): zwart scherm, sterren, aftellen, hyperjump ---------- */
   /* alleen binnen het lobbyvak (#walkPanel), niet over het hele scherm (gebruikerswens);
@@ -1457,6 +1465,8 @@
     .walk-lobby-col{
       height:calc(var(--wcell) * 32 + 160px - 26px); --lobby-gap:12px;
       --lobby-space: clamp(10px, calc(var(--wcell) * 4 - 40px), 40px);
+      /* rijhoogte van de lijsten in de lobbykaarten: 36px op Full HD, ±27px op 1440×780 */
+      --lobby-row: clamp(26px, calc(var(--wcell) * 1.8), 36px);
     }
     .walk-lobby-col .walk-mode-toggle{margin:var(--lobby-space) 0 0;}
     .walk-board-col{max-width:none;}
@@ -3249,7 +3259,7 @@
      browser (auteurs-CSS gaat vóór user-agent-CSS, ongeacht specificiteit) — zonder deze regel
      bleef #mpHostForm dus gewoon zichtbaar met `hidden`, en duwde het "Spel starten"/"Spel
      afbreken" verderop bleef weg (gebruikersmelding: "niet te zien en te lezen"). */
-  #mpHostForm{display:flex; flex-direction:column; gap:14px;}
+  /* (#mpHostForm is sinds 2026-11 een .lobby-cards met drie kaarten, zie "DRIE KAARTEN") */
   #mpHostForm[hidden]{display:none;}
   #mpJoinWaiting[hidden]{display:none;}
   .mp-room-code{
@@ -3339,8 +3349,7 @@
      overflow-y:hidden het chat-typvak gewoon af (gebruikersmelding). */
   /* alleen de volle hoogte innemen als er een kamer + chat is; daarvoor (alleen de twee
      keuzeknoppen) gewoon zijn eigen hoogte, zodat hij in het midden van de lobby staat */
-  #walkMultiControls{flex:0 0 auto; min-height:0;}
-  .walk-lobby-col:has(.mp-chat-panel:not([hidden])) #walkMultiControls{flex:1 1 auto;}
+  #walkMultiControls{flex:1 1 auto; min-height:0;}
   .mp-room-layout{
     display:grid; grid-template-columns:1fr; grid-template-rows:minmax(0,1fr); gap:16px;
     flex:1; min-height:0;
@@ -3354,7 +3363,7 @@
   .walk-lobby-col:has(#mpChatPanel:not([hidden])){max-width:none;}
   #tabWalk.is-multi-tab .walk-lobby-col:has(#mpChatPanel:not([hidden])) .walk-mode-toggle,
   .walk-lobby-col:has(#mpChatPanel:not([hidden])) > .walk-lobby-start-row{display:none;}
-  .walk-lobby-col:has(#mpChatPanel:not([hidden])) .walk-lobby-body{padding-top:0;}
+  .walk-lobby-col:has(#mpChatPanel:not([hidden])) .walk-lobby-body{padding-top:0; padding-bottom:0;}
   /* (de kolommen van de kamer staan nu bij #mpRoomLayout.is-room, blok "DE BRUG" onderaan) */
   .mp-mid-col{display:flex; flex-direction:column; gap:14px; min-height:0; min-width:0;}
   .mp-mid-col[hidden]{display:none;}

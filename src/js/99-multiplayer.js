@@ -496,6 +496,7 @@ async function mpHostCreate(){
   // "Spel afbreken" straks onder de rand van de niet-scrollende infokolom uit
   // (gebruikersmelding: "niet te zien en te lezen").
   if (mpHostFormEl) mpHostFormEl.hidden = true;
+  if (mpHostSetupEl) mpHostSetupEl.hidden = false;   // de kamer zelf zit in #mpHostSetup
   mpHostRoomEl.hidden = false;
   mpShowRoomCols(true);
   mpSetStatus('', '');
@@ -656,9 +657,13 @@ function mpShowRoomCols(on){
   const layout = document.getElementById('mpRoomLayout');
   if (mid) mid.hidden = !on;
   if (ed) ed.hidden = !on;
-  if (layout) layout.classList.toggle('is-room', on);
+  if (layout){ layout.classList.toggle('is-room', on); layout.hidden = !on; }
+  // de balk Spel hosten | Deelnemen hoort niet bij de kamer (zie .mp-host-toggle in styles.css)
+  const lobby = document.getElementById('walkLobby');
+  if (lobby) lobby.classList.toggle('is-mp-room', on);
   if (!on) mpBridgeKnown = null;   // volgende kamer: wie er dan al zit, krijgt geen BAM
   if (on){ mpRenderBridge(); avatarRenderEditor(); }
+  lobbyPlaceFoot();
 }
 {
   const el = document.getElementById('mpBridge');
@@ -863,6 +868,7 @@ function mpClientOnLobby(data){
 }
 function mpJoinLeave(){
   mpTeardown();
+  mp.phase = 'join-form';   // terug op Deelnemen, niet op Spel hosten
   mpRenderLobby();
 }
 // De host weigerde ons (zie mpHostOnHello): verbinding netjes verbreken en terug naar het
@@ -957,6 +963,7 @@ function mpOnPeerLeave(peerId, explicit){
     // spelen" (mpExitPlayView() zet die modus daar via setWalkMode('multi') ook meteen goed)
     mpExitPlayView();
     mpTeardown();
+    mp.phase = 'join-form';   // gast: terug op Deelnemen
     mpRenderLobby();
   }
 }
@@ -1718,21 +1725,26 @@ function mpClientOnStop(){
 // ---------- lobby-tabblad: welk deelscherm ----------
 function mpRenderLobby(){
   const show = (el, on) => { if (el) el.hidden = !on; };
-  // keuzescherm = "Spel hosten" + lijn + meteen het deelnameformulier (ook na een geweigerde
-  // naam, fase 'join-form': dan staat het rode naamveld gewoon in hetzelfde scherm)
-  const choosing = mp.phase === 'idle' || mp.phase === 'join-form';
-  show(mpChoiceEl, choosing);
-  show(mpHostSetupEl, mp.phase === 'host-setup' || mp.phase === 'hosting');
-  // #mpHostForm (naam/spelersaantal/bot-keuze + Aanmaken/Terug) hoort alleen bij het INSTELLEN
-  // van een kamer — eenmaal aan het hosten heeft dat formulier geen functie meer en verdween
-  // #mpHostRoom (de kamercode + spelers + Start/Afbreken) er anders onder, want .mp-room-info
-  // scrollt bewust niet mee (gebruikersmelding: "2 knoppen linksonder niet te zien").
-  show(mpHostFormEl, mp.phase === 'host-setup');
+  // Lobby "Drie kaarten" (2026-11): bovenaan de balk Spel hosten | Deelnemen, daaronder de drie
+  // kaarten van het gekozen scherm. 'idle' (nog niets gekozen, of net uit een kamer als host) =
+  // Spel hosten; 'join-form' = Deelnemen (ook na een weigering of als gast de kamer uit).
+  const hostTab = mp.phase === 'idle' || mp.phase === 'host-setup';
+  const joinTab = mp.phase === 'join-form';
+  // via getElementById: de consts btnMpHost/btnMpJoinShow staan pas onderaan dit bestand
+  for (const [id, on] of [['btnMpHost', hostTab], ['btnMpJoinShow', joinTab]]){
+    const btn = document.getElementById(id);
+    if (!btn) continue;
+    btn.classList.toggle('active', on);
+    btn.setAttribute('aria-selected', String(on));
+  }
+  show(mpHostFormEl, hostTab);
+  show(mpJoinFormEl, joinTab);
+  show(mpHostSetupEl, mp.phase === 'hosting');
   show(mpHostRoomEl, mp.phase === 'hosting');
-  show(mpJoinFormEl, choosing);
   show(mpJoinWaitingEl, mp.phase === 'joining');
   mpShowRoomCols(mp.phase === 'hosting' || mp.phase === 'joining');
   if (mp.phase === 'hosting') mpRenderHostSeats();
+  lobbyPlaceFoot();
 }
 
 // ---------- chat ----------
@@ -1872,8 +1884,15 @@ const btnMpJoinLeave = document.getElementById('btnMpJoinLeave');
 const btnMpLeaveGame = document.getElementById('btnMpLeaveGame');
 
 if (btnMpLeaveGame) btnMpLeaveGame.addEventListener('click', mpLeaveGame);
-if (btnMpHost) btnMpHost.addEventListener('click', () => { mp.phase = 'host-setup'; mpRenderLobby(); });
-if (btnMpJoinShow) btnMpJoinShow.addEventListener('click', () => { mp.phase = 'join-form'; mpRenderLobby(); });
+// balk Spel hosten | Deelnemen: wisselen wist een oude foutmelding van het andere scherm
+if (btnMpHost) btnMpHost.addEventListener('click', () => {
+  if (mp.phase !== 'host-setup' && mp.phase !== 'idle') mpSetStatus('', '');
+  mp.phase = 'host-setup'; mpRenderLobby();
+});
+if (btnMpJoinShow) btnMpJoinShow.addEventListener('click', () => {
+  if (mp.phase !== 'join-form') mpSetStatus('', '');
+  mp.phase = 'join-form'; mpRenderLobby();
+});
 if (btnMpHostCancel) btnMpHostCancel.addEventListener('click', () => { mp.phase = 'idle'; mpRenderLobby(); });
 if (btnMpJoinCancel) btnMpJoinCancel.addEventListener('click', () => { mp.phase = 'idle'; mpRenderLobby(); });
 if (btnMpHostCreate) btnMpHostCreate.addEventListener('click', mpHostCreate);

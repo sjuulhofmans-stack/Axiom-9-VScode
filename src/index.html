@@ -250,29 +250,42 @@
           <button class="walk-mode-btn" id="walkModeSolo" data-mode="solo" role="tab" aria-selected="false">Zelf spelen</button>
           <button class="walk-mode-btn" id="walkModeMulti" data-mode="multi" role="tab" aria-selected="false">Multiplayer</button>
         </div>
-        <!-- Tabblad Multiplayer: "Spel hosten" als balk op exact de plek en hoogte van de
-             modusknoppen hierboven (gebruikerswens); alleen zichtbaar zolang je kiest tussen
-             hosten en deelnemen (zie .mp-host-toggle in styles.css) -->
-        <div class="walk-mode-toggle mp-host-toggle">
-          <button type="button" id="btnMpHost" class="primary">Spel hosten</button>
+        <!-- Tabblad Multiplayer: dezelfde balk als Automatisch | Zelf spelen, maar met Spel hosten |
+             Deelnemen (fase 'host-setup' / 'join-form', zie mpRenderLobby). Weg zodra je in een kamer zit. -->
+        <div class="walk-mode-toggle mp-host-toggle" role="tablist">
+          <button type="button" class="walk-mode-btn" id="btnMpHost" role="tab">Spel hosten</button>
+          <button type="button" class="walk-mode-btn" id="btnMpJoinShow" role="tab">Deelnemen</button>
         </div>
 
-        <!-- alles van de gekozen modus, verticaal in het midden tussen de tabs en "Start spel"
-             (gebruikerswens); zie .walk-lobby-body in styles.css -->
+        <!-- LOBBY = "DRIE KAARTEN" (gekozen variant 6 uit 10, artifact "Axiom-9 Lobby-eenheid",
+             2026-11): elk scherm (Automatisch, Zelf spelen, Spel hosten, Deelnemen) is een
+             .lobby-cards met drie even brede kaarten: Wie speelt er | Spelregels | Vertrek. De
+             Vertrek-kaart vat de keuzes samen (lobbyRenderSummary, 97-solo.js) en heeft onderaan
+             het vinkje + de grote knop, dus die staat in elk scherm op dezelfde plek. Het vinkje
+             #walkIntroToggle en de foutregels verhuizen mee naar het zichtbare scherm
+             (lobbyPlaceFoot, 97-solo.js; .lobby-intro-slot / .lobby-status-slot). -->
         <div class="walk-lobby-body">
 
-        <div class="walk-controls walk-lobby-fields" id="walkAutoControls">
-          <div class="field">
-            <label for="walkPlayers">Aantal spelers</label>
-            <select id="walkPlayers">
-              <option value="1" data-short="1">1 speler</option>
-              <option value="2" data-short="2">2 spelers</option>
-              <option value="3" data-short="3">3 spelers</option>
-              <option value="4" data-short="4" selected>4 spelers</option>
-            </select>
-          </div>
-          <!-- schuifrail onder elkaar (segmentSelect, 80-controls.js); data-short = woord op de rail,
-               data-note = regeltje eronder -->
+        <div class="lobby-cards" id="walkAutoControls">
+          <section class="lobby-card">
+            <h3 class="lobby-card-title">Wie speelt er</h3>
+            <div class="field">
+              <label for="walkPlayers">Aantal spelers</label>
+              <select id="walkPlayers">
+                <option value="1" data-short="1">1 speler</option>
+                <option value="2" data-short="2">2 spelers</option>
+                <option value="3" data-short="3">3 spelers</option>
+                <option value="4" data-short="4" selected>4 spelers</option>
+              </select>
+            </div>
+            <div class="field">
+              <span class="field-label">Aan boord</span>
+              <div class="crew-list is-ro" id="walkAutoCrew"></div>
+            </div>
+          </section>
+          <section class="lobby-card">
+            <h3 class="lobby-card-title">Spelregels</h3>
+          <!-- lijst onder elkaar (segmentSelect, 80-controls.js); data-short = woord op de knop -->
           <div class="field">
             <label for="walkEnergyMode">Energie-inzet</label>
             <select id="walkEnergyMode" data-rail="vert">
@@ -290,29 +303,53 @@
           <div class="field">
             <!-- het woord van het tempo staat op de rail zelf; #walkSpeedLabel blijft (96-walk.js vult hem) -->
             <label for="walkSpeed">Tempo<span id="walkSpeedLabel" hidden>normaal</span></label>
-            <input type="range" id="walkSpeed" min="0" max="4" step="1" value="2" data-labels="Heel traag|Traag|Normaal|Snel|Razend">
+            <input type="range" id="walkSpeed" min="0" max="4" step="1" value="2" data-rail="vert" data-labels="Heel traag|Traag|Normaal|Snel|Razend">
           </div>
+          </section>
+          <section class="lobby-card lobby-depart">
+            <h3 class="lobby-card-title">Vertrek</h3>
+            <dl class="lobby-sum" id="walkAutoSummary"></dl>
+            <div class="lobby-depart-foot">
+              <div class="lobby-status-slot"></div>
+              <div class="lobby-intro-slot"></div>
+              <button id="btnWalkStart" class="primary walk-lobby-start">Start spel</button>
+            </div>
+          </section>
         </div>
-        <!-- (uitlegtekst #walkAutoHint weggehaald, gebruikerswens: komt later in een eigen tabblad Spelregels) -->
 
-        <!-- Wie er meedoet staat in de bemanningslijst hieronder (#walkSoloSetupPlayers, gekozen
-             ontwerp "B"): de keuzelijsten "Aantal spelers"/"Aantal bots" zijn daardoor vervangen. -->
-        <div id="walkSoloSetupPlayers" class="walk-solo-setup"></div>
-        <div class="walk-controls walk-lobby-fields" id="walkSoloControls" hidden>
+        <!-- Zelf spelen: bemanningslijst (gekozen ontwerp "B", soloRenderSetupUI) in kaart 1 -->
+        <div class="lobby-cards" id="walkSoloControls" hidden>
+          <section class="lobby-card">
+            <h3 class="lobby-card-title">Wie speelt er</h3>
+            <div id="walkSoloSetupPlayers" class="walk-solo-setup"></div>
+          </section>
+          <section class="lobby-card">
+            <h3 class="lobby-card-title">Spelregels</h3>
           <!-- meteen doorspelen (zoals altijd) of elke bot-beurt zichtbaar op het bord afspelen:
                dobbelstenen rollen, pion loopt stap voor stap. Waarde = index in WALK_SPEEDS
                (96-walk.js). Zie soloAnimateBotTurn() in 97-solo.js. -->
           <div class="field">
             <label for="walkSoloBotView">Beurten van de bots</label>
-            <select id="walkSoloBotView" data-off-note="Geen bots in het spel.">
+            <select id="walkSoloBotView" data-rail="vert" data-off-note="Geen bots in het spel.">
               <option value="instant" data-short="Meteen" selected>Meteen doorspelen</option>
               <option value="3" data-short="Snel">Laten zien — snel</option>
               <option value="2" data-short="Normaal">Laten zien — normaal</option>
               <option value="1" data-short="Langzaam">Laten zien — langzaam</option>
             </select>
           </div>
+          </section>
+          <section class="lobby-card lobby-depart">
+            <h3 class="lobby-card-title">Vertrek</h3>
+            <dl class="lobby-sum" id="walkSoloSummary"></dl>
+            <div class="lobby-depart-foot">
+              <div class="lobby-status-slot"></div>
+              <div class="lobby-intro-slot"></div>
+              <div id="walkSoloStartRow" hidden>
+                <button id="btnWalkSoloStart" class="primary walk-lobby-start">Start spel</button>
+              </div>
+            </div>
+          </section>
         </div>
-        <!-- (uitlegtekst #walkSoloHint weggehaald, gebruikerswens: komt later in een eigen tabblad Spelregels) -->
 
         <!-- MULTIPLAYER: was een losse tab, nu de derde modus hier (gebruikerswens) — zelfde
              smalle gecentreerde kolom als Automatisch/Zelf spelen i.p.v. de vroegere brede
@@ -320,69 +357,89 @@
              staan (alleen de HTML-locatie is verhuisd), dus 99-multiplayer.js hoefde niet aan
              te passen wat het met getElementById opzoekt. -->
         <!-- (uitlegtekst #walkMultiHint weggehaald, gebruikerswens: alleen de twee knoppen) -->
-        <div class="walk-controls walk-lobby-fields" id="walkMultiControls" hidden>
-          <!-- .mp-room-layout is 1 kolom zolang er geen kamer is (chat staat dan uit, zie
-               mpRenderLobby in 99-multiplayer.js) en wordt met puur CSS (:has(); mag hier, dit
-               is de lobby en niet het speelscherm) vanzelf 2 kolommen zodra
-               #mpChatPanel zichtbaar wordt — links alle informatie, rechts de chat (gebruikers-
-               wens). .walk-lobby-col zelf verbreedt dan mee (zie styles.css), anders is er in de
-               normale 560px-kolombreedte geen ruimte voor twee leesbare kolommen naast elkaar. -->
-          <div class="mp-room-layout" id="mpRoomLayout">
-            <div class="mp-room-info">
-              <!-- "Spel hosten", een lijn met "of", en daaronder meteen het deelnameformulier
-                   (#mpJoinForm hieronder) — geen extra klik meer nodig (gebruikerswens) -->
-              <!-- #btnMpHost staat in .mp-host-toggle bovenaan de lobby (zelfde plek/hoogte als de
-                   modusknoppen bij Spelen); hier alleen de "of"-lijn tussen die knop en het formulier -->
-              <div id="mpChoice" class="btn-row">
-                <div class="mp-or-line"><span>of</span></div>
+        <div class="lobby-mp" id="walkMultiControls" hidden>
+          <!-- Spel hosten (fase 'host-setup', ook 'idle'): zelfde drie kaarten als Spelen. Aantal
+               spelers heeft net als bij Spelen 1-2-3-4; de 1 staat uit (alleen kan niet online). -->
+          <div class="lobby-cards" id="mpHostForm" data-mp="1">
+            <section class="lobby-card">
+              <h3 class="lobby-card-title">Wie speelt er</h3>
+              <div class="field">
+                <label for="mpHostName">Jouw naam</label>
+                <input type="text" id="mpHostName" maxlength="18" placeholder="Speler 1">
               </div>
+              <div class="field">
+                <label for="mpHostTotal">Aantal spelers</label>
+                <select id="mpHostTotal">
+                  <option value="1" data-short="1" disabled>1 speler</option>
+                  <option value="2" data-short="2">2 spelers</option>
+                  <option value="3" data-short="3">3 spelers</option>
+                  <option value="4" data-short="4" selected>4 spelers</option>
+                </select>
+              </div>
+            </section>
+            <section class="lobby-card">
+              <h3 class="lobby-card-title">Spelregels</h3>
+              <div class="field">
+                <label for="mpHostFillBots">Lege plekken bij het starten</label>
+                <select id="mpHostFillBots">
+                  <option value="bots" data-short="Vullen met bots" selected>vullen met bots</option>
+                  <option value="wait" data-short="Wachten tot vol">niet starten — wachten tot vol</option>
+                </select>
+              </div>
+              <!-- zelfde keuze als bij Zelf spelen (#walkSoloBotView); de host speelt de bot-beurt
+                   af en stuurt 'm naar de gasten, die 'm zelf naspelen (mpOnBotReplay) -->
+              <div class="field">
+                <label for="mpHostBotView">Beurten van de bots</label>
+                <select id="mpHostBotView" data-rail="vert">
+                  <option value="instant" data-short="Meteen" selected>Meteen doorspelen</option>
+                  <option value="3" data-short="Snel">Laten zien — snel</option>
+                  <option value="2" data-short="Normaal">Laten zien — normaal</option>
+                  <option value="1" data-short="Langzaam">Laten zien — langzaam</option>
+                </select>
+              </div>
+            </section>
+            <section class="lobby-card lobby-depart">
+              <h3 class="lobby-card-title">Vertrek</h3>
+              <dl class="lobby-sum" id="mpHostSummary"></dl>
+              <div class="lobby-depart-foot">
+                <div class="lobby-status-slot"></div>
+                <div class="lobby-intro-slot"></div>
+                <button type="button" id="btnMpHostCreate" class="primary walk-lobby-start">Kamer aanmaken</button>
+              </div>
+            </section>
+          </div>
 
+          <!-- Deelnemen (fase 'join-form'): zelfde drie kaarten -->
+          <div class="lobby-cards" id="mpJoinForm" data-mp="1" hidden>
+            <section class="lobby-card">
+              <h3 class="lobby-card-title">Wie ben jij</h3>
+              <div class="field">
+                <label for="mpJoinName">Jouw naam</label>
+                <input type="text" id="mpJoinName" maxlength="18" placeholder="Speler 2">
+              </div>
+            </section>
+            <section class="lobby-card">
+              <h3 class="lobby-card-title">Welke kamer</h3>
+              <div class="field">
+                <label for="mpJoinCode">Spelcode</label>
+                <input type="text" id="mpJoinCode" maxlength="8" placeholder="bv. AXQ7K2" style="text-transform:uppercase;">
+              </div>
+            </section>
+            <section class="lobby-card lobby-depart">
+              <h3 class="lobby-card-title">Vertrek</h3>
+              <p class="lobby-sum-text">Je komt in de kamer van de host. De host kiest de spelregels en start het spel.</p>
+              <div class="lobby-depart-foot">
+                <div class="lobby-status-slot"></div>
+                <div class="lobby-intro-slot"><span class="walk-intro-toggle is-text">De host kiest de startanimatie</span></div>
+                <button type="button" id="btnMpJoinConnect" class="primary walk-lobby-start">Deelnemen aan spel</button>
+              </div>
+            </section>
+          </div>
+
+          <!-- DE KAMER (fase 'hosting' / 'joining'): zie "De brug" verderop -->
+          <div class="mp-room-layout" id="mpRoomLayout" hidden>
+            <div class="mp-room-info">
               <div id="mpHostSetup" class="mp-setup" hidden>
-                <!-- alleen tijdens het INSTELLEN van een kamer (phase 'host-setup') — zodra die
-                     bestaat (phase 'hosting') heeft dit formulier geen functie meer (de naam/
-                     spelersaantal/bot-keuze liggen al vast) en kostte het alleen maar hoogte
-                     boven #mpHostRoom hieronder, waardoor "Spel starten"/"Spel afbreken" op een
-                     kleiner scherm onder de rand van de (bewust niet-scrollende, zie
-                     .mp-room-info hieronder) kolom verdwenen (gebruikersmelding: "niet te zien
-                     en te lezen"). Eigen wrapper zodat dit los van #mpHostRoom verborgen kan
-                     worden — zie mpHostFormEl/mpRenderLobby in 99-multiplayer.js. -->
-                <div id="mpHostForm">
-                  <div class="field">
-                    <label for="mpHostName">Jouw naam</label>
-                    <input type="text" id="mpHostName" maxlength="18" placeholder="Speler 1">
-                  </div>
-                  <div class="field">
-                    <label for="mpHostTotal">Aantal spelers</label>
-                    <select id="mpHostTotal">
-                      <option value="2" data-short="2">2 spelers</option>
-                      <option value="3" data-short="3">3 spelers</option>
-                      <option value="4" data-short="4" selected>4 spelers</option>
-                    </select>
-                  </div>
-                  <div class="field">
-                    <label for="mpHostFillBots">Lege plekken bij het starten</label>
-                    <select id="mpHostFillBots">
-                      <option value="bots" data-short="Bots" selected>vullen met bots</option>
-                      <option value="wait" data-short="Wachten">niet starten — wachten tot vol</option>
-                    </select>
-                  </div>
-                  <!-- zelfde keuze als bij Zelf spelen (#walkSoloBotView); de host speelt de bot-beurt
-                       af en stuurt 'm naar de gasten, die 'm zelf naspelen (mpOnBotReplay) -->
-                  <div class="field">
-                    <label for="mpHostBotView">Beurten van de bots</label>
-                    <select id="mpHostBotView">
-                      <option value="instant" data-short="Meteen" selected>Meteen doorspelen</option>
-                      <option value="3" data-short="Snel">Laten zien — snel</option>
-                      <option value="2" data-short="Normaal">Laten zien — normaal</option>
-                      <option value="1" data-short="Langzaam">Laten zien — langzaam</option>
-                    </select>
-                  </div>
-                  <div class="btn-row">
-                    <button type="button" id="btnMpHostCreate" class="primary">Aanmaken</button>
-                    <button type="button" id="btnMpHostCancel" class="ghost">Terug</button>
-                  </div>
-                </div>
-
                 <!-- kamer van de host: deelcode, per plek een vak (bezet = naam, leeg = "Wachten op
                      speler" met golvende letters, zie mpSeatRowsHtml) en onderaan vast de knoppen,
                      gelijk met de onderkant van de chat -->
@@ -402,20 +459,6 @@
                       <button type="button" id="btnMpHostStop" class="ghost">Spel afbreken</button>
                     </div>
                   </div>
-                </div>
-              </div>
-
-              <div id="mpJoinForm" class="mp-setup" hidden>
-                <div class="field">
-                  <label for="mpJoinName">Jouw naam</label>
-                  <input type="text" id="mpJoinName" maxlength="18" placeholder="Speler 2">
-                </div>
-                <div class="field">
-                  <label for="mpJoinCode">Spelcode</label>
-                  <input type="text" id="mpJoinCode" maxlength="8" placeholder="bv. AXQ7K2" style="text-transform:uppercase;">
-                </div>
-                <div class="btn-row mp-join-row">
-                  <button type="button" id="btnMpJoinConnect" class="primary">Deelnemen aan spel</button>
                 </div>
               </div>
 
@@ -474,17 +517,12 @@
           </div>
         </div>
 
+        <!-- foutregel van Automatisch/Zelf spelen + het vinkje: staan hier alleen tot
+             lobbyPlaceFoot (97-solo.js) ze in de Vertrek-kaart van het zichtbare scherm zet -->
         <div id="walkLobbyStatus" class="reach-status"></div>
+        <!-- aftellen + hyperjump vóór het potje (96b-intro.js); keuze onthouden per browser -->
+        <label class="walk-intro-toggle"><input type="checkbox" id="walkIntroToggle" checked> Startanimatie tonen</label>
         </div><!-- /.walk-lobby-body -->
-
-        <div class="walk-lobby-start-row">
-          <!-- aftellen + hyperjump vóór het potje (96b-intro.js); keuze onthouden per browser -->
-          <label class="walk-intro-toggle"><input type="checkbox" id="walkIntroToggle" checked> Startanimatie tonen</label>
-          <button id="btnWalkStart" class="primary walk-lobby-start">Start spel</button>
-          <div id="walkSoloStartRow" hidden>
-            <button id="btnWalkSoloStart" class="primary walk-lobby-start">Start spel</button>
-          </div>
-        </div>
       </div>
     </div>
 

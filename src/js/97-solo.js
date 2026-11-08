@@ -203,6 +203,7 @@ function soloRebuildSetup(){
     botViewField.classList.toggle('is-disabled', bots === 0);
     walkSoloBotViewSel.disabled = bots === 0;
   }
+  lobbyRenderSummary();
 }
 
 function soloRenderSetupUI(){
@@ -365,32 +366,78 @@ function soloOccupied(){
 // solo-opzet-UI aan/uit zetten moeten dus op `!isSolo` testen, niet op `isAuto`/`!isAuto`
 // (dat ging hier eerder mis: de solo-knoppenrij en "Start spel" bleven staan zodra multiplayer
 // als derde modus werd toegevoegd, vóórdat dat hier werd rechtgezet).
-// "Startanimatie tonen" bij Zelf spelen op dezelfde hoogte als bij Automatisch (gebruikerswens).
-// Bij Automatisch staat het vinkje in het midden tussen de Tempo-balk en "Start spel" (margin:auto,
-// styles.css). Die afstand tot de knop meten we zolang Automatisch in beeld is, en Zelf spelen
-// krijgt precies die afstand als ondermarge. Nog niet gemeten (Spelen nooit in Automatisch
-// gezien)? Dan blijft het vinkje gewoon in het midden staan.
-let walkIntroBelowPx = null;
-function walkIntroMeasureAuto(){
+// ---------- lobby "Drie kaarten" (gekozen variant 6, artifact "Axiom-9 Lobby-eenheid", 2026-11) ----------
+// Elk lobbyscherm (.lobby-cards: Automatisch, Zelf spelen, Spel hosten, Deelnemen) heeft een
+// Vertrek-kaart met lege plekken voor de foutregel en het vinkje "Startanimatie tonen". Er is maar
+// één vinkje (#walkIntroToggle) en één foutregel per soort (#walkLobbyStatus voor Spelen, #mpStatus
+// voor Multiplayer); die verhuizen hier naar het scherm dat nu zichtbaar is. In de multiplayer-kamer
+// gaat #mpStatus terug naar de knoppen linksonder (.mp-room-info).
+function lobbyPlaceFoot(){
   const toggle = document.getElementById('walkIntroToggle');
-  const label = toggle && toggle.closest('.walk-intro-toggle');
-  if (!label || !btnWalkStart || btnWalkStart.hidden || !btnWalkStart.offsetParent) return;
-  const gap = btnWalkStart.getBoundingClientRect().top - label.getBoundingClientRect().bottom;
-  if (gap >= 0) walkIntroBelowPx = Math.round(gap);
+  const intro = toggle && toggle.closest('.walk-intro-toggle');
+  const walkStatus = document.getElementById('walkLobbyStatus');
+  const mpStatus = document.getElementById('mpStatus');
+  const screen = [...document.querySelectorAll('#walkLobby .lobby-cards')].find(el => !el.closest('[hidden]'));
+  if (screen){
+    const introSlot = screen.querySelector('.lobby-intro-slot');
+    if (intro && introSlot && !introSlot.children.length) introSlot.append(intro);
+    const statusSlot = screen.querySelector('.lobby-status-slot');
+    const st = screen.dataset.mp ? mpStatus : walkStatus;
+    if (st && statusSlot && st.parentNode !== statusSlot) statusSlot.append(st);
+  }
+  const layout = document.getElementById('mpRoomLayout');
+  const info = layout && layout.querySelector('.mp-room-info');
+  if (mpStatus && info && layout.classList.contains('is-room') && mpStatus.parentNode !== info) info.append(mpStatus);
 }
-function walkIntroPlace(isSolo){
-  const toggle = document.getElementById('walkIntroToggle');
-  const label = toggle && toggle.closest('.walk-intro-toggle');
-  if (label) label.style.marginBottom = isSolo && walkIntroBelowPx !== null ? walkIntroBelowPx + 'px' : '';
+// samenvatting in de Vertrek-kaart + de bots "aan boord" bij Automatisch
+function lobbyOptText(id){
+  const sel = document.getElementById(id);
+  if (!sel) return '';
+  if (sel.type === 'range') return ((sel.dataset.labels || '').split('|')[parseInt(sel.value, 10) - Number(sel.min || 0)]) || '';
+  const o = sel.options[sel.selectedIndex];
+  return o ? (o.dataset.short || o.textContent.trim()) : '';
 }
-window.addEventListener('resize', walkIntroMeasureAuto);   // meet alleen als Automatisch in beeld is
+function lobbySumHtml(rows){
+  return rows.map(([k, v]) => `<div><dt>${k}</dt><dd>${v}</dd></div>`).join('');
+}
+function lobbyRenderSummary(){
+  const set = (id, html) => { const el = document.getElementById(id); if (el && el.innerHTML !== html) el.innerHTML = html; };
+  const n = parseInt(walkPlayersSel ? walkPlayersSel.value : '4', 10) || 4;
+  set('walkAutoSummary', lobbySumHtml([
+    ['Modus', 'Automatisch'], ['Spelers', n === 1 ? '1 bot' : `${n} bots`],
+    ['Energie', lobbyOptText('walkEnergyMode')], ['Tempo', lobbyOptText('walkSpeed')],
+  ]));
+  // bots aan boord: zelfde rijen als de bemanningslijst, maar alleen kijken (namen krijgen ze bij de start)
+  const crew = [];
+  for (let i = 0; i < WALK_MAX_PLAYERS; i++){
+    crew.push(i < n
+      ? `<div class="crew-row" style="--pc:${WALK_PLAYER_COLORS[i]}"><span class="crew-num">${i + 1}</span><span class="crew-dot"></span>` +
+        `<span class="crew-bot-name">Bot</span><span class="crew-role is-bot">bot</span></div>`
+      : `<div class="crew-row is-free">vrij</div>`);
+  }
+  set('walkAutoCrew', crew.join(''));
+  const humans = soloHumanCount, bots = soloBotCount;
+  const who = (humans === 1 ? 'Jij' : `${humans} spelers`) + (bots ? ` + ${bots} bot${bots === 1 ? '' : 's'}` : '');
+  set('walkSoloSummary', lobbySumHtml([
+    ['Modus', 'Zelf spelen'], ['Spelers', who],
+    ['Bots', bots ? lobbyOptText('walkSoloBotView') : 'geen bots'],
+  ]));
+  set('mpHostSummary', lobbySumHtml([
+    ['Modus', 'Spel hosten'], ['Plekken', lobbyOptText('mpHostTotal')],
+    ['Lege plekken', lobbyOptText('mpHostFillBots')], ['Bots', lobbyOptText('mpHostBotView')],
+  ]));
+}
+['walkPlayers', 'walkEnergyMode', 'walkSoloBotView', 'mpHostTotal', 'mpHostFillBots', 'mpHostBotView'].forEach(id => {
+  const el = document.getElementById(id);
+  if (el) el.addEventListener('change', lobbyRenderSummary);
+});
+if (walkSpeedEl) walkSpeedEl.addEventListener('input', lobbyRenderSummary);
 function setWalkMode(mode){
   stopWalkSimulation();
   stopSoloGame();
   const isAuto = mode === 'auto';
   const isSolo = mode === 'solo';
   const isMulti = mode === 'multi';
-  walkIntroMeasureAuto();
   if (walkModeAutoBtn){ walkModeAutoBtn.classList.toggle('active', isAuto); walkModeAutoBtn.setAttribute('aria-selected', String(isAuto)); }
   if (walkModeSoloBtn){ walkModeSoloBtn.classList.toggle('active', isSolo); walkModeSoloBtn.setAttribute('aria-selected', String(isSolo)); }
   if (walkModeMultiBtn){ walkModeMultiBtn.classList.toggle('active', isMulti); walkModeMultiBtn.setAttribute('aria-selected', String(isMulti)); }
@@ -406,7 +453,6 @@ function setWalkMode(mode){
   // zichtbaar, net als de instellingen erboven. Multiplayer heeft geen "Start spel"-knop:
   // die start via "Aanmaken"/"Verbinden" in #walkMultiControls zelf.
   if (btnWalkStart) btnWalkStart.hidden = !isAuto;
-  walkIntroPlace(isSolo);
   // "Nieuw potje" (Zelf spelen) en Pauze/Stoppen (Automatisch) staan rechtsboven in de
   // tabbladenbalk; hun zichtbaarheid hangt van de modus af. Pauze/Stoppen worden verderop
   // bijgewerkt via walkFooterSyncVisibility() → walkPauseStopSyncVisibility() (96-walk.js).
@@ -449,6 +495,8 @@ function setWalkMode(mode){
   // veilig omdat functiedeclaraties over het hele script heen gehoist worden en setWalkMode()
   // pas ten tijde van een klik wordt aangeroepen, niet tijdens het laden.
   if (isMulti) mpRenderLobby();
+  lobbyRenderSummary();
+  lobbyPlaceFoot();
 }
 
 // ---------- bord: welke vakjes zijn nu aanklikbaar ----------
