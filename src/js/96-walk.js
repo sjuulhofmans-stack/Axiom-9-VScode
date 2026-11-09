@@ -53,6 +53,9 @@ function pickBotNames(count, taken = []){
 
 const walkBoardEl = document.getElementById('walkBoard');
 const walkPlayersSel = document.getElementById('walkPlayers');
+// namen van de bots in de lobby van Automatisch (bemanningslijst, lobbyRenderSummary in 97-solo.js);
+// dezelfde namen spelen straks mee
+let walkAutoBotNames = [];
 const walkEnergyModeEl = document.getElementById('walkEnergyMode');
 const walkSpeedEl = document.getElementById('walkSpeed');
 const walkSpeedLabelEl = document.getElementById('walkSpeedLabel');
@@ -1250,7 +1253,8 @@ async function runWalkSimulation(){
 
   // geen startpositie vooraf: die kiezen de bots straks zelf, in de volgorde van de worp
   // (walkRunOpening hierboven)
-  const botNames = pickBotNames(playerCount);   // in Automatisch zijn het allemaal bots
+  // in Automatisch zijn het allemaal bots; de namen uit de lobby (bemanningslijst) spelen mee
+  const botNames = walkAutoBotNames.length >= playerCount ? walkAutoBotNames.slice(0, playerCount) : pickBotNames(playerCount);
   const players = Array.from({ length: playerCount }, (_, i) => ({
     idx: i,
     name: botNames[i],

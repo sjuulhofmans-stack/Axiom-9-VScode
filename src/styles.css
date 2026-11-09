@@ -948,8 +948,6 @@
   /* bemanningslijst in een smalle kaart: rolvak 64px i.p.v. 96px */
   .lobby-card .walk-solo-setup{margin:0;}
   .lobby-card .crew-row{grid-template-columns:22px 10px minmax(0, 1fr) 64px 38px; column-gap:8px;}
-  .lobby-card .crew-list.is-ro .crew-row{grid-template-columns:22px 10px minmax(0, 1fr) 64px;}
-  .lobby-card .crew-list.is-ro .crew-row.is-free{display:flex;}
   /* samenvatting in de Vertrek-kaart */
   .lobby-sum{margin:0; display:flex; flex-direction:column;}
   .lobby-sum > div{display:flex; justify-content:space-between; align-items:baseline; gap:12px; padding:10px 0; border-bottom:1px solid var(--line-dim);}

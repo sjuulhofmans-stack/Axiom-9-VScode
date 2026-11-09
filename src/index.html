@@ -269,7 +269,9 @@
         <div class="lobby-cards" id="walkAutoControls">
           <section class="lobby-card">
             <h3 class="lobby-card-title">Wie speelt er</h3>
-            <div class="field">
+            <!-- verborgen bron voor het aantal bots; je kiest met de bemanningslijst eronder (✕ / + Bot),
+                 precies dezelfde opbouw als bij Zelf spelen (gebruikerswens 2026-11) -->
+            <div class="field" hidden style="display:none">
               <label for="walkPlayers">Aantal spelers</label>
               <select id="walkPlayers">
                 <option value="1" data-short="1">1 speler</option>
@@ -278,10 +280,7 @@
                 <option value="4" data-short="4" selected>4 spelers</option>
               </select>
             </div>
-            <div class="field">
-              <span class="field-label">Aan boord</span>
-              <div class="crew-list is-ro" id="walkAutoCrew"></div>
-            </div>
+            <div id="walkAutoCrew" class="walk-solo-setup"></div>
           </section>
           <section class="lobby-card">
             <h3 class="lobby-card-title">Spelregels</h3>

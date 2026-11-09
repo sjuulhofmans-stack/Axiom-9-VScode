@@ -377,7 +377,10 @@ function lobbyPlaceFoot(){
   const intro = toggle && toggle.closest('.walk-intro-toggle');
   const walkStatus = document.getElementById('walkLobbyStatus');
   const mpStatus = document.getElementById('mpStatus');
-  const screen = [...document.querySelectorAll('#walkLobby .lobby-cards')].find(el => !el.closest('[hidden]'));
+  // alleen "hidden" BINNEN de lobby telt: bij het laden is het hele tabblad nog verborgen, en dan
+  // bleef het vinkje onder de kaarten staan (kaarten 38px lager tot je een keer van tabblad wisselde)
+  const shown = el => { for (let n = el; n && n.id !== 'walkLobby'; n = n.parentElement) if (n.hidden) return false; return true; };
+  const screen = [...document.querySelectorAll('#walkLobby .lobby-cards')].find(shown);
   if (screen){
     const introSlot = screen.querySelector('.lobby-intro-slot');
     if (intro && introSlot && !introSlot.children.length) introSlot.append(intro);
@@ -407,15 +410,30 @@ function lobbyRenderSummary(){
     ['Modus', 'Automatisch'], ['Spelers', n === 1 ? '1 bot' : `${n} bots`],
     ['Energie', lobbyOptText('walkEnergyMode')], ['Tempo', lobbyOptText('walkSpeed')],
   ]));
-  // bots aan boord: zelfde rijen als de bemanningslijst, maar alleen kijken (namen krijgen ze bij de start)
-  const crew = [];
-  for (let i = 0; i < WALK_MAX_PLAYERS; i++){
-    crew.push(i < n
-      ? `<div class="crew-row" style="--pc:${WALK_PLAYER_COLORS[i]}"><span class="crew-num">${i + 1}</span><span class="crew-dot"></span>` +
-        `<span class="crew-bot-name">Bot</span><span class="crew-role is-bot">bot</span></div>`
-      : `<div class="crew-row is-free">vrij</div>`);
+  // Bots aan boord bij Automatisch: PRECIES dezelfde bemanningslijst als Zelf spelen (gebruikerswens
+  // 2026-11): vijf vaste vakjes per rij, ✕ per bot, onderaan "+ Speler" (hier altijd uit: in
+  // Automatisch spelen alleen bots) en "+ Bot". De namen blijven staan en worden bij de start gebruikt.
+  walkAutoBotNames = walkAutoBotNames.slice(0, n);
+  if (walkAutoBotNames.length < n) walkAutoBotNames = walkAutoBotNames.concat(pickBotNames(n - walkAutoBotNames.length, walkAutoBotNames));
+  const crew = walkAutoBotNames.map((name, i) =>
+    `<div class="crew-row" style="--pc:${WALK_PLAYER_COLORS[i]}"><span class="crew-num">${i + 1}</span><span class="crew-dot"></span>` +
+    `<span class="crew-bot-name" title="${name}">${name}</span><span class="crew-role is-bot">bot</span>` +
+    (n <= 1
+      ? `<button type="button" class="crew-del" disabled aria-label="Er moet minstens één bot spelen" title="Er moet minstens één bot spelen">✕</button>`
+      : `<button type="button" class="crew-del" data-auto-del="${i}" aria-label="${name} weghalen" title="Weghalen">✕</button>`) +
+    `</div>`);
+  const free = WALK_MAX_PLAYERS - n;
+  for (let i = 0; i < free; i++){
+    crew.push(i === 0
+      ? `<div class="crew-row is-free">nog ${free === 1 ? '1 plek' : free + ' plekken'} vrij</div>`
+      : `<div class="crew-row is-free is-blank" aria-hidden="true"></div>`);
   }
-  set('walkAutoCrew', crew.join(''));
+  set('walkAutoCrew',
+    `<div class="crew-list">${crew.join('')}</div>` +
+    `<div class="crew-add">` +
+      `<button type="button" class="ghost" disabled title="Bij Automatisch spelen alleen bots — zelf meedoen kan bij Zelf spelen">+ Speler</button>` +
+      `<button type="button" class="ghost" data-auto-add="bot"${free === 0 ? ' disabled' : ''}>+ Bot</button>` +
+    `</div>`);
   const humans = soloHumanCount, bots = soloBotCount;
   const who = (humans === 1 ? 'Jij' : `${humans} spelers`) + (bots ? ` + ${bots} bot${bots === 1 ? '' : 's'}` : '');
   set('walkSoloSummary', lobbySumHtml([
@@ -432,6 +450,26 @@ function lobbyRenderSummary(){
   if (el) el.addEventListener('change', lobbyRenderSummary);
 });
 if (walkSpeedEl) walkSpeedEl.addEventListener('input', lobbyRenderSummary);
+// ✕ / + Bot in de bemanningslijst van Automatisch: zet het verborgen #walkPlayers en laat de
+// gewone 'change' de rest bijwerken (samenvatting, lijst)
+function walkAutoSetCount(n){
+  if (!walkPlayersSel || walkPlayersSel.disabled) return;
+  walkPlayersSel.value = String(Math.max(1, Math.min(WALK_MAX_PLAYERS, n)));
+  walkPlayersSel.dispatchEvent(new Event('change', { bubbles: true }));
+}
+const walkAutoCrewEl = document.getElementById('walkAutoCrew');
+if (walkAutoCrewEl){
+  walkAutoCrewEl.addEventListener('click', (e) => {
+    const del = e.target.closest('[data-auto-del]');
+    if (del && !del.disabled){
+      walkAutoBotNames.splice(parseInt(del.dataset.autoDel, 10), 1);   // precies die bot eruit, de rest houdt zijn naam
+      walkAutoSetCount(walkAutoBotNames.length);
+      return;
+    }
+    const add = e.target.closest('[data-auto-add]');
+    if (add && !add.disabled) walkAutoSetCount(parseInt(walkPlayersSel.value, 10) + 1);
+  });
+}
 function setWalkMode(mode){
   stopWalkSimulation();
   stopSoloGame();
