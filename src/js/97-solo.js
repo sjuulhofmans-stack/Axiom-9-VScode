@@ -577,8 +577,8 @@ if (walkBoardEl){
 // welke vervolgstappen mag je zetten vanaf `pos`, gegeven de richting van je vorige stap
 // (-1 = eerste stap van de beurt, geen beperking) — zelfde geen-U-turn-regel als resolveMove().
 // `occupied` sluit vakjes uit waar een andere nog-meespelende speler op staat (blokkeren).
-// Een portaal naast je is gewoon een klikbaar vakje; `portal` = waar je dan uitkomt (je zet stopt
-// daar, zie PORTALEN in 95-simulate.js). Bezet de uitgang of staat er een pion op een portaal,
+// Een portaal naast je is gewoon een klikbaar vakje; `portal` = waar je dan uitkomt (daarna loop je
+// door, zie PORTALEN in 95-simulate.js). Bezet de uitgang of staat er een pion op een portaal,
 // dan werkt het paar niet en is het een gewoon vakje.
 function soloLegalNextCells(graph, pos, lastDir, occupied){
   const neigh = graph.adjKey[pos], dirs = graph.adjDir[pos];
@@ -2114,7 +2114,8 @@ function soloHandleMoveClick(key){
   const leaving = walkCellDiv(soloGraph, p.pos);
   leaving.style.setProperty('--pc', p.color);
   leaving.classList.add('walk-trail');
-  // door een portaal: je komt uit het andere en je zet stopt daar, de rest van de worp vervalt
+  // door een portaal: je komt uit het andere en loopt met de rest van je worp gewoon door, in elke
+  // richting (instappen kost één stap). Gebruikerswens 2026-11: stoppen voelde als verloren stappen.
   if (match.portal !== undefined){
     const entry = key, exit = match.portal;
     const colorIn = soloGraph.portals.cells[1] === entry ? 1 : 0;
@@ -2125,14 +2126,18 @@ function soloHandleMoveClick(key){
     soloMove.lastDir = -1;
     soloMove.path.push(entry, exit);
     soloMove.viaPortal = true;
-    const rest = soloMove.stepsLeft - 1;
-    soloMove.stepsLeft = 0;
+    soloMove.stepsLeft--;
     if (p.stats){ p.stats.walkSteps++; p.stats.portalJumps = (p.stats.portalJumps || 0) + 1; }
-    walkLog(`Je stapt in het ${PORTAL_NAMES[colorIn]} portaal en komt uit bij het ${PORTAL_NAMES[1 - colorIn]}${rest > 0 ? ` — je zet stopt hier, ${rest} ${rest === 1 ? 'stap vervalt' : 'stappen vervallen'}` : ''}.`, null, p);
+    const rest = soloMove.stepsLeft;
+    walkLog(`Je stapt in het ${PORTAL_NAMES[colorIn]} portaal en komt uit bij het ${PORTAL_NAMES[1 - colorIn]}${rest > 0 ? ` — nog ${rest} ${rest === 1 ? 'stap' : 'stappen'}` : ''}.`, null, p);
     paintWalkPawns(soloGraph, soloPlayers, p.idx);
-    soloClearClickable();
-    if (soloBankCountThisTurn > 0) soloEndMoveAlreadyBanked();
-    else soloFinishTurn(false);
+    if (soloMove.stepsLeft <= 0){
+      soloClearClickable();
+      if (soloBankCountThisTurn > 0) soloEndMoveAlreadyBanked();
+      else soloFinishTurn(false);
+    } else {
+      soloAdvanceMovePhase();
+    }
     return;
   }
   p.pos = key;

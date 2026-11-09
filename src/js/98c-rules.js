@@ -138,7 +138,7 @@ function rulesSections(){
     { id: 'portaal', title: 'Portalen', scene: 'portal', html: `
       <ul class="rules-list">
         <li>Er liggen altijd twee portalen op het bord: een <b>blauwe</b> en een <b>rode</b>. Ze zijn van iedereen.</li>
-        <li>Stap je in een portaal, dan kom je uit het andere en <b>stopt je zet</b> daar. De rest van je worp vervalt.</li>
+        <li>Stap je in een portaal, dan kom je uit het andere en <b>loop je met de rest van je worp gewoon door</b>, welke kant je maar wilt. Instappen kost één stap.</li>
         <li>Staat er een pion op een van de twee portalen, dan werkt het paar niet.</li>
         <li>Met de energie-actie <b>Portaalkanon</b> of het kristal <b>Portaalsleutel</b> verplaats je een portaal. Het vliegt rechtdoor tot de muur of tot vóór een pion. Hooguit één schot per beurt.</li>
         <li>Je kiest zelf welke kleur je verplaatst, ook als een ander hem legde.</li>
@@ -580,7 +580,7 @@ const RULES_SCENES = {
     return anims;
   },
 
-  // pion stapt in het blauwe portaal, komt uit het rode en stopt; de rest van de worp vervalt
+  // pion stapt in het blauwe portaal, komt uit het rode en loopt met de rest van de worp door
   portal(stage){
     const D = 8500, anims = [], C = 30;
     const scene = rEl(stage, 'rules-scene');
@@ -594,18 +594,19 @@ const RULES_SCENES = {
     anims.push(rWalk(pawn, path, t0, st, D));
     const tIn = t0 + 5 * st;          // op het blauwe portaal
     anims.push(rTrack(pawn, 'opacity', 0, [[0.04, 1], [tIn + 0.02, 0]], D, 0.03));
+    // uit het rode portaal: de laatste 3 stappen loop je gewoon door
     const out = rPawn(g, 'var(--amber)', C);
-    out.style.transform = 'translate(200%, 200%)';
+    const tOut = tIn + 0.06;
+    anims.push(rWalk(out, [[2, 2], [3, 2], [4, 2], [5, 2]], tOut + 0.04, st, D));
     anims.push(rTrack(out, 'opacity', 0, [[tIn + 0.05, 1], [0.93, 0]], D, 0.03));
-    anims.push(...rShow(rAt(g, 'rs-stop', 2, 2, C, 'stop'), tIn + 0.08, 0.93, D, true));
     const roll = rEl(scene, 'rs-roll');
     rDie(roll, 3); rDie(roll, 5);
     rEl(roll, 'rs-roll-sum', '= 8');
     anims.push(...rShow(roll, 0.04, 0.93, D, true));
-    anims.push(...rShow(rEl(scene, 'rs-lost', '3 stappen vervallen'), tIn + 0.1, 0.93, D, true));
+    anims.push(...rShow(rEl(scene, 'rs-lost', 'nog 3 stappen', 'color:var(--amber)'), tIn + 0.1, 0.93, D, true));
     anims.push(...rCaption(stage, [
       [0.02, tIn - 0.01, 'Je gooit 8 en loopt naar het blauwe portaal'],
-      [tIn, 0.95, 'Uit het rode portaal: je zet stopt daar'],
+      [tIn, 0.95, 'Uit het rode portaal loop je gewoon door'],
     ], D));
     return anims;
   },

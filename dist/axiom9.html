@@ -8207,7 +8207,7 @@ const ENERGY_ACTIONS = {
   jump:    { cost: 10, name: 'Noodtransport',   hint: `spring vrij tot ${ENERGY_JUMP_RANGE} vakjes, dan gooien`,
              note: 'Geen geen-U-turn-regel en je springt over pionnen heen. Land je op je opdracht, dan is je beurt klaar; anders gooi je daarna gewoon vanaf je nieuwe plek. Kost je hele voorraad.' },
   portal:  { cost: 7,  name: 'Portaalkanon',    hint: 'schiet een portaal tot de muur, dan gooien',
-             note: 'Kies een richting: het portaal vliegt rechtdoor tot de muur of tot vóór een pion. Daarna kies je of je het blauwe of het rode verplaatst. Stapt iemand in een portaal, dan komt hij uit het andere en stopt zijn zet daar. Staat er een pion op een portaal, dan werkt het paar niet.' },
+             note: 'Kies een richting: het portaal vliegt rechtdoor tot de muur of tot vóór een pion. Daarna kies je of je het blauwe of het rode verplaatst. Stapt iemand in een portaal, dan komt hij uit het andere en loopt hij met de rest van zijn worp door. Staat er een pion op een portaal, dan werkt het paar niet.' },
   none:    { cost: 0,  name: 'Geen energie',    hint: 'spaart, geeft nooit uit',
              note: 'Doet niets — de handmatige "overslaan"-keuze voor de mens. Zit niet in de bot-strategieën: een speler die een heel potje nooit energie uitgeeft komt in de praktijk niet voor, dus die zou de simulatiecijfers (met name het plafondverlies) alleen maar vertekenen.' },
 };
@@ -8307,9 +8307,11 @@ function botWantsReorderPeek(graph, player, fromKey){
 //     tot de muur of tot vóór een pion en landt op het verste gewone vakje van die lijn (nooit op
 //     een opdracht-, start- of kristalvakje, nooit op het andere portaal). Kies dan welke kleur je
 //     verplaatst; de andere blijft liggen, ook als een ander hem legde ("stelen").
-//   - Stap je bij een gewone worp in een portaal, dan kom je uit het andere en STOPT je zet daar.
-//     Instappen kost één stap, de rest van de worp vervalt. Doorlopen bleek te sterk: potjes 6–11%
-//     korter en tot 10% van de opdrachten via een portaal (stoppen: 2–4% korter, 3–4%).
+//   - Stap je bij een gewone worp in een portaal, dan kom je uit het andere en LOOP JE DOOR met de
+//     rest van de worp, in elke richting (instappen kost één stap). Gebruikerswens 2026-11: stoppen
+//     voelde als verloren stappen. Tot dan stopte de zet in het portaal, omdat de analyse doorlopen
+//     te sterk vond (potjes 6–11% korter, tot 10% van de opdrachten via een portaal; stoppen: 2–4%
+//     korter, 3–4%) — zie de meting na deze wijziging in CLAUDE.md.
 //   - Staat er een andere pion op een van de twee portalen, dan werkt het paar niet en is het
 //     andere portaalvakje een gewoon vakje.
 //   - Noodtransport, de laarzen en de duwkaarten negeren portalen (je gaat er gewoon overheen).
@@ -8322,7 +8324,7 @@ function botWantsReorderPeek(graph, player, fromKey){
 //   prijs 7         23,8 / 25,2 / 24,7 / 26,4   82,9 beurten (−3,4%)  ← gekozen
 //   prijs 8         23,7 / 24,9 / 24,9 / 26,5   maar dan schiet de Slim-bot nog maar 0,6× per potje
 // Slim-bots bij 7: 1,1 schot per potje; een Slim-bot zonder portaal wint 24,7% tegen drie mét.
-// Techniek: de buurlijst (adjKey) blijft het gewone bord. Alleen resolveMove (de stop-regel),
+// Techniek: de buurlijst (adjKey) blijft het gewone bord. Alleen resolveMove (sprong + doorlopen),
 // simBfsDistances (A en B zijn één vakje voor de afstand) en de stappen van de mens
 // (soloLegalNextCells in 97-solo.js) kijken naar graph.portals — zo gaan sprongen, sprints en
 // duwkaarten vanzelf niet door een portaal.
@@ -9012,7 +9014,9 @@ const SIM_N = TILE_ROWS * TILE_H * TILE_COLS * TILE_W;
 // bovengrens op hoeveel opdrachten je in ÉÉN beurt achter elkaar kunt pakken (zie resolveMove) —
 // nooit meer dan de 9 labels in een stapeltje, ruim genoeg boven wat één worp ooit haalt
 const SIM_CHAIN_CAP = 10;
-const simDpStamp = new Int32Array(SIM_N * 4 * SIM_CHAIN_CAP);
+// richting 4 = "net uit een portaal gekomen": dan mag je alle kanten op (zie resolveMove)
+const SIM_DIR_FREE = 4;
+const simDpStamp = new Int32Array(SIM_N * 5 * SIM_CHAIN_CAP);
 let simDpStampCounter = 0;
 const simBfsDist = new Int32Array(SIM_N);
 const simBfsStampArr = new Int32Array(SIM_N);
@@ -9115,12 +9119,14 @@ function computeHinderScores(graph, candidateKeys, occupiedSet){
 }
 
 // loopt van laag `step`, index `idx` terug naar laag 0 en geeft het afgelegde pad
-// (cel-indices, start eerst) — voor de drukte-heatmap.
-function backtrackLayers(layersKeys, layersParent, step, idx){
+// (cel-indices, start eerst) — voor de drukte-heatmap en de animatie. `layersVia` (optioneel): het
+// portaal waar je in die stap instapte (-1 = gewone stap); het pad krijgt dan ingang én uitgang.
+function backtrackLayers(layersKeys, layersParent, step, idx, layersVia){
   const path = [];
   let s = step, i = idx;
   while (true){
     path.push(layersKeys[s][i]);
+    if (layersVia && s > 0 && layersVia[s][i] >= 0) path.push(layersVia[s][i]);
     if (s === 0) break;
     i = layersParent[s][i];
     s--;
@@ -9134,7 +9140,7 @@ function backtrackLayers(layersKeys, layersParent, step, idx){
 // in dezelfde beurt vallen als de resterende stappen daar toevallig doorheen voeren), en
 // binnen die groep de kortste afstand tot het eerstvolgende nog openstaande doel, dan de
 // hinder-score als tie-break en tot slot willekeur.
-function pickEnd(graph, layersKeys, layersParent, layersBanked, step, targets, occupiedSet, rand, stepsUsed, endBlockedSet){
+function pickEnd(graph, layersKeys, layersParent, layersBanked, step, targets, occupiedSet, rand, stepsUsed, endBlockedSet, layersVia){
   const keys = layersKeys[step], bankedArr = layersBanked[step];
   // Per eindvakje de toestand met de MEESTE gepakte opdrachten onthouden. Hetzelfde vakje komt
   // vaak meerdere keren voor in een laag (andere binnenkomstrichting, wel/niet langs de opdracht).
@@ -9182,7 +9188,7 @@ function pickEnd(graph, layersKeys, layersParent, layersBanked, step, targets, o
     }
     chosenKey = closest[Math.floor(rand() * closest.length)];
   }
-  const path = backtrackLayers(layersKeys, layersParent, step, bestIndex.get(chosenKey));
+  const path = backtrackLayers(layersKeys, layersParent, step, bestIndex.get(chosenKey), layersVia);
   return { key: chosenKey, stepsUsed, bankedCount: maxBanked, bankedQuest: maxBanked > 0, path };
 }
 
@@ -9201,27 +9207,26 @@ function pickEnd(graph, layersKeys, layersParent, layersBanked, step, targets, o
 // geen zet mogelijk is.
 function resolveMove(graph, startKey, steps, occupiedSet, targets, rand, endBlockedSet){
   const { adjKey, adjDir } = graph;
-  const layersKeys = [[startKey]], layersDirs = [[-1]], layersParent = [[]], layersBanked = [[0]];
+  const layersKeys = [[startKey]], layersDirs = [[-1]], layersParent = [[]], layersBanked = [[0]], layersVia = [[-1]];
   let wasBlocked = false;
-  // Portalen: stap je in een portaal, dan kom je uit het andere en eindigt je zet daar (zie het
-  // blok PORTALEN). Die eindes lopen niet mee in de lagen maar worden apart verzameld en aan het
-  // eind vergeleken met het beste gewone eindvakje.
+  // Portalen: stap je in een portaal, dan kom je uit het andere en loop je met de rest van je worp
+  // gewoon door (zie het blok PORTALEN). Instappen kost één stap; vanaf de uitgang mag je alle
+  // kanten op (richting SIM_DIR_FREE). In de laag staat de uitgang, in layersVia de ingang.
   const P = graph.portals;
   const portalLive = !!(P && P.cells[0] >= 0 && P.cells[1] >= 0);
-  const portalEnds = [];
   let lastStep = steps;
 
   for (let step = 1; step <= steps; step++){
     simDpStampCounter++;
     const stamp = simDpStampCounter;
     const prevKeys = layersKeys[step - 1], prevDirs = layersDirs[step - 1], prevBanked = layersBanked[step - 1];
-    const nextKeys = [], nextDirs = [], nextParent = [], nextBanked = [];
+    const nextKeys = [], nextDirs = [], nextParent = [], nextBanked = [], nextVia = [];
     for (let i = 0; i < prevKeys.length; i++){
       const ck = prevKeys[i], cd = prevDirs[i], banked = prevBanked[i];
       const neigh = adjKey[ck], dirs = adjDir[ck];
       for (let j = 0; j < neigh.length; j++){
         const d = dirs[j];
-        if (cd !== -1 && d === (cd + 2) % 4) continue; // geen U-turn
+        if (cd !== -1 && cd !== SIM_DIR_FREE && d === (cd + 2) % 4) continue; // geen U-turn
         const nk = neigh[j];
         if (occupiedSet.has(nk)){ wasBlocked = true; continue; } // bezet vakje blokkeert
         // eerstvolgende nog openstaande opdracht geraakt: telt mee, maar de beurt loopt door met
@@ -9232,17 +9237,15 @@ function resolveMove(graph, startKey, steps, occupiedSet, targets, rand, endBloc
         if (banked < targets.length && nk === targets[banked] && !(endBlockedSet && endBlockedSet.has(nk))){
           newBanked = banked + 1;
         }
+        let to = nk, toDir = d, via = -1;
         if (portalLive){
           const exit = portalExitFor(graph, nk, occupiedSet, endBlockedSet);
-          if (exit >= 0){
-            portalEnds.push({ step, i, entry: nk, key: exit, banked: newBanked });
-            continue;
-          }
+          if (exit >= 0){ to = exit; toDir = SIM_DIR_FREE; via = nk; }
         }
-        const stateIdx = (nk * 4 + d) * SIM_CHAIN_CAP + newBanked;
+        const stateIdx = (to * 5 + toDir) * SIM_CHAIN_CAP + newBanked;
         if (simDpStamp[stateIdx] === stamp) continue;
         simDpStamp[stateIdx] = stamp;
-        nextKeys.push(nk); nextDirs.push(d); nextParent.push(i); nextBanked.push(newBanked);
+        nextKeys.push(to); nextDirs.push(toDir); nextParent.push(i); nextBanked.push(newBanked); nextVia.push(via);
       }
     }
     if (nextKeys.length === 0){
@@ -9250,42 +9253,12 @@ function resolveMove(graph, startKey, steps, occupiedSet, targets, rand, endBloc
       lastStep = step - 1;
       break;
     }
-    layersKeys.push(nextKeys); layersDirs.push(nextDirs); layersParent.push(nextParent); layersBanked.push(nextBanked);
+    layersKeys.push(nextKeys); layersDirs.push(nextDirs); layersParent.push(nextParent); layersBanked.push(nextBanked); layersVia.push(nextVia);
   }
-  let move = pickEnd(graph, layersKeys, layersParent, layersBanked, lastStep, targets, occupiedSet, rand, lastStep, endBlockedSet);
-  if (portalEnds.length){
-    const via = pickPortalEnd(graph, portalEnds, move, targets, layersKeys, layersParent);
-    if (via) move = via;
-  }
+  const move = pickEnd(graph, layersKeys, layersParent, layersBanked, lastStep, targets, occupiedSet, rand, lastStep, endBlockedSet, layersVia);
   if (!move) return null;
   move.wasBlocked = wasBlocked;
   return move;
-}
-// Beste einde via een portaal, als dat beter is dan het gewone einde `move`: eerst de meeste
-// gepakte opdrachten, dan het dichtst bij de volgende opdracht. Bij gelijkspel wint het gewone
-// einde. Het pad bevat het portaal waar je instapt én waar je uitkomt (voor de animatie).
-function pickPortalEnd(graph, ends, move, targets, layersKeys, layersParent){
-  let best = -1;
-  for (const e of ends) if (e.banked > best) best = e.banked;
-  const mb = move ? move.bankedCount : -1;
-  if (best < mb) return null;
-  const pool = ends.filter(e => e.banked === best);
-  let pick = null;
-  const next = best < targets.length ? targets[best] : null;
-  if (next === null){
-    if (best > mb) pick = pool[0];
-  } else {
-    const stamp = simBfsDistances(graph, next);
-    let bd = Infinity;
-    for (const e of pool){ const d = simDistLookup(stamp, e.key); if (d >= 0 && d < bd){ bd = d; pick = e; } }
-    if (pick && best === mb && move){
-      const dm = simDistLookup(stamp, move.key);
-      if (dm >= 0 && dm <= bd) pick = null;
-    }
-  }
-  if (!pick) return null;
-  const path = backtrackLayers(layersKeys, layersParent, pick.step - 1, pick.i).concat([pick.entry, pick.key]);
-  return { key: pick.key, stepsUsed: pick.step, bankedCount: pick.banked, bankedQuest: pick.banked > 0, path, viaPortal: true };
 }
 
 function simShuffle(arr, rand){
@@ -10630,7 +10603,7 @@ function renderSimResults({ n, stuckCount, startWins, startTurnsSum, startRanks,
       chart: simSplit(simDonut([{ v: stealPct, c: SIM_COL.red, label: 'gestolen' }, { v: 100 - stealPct, c: SIM_COL.blue, label: 'eigen of nieuw' }], { center: nl(stealPct, 0) + '%', sub: 'gestolen' }),
         simMinis([[nl(played ? pt.shots / played : 0, 1), 'schoten per potje'], [nl(played ? pt.jumps / played : 0, 1), 'sprongen per potje'], [nl(topPct, 0) + '%', 'meeste springer wint']])),
       details: tbl('<th>Meetpunt</th><th>Waarde</th><th>Oordeel</th>', ptRows) +
-        `<p class="hint">Bij de start liggen er twee portalen, minstens ${PORTAL_START_MIN_DIST} stappen uit elkaar. Met het <b>Portaalkanon</b> (${ENERGY_ACTIONS.portal.cost} energie) schiet een speler er een naar de muur; stap je in een portaal, dan kom je uit het andere en stopt je zet. Elke bot schiet als het hem minstens ${PORTAL_BOT_MIN_GAIN} stappen scheelt.</p>` });
+        `<p class="hint">Bij de start liggen er twee portalen, minstens ${PORTAL_START_MIN_DIST} stappen uit elkaar. Met het <b>Portaalkanon</b> (${ENERGY_ACTIONS.portal.cost} energie) schiet een speler er een naar de muur; stap je in een portaal, dan kom je uit het andere en loop je door met de rest van je worp. Elke bot schiet als het hem minstens ${PORTAL_BOT_MIN_GAIN} stappen scheelt.</p>` });
   }
 
   // ---------- Kristallen ----------
@@ -14752,8 +14725,8 @@ if (walkBoardEl){
 // welke vervolgstappen mag je zetten vanaf `pos`, gegeven de richting van je vorige stap
 // (-1 = eerste stap van de beurt, geen beperking) — zelfde geen-U-turn-regel als resolveMove().
 // `occupied` sluit vakjes uit waar een andere nog-meespelende speler op staat (blokkeren).
-// Een portaal naast je is gewoon een klikbaar vakje; `portal` = waar je dan uitkomt (je zet stopt
-// daar, zie PORTALEN in 95-simulate.js). Bezet de uitgang of staat er een pion op een portaal,
+// Een portaal naast je is gewoon een klikbaar vakje; `portal` = waar je dan uitkomt (daarna loop je
+// door, zie PORTALEN in 95-simulate.js). Bezet de uitgang of staat er een pion op een portaal,
 // dan werkt het paar niet en is het een gewoon vakje.
 function soloLegalNextCells(graph, pos, lastDir, occupied){
   const neigh = graph.adjKey[pos], dirs = graph.adjDir[pos];
@@ -16289,7 +16262,8 @@ function soloHandleMoveClick(key){
   const leaving = walkCellDiv(soloGraph, p.pos);
   leaving.style.setProperty('--pc', p.color);
   leaving.classList.add('walk-trail');
-  // door een portaal: je komt uit het andere en je zet stopt daar, de rest van de worp vervalt
+  // door een portaal: je komt uit het andere en loopt met de rest van je worp gewoon door, in elke
+  // richting (instappen kost één stap). Gebruikerswens 2026-11: stoppen voelde als verloren stappen.
   if (match.portal !== undefined){
     const entry = key, exit = match.portal;
     const colorIn = soloGraph.portals.cells[1] === entry ? 1 : 0;
@@ -16300,14 +16274,18 @@ function soloHandleMoveClick(key){
     soloMove.lastDir = -1;
     soloMove.path.push(entry, exit);
     soloMove.viaPortal = true;
-    const rest = soloMove.stepsLeft - 1;
-    soloMove.stepsLeft = 0;
+    soloMove.stepsLeft--;
     if (p.stats){ p.stats.walkSteps++; p.stats.portalJumps = (p.stats.portalJumps || 0) + 1; }
-    walkLog(`Je stapt in het ${PORTAL_NAMES[colorIn]} portaal en komt uit bij het ${PORTAL_NAMES[1 - colorIn]}${rest > 0 ? ` — je zet stopt hier, ${rest} ${rest === 1 ? 'stap vervalt' : 'stappen vervallen'}` : ''}.`, null, p);
+    const rest = soloMove.stepsLeft;
+    walkLog(`Je stapt in het ${PORTAL_NAMES[colorIn]} portaal en komt uit bij het ${PORTAL_NAMES[1 - colorIn]}${rest > 0 ? ` — nog ${rest} ${rest === 1 ? 'stap' : 'stappen'}` : ''}.`, null, p);
     paintWalkPawns(soloGraph, soloPlayers, p.idx);
-    soloClearClickable();
-    if (soloBankCountThisTurn > 0) soloEndMoveAlreadyBanked();
-    else soloFinishTurn(false);
+    if (soloMove.stepsLeft <= 0){
+      soloClearClickable();
+      if (soloBankCountThisTurn > 0) soloEndMoveAlreadyBanked();
+      else soloFinishTurn(false);
+    } else {
+      soloAdvanceMovePhase();
+    }
     return;
   }
   p.pos = key;
@@ -18279,7 +18257,7 @@ function rulesSections(){
     { id: 'portaal', title: 'Portalen', scene: 'portal', html: `
       <ul class="rules-list">
         <li>Er liggen altijd twee portalen op het bord: een <b>blauwe</b> en een <b>rode</b>. Ze zijn van iedereen.</li>
-        <li>Stap je in een portaal, dan kom je uit het andere en <b>stopt je zet</b> daar. De rest van je worp vervalt.</li>
+        <li>Stap je in een portaal, dan kom je uit het andere en <b>loop je met de rest van je worp gewoon door</b>, welke kant je maar wilt. Instappen kost één stap.</li>
         <li>Staat er een pion op een van de twee portalen, dan werkt het paar niet.</li>
         <li>Met de energie-actie <b>Portaalkanon</b> of het kristal <b>Portaalsleutel</b> verplaats je een portaal. Het vliegt rechtdoor tot de muur of tot vóór een pion. Hooguit één schot per beurt.</li>
         <li>Je kiest zelf welke kleur je verplaatst, ook als een ander hem legde.</li>
@@ -18721,7 +18699,7 @@ const RULES_SCENES = {
     return anims;
   },
 
-  // pion stapt in het blauwe portaal, komt uit het rode en stopt; de rest van de worp vervalt
+  // pion stapt in het blauwe portaal, komt uit het rode en loopt met de rest van de worp door
   portal(stage){
     const D = 8500, anims = [], C = 30;
     const scene = rEl(stage, 'rules-scene');
@@ -18735,18 +18713,19 @@ const RULES_SCENES = {
     anims.push(rWalk(pawn, path, t0, st, D));
     const tIn = t0 + 5 * st;          // op het blauwe portaal
     anims.push(rTrack(pawn, 'opacity', 0, [[0.04, 1], [tIn + 0.02, 0]], D, 0.03));
+    // uit het rode portaal: de laatste 3 stappen loop je gewoon door
     const out = rPawn(g, 'var(--amber)', C);
-    out.style.transform = 'translate(200%, 200%)';
+    const tOut = tIn + 0.06;
+    anims.push(rWalk(out, [[2, 2], [3, 2], [4, 2], [5, 2]], tOut + 0.04, st, D));
     anims.push(rTrack(out, 'opacity', 0, [[tIn + 0.05, 1], [0.93, 0]], D, 0.03));
-    anims.push(...rShow(rAt(g, 'rs-stop', 2, 2, C, 'stop'), tIn + 0.08, 0.93, D, true));
     const roll = rEl(scene, 'rs-roll');
     rDie(roll, 3); rDie(roll, 5);
     rEl(roll, 'rs-roll-sum', '= 8');
     anims.push(...rShow(roll, 0.04, 0.93, D, true));
-    anims.push(...rShow(rEl(scene, 'rs-lost', '3 stappen vervallen'), tIn + 0.1, 0.93, D, true));
+    anims.push(...rShow(rEl(scene, 'rs-lost', 'nog 3 stappen', 'color:var(--amber)'), tIn + 0.1, 0.93, D, true));
     anims.push(...rCaption(stage, [
       [0.02, tIn - 0.01, 'Je gooit 8 en loopt naar het blauwe portaal'],
-      [tIn, 0.95, 'Uit het rode portaal: je zet stopt daar'],
+      [tIn, 0.95, 'Uit het rode portaal loop je gewoon door'],
     ], D));
     return anims;
   },

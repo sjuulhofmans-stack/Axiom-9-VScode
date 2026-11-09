@@ -304,10 +304,17 @@ aangeroepen (functiedeclaraties worden gehoist, `const`/`let` niet).
   richting kiezen, het portaal vliegt rechtdoor tot de muur of vóór een pion en landt op het
   verste gewone vakje (nooit op opdracht/start/kristal of het andere portaal), daarna kies je
   welke kleur je verplaatst; de andere blijft liggen, ook als een ander hem legde (stelen).
-  Stap je in een portaal, dan kom je uit het andere en **stopt je zet** (instappen = 1 stap, de
-  rest vervalt). Pion op een portaal = het paar werkt niet. Noodtransport, laarzen en duwkaarten
-  negeren portalen. Techniek: `adjKey` blijft het gewone bord; alleen `resolveMove` (stop-regel,
-  `pickPortalEnd`), `simBfsDistances` (A en B tellen als één vakje; `noPortal` voor Noodtransport)
+  Stap je in een portaal, dan kom je uit het andere en **loop je met de rest van je worp door**, in
+  elke richting (instappen = 1 stap). Spelregel van de maker sinds 2026-11 ("stoppen voelde als
+  verloren stappen en frustratie"); daarvoor stopte de zet in het portaal. Gemeten bij de wissel
+  (2 borden × 3.000 potjes, stoppen → doorlopen): potjes 77 → 72 en 85 → 78 beurten (−7%),
+  opdrachten in een beurt met een sprong 3,1 → 10,6 / 11,5% (de oude grens van 5% in de
+  simulatiekaart "Portalen" staat daardoor op rood), meeste teleporteerder wint 17/20 → 26%
+  (grens 30%), energie-acties 23,2–27,7 / 21,0–29,6%, startposities nog eerlijk. Pion op een portaal = het
+  paar werkt niet. Noodtransport, laarzen en duwkaarten
+  negeren portalen. Techniek: `adjKey` blijft het gewone bord; alleen `resolveMove` (in de DP is de
+  uitgang een gewone toestand met richting `SIM_DIR_FREE` = mag alle kanten op; `layersVia` onthoudt
+  de ingang voor het pad), `simBfsDistances` (A en B tellen als één vakje; `noPortal` voor Noodtransport)
   en `soloLegalNextCells` (mens) kijken naar `graph.portals = { cells: [blauw, rood], owner }`.
   Een pad door een portaal bevat ingang én uitgang (twee vakjes die niet naast elkaar liggen =
   `portalIsJump`); tel die stap niet als gelopen vakje. **Elke bot mag schieten** (ook vaste
@@ -503,7 +510,7 @@ Check minimaal:
     vaste vak (gemeten: 1920×960 nog 40px ruimte, 1440×780 nog 24px). Op het bord liggen een
     blauwe en een rode portaalring; Portaalkanon → richting (knop of klik) → kleur ("ligt er sinds
     de start" / "gelegd door X") → lichtspoor + nieuw portaal, daarna gooi je. Loop je in een
-    portaal: flits, je komt uit het andere en je zet stopt. Simulatie → blok "Portalen" met
+    portaal: flits, je komt uit het andere en loopt met je resterende stappen door. Simulatie → blok "Portalen" met
     schoten/gestolen/sprongen en twee oordelen (opdrachten via portaal ≤5%, meeste
     teleporteerder wint ≤30%).
     Herprioritering laat je huidige én volgende opdracht zien en vraagt welke
