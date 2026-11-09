@@ -759,34 +759,84 @@
   }
   .sim-subhead:first-of-type{margin-top:8px; padding-top:0; border-top:none;}
 
-  /* elke sectie van de uitslag is een <details>; standaard dicht, zodat je na het draaien de
-     conclusie ziet en niet 3900px aan tabellen */
+  /* ---------- uitslag als "stoplicht-kaarten" (gekozen variant A uit 4, artifact "Axiom-9
+     Simulatie-uitslag", 2026-11; opbouw in renderSimResults / simCard, 95-simulate.js) ----------
+     Per onderwerp een rij van twee EVEN BREDE kaarten; kaarten in een rij zijn even hoog (stretch),
+     ook als je er een inklapt. Onder 900px één kolom. Elke kaart: titel + oordeelchip + pijltje,
+     groot getal, één zin, diagram, tabel + uitleg achter "Details". */
   .sim-expand-row{display:flex; justify-content:flex-end; margin:2px 0 4px;}
-  /* De secties staan als kaarten in kolommen (3 op een breed scherm, 2 op een laptop, 1 op een
-     telefoon) i.p.v. elk over de volle breedte — daar stond een label helemaal links en zijn
-     getal ±1400px verderop helemaal rechts (gebruikersmelding: "cijfers erg ver uit elkaar").
-     Vaste kolommen (.sim-col, verdeeld door layoutSimSections in 95-simulate.js) i.p.v.
-     CSS-kolommen: die verdeelden bij elk in-/uitklappen alles opnieuw, waardoor kaarten van de
-     linker- naar de middelste kolom sprongen (gebruikersmelding). Nu blijft elke kaart in zijn
-     eigen kolom staan; inklappen schuift alleen de kaarten eronder in díe kolom omhoog. */
-  .sim-sections{display:flex; align-items:flex-start; gap:14px; margin-top:4px;}
-  .sim-col{flex:1 1 0; min-width:0;}
-  .sim-section{
-    margin:0 0 14px;
-    background:var(--hull); border:1px solid var(--line-dim); border-radius:6px; padding:0 14px;
+  .sim-rows{display:grid; gap:14px; margin-top:4px;}
+  .sim-row{display:grid; grid-template-columns:repeat(2, minmax(0, 1fr)); gap:14px; align-items:stretch;}
+  @media (max-width: 900px){ .sim-row{grid-template-columns:minmax(0, 1fr);} }
+  .sim-card{
+    --vc:var(--quest);
+    background:var(--hull); border:1px solid var(--line-dim); border-radius:8px;
+    padding:14px 16px; display:flex; flex-direction:column; gap:10px; min-width:0;
   }
-  /* kaarttitel: groter en dikgedrukt (gebruikerswens: "overzichtelijker") — in de display-letter
-     i.p.v. de kleine grijze mono van .sim-subhead, met een dunne lijn eronder zodat titel en
-     inhoud duidelijk gescheiden zijn */
-  .sim-section > summary.sim-subhead{
-    cursor:var(--cur-click); list-style:none; display:flex; align-items:center; gap:10px;
-    margin:0 0 10px; padding:13px 0 10px; border-top:none; border-bottom:1px solid var(--line-dim);
-    font-family:var(--font-display); font-size:15px; font-weight:700; letter-spacing:.04em;
-    text-transform:none; color:var(--text);
-    transition:color .12s;
+  .sim-card.is-wide{grid-column:1 / -1;}
+  .sim-card.is-ok{--vc:var(--start);}
+  .sim-card.is-warn{--vc:var(--amber);}
+  .sim-card.is-bad{--vc:var(--danger);}
+  .sim-card.is-info{--vc:var(--quest);}
+  .sim-card-head{display:flex; align-items:center; gap:10px;}
+  .sim-card-head h3{
+    flex:1; min-width:0; margin:0;
+    font-family:var(--font-display); font-size:16px; font-weight:700; letter-spacing:.05em;
+    text-transform:uppercase; color:var(--text); line-height:1.1;
   }
-  .sim-section:not([open]) > summary.sim-subhead{margin-bottom:0; border-bottom-color:transparent;}
-  .sim-section > summary.sim-subhead::before{color:var(--quest);}
+  .sim-chip{
+    font-family:var(--font-mono); font-size:10px; font-weight:700; letter-spacing:.1em; text-transform:uppercase;
+    padding:5px 7px; border-radius:4px; white-space:nowrap;
+    color:var(--vc); background:color-mix(in srgb, var(--vc) 14%, transparent);
+  }
+  .sim-card-toggle{
+    flex:none; background:none; border:0; padding:4px; border-radius:4px; color:var(--text-dim);
+    display:grid; place-items:center; cursor:var(--cur-click);
+  }
+  .sim-card-toggle:hover{color:var(--quest);}
+  .sim-card-toggle svg{width:16px; height:16px; transition:transform .2s ease;}
+  .sim-card.is-collapsed .sim-card-toggle svg{transform:rotate(-90deg);}
+  .sim-card.is-collapsed .sim-card-body{display:none;}
+  .sim-card-headline{display:flex; align-items:baseline; gap:10px; flex-wrap:wrap;}
+  .sim-card-headline .big{
+    font-family:var(--font-display); font-size:32px; font-weight:700; line-height:1;
+    color:#eef4fa; font-variant-numeric:tabular-nums; white-space:nowrap;
+  }
+  .sim-card-headline .bl{font-size:13px; color:var(--text-dim); line-height:1.35;}
+  .sim-card-body{display:flex; flex-direction:column; gap:10px; flex:1;}
+  .sim-card-line{margin:0; font-size:14px; color:var(--text);}
+  .sim-chart{display:flex; justify-content:center; min-width:0;}
+  .sim-card svg{max-width:100%; height:auto; display:block;}
+  .sim-card svg text{font-family:var(--font-mono); font-size:11px; fill:var(--text-dim);}
+  .sim-card svg text.sim-svg-tv{fill:var(--text);}
+  .sim-card svg text.sim-svg-big{font-family:var(--font-display); font-weight:700; fill:#eef4fa;}
+  .sim-split{display:grid; grid-template-columns:auto minmax(0, 1fr); gap:14px; align-items:center;}
+  .sim-split-side{min-width:0; display:flex; flex-direction:column; gap:8px;}
+  @media (max-width: 480px){ .sim-split{grid-template-columns:minmax(0, 1fr); justify-items:center;} }
+  .sim-minis{display:grid; grid-template-columns:repeat(3, minmax(0, 1fr)); gap:8px;}
+  .sim-mini{background:var(--panel); border-radius:7px; padding:8px 10px; display:grid; gap:2px; min-width:0;}
+  .sim-mini b{font-family:var(--font-display); font-size:19px; font-weight:700; line-height:1; color:#eef4fa; font-variant-numeric:tabular-nums;}
+  .sim-mini span{font-size:11.5px; color:var(--text-dim); line-height:1.25;}
+  .sim-legend{display:flex; flex-wrap:wrap; gap:6px 12px; font-family:var(--font-mono); font-size:11.5px; line-height:1.3; color:var(--text-dim);}
+  .sim-legend i{display:inline-block; width:9px; height:9px; border-radius:2px; margin-right:5px; vertical-align:-1px;}
+  .sim-more{margin-top:auto;}
+  .sim-more > summary{
+    cursor:var(--cur-click); list-style:none; padding-top:4px;
+    font-family:var(--font-mono); font-size:11px; font-weight:700; letter-spacing:.1em; text-transform:uppercase;
+    color:var(--text-dim);
+  }
+  .sim-more > summary::-webkit-details-marker{display:none;}
+  .sim-more > summary::before{content:'+ ';}
+  .sim-more[open] > summary::before{content:'− ';}
+  .sim-more > summary:hover{color:var(--quest);}
+  .sim-more .hint{font-size:12px; line-height:1.5;}
+  .sim-card .sim-table{margin:8px 0 10px;}
+  .sim-card .sim-table th{vertical-align:bottom; line-height:1.3;}
+  .sim-card .sim-table td .sub{display:block; color:var(--text-dim); font-size:10.5px; margin-top:1px;}
+  .sim-card .sim-hist{margin:4px 0 22px;}
+  .sim-card .sim-heat-legend{flex-wrap:wrap; justify-content:center;}
+  /* de warmtekaart staat nu over de volle breedte: daar mogen de vakjes groter */
+  @media (min-width: 901px){ .sim-card.is-wide .sim-heat-grid{--hcell:13px;} }
   /* percentage met een balkje erachter (barCell in renderSimResults); --w is een kaal getal
      0–100, want een percentage maal een percentage kan calc() niet */
   .sim-bar-cell{position:relative; min-width:110px;}
@@ -795,24 +845,6 @@
     width:calc((100% - 70px) * var(--w) / 100); border-radius:3px;
     background:color-mix(in srgb, var(--amber) 45%, transparent);
   }
-  .sim-section-body{padding:0 0 14px;}
-  .sim-section-body .hint{font-size:12px; line-height:1.5;}
-  /* in een smalle kaart: getallenkoppen mogen over twee regels, en de toelichting achter een
-     naam (bv. de kaarttekst of "(4 energie)") komt eronder i.p.v. de kolom op te rekken */
-  .sim-section .sim-table{margin:6px 0 10px;}
-  .sim-section .sim-table th{vertical-align:bottom; line-height:1.3;}
-  .sim-section .sim-table td .sub{display:block; color:var(--text-dim); font-size:10.5px; margin-top:1px;}
-  .sim-section .sim-heat-legend{flex-wrap:wrap;}
-  .sim-section > summary::-webkit-details-marker{display:none;}
-  .sim-section > summary::before{
-    content:''; flex:none; width:0; height:0;
-    border-left:5px solid currentColor; border-top:4px solid transparent; border-bottom:4px solid transparent;
-    transition:transform .15s;
-  }
-  .sim-section[open] > summary::before{transform:rotate(90deg);}
-  .sim-section > summary:hover{color:var(--quest);}
-  .sim-section-body > .sim-table:first-child,
-  .sim-section-body > p:first-child{margin-top:0;}
 
   .sim-hist{
     display:flex; align-items:flex-end; gap:2px; height:110px; margin:10px 0 22px;
@@ -957,8 +989,6 @@
   /* bemanningslijst in een smalle kaart: rolvak 64px i.p.v. 96px */
   .lobby-card .walk-solo-setup{margin:0;}
   .lobby-card .crew-row{grid-template-columns:22px 10px minmax(0, 1fr) 64px 38px; column-gap:8px;}
-  .lobby-card .crew-list.is-ro .crew-row{grid-template-columns:22px 10px minmax(0, 1fr) 64px;}
-  .lobby-card .crew-list.is-ro .crew-row.is-free{display:flex;}
   /* samenvatting in de Vertrek-kaart */
   .lobby-sum{margin:0; display:flex; flex-direction:column;}
   .lobby-sum > div{display:flex; justify-content:space-between; align-items:baseline; gap:12px; padding:10px 0; border-bottom:1px solid var(--line-dim);}
@@ -4795,7 +4825,9 @@
         <div class="lobby-cards" id="walkAutoControls">
           <section class="lobby-card">
             <h3 class="lobby-card-title">Wie speelt er</h3>
-            <div class="field">
+            <!-- verborgen bron voor het aantal bots; je kiest met de bemanningslijst eronder (✕ / + Bot),
+                 precies dezelfde opbouw als bij Zelf spelen (gebruikerswens 2026-11) -->
+            <div class="field" hidden style="display:none">
               <label for="walkPlayers">Aantal spelers</label>
               <select id="walkPlayers">
                 <option value="1" data-short="1">1 speler</option>
@@ -4804,10 +4836,7 @@
                 <option value="4" data-short="4" selected>4 spelers</option>
               </select>
             </div>
-            <div class="field">
-              <span class="field-label">Aan boord</span>
-              <div class="crew-list is-ro" id="walkAutoCrew"></div>
-            </div>
+            <div id="walkAutoCrew" class="walk-solo-setup"></div>
           </section>
           <section class="lobby-card">
             <h3 class="lobby-card-title">Spelregels</h3>
@@ -7312,8 +7341,6 @@ function switchTab(name){
     btn.setAttribute('aria-selected', active ? 'true' : 'false');
   }
   for (const key of Object.keys(tabPanels)) tabPanels[key].hidden = key !== panelKey;
-  // simulatie-uitslag die klaarkwam terwijl dit tabblad verborgen was: nu pas in kolommen verdelen
-  if (name === 'simulate' && typeof layoutSimSections === 'function') layoutSimSections();
   tabPanels.walk.classList.toggle('is-multi-tab', name === 'multi');
   const multiModeOn = typeof walkModeMultiBtn !== 'undefined' && walkModeMultiBtn && walkModeMultiBtn.classList.contains('active');
   if (name === 'multi' && !multiModeOn) setWalkMode('multi');
@@ -10131,74 +10158,117 @@ function computeQuestDistances(graph){
   return dist;
 }
 
-// Elke sectie van de uitslag is een <details>. De conclusie bovenaan blijft altijd staan; het
-// bewijsmateriaal eronder staat standaard open (klap je zelf in als je het niet wilt zien) —
-// zonder <details> was de uitslag ~3900px aan tabellen achter elkaar, allemaal even zwaar
-// opgemaakt, dus blijft het wel indeelbaar per sectie.
-// De kaarten staan in vaste kolommen (.sim-col): 3 op een breed scherm, 2 op een laptop, 1 op een
-// telefoon (kolom minstens 420px). Vroeger deed CSS `columns` dat, maar die verdeelt bij elk
-// in-/uitklappen alles opnieuw en dan sprong een kaart van links naar het midden
-// (gebruikersmelding). Nu verdelen we één keer, op de UITGEKLAPTE hoogtes, en blijft dat zo tot
-// het aantal kolommen verandert (venster smaller/breder). Verdeling zoals krantenkolommen: op
-// volgorde van boven naar beneden, links eerst, met de hoogste kolom zo laag mogelijk.
-const SIM_COL_MIN_W = 420, SIM_COL_GAP = 14;
-function layoutSimSections(){
-  const wrap = simResultsEl && simResultsEl.querySelector('.sim-sections');
-  if (!wrap || !wrap.offsetWidth) return;   // onzichtbaar tabblad: bij terugkeer opnieuw
-  const W = wrap.clientWidth;
-  const n = Math.max(1, Math.min(3, Math.floor((W + SIM_COL_GAP) / (SIM_COL_MIN_W + SIM_COL_GAP))));
-  if (+wrap.dataset.cols === n) return;
-  const sections = [...wrap.querySelectorAll('details.sim-section')];
-  sections.forEach((d, i) => { if (d.dataset.idx === undefined) d.dataset.idx = i; });
-  sections.sort((a, b) => a.dataset.idx - b.dataset.idx);
-  // kolommen opbouwen; alles eerst in kolom 1 (zelfde breedte als de rest) om te meten
-  const cols = Array.from({ length: n }, () => {
-    const c = document.createElement('div'); c.className = 'sim-col'; return c;
-  });
-  wrap.replaceChildren(...cols);
-  const wasOpen = sections.map(d => d.open);
-  sections.forEach(d => { d.open = true; cols[0].appendChild(d); });
-  const h = sections.map(d => d.offsetHeight + SIM_COL_GAP);
-  sections.forEach((d, i) => { d.open = wasOpen[i]; });
-  // beste opsplitsing in n aaneengesloten stukken (max. 3 kolommen, ~12 kaarten: gewoon alles proberen)
-  const k = sections.length;
-  const pre = [0]; for (const x of h) pre.push(pre[pre.length - 1] + x);
-  const sum = (a, b) => pre[b] - pre[a];
-  let best = { score: Infinity, cuts: [] };
-  if (n === 1) best.cuts = [];
-  else if (n === 2){
-    for (let a = 1; a < k; a++){
-      const s = Math.max(sum(0, a), sum(a, k));
-      if (s < best.score) best = { score: s, cuts: [a] };
-    }
-  } else {
-    for (let a = 1; a < k - 1; a++) for (let b = a + 1; b < k; b++){
-      const s = Math.max(sum(0, a), sum(a, b), sum(b, k));
-      if (s < best.score) best = { score: s, cuts: [a, b] };
-    }
-  }
-  const bounds = [0, ...best.cuts, k];
-  for (let c = 0; c < n; c++){
-    for (let i = bounds[c]; i < bounds[c + 1]; i++) cols[c].appendChild(sections[i]);
-  }
-  wrap.dataset.cols = n;
-}
-{
-  let t = null;
-  window.addEventListener('resize', () => { clearTimeout(t); t = setTimeout(layoutSimSections, 150); });
-}
+// ---------- uitslag als "stoplicht-kaarten" (gekozen variant A uit 4, artifact "Axiom-9 Simulatie-uitslag", 2026-11) ----------
+// Onder de oordeelsbalk staan per onderwerp twee even brede kaarten naast elkaar (.sim-row, 1 kolom op
+// een smal scherm). Elke kaart heeft dezelfde opbouw: titel + oordeel (in orde / let op / probleem /
+// ter info), één groot getal met een korte regel, één zin, één diagram, en de volledige tabel + uitleg
+// achter "Details". Elke kaart klapt los in (pijltje rechtsboven): dan blijven titel en groot getal
+// staan, en de buurkaart in de rij blijft even hoog. Diagrammen zijn kleine inline SVG's met vaste
+// maten (niets opmeten), dus geen herverdeling meer bij in-/uitklappen (layoutSimSections is weg).
+const SIM_COL = { blue: '#4fb8e0', green: '#55d68a', amber: '#ffb545', red: '#ff5d5d', violet: '#b57bef', dim: '#4a5a6b', track: '#1c2530' };
+const SIM_START_COLORS = ['#ff4fd8', '#ffd23d', '#7c5cff', '#ff7a45'];
+const SIM_TINT_COLORS = { amber: SIM_COL.amber, start: SIM_COL.green, quest: SIM_COL.blue, danger: SIM_COL.red };
+const SIM_STATE_LABEL = { ok: 'in orde', warn: 'let op', bad: 'probleem', info: 'ter info' };
 
-let simSectionOpened = false;
-function simSectionOpen(title){
-  const close = simSectionOpened ? '</div></details>' : '';
-  simSectionOpened = true;
-  return `${close}<details class="sim-section" open><summary class="sim-subhead">${title}</summary><div class="sim-section-body">`;
+// ring in stukken; `center`/`sub` in het gat
+function simDonut(segs, { size = 120, w = 18, center = '', sub = '' } = {}){
+  const r = (size - w) / 2, C = 2 * Math.PI * r, tot = segs.reduce((a, s) => a + s.v, 0) || 1, h = size / 2;
+  let off = 0, arcs = '';
+  for (const s of segs){
+    const len = s.v / tot * C;
+    arcs += `<circle cx="${h}" cy="${h}" r="${r}" fill="none" stroke="${s.c}" stroke-width="${w}" stroke-dasharray="${Math.max(0, len - 1.5)} ${C}" stroke-dashoffset="${-off}" transform="rotate(-90 ${h} ${h})"><title>${s.label}: ${nl(s.v, 1)}%</title></circle>`;
+    off += len;
+  }
+  return `<svg viewBox="0 0 ${size} ${size}" width="${size}" height="${size}" role="img"><circle cx="${h}" cy="${h}" r="${r}" fill="none" stroke="${SIM_COL.track}" stroke-width="${w}"/>${arcs}` +
+    `<text x="50%" y="${sub ? '49%' : '55%'}" text-anchor="middle" class="sim-svg-big" style="font-size:${size * .2}px">${center}</text>` +
+    (sub ? `<text x="50%" y="66%" text-anchor="middle" style="font-size:${size * .09}px">${sub}</text>` : '') + `</svg>`;
 }
-function simSectionCloseAll(){
-  const close = simSectionOpened ? '</div></details>' : '';
-  simSectionOpened = false;
-  return close;
+// liggende balken; `ref` = stippellijn, `band` = groene zone
+function simHBars(items, { max, ref, band, fmt = v => nl(v, 1) + '%', w = 320, lw = 112 } = {}){
+  const rh = 22, H = items.length * rh + (ref != null ? 18 : 4), x0 = lw, x1 = w - 48;
+  const X = v => x0 + (x1 - x0) * Math.max(0, Math.min(1, v / max));
+  let s = '';
+  if (band) s += `<rect x="${X(band[0])}" y="0" width="${X(band[1]) - X(band[0])}" height="${items.length * rh + 4}" fill="rgba(85,214,138,.12)"/>`;
+  items.forEach((it, i) => {
+    const y = i * rh + 4;
+    s += `<text x="${x0 - 8}" y="${y + 12}" text-anchor="end" class="sim-svg-tv">${it.label}</text>` +
+      `<rect x="${x0}" y="${y + 2}" width="${x1 - x0}" height="12" rx="3" fill="${SIM_COL.track}"/>` +
+      `<rect x="${x0}" y="${y + 2}" width="${Math.max(2, X(it.v) - x0)}" height="12" rx="3" fill="${it.c || SIM_COL.blue}"/>` +
+      `<text x="${x1 + 6}" y="${y + 12}" class="sim-svg-tv">${fmt(it.v)}</text>`;
+  });
+  if (ref != null){
+    const bottom = items.length * rh + 4;
+    s += `<line x1="${X(ref)}" x2="${X(ref)}" y1="0" y2="${bottom}" stroke="#eef4fa" stroke-dasharray="3 3" opacity=".7"/>` +
+      `<text x="${X(ref)}" y="${H - 2}" text-anchor="middle">${fmt(ref)}</text>`;
+  }
+  return `<svg viewBox="0 0 ${w} ${H}" width="${w}" role="img">${s}</svg>`;
 }
+// staande staafjes (verdeling); `hi` = index die amber wordt
+function simColumns(vals, labels, { w = 320, h = 110, color = SIM_COL.blue, hi = -1, tips } = {}){
+  const n = vals.length, max = Math.max(...vals) || 1, bw = (w - 10) / n;
+  let s = '';
+  vals.forEach((v, i) => {
+    const bh = (h - 22) * v / max, x = 5 + i * bw;
+    s += `<rect x="${x + 2}" y="${h - 16 - bh}" width="${Math.max(1, bw - 4)}" height="${Math.max(0, bh)}" rx="2" fill="${i === hi ? SIM_COL.amber : color}"><title>${tips ? tips[i] : labels[i] + ': ' + nl(v, 1) + '%'}</title></rect>`;
+    if (labels[i] !== '') s += `<text x="${x + bw / 2}" y="${h - 3}" text-anchor="middle">${labels[i]}</text>`;
+  });
+  return `<svg viewBox="0 0 ${w} ${h}" width="${w}" role="img">${s}</svg>`;
+}
+// één gestapelde balk
+function simStack(segs, { w = 320 } = {}){
+  let x = 0, s = '';
+  const tot = segs.reduce((a, b) => a + b.v, 0) || 1;
+  for (const g of segs){
+    const ww = g.v / tot * w;
+    s += `<rect x="${x}" y="0" width="${Math.max(0, ww - 2)}" height="18" rx="3" fill="${g.c}"><title>${g.label}: ${nl(g.v, 1)}%</title></rect>`;
+    x += ww;
+  }
+  return `<svg viewBox="0 0 ${w} 18" width="${w}" role="img">${s}</svg>`;
+}
+// stippen op een as 15–35% met een groene zone (kristallen)
+function simDots(items, { band, min = 15, max = 35, w = 320 } = {}){
+  const x0 = 14, x1 = w - 14, X = v => x0 + (x1 - x0) * (Math.max(min, Math.min(max, v)) - min) / (max - min), H = 70;
+  let s = `<rect x="${X(band[0])}" y="8" width="${X(band[1]) - X(band[0])}" height="40" fill="rgba(85,214,138,.12)"/>` +
+    `<line x1="${X(25)}" x2="${X(25)}" y1="6" y2="50" stroke="#eef4fa" stroke-dasharray="3 3" opacity=".6"/>`;
+  items.forEach((it, i) => {
+    s += `<circle cx="${X(it.v)}" cy="${16 + (i % 4) * 9}" r="5" fill="${it.c}" stroke="#0b0f14" stroke-width="1.5"><title>${it.label}: ${nl(it.v, 1)}%</title></circle>`;
+  });
+  for (let t = min; t <= max; t += 5) s += `<text x="${X(t)}" y="${H - 4}" text-anchor="middle">${t}%</text>`;
+  return `<svg viewBox="0 0 ${w} ${H}" width="${w}" role="img">${s}</svg>`;
+}
+// startposities × eindplaats, kleur = afwijking van 25%
+function simRankGrid(labels, ranks){
+  const cell = 46, s = [];
+  ['1e', '2e', '3e', '4e'].forEach((t, j) => s.push(`<text x="${52 + j * cell + cell / 2}" y="12" text-anchor="middle">${t}</text>`));
+  labels.forEach((lbl, i) => {
+    s.push(`<text x="40" y="${37 + i * 30}" text-anchor="end" class="sim-svg-tv">${lbl}</text>`);
+    ranks[i].forEach((v, j) => {
+      const dev = v - 25, a = Math.min(1, Math.abs(dev) / 3);
+      const col = dev >= 0 ? `rgba(79,184,224,${.15 + a * .6})` : `rgba(255,181,69,${.15 + a * .6})`;
+      s.push(`<rect x="${52 + j * cell + 2}" y="${20 + i * 30}" width="${cell - 4}" height="26" rx="4" fill="${col}"/>` +
+        `<text x="${52 + j * cell + cell / 2}" y="${37 + i * 30}" text-anchor="middle" class="sim-svg-tv">${nl(v, 0)}%</text>`);
+    });
+  });
+  return `<svg viewBox="0 0 240 ${24 + labels.length * 30}" width="240" role="img">${s.join('')}</svg>`;
+}
+const simLegend = items => `<div class="sim-legend">${items.map(([c, t]) => `<span><i style="background:${c}"></i>${t}</span>`).join('')}</div>`;
+const simMinis = arr => `<div class="sim-minis">${arr.map(([v, t]) => `<div class="sim-mini"><b>${v}</b><span>${t}</span></div>`).join('')}</div>`;
+const simChart = svg => `<div class="sim-chart">${svg}</div>`;
+const simSplit = (a, b) => `<div class="sim-split">${a}<div class="sim-split-side">${b}</div></div>`;
+
+// één kaart. `st` = 'ok' | 'warn' | 'bad' | 'info'; `wide` = over beide kolommen (warmtekaart)
+function simCard({ id, title, st, big, bl, line, chart, details, wide = false }){
+  return `<article class="sim-card is-${st}${wide ? ' is-wide' : ''}" data-id="${id}">` +
+    `<div class="sim-card-head"><h3>${title}</h3><span class="sim-chip">${SIM_STATE_LABEL[st]}</span>` +
+    `<button type="button" class="sim-card-toggle" aria-expanded="true" aria-label="${title} in- of uitklappen">` +
+    `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></button></div>` +
+    (big != null ? `<div class="sim-card-headline"><span class="big">${big}</span><span class="bl">${bl || ''}</span></div>` : '') +
+    `<div class="sim-card-body">${line ? `<p class="sim-card-line">${line}</p>` : ''}${chart || ''}` +
+    (details ? `<details class="sim-more"><summary>Details</summary>${details}</details>` : '') +
+    `</div></article>`;
+}
+// rij van twee kaarten (of één brede)
+const simRow = cards => `<div class="sim-row">${cards.join('')}</div>`;
 
 // de 5 tegels met het minste verkeer (genormaliseerd per vakje, zodat grote en kleine tegels
 // eerlijk vergeleken worden) — dit zijn de "lussen waar geen enkele speler komt" uit de heatmap,
@@ -10323,14 +10393,13 @@ function renderSimResults({ n, stuckCount, startWins, startTurnsSum, startRanks,
   const avgGap = extra.winGapCount ? (extra.winGapSum / extra.winGapCount) : 0;
   const nailBiterPct = extra.winGapCount ? (extra.nailBiters / extra.winGapCount * 100) : 0;
 
-  simSectionOpened = false;
   // geen regel "N potjes gesimuleerd op indeling …" meer (gebruikerswens); alleen als er potjes
   // vastliepen een korte uitleg dat die niet meetellen
   let html = stuckCount
     ? `<p class="hint"><span style="color:var(--danger)">${stuckCount} vastgelopen</span> (afgekapt na ${SIM_MAX_TURNS} beurten, niet meegeteld in de percentages).</p>`
     : '';
 
-  // De twaalf secties hieronder zijn het bewijsmateriaal; deze vier vakjes beantwoorden de
+  // De kaarten hieronder zijn het bewijsmateriaal; deze vier vakjes beantwoorden de
   // vraag waar je de simulatie eigenlijk voor draait — is dit bord goed genoeg om te spelen?
   // "Dode tegels": niet alleen 0% telt. Een tegel met minder dan SIM_DEAD_TILE_SHARE% van het verkeer
   // (gemiddeld is 5% per tegel) is in de praktijk ook dood — vroeger stond er groen "geen" bij 0,1%.
@@ -10338,6 +10407,7 @@ function renderSimResults({ n, stuckCount, startWins, startTurnsSum, startRanks,
   const coldest = coldRows[0];
   const deadTiles = coldRows.filter(r => r.share < SIM_DEAD_TILE_SHARE).length;
   const weakTiles = coldRows.filter(r => r.share < SIM_WEAK_TILE_SHARE).length;
+  const tileName = r => `${letterForSlot(r.slotIdx)} · ${ROOM_NAMES[r.tid] || ('Gang ' + r.tid)}`;
   const verdictItem = (state, label, value, sub) =>
     `<div class="sim-verdict-item ${state}"><span class="lbl">${label}</span><span class="val">${value}</span><span class="sub">${sub}</span></div>`;
   html += `<div class="sim-verdict">` +
@@ -10353,123 +10423,116 @@ function renderSimResults({ n, stuckCount, startWins, startTurnsSum, startRanks,
     verdictItem(!coldest ? 'warn' : deadTiles ? 'bad' : weakTiles ? 'warn' : 'ok',
       'Dode tegels',
       !coldest ? '—' : deadTiles ? `${deadTiles}` : weakTiles ? `${weakTiles} stil` : 'geen',
-      coldest
-        ? `stilste tegel: ${letterForSlot(coldest.slotIdx)} — ${ROOM_NAMES[coldest.tid] || ('Gang ' + coldest.tid)} met ${nl(coldest.share, 1)}% van het verkeer`
-        : '—') +
+      coldest ? `stilste tegel: ${tileName(coldest)} met ${nl(coldest.share, 1)}% van het verkeer` : '—') +
     verdictItem('ok', 'Speelduur', `${Math.round(avg)} beurten`,
       `alle spelers samen — ${nl(avg / SIM_START_LABELS.length, 1)} beurten per speler · mediaan ${median} · min ${min} · max ${max}`) +
     `</div>`;
 
-  html += `<div class="sim-expand-row"><button type="button" class="small ghost" id="btnSimExpand" aria-expanded="true">Alle details inklappen</button></div>`;
-  // alle secties hieronder als kaarten in kolommen (zie .sim-sections in styles.css)
-  html += `<div class="sim-sections">`;
-
-  html += simSectionOpen('Eerlijkheid per startpositie');
-  html += `<table class="sim-table"><thead><tr><th>Startpositie</th><th>Winst% (±95%-marge)</th><th>Gem. beurten tot winst</th></tr></thead><tbody>${rows}</tbody></table>`;
-  html += `<p class="hint">Balans: ${verdict} (spreiding <b>${nl(spread, 1)}</b> procentpunt, gem. foutmarge ±<b>${nl(avgMoe, 1)}</b>).</p>`;
-
-  // Nu er wordt doorgespeeld tot de nummer 3 binnen is, ligt van elk potje de hele
-  // klassering vast. Alleen naar winst kijken verbergt een startpositie die zelden wint
-  // maar wel structureel derde of vierde wordt.
-  const rankRows = SIM_START_LABELS.map(lbl => {
-    const counts = startRanks[lbl];
-    const total = counts.reduce((a, b) => a + b, 0);
-    const cells = counts.map(c => `<td class="num">${total ? nl((c / total * 100), 1) : '0,0'}%</td>`).join('');
-    const avgRank = total ? counts.reduce((s, c, i) => s + c * (i + 1), 0) / total : 0;
-    return `<tr><td>${lbl}</td>${cells}<td class="num">${nl(avgRank, 2)}</td></tr>`;
-  }).join('');
-  html += simSectionOpen('Eindklassering per startpositie');
-  html += `<table class="sim-table"><thead><tr><th>Startpositie</th><th>1e</th><th>2e</th><th>3e</th><th>4e</th><th>Gem. plaats</th></tr></thead><tbody>${rankRows}</tbody></table>`;
-  html += `<p class="hint">Er wordt doorgespeeld tot de <b>nummer 3</b> binnen is; de laatste speler is dan automatisch vierde. Bij een eerlijk bord ligt elke kolom rond de 25% en de gemiddelde plaats rond de 2,50.</p>`;
-
-  html += simSectionOpen('Eerlijkheid per beurtvolgorde');
-  html += `<table class="sim-table"><thead><tr><th>Beurtvolgorde</th><th>Winst%</th></tr></thead><tbody>${seatRows}</tbody></table>`;
-
-  html += simSectionOpen('Eerlijkheid per opdrachtvakje');
-  html += `<table class="sim-table"><thead><tr><th>Opdracht</th><th>Gem. beurten om te bereiken</th><th>Keer bereikt</th></tr></thead><tbody>${questRows}</tbody></table>`;
-  html += `<p class="hint">Hoe hoger het gemiddelde, hoe afgelegener dat opdrachtvakje ligt vanaf waar spelers 'm meestal moeten benaderen.</p>`;
-
-  html += simSectionOpen('Speelduur');
-  // `gameLengths` telt de beurten van ALLE spelers bij elkaar op — dat is de lengte van het
-  // potje, niet wat één speler doet. De beurten gaan om de beurt rond, dus delen door het
-  // aantal spelers geeft precies hoeveel keer jij aan de beurt komt (hooguit één beurt
-  // verschil tussen de eerste en de laatste in de volgorde).
+  const pctOf = (a, b) => b ? a / b * 100 : 0;
   const spelers = SIM_START_LABELS.length;
-  // mediaan/min/max zijn hele beurten; alleen het gemiddelde heeft een decimaal nodig
-  const duurRij = (label, totaal) =>
-    `<tr><td>${label}</td><td class="num">${nl(totaal, Number.isInteger(totaal) ? 0 : 1)}</td><td class="num">${nl(totaal / spelers, 1)}</td></tr>`;
-  html += `<p class="hint">Van de eerste worp tot de nummer 3 binnen is. De linkerkolom is het hele potje, de rechter hoe vaak één speler aan de beurt komt (${spelers} spelers, om de beurt).</p>`;
-  html += `<table class="sim-table"><thead><tr><th>Speelduur</th><th>Beurten totaal</th><th>Per speler</th></tr></thead><tbody>` +
-    duurRij('Gemiddeld', avg) +
-    duurRij('Mediaan', median) +
-    duurRij('Kortste potje', min) +
-    duurRij('Langste potje', max) +
-    `</tbody></table>`;
-  html += renderHistogram(gameLengths);
-
-  html += simSectionOpen('Spanning en blokkeren');
-  html += `<p class="hint">De nummer 2 stond bij winst gemiddeld <b>${nl(avgGap, 1)}</b> opdracht(en) achter — <b>${nl(nailBiterPct, 0)}%</b> van de potjes werd met precies 1 opdracht verschil beslist. In <b>${nl(blockedPct, 1)}%</b> van de beurten kwam een speler ergens in zijn zoektocht naar de beste route een bezet vakje tegen (niet per se de uiteindelijk gekozen route).</p>`;
-
   // percentage met een klein balkje erachter (schaal: `max` = volle breedte)
   const barCell = (pct, max) =>
     `<td class="num sim-bar-cell"><span class="sim-bar" style="--w:${max ? Math.min(100, pct / max * 100).toFixed(1) : 0}"></span>${nl(pct, 1)}%</td>`;
+  const tbl = (head, body) => `<table class="sim-table"><thead><tr>${head}</tr></thead><tbody>${body}</tbody></table>`;
+  const cards = {};
 
-  // ---------- Kan de achterste nog terugkomen? ----------
+  // ---------- Eerlijkheid ----------
+  cards.start = simCard({ id: 'start', title: 'Startposities', st: played === 0 ? 'warn' : withinNoise ? 'ok' : 'bad',
+    big: `${nl(spread, 1)} pt`, bl: `verschil tussen beste en slechtste startplek, foutmarge ±${nl(avgMoe, 1)}`,
+    line: withinNoise ? 'Elke startplek wint ongeveer een kwart van de potjes.' : 'Eén startplek wint duidelijk vaker dan de foutmarge verklaart.',
+    chart: simSplit(simDonut(SIM_START_LABELS.map((l, i) => ({ v: startPcts[i], c: SIM_START_COLORS[i], label: l })), { center: '25%', sub: 'eerlijk' }),
+      simLegend(SIM_START_LABELS.map((l, i) => [SIM_START_COLORS[i], `${l} · ${nl(startPcts[i], 1)}%`]))),
+    details: tbl('<th>Startpositie</th><th>Winst% (±95%-marge)</th><th>Gem. beurten tot winst</th>', rows) +
+      `<p class="hint">Balans: ${verdict} (spreiding <b>${nl(spread, 1)}</b> procentpunt, gem. foutmarge ±<b>${nl(avgMoe, 1)}</b>).</p>` });
+
+  // Er wordt doorgespeeld tot de nummer 3 binnen is, dus van elk potje ligt de hele klassering
+  // vast. Alleen naar winst kijken verbergt een startpositie die zelden wint maar wel structureel
+  // derde of vierde wordt.
+  const seatPcts = seatWins.map(w => played ? w / played * 100 : 0);
+  const seatSpread = Math.max(...seatPcts) - Math.min(...seatPcts);
+  const rankPcts = SIM_START_LABELS.map(lbl => {
+    const counts = startRanks[lbl], total = counts.reduce((a, b) => a + b, 0);
+    return counts.map(c => total ? c / total * 100 : 0);
+  });
+  const rankRows = SIM_START_LABELS.map((lbl, i) => {
+    const counts = startRanks[lbl], total = counts.reduce((a, b) => a + b, 0);
+    const avgRank = total ? counts.reduce((s, c, j) => s + c * (j + 1), 0) / total : 0;
+    return `<tr><td>${lbl}</td>${rankPcts[i].map(p => `<td class="num">${nl(p, 1)}%</td>`).join('')}<td class="num">${nl(avgRank, 2)}</td></tr>`;
+  }).join('');
+  cards.seat = simCard({ id: 'seat', title: 'Beurtvolgorde en eindplaats', st: played === 0 ? 'warn' : seatSpread <= 3 ? 'ok' : 'warn',
+    big: `${nl(seatSpread, 1)} pt`, bl: 'verschil tussen de beste en slechtste plek in de beurtvolgorde',
+    line: seatSpread <= 3 ? 'Wie het eerst mag gooien heeft nauwelijks voordeel.' : 'De beurtvolgorde maakt merkbaar verschil.',
+    chart: simChart(simHBars(seatPcts.map((v, i) => ({ label: `${i + 1}e aan zet`, v })), { max: 35, ref: 25, w: 320, lw: 96 })) +
+      simChart(simRankGrid(SIM_START_LABELS, rankPcts)),
+    details: tbl('<th>Startpositie</th><th>1e</th><th>2e</th><th>3e</th><th>4e</th><th>Gem. plaats</th>', rankRows) +
+      `<p class="hint">Er wordt doorgespeeld tot de <b>nummer 3</b> binnen is; de laatste speler is dan automatisch vierde. Bij een eerlijk bord ligt elke kolom rond de 25% en de gemiddelde plaats rond de 2,50.</p>` +
+      tbl('<th>Beurtvolgorde</th><th>Winst%</th>', seatRows) });
+
+  // ---------- Tempo en spanning ----------
+  // `gameLengths` telt de beurten van ALLE spelers bij elkaar op — dat is de lengte van het potje.
+  // Delen door het aantal spelers geeft hoe vaak één speler aan de beurt komt.
+  const duurRij = (label, totaal) =>
+    `<tr><td>${label}</td><td class="num">${nl(totaal, Number.isInteger(totaal) ? 0 : 1)}</td><td class="num">${nl(totaal / spelers, 1)}</td></tr>`;
+  cards.len = simCard({ id: 'len', title: 'Speelduur', st: 'info',
+    big: `${Math.round(avg)} beurten`, bl: `${nl(avg / spelers, 1)} per speler`,
+    line: 'Van de eerste worp tot de nummer 3 binnen is.',
+    chart: renderHistogram(gameLengths) + simMinis([[min, 'kortste'], [median, 'mediaan'], [max, 'langste']]),
+    details: tbl('<th>Speelduur</th><th>Beurten totaal</th><th>Per speler</th>',
+      duurRij('Gemiddeld', avg) + duurRij('Mediaan', median) + duurRij('Kortste potje', min) + duurRij('Langste potje', max)) +
+      `<p class="hint">De linkerkolom is het hele potje, de rechter hoe vaak één speler aan de beurt komt (${spelers} spelers, om de beurt).</p>` });
+
+  cards.tension = simCard({ id: 'tension', title: 'Spanning', st: nailBiterPct >= 60 ? 'ok' : 'warn',
+    big: `${nl(nailBiterPct, 0)}%`, bl: 'van de potjes beslist met 1 opdracht verschil',
+    line: nailBiterPct >= 60 ? 'Bijna elk potje is spannend tot het eind.' : 'Veel potjes worden met ruime voorsprong gewonnen.',
+    chart: simSplit(simDonut([{ v: nailBiterPct, c: SIM_COL.green, label: '1 verschil' }, { v: 100 - nailBiterPct, c: SIM_COL.dim, label: 'meer verschil' }], { center: nl(nailBiterPct, 0) + '%', sub: 'nek-aan-nek' }),
+      simMinis([[nl(avgGap, 1), 'achterstand nr. 2'], [nl(blockedPct, 0) + '%', 'beurten met blokkade'], [stuckCount, 'vastgelopen']])),
+    details: tbl('<th>Meetpunt</th><th>Waarde</th>',
+      `<tr><td>Nummer 2 achter bij winst</td><td class="num">${nl(avgGap, 1)} opdr.</td></tr>` +
+      `<tr><td>Beslist met 1 opdracht verschil</td><td class="num">${nl(nailBiterPct, 1)}%</td></tr>` +
+      `<tr><td>Beurten met een bezet vakje op de route</td><td class="num">${nl(blockedPct, 1)}%</td></tr>`) +
+      `<p class="hint">"Blokkade": een speler kwam ergens in zijn zoektocht naar de beste route een bezet vakje tegen (niet per se op de uiteindelijk gekozen route).</p>` });
+
+  // ---------- Geluk ----------
   const cbN = extra.comebackGames;
   const cbPct = (i) => cbN ? extra.comebackHist[i] / cbN * 100 : 0;
   const cbMax = Math.max(...[0, 1, 2, 3].map(cbPct));
+  const notLeader = 100 - cbPct(0);
   const cbRows = [['Stond voor (of gedeeld)', 0], ['1 opdracht achter', 1], ['2 opdrachten achter', 2], ['3 of meer achter', 3]]
     .map(([label, i]) => `<tr><td>${label}</td>${barCell(cbPct(i), cbMax)}</tr>`).join('');
-  html += simSectionOpen('Kan de achterste nog terugkomen?');
-  html += `<p class="hint">Halverwege is het eind van de ronde waarin de eerste speler zijn ${SIM_QUESTS_TO_WIN / 2}e opdracht haalt. Hoe ver lag de latere winnaar toen achter op de koploper?</p>`;
-  html += `<table class="sim-table"><thead><tr><th>Winnaar halverwege</th><th>Potjes</th></tr></thead><tbody>${cbRows}</tbody></table>`;
-  html += `<p class="hint">In <b>${nl(100 - cbPct(0), 0)}%</b> van de potjes won iemand die halverwege níet (mede)koploper was — hoe hoger, hoe langer een potje spannend blijft.</p>`;
+  const cbCols = [SIM_COL.blue, SIM_COL.green, SIM_COL.amber, SIM_COL.red];
+  const cbLabels = ['stond voor', '1 achter', '2 achter', '3+ achter'];
+  cards.comeback = simCard({ id: 'comeback', title: 'Kan de achterste terugkomen?', st: notLeader >= 30 ? 'ok' : 'warn',
+    big: `${nl(notLeader, 0)}%`, bl: 'van de winnaars stond halverwege níet voor',
+    line: notLeader >= 30 ? 'Achterstaan halverwege is geen verloren potje.' : 'Wie halverwege voorstaat, wint meestal ook.',
+    chart: simChart(simStack(cbLabels.map((label, i) => ({ v: cbPct(i), c: cbCols[i], label })))) +
+      simLegend(cbLabels.map((t, i) => [cbCols[i], `${t} ${nl(cbPct(i), i === 3 ? 1 : 0)}%`])),
+    details: tbl('<th>Winnaar halverwege</th><th>Potjes</th>', cbRows) +
+      `<p class="hint">Halverwege is het eind van de ronde waarin de eerste speler zijn ${SIM_QUESTS_TO_WIN / 2}e opdracht haalt. Hoe ver lag de latere winnaar toen achter op de koploper?</p>` });
 
-  // ---------- Pech-reeksen ----------
   const sh = extra.searchHist;
   const shTotal = sh.reduce((a, b) => a + b, 0);
   const shSum = (from, to) => { let s = 0; for (let i = from; i <= Math.min(to, SIM_SEARCH_HIST_MAX); i++) s += sh[i]; return s; };
   const shAvg = shTotal ? sh.reduce((s, c, i) => s + c * i, 0) / shTotal : 0;
-  const shBuckets = [['1 beurt', 1, 1], ['2 beurten', 2, 2], ['3 beurten', 3, 3], ['4–5 beurten', 4, 5],
-    ['6–7 beurten', 6, 7], [`${SIM_LONG_SEARCH}–${SIM_SEARCH_HIST_MAX - 1} beurten`, SIM_LONG_SEARCH, SIM_SEARCH_HIST_MAX - 1],
-    [`${SIM_SEARCH_HIST_MAX} of meer`, SIM_SEARCH_HIST_MAX, SIM_SEARCH_HIST_MAX]];
+  const shBuckets = [['1', 1, 1], ['2', 2, 2], ['3', 3, 3], ['4–5', 4, 5], ['6–7', 6, 7],
+    [`${SIM_LONG_SEARCH}–${SIM_SEARCH_HIST_MAX - 1}`, SIM_LONG_SEARCH, SIM_SEARCH_HIST_MAX - 1],
+    [`${SIM_SEARCH_HIST_MAX}+`, SIM_SEARCH_HIST_MAX, SIM_SEARCH_HIST_MAX]];
   const shPcts = shBuckets.map(([, a, b]) => shTotal ? shSum(a, b) / shTotal * 100 : 0);
   const shMax = Math.max(...shPcts);
-  const shRows = shBuckets.map(([label], i) => `<tr><td>${label}</td>${barCell(shPcts[i], shMax)}</tr>`).join('');
+  const shRows = shBuckets.map(([label], i) => `<tr><td>${label} beurt${label === '1' ? '' : 'en'}</td>${barCell(shPcts[i], shMax)}</tr>`).join('');
   const longPct = played ? extra.gamesWithLongSearch / played * 100 : 0;
-  html += simSectionOpen('Pech-reeksen');
-  html += `<p class="hint">Hoeveel eigen beurten zat een speler achter één opdracht aan, tot hij 'm had? Gemiddeld <b>${nl(shAvg, 1)}</b>; de langste zoektocht duurde <b>${extra.longestSearch}</b> beurten.</p>`;
-  html += `<table class="sim-table"><thead><tr><th>Zoektocht duurde</th><th>Opdrachten</th></tr></thead><tbody>${shRows}</tbody></table>`;
-  html += `<p class="hint">In <b>${nl(longPct, 0)}%</b> van de potjes zat minstens één speler ${SIM_LONG_SEARCH} beurten of langer achter dezelfde opdracht aan — zo'n reeks voelt aan tafel als pech, ook als het gemiddelde klopt.</p>`;
+  cards.search = simCard({ id: 'search', title: 'Pech-reeksen', st: longPct <= 25 ? 'ok' : 'warn',
+    big: `${nl(shAvg, 1)} beurten`, bl: 'gemiddeld achter één opdracht aan',
+    line: `In ${nl(longPct, 0)}% van de potjes zat iemand ${SIM_LONG_SEARCH} beurten of langer achter één opdracht aan.`,
+    chart: simChart(simColumns(shPcts, shBuckets.map(b => b[0]), { color: SIM_COL.violet, hi: 5 })) +
+      simMinis([[extra.longestSearch, 'langste zoektocht'], [nl(longPct, 0) + '%', `potjes met ${SIM_LONG_SEARCH}+`], [nl(shAvg, 1), 'gemiddeld']]),
+    details: tbl('<th>Zoektocht duurde</th><th>Opdrachten</th>', shRows) +
+      `<p class="hint">Hoeveel eigen beurten zat een speler achter één opdracht aan, tot hij 'm had? Zo'n lange reeks voelt aan tafel als pech, ook als het gemiddelde klopt.</p>` });
 
-  // ---------- energie ----------
-  // Zolang er niets uitgegeven wordt, is dit een nulmeting: hoeveel komt er binnen, hoe snel
-  // zit je aan het plafond en hoe vaak kun je een actie van N energie betalen. Precies de
-  // cijfers die je nodig hebt om te bepalen wat zo'n actie mag kosten.
-  const energyTurns = extra.energyLevels.reduce((a, b) => a + b, 0);
-  const energyAvg = energyTurns
-    ? extra.energyLevels.reduce((s, c, lvl) => s + c * lvl, 0) / energyTurns : 0;
-  const energyAtCap = energyTurns ? (extra.energyLevels[ENERGY_MAX] / energyTurns * 100) : 0;
-  const energyWastePct = extra.energyRolled ? (extra.energyWasted / extra.energyRolled * 100) : 0;
-  const energyPerTurn = energyTurns ? (extra.energyRolled / energyTurns) : 0;
-
-  // kans dat je aan het begin van een beurt minstens N energie hebt = kans dat je een actie
-  // van N kunt betalen
-  let atLeast = 0;
-  const affordRows = [];
-  for (let lvl = ENERGY_MAX; lvl >= 1; lvl--){
-    atLeast += extra.energyLevels[lvl];
-    affordRows.unshift(`<tr><td>${lvl} energie</td><td class="num">${energyTurns ? nl((atLeast / energyTurns * 100), 1) : '0,0'}%</td></tr>`);
-  }
-  const maxLevel = Math.max(...extra.energyLevels);
-  const energyBars = Array.from(extra.energyLevels, (c, lvl) => {
-    const h = maxLevel ? Math.round((c / maxLevel) * 100) : 0;
-    const tick = (lvl % 2 === 0) ? `<span class="sim-hist-tick">${lvl}</span>` : '';
-    return `<div class="sim-hist-bar-wrap" title="${lvl} energie: ${energyTurns ? nl((c / energyTurns * 100), 1) : 0}% van de beurten"><div class="sim-hist-bar energy" style="height:${h}%"></div>${tick}</div>`;
-  }).join('');
-
+  // ---------- Energie ----------
   // Welke actie wint? Elk potje heeft precies één speler per strategie, willekeurig over de
   // startposities verdeeld, dus dit is een zuiver onderling toernooi.
+  const stratWin = ENERGY_STRATEGIES.map(id => { const s = strategyStats[id]; return s.games ? s.wins / s.games * 100 : 0; });
+  const stratMin = Math.min(...stratWin), stratMax = Math.max(...stratWin);
   const stratRows = ENERGY_STRATEGIES.map(id => {
     const s = strategyStats[id];
     const act = ENERGY_ACTIONS[id];
@@ -10485,12 +10548,39 @@ function renderSimResults({ n, stuckCount, startWins, startTurnsSum, startRanks,
       `<td class="num">${nl(avgRank, 2)}</td>` +
       `<td class="num">${nl(usesPerGame, 1)}</td></tr>`;
   }).join('');
-  html += simSectionOpen('Welke energie-actie wint?');
-  html += `<table class="sim-table"><thead><tr><th>Strategie</th><th>Winst% (±95%-marge)</th><th>Top 2</th><th>Gem. plaats</th><th>Keer ingezet <span class="sub">(incl. portaalschoten)</span></th></tr></thead><tbody>${stratRows}</tbody></table>`;
-  html += `<p class="hint">4 spelers, ${ENERGY_STRATEGIES.length} strategieën — elk potje speelt elke strategie één keer, geloot over de startposities. "Geen energie" (nooit uitgeven) telt niet mee: dat komt in het echt niet voor en trok het plafondverlies hierboven kunstmatig omhoog. Bots spelen met dezelfde tijdsregels als jij: een energie-actie kies je vóór de worp, en de energiesteen van deze beurt geef je pas volgende beurt uit. Herprioritering zet een bot in als zijn opdracht verder dan ${REORDER_PEEK_THRESHOLD} vakjes weg ligt (hij bekijkt dan zijn volgende kaart en wisselt als die dichterbij ligt), de laarzen als een rechte lijn hem dichter bij zijn doel brengt, en Noodtransport als zijn doel verder dan ${JUMP_BOT_MIN_DIST} vakjes weg ligt. Bij gelijkwaardige strategieën staat iedereen op 25% winst en gemiddelde plaats 2,50; wie daar significant boven zit, is te sterk.</p>`;
+  const stratCols = [SIM_COL.amber, SIM_COL.blue, SIM_COL.violet, SIM_COL.green];
+  cards.strat = simCard({ id: 'strat', title: 'Welke energie-actie wint?',
+    st: stratMin >= 23 && stratMax <= 27 ? 'ok' : stratMin >= 21 && stratMax <= 29 ? 'warn' : 'bad',
+    big: `${nl(stratMin, 1)}–${nl(stratMax, 1)}%`, bl: `winstkans van de ${ENERGY_STRATEGIES.length} strategieën, doel 23–27%`,
+    line: 'Elke bot speelt één vaste strategie; het Portaalkanon mag iedereen erbij.',
+    chart: simChart(simHBars(ENERGY_STRATEGIES.map((id, i) => ({ label: ENERGY_ACTIONS[id].name.replace('Zwaartekracht-', ''), v: stratWin[i], c: stratCols[i % stratCols.length] })),
+      { max: 35, ref: 25, band: [23, 27], w: 320, lw: 110 })),
+    details: tbl('<th>Strategie</th><th>Winst% (±95%-marge)</th><th>Top 2</th><th>Gem. plaats</th><th>Keer ingezet <span class="sub">(incl. portaalschoten)</span></th>', stratRows) +
+      `<p class="hint">4 spelers, ${ENERGY_STRATEGIES.length} strategieën — elk potje speelt elke strategie één keer, geloot over de startposities. Bots spelen met dezelfde tijdsregels als jij: een energie-actie kies je vóór de worp, en de energiesteen van deze beurt geef je pas volgende beurt uit. Herprioritering zet een bot in als zijn opdracht verder dan ${REORDER_PEEK_THRESHOLD} vakjes weg ligt, de laarzen als een rechte lijn hem dichter bij zijn doel brengt, en Noodtransport als zijn doel verder dan ${JUMP_BOT_MIN_DIST} vakjes weg ligt. Bij gelijkwaardige strategieën staat iedereen op 25% winst en gemiddelde plaats 2,50.</p>` });
 
-  // ---------- Wat levert een energie-actie op? ----------
-  const pctOf = (a, b) => b ? a / b * 100 : 0;
+  const energyTurns = extra.energyLevels.reduce((a, b) => a + b, 0);
+  const energyAvg = energyTurns ? extra.energyLevels.reduce((s, c, lvl) => s + c * lvl, 0) / energyTurns : 0;
+  const energyAtCap = energyTurns ? (extra.energyLevels[ENERGY_MAX] / energyTurns * 100) : 0;
+  const energyWastePct = extra.energyRolled ? (extra.energyWasted / extra.energyRolled * 100) : 0;
+  const energyPerTurn = energyTurns ? (extra.energyRolled / energyTurns) : 0;
+  // kans dat je aan het begin van een beurt minstens N energie hebt = kans dat je een actie van N kunt betalen
+  let atLeast = 0;
+  const affordRows = [];
+  for (let lvl = ENERGY_MAX; lvl >= 1; lvl--){
+    atLeast += extra.energyLevels[lvl];
+    affordRows.unshift(`<tr><td>${lvl} energie</td><td class="num">${energyTurns ? nl((atLeast / energyTurns * 100), 1) : '0,0'}%</td></tr>`);
+  }
+  const levelPcts = Array.from(extra.energyLevels, c => energyTurns ? c / energyTurns * 100 : 0);
+  cards.energy = simCard({ id: 'energy', title: 'Energievoorraad', st: energyWastePct <= 5 ? 'ok' : 'warn',
+    big: nl(energyAvg, 1), bl: `energie gemiddeld op zak (plafond ${ENERGY_MAX})`,
+    line: energyWastePct <= 5 ? 'Er gaat bijna niets verloren tegen het plafond.' : 'Er gaat veel energie verloren tegen het plafond.',
+    chart: simChart(simColumns(levelPcts, levelPcts.map((_, i) => i % 2 === 0 ? String(i) : ''),
+      { color: SIM_COL.green, hi: ENERGY_MAX, tips: levelPcts.map((p, i) => `${i} energie: ${nl(p, 1)}% van de beurten`) })) +
+      simMinis([[nl(energyAtCap, 1) + '%', 'beurten op het plafond'], [nl(energyWastePct, 1) + '%', 'energie verloren'], [nl(energyPerTurn, 2), 'per beurt gegooid']]),
+    details: tbl("<th>Kosten van een actie</th><th>Beurten waarin je 'm kunt betalen</th>", affordRows.join('')) +
+      `<p class="hint">De energiesteen (<b>${ENERGY_DIE_FACES.map(f => f || '–').join(' ')}</b>) rolt elke beurt mee; wat je gooit kun je pas volgende beurt uitgeven. Cijfers over de ${ENERGY_STRATEGIES.length} bot-strategieën samen. Het diagram is de verdeling van de voorraad over alle beurten (0 links, ${ENERGY_MAX} rechts).</p>` });
+
+  // ---------- Acties en portalen ----------
   const yieldText = (id, st) => {
     if (!st.uses) return '—';
     if (id === 'boost') return `+${nl(st.steps / st.uses, 1)} stappen (3e steen)`;
@@ -10500,22 +10590,26 @@ function renderSimResults({ n, stuckCount, startWins, startTurnsSum, startRanks,
     if (id === 'portal') return 'elke bot schiet als het hem ≥' + PORTAL_BOT_MIN_GAIN + ' stappen scheelt';
     return '—';
   };
-  const yieldRows = [...ENERGY_STRATEGIES, 'portal'].filter(id => extra.energyStats[id]).map(id => {
+  const yieldIds = [...ENERGY_STRATEGIES, 'portal'].filter(id => extra.energyStats[id]);
+  const noActionPct = pctOf(extra.noEnergyBanked, extra.noEnergyTurns);
+  const yieldRows = yieldIds.map(id => {
     const st = extra.energyStats[id];
     return `<tr><td>${ENERGY_ACTIONS[id].name}<span class="sub">${yieldText(id, st)}</span></td>` +
       `<td class="num">${nl(played ? st.uses / played : 0, 1)}</td>` +
       `<td class="num">${nl(pctOf(st.banked, st.uses), 0)}%</td></tr>`;
   }).join('') +
     `<tr><td>Geen energie-actie<span class="sub">ter vergelijking: een beurt zonder actie</span></td><td class="num">—</td>` +
-    `<td class="num">${nl(pctOf(extra.noEnergyBanked, extra.noEnergyTurns), 0)}%</td></tr>`;
-  html += simSectionOpen('Wat levert een energie-actie op?');
-  html += `<p class="hint">Per keer dat een bot de actie inzet. "Opdracht gehaald" is hoe vaak hij in die beurt een opdracht pakte — vergelijk met een beurt zonder actie.</p>`;
-  html += `<table class="sim-table"><thead><tr><th>Actie</th><th>Per potje</th><th>Opdracht gehaald</th></tr></thead><tbody>${yieldRows}</tbody></table>`;
+    `<td class="num">${nl(noActionPct, 0)}%</td></tr>`;
+  cards.yield = simCard({ id: 'yield', title: 'Wat levert een actie op?', st: 'info',
+    big: `${nl(noActionPct, 0)}%`, bl: 'kans op een opdracht in een beurt zónder actie',
+    line: 'Hoe vaak een bot in de beurt van de actie een opdracht pakt. Groen = beter dan zonder actie.',
+    chart: simChart(simHBars(yieldIds.map(id => {
+      const st = extra.energyStats[id], v = pctOf(st.banked, st.uses);
+      return { label: ENERGY_ACTIONS[id].name.replace('Zwaartekracht-', ''), v, c: v > noActionPct ? SIM_COL.green : SIM_COL.dim };
+    }), { max: 70, ref: noActionPct, w: 320, lw: 110, fmt: v => nl(v, 0) + '%' })),
+    details: tbl('<th>Actie</th><th>Per potje</th><th>Opdracht gehaald</th>', yieldRows) });
 
-  // ---------- Portalen ----------
   // De vier meetpunten uit de analyse "Axiom-9 Portalen", met de grens die daar vooraf is gezet.
-  // De winstkans van de vier acties en de potjeslengte staan al hierboven (Welke energie-actie
-  // wint?, Speelduur); eerlijkheid per startpositie bovenaan.
   const pt = extra.portal;
   if (pt){
     const okTag = (ok, warn) => ok ? '<span class="ok">✓ goed</span>' : warn ? '<span style="color:var(--amber)">≈ randgeval</span>' : '<span class="bad">✕ buiten de grens</span>';
@@ -10523,68 +10617,125 @@ function renderSimResults({ n, stuckCount, startWins, startTurnsSum, startRanks,
     const topPct = pctOf(pt.topWins, pt.topGames);
     const stealPct = pctOf(pt.steals, pt.shots);
     const otherPct = pctOf(pt.jumpsOther, pt.jumps);
-    const rows = [
+    const ptRows = [
       ['Portaalschoten per potje', nl(played ? pt.shots / played : 0, 1), `waarvan <b>${nl(stealPct, 0)}%</b> een portaal van een ander verplaatst ("stelen")`, ''],
       ['Portaalsprongen per potje', nl(played ? pt.jumps / played : 0, 1), `<b>${nl(otherPct, 0)}%</b> door iemand die geen van beide portalen legde`, ''],
       ['Opdrachten in een beurt met een portaalsprong', nl(questPct, 1) + '%', 'grens: hooguit 5% (10% = randgeval)', okTag(questPct <= 5, questPct <= 10)],
       ['Meeste teleporteerder wint', nl(topPct, 1) + '%', `grens: hooguit 30% (35% = randgeval) · ${pt.topGames} potjes met één duidelijke koploper in sprongen`, okTag(topPct <= 30, topPct <= 35)],
     ].map(([label, val, sub, tag]) => `<tr><td>${label}<span class="sub">${sub}</span></td><td class="num">${val}</td><td>${tag}</td></tr>`).join('');
-    html += simSectionOpen('Portalen');
-    html += `<p class="hint">Bij de start liggen er twee portalen, minstens ${PORTAL_START_MIN_DIST} stappen uit elkaar. Met het <b>Portaalkanon</b> (${ENERGY_ACTIONS.portal.cost} energie) schiet een speler er een naar de muur; stap je in een portaal, dan kom je uit het andere en stopt je zet. Elke bot schiet als het hem minstens ${PORTAL_BOT_MIN_GAIN} stappen scheelt, welke strategie hij ook heeft. Wint de speler die het vaakst teleporteerde veel vaker dan 25%, dan beslissen de portalen het potje.</p>`;
-    html += `<table class="sim-table"><thead><tr><th>Meetpunt</th><th>Waarde</th><th>Oordeel</th></tr></thead><tbody>${rows}</tbody></table>`;
+    const ptSt = questPct <= 5 && topPct <= 30 ? 'ok' : questPct <= 10 && topPct <= 35 ? 'warn' : 'bad';
+    cards.portal = simCard({ id: 'portal', title: 'Portalen', st: ptSt,
+      big: `${nl(questPct, 1)}%`, bl: 'van de opdrachten in een beurt met een portaalsprong (grens 5%)',
+      line: ptSt === 'ok' ? 'Portalen helpen, maar beslissen het potje niet.' : 'Portalen wegen zwaarder dan de vooraf gezette grens.',
+      chart: simSplit(simDonut([{ v: stealPct, c: SIM_COL.red, label: 'gestolen' }, { v: 100 - stealPct, c: SIM_COL.blue, label: 'eigen of nieuw' }], { center: nl(stealPct, 0) + '%', sub: 'gestolen' }),
+        simMinis([[nl(played ? pt.shots / played : 0, 1), 'schoten per potje'], [nl(played ? pt.jumps / played : 0, 1), 'sprongen per potje'], [nl(topPct, 0) + '%', 'meeste springer wint']])),
+      details: tbl('<th>Meetpunt</th><th>Waarde</th><th>Oordeel</th>', ptRows) +
+        `<p class="hint">Bij de start liggen er twee portalen, minstens ${PORTAL_START_MIN_DIST} stappen uit elkaar. Met het <b>Portaalkanon</b> (${ENERGY_ACTIONS.portal.cost} energie) schiet een speler er een naar de muur; stap je in een portaal, dan kom je uit het andere en stopt je zet. Elke bot schiet als het hem minstens ${PORTAL_BOT_MIN_GAIN} stappen scheelt.</p>` });
   }
 
-  // ---------- beloningskaarten ----------
+  // ---------- Kristallen ----------
   // Winst% van wie het kristal speelde: 25% is gemiddeld (4 spelers). Boven 31% = verdacht sterk,
-  // onder 19% = zwak. Let op: wie vooraan ligt krijgt vaker kristallen (elke opdracht levert er een
-  // op), dus alle kristallen zitten wat boven de 25%; het gaat om de uitschieters.
+  // onder 19% = zwak. Wie vooraan ligt krijgt vaker kristallen, dus het gaat om de uitschieters.
+  const cardWinPct = id => { const w = extra.cardWin[id]; return w.games ? w.wins / w.games * 100 : null; };
   const cardRows = ACTION_CARD_IDS.map(id => {
     const act = ACTION_CARDS[id];
-    const uses = extra.cardUses[id];
-    const perGame = played ? (uses / played) : 0;
-    const w = extra.cardWin[id];
-    const winPct = w.games ? w.wins / w.games * 100 : 0;
-    const tag = !w.games ? '—' : winPct > 31 ? '<span class="bad">✕ te sterk</span>'
+    const perGame = played ? (extra.cardUses[id] / played) : 0;
+    const winPct = cardWinPct(id);
+    const tag = winPct === null ? '—' : winPct > 31 ? '<span class="bad">✕ te sterk</span>'
       : winPct < 19 ? '<span style="color:var(--amber)">≈ zwak</span>' : '<span class="ok">✓ in balans</span>';
-    return `<tr><td>${act.name} <span class="sub">${act.hint}</span></td><td class="num">${nl(perGame, 2)}</td><td class="num">${w.games ? nl(winPct, 1) + '%' : '—'}</td><td>${tag}</td></tr>`;
+    return `<tr><td>${act.name} <span class="sub">${act.hint}</span></td><td class="num">${nl(perGame, 2)}</td><td class="num">${winPct !== null ? nl(winPct, 1) + '%' : '—'}</td><td>${tag}</td></tr>`;
   }).join('');
+  const playedCards = ACTION_CARD_IDS.filter(id => cardWinPct(id) !== null);
+  const cwVals = playedCards.map(cardWinPct);
+  const cardMin = cwVals.length ? Math.min(...cwVals) : 0, cardMax = cwVals.length ? Math.max(...cwVals) : 0;
+  cards.cardwin = simCard({ id: 'cardwin', title: 'Wie wint met welk kristal?',
+    st: !cwVals.length ? 'warn' : cardMin >= 19 && cardMax <= 31 ? 'ok' : cardMax > 31 ? 'bad' : 'warn',
+    big: `${nl(cardMin, 1)}–${nl(cardMax, 1)}%`, bl: 'winstkans van wie het kristal speelde, grens 19–31%',
+    line: cardMin >= 19 && cardMax <= 31 ? 'Geen kristal is te sterk of te zwak.' : cardMax > 31 ? 'Er is een kristal dat te sterk lijkt.' : 'Er is een kristal dat zwak lijkt.',
+    chart: simChart(simDots(playedCards.map(id => ({ label: ACTION_CARDS[id].name, v: cardWinPct(id), c: SIM_TINT_COLORS[ACTION_CARD_TINTS[id]] || SIM_COL.blue })), { band: [19, 31] })) +
+      simLegend(Object.entries(CRYSTAL_CATS).map(([tint, name]) => [SIM_TINT_COLORS[tint], name.toLowerCase()])),
+    details: tbl('<th>Kristal</th><th>Keer gebruikt per potje</th><th>Wint wie hem speelt</th><th>Oordeel</th>', cardRows) +
+      `<p class="hint">"Wint wie hem speelt": van de spelers die dit kristal in een potje minstens één keer gebruikten, het deel dat dat potje won. Gemiddeld is 25%; iets erboven is normaal, want wie vooroploopt krijgt vaker kristallen.</p>` });
+
   const drawsPerGame = played ? (extra.cardDraws / played) : 0;
   const handFullPct = extra.cardDraws + extra.handFullOnBank
     ? (extra.handFullOnBank / (extra.cardDraws + extra.handFullOnBank) * 100) : 0;
   const actionCellDrawsPerGame = played ? (extra.actionCellDraws / played) : 0;
   const actionCellHandFullPct = extra.actionCellDraws + extra.handFullOnActionCell
     ? (extra.handFullOnActionCell / (extra.actionCellDraws + extra.handFullOnActionCell) * 100) : 0;
-  html += simSectionOpen('Kristallen');
   const deckSize = ACTION_CARD_IDS.reduce((n, id) => n + actionCardCopies(id), 0);
-  html += `<p class="hint">Wie een opdracht bereikt krijgt een kristal uit een gedeelde stapel van ${deckSize} (${ACTION_CARD_IDS.length} soorten, van elk 2, Portaalsleutel ${actionCardCopies('portalkey')}), tenzij de kluis al vol is (max ${ACTION_CARD_HAND_MAX}). Gemiddeld <b>${nl(drawsPerGame, 1)}</b> kristallen gekregen per potje via opdrachten (alle 4 spelers samen); <b>${nl(handFullPct, 1)}%</b> van die kansen ging verloren aan een volle kluis.</p>`;
-  html += `<p class="hint">Elke gangtegel heeft ook een <b>kristalvakje</b>: loop je daar overheen (je beurt stopt er niet voor), dan krijg je er net zo een kristal bij — hooguit 1x per beurt, ook als je meerdere van deze vakjes passeert. Gemiddeld <b>${nl(actionCellDrawsPerGame, 1)}</b> kristallen gekregen per potje via kristalvakjes; <b>${nl(actionCellHandFullPct, 1)}%</b> van die kansen ging verloren aan een volle kluis.</p>`;
-  html += `<table class="sim-table"><thead><tr><th>Kristal</th><th>Keer gebruikt per potje</th><th>Wint wie hem speelt</th><th>Oordeel</th></tr></thead><tbody>${cardRows}</tbody></table>`;
-  html += `<p class="hint">"Wint wie hem speelt": van de spelers die dit kristal in een potje minstens één keer gebruikten, het deel dat dat potje won. Gemiddeld is 25%. Wie vooroploopt krijgt vaker kristallen, dus iets erboven is normaal; boven 31% is een kristal waarschijnlijk te sterk, onder 19% te zwak.</p>`;
+  const totalDraws = drawsPerGame + actionCellDrawsPerGame;
+  const viaQuestPct = totalDraws ? drawsPerGame / totalDraws * 100 : 0;
+  const topUsed = ACTION_CARD_IDS.slice().sort((a, b) => extra.cardUses[b] - extra.cardUses[a]).slice(0, 6);
+  const topMax = Math.max(0.5, ...topUsed.map(id => played ? extra.cardUses[id] / played : 0));
+  cards.carduse = simCard({ id: 'carduse', title: 'Gebruik en kluis', st: Math.max(handFullPct, actionCellHandFullPct) <= 5 ? 'ok' : 'warn',
+    big: nl(totalDraws, 1), bl: 'kristallen gekregen per potje (alle spelers samen)',
+    line: `De kluis was vol bij ${nl(handFullPct, 1)}% van de kansen via een opdracht en ${nl(actionCellHandFullPct, 1)}% via een kristalvakje.`,
+    chart: simSplit(simDonut([{ v: viaQuestPct, c: SIM_COL.blue, label: 'via opdrachten' }, { v: 100 - viaQuestPct, c: SIM_COL.violet, label: 'via kristalvakjes' }], { center: nl(viaQuestPct, 0) + '%', sub: 'via opdracht', size: 96, w: 15 }),
+      simHBars(topUsed.map(id => ({ label: ACTION_CARDS[id].name.replace('Zwaartekracht-', ''), v: played ? extra.cardUses[id] / played : 0, c: SIM_TINT_COLORS[ACTION_CARD_TINTS[id]] })),
+        { max: topMax, w: 260, lw: 118, fmt: v => nl(v, 1) })),
+    details: tbl('<th>Bron</th><th>Per potje</th><th>Kluis vol</th>',
+      `<tr><td>Opdracht voltooid</td><td class="num">${nl(drawsPerGame, 1)}</td><td class="num">${nl(handFullPct, 1)}%</td></tr>` +
+      `<tr><td>Kristalvakje in een gang</td><td class="num">${nl(actionCellDrawsPerGame, 1)}</td><td class="num">${nl(actionCellHandFullPct, 1)}%</td></tr>`) +
+      `<p class="hint">Gedeelde stapel van ${deckSize} (${ACTION_CARD_IDS.length} soorten, van elk 2, Portaalsleutel ${actionCardCopies('portalkey')}), kluis max ${ACTION_CARD_HAND_MAX}. Een kristalvakje levert hooguit 1 kristal per beurt op en stopt je zet niet. Het balkdiagram toont de 6 meest gebruikte kristallen (keer per potje).</p>` });
 
-  html += simSectionOpen('Energie');
-  html += `<p class="hint">De energiesteen (<b>${ENERGY_DIE_FACES.map(f => f || '–').join(' ')}</b>) rolt elke beurt mee, gemiddeld <b>${nl(energyPerTurn, 2)}</b> per beurt, met een plafond van <b>${ENERGY_MAX}</b>. Wat je gooit, kun je pas volgende beurt uitgeven. Onderstaande cijfers zijn over de ${ENERGY_STRATEGIES.length} bot-strategieën samen (${ENERGY_STRATEGIES.map(id => ENERGY_ACTIONS[id].name).join(' / ')}) — "Geen energie" telt hier niet mee, want die speler komt in het echt niet voor.</p>`;
-  html += `<p class="hint">Een speler heeft gemiddeld <b>${nl(energyAvg, 1)}</b> energie op zak, staat <b>${nl(energyAtCap, 1)}%</b> van zijn beurten op het plafond, en <b>${nl(energyWastePct, 1)}%</b> van alle gerolde energie gaat daardoor verloren.</p>`;
-  html += `<p class="hint" style="margin-top:10px;">Verdeling van de energievoorraad over alle beurten (0 links, ${ENERGY_MAX} rechts):</p>`;
-  html += `<div class="sim-hist">${energyBars}</div>`;
-  html += `<table class="sim-table"><thead><tr><th>Kosten van een actie</th><th>Aandeel beurten waarin je 'm kunt betalen</th></tr></thead><tbody>${affordRows.join('')}</tbody></table>`;
+  // ---------- Bord ----------
+  const questAvg = SIM_QUEST_LABELS.map(lbl => { const qs = questStats[lbl]; return qs.count ? qs.turns / qs.count : null; });
+  const qVals = questAvg.filter(v => v !== null);
+  const questSpread = qVals.length ? Math.max(...qVals) - Math.min(...qVals) : 0;
+  cards.quests = simCard({ id: 'quests', title: 'Opdrachtvakjes', st: questSpread <= 1.5 ? 'ok' : 'warn',
+    big: `${nl(questSpread, 1)} beurten`, bl: 'verschil tussen de makkelijkste en moeilijkste opdracht',
+    line: questSpread <= 1.5 ? 'Geen opdracht ligt echt afgelegen.' : 'Eén of meer opdrachten liggen duidelijk afgelegen.',
+    chart: simChart(simHBars(SIM_QUEST_LABELS.map((lbl, i) => ({ label: QUEST_NAMES[lbl], v: questAvg[i] || 0 })),
+      { max: Math.max(6, Math.ceil(Math.max(0, ...qVals))), w: 320, lw: 130, fmt: v => nl(v, 1) })),
+    details: tbl('<th>Opdracht</th><th>Gem. beurten om te bereiken</th><th>Keer bereikt</th>', questRows) +
+      `<p class="hint">Hoe hoger het gemiddelde, hoe afgelegener dat opdrachtvakje ligt vanaf waar spelers 'm meestal moeten benaderen.</p>` });
 
-  html += simSectionOpen('Drukte op het bord');
-  html += `<p class="hint">Hoe vaak elk vakje betreden werd over alle ${played} meegetelde potjes — laat bottleneck-gangen en nauwelijks gebruikte hoekjes zien.</p>`;
-  html += renderHeatmap(graph, heatmap);
-  html += `<p class="hint" style="margin-top:12px;">Koudste tegels — de kandidaten voor een "lus zonder opdracht waar niemand komt":</p>`;
-  html += renderColdZones(graph, heatmap);
+  const cold5 = coldRows.slice(0, 5);
+  cards.cold = simCard({ id: 'cold', title: 'Koudste tegels',
+    st: !coldest ? 'warn' : deadTiles ? 'bad' : weakTiles ? 'warn' : 'ok',
+    big: coldest ? `${nl(coldest.share, 1)}%` : '—', bl: coldest ? `van het verkeer op de stilste tegel (${tileName(coldest)})` : '',
+    line: deadTiles ? 'Er is een dode tegel: daar komt (bijna) niemand.' : weakTiles ? 'Geen dode tegel, maar de stilste krijgt erg weinig bezoek.' : 'Geen dode tegel; elke tegel krijgt verkeer.',
+    chart: simChart(simHBars(cold5.map(r => ({ label: tileName(r), v: r.share, c: r.share < SIM_DEAD_TILE_SHARE ? SIM_COL.red : r.share < SIM_WEAK_TILE_SHARE ? SIM_COL.amber : SIM_COL.blue })),
+      { max: Math.max(5, Math.ceil(Math.max(0, ...cold5.map(r => r.share)))), w: 320, lw: 130 })),
+    details: renderColdZones(graph, heatmap) +
+      `<p class="hint">De kandidaten voor een "lus zonder opdracht waar niemand komt". Gemiddeld krijgt een tegel 5% van het verkeer; onder ${nl(SIM_DEAD_TILE_SHARE, 1)}% telt hij als dood.</p>` });
 
-  html += simSectionCloseAll() + `</div>`;
+  cards.heat = simCard({ id: 'heat', title: 'Drukte op het bord', st: 'info', wide: true,
+    line: `Hoe vaak elk vakje betreden werd over alle ${played} meegetelde potjes — laat drukke gangen en nauwelijks gebruikte hoekjes zien.`,
+    chart: renderHeatmap(graph, heatmap) });
+
+  // ---------- rijen ----------
+  const rowsOf = [
+    [cards.start, cards.seat],
+    [cards.len, cards.tension],
+    [cards.comeback, cards.search],
+    [cards.strat, cards.energy],
+    [cards.yield, cards.portal],
+    [cards.cardwin, cards.carduse],
+    [cards.quests, cards.cold],
+    [cards.heat],
+  ];
+  html += `<div class="sim-expand-row"><button type="button" class="small ghost" id="btnSimExpand" aria-expanded="true">Alle kaarten inklappen</button></div>`;
+  html += `<div class="sim-rows">${rowsOf.map(r => simRow(r.filter(Boolean))).join('')}</div>`;
   simResultsEl.innerHTML = html;
-  layoutSimSections();
 
+  // in-/uitklappen: per kaart (pijltje) of alles tegelijk
+  const setCard = (card, open) => {
+    card.classList.toggle('is-collapsed', !open);
+    const b = card.querySelector('.sim-card-toggle');
+    if (b) b.setAttribute('aria-expanded', String(open));
+  };
+  simResultsEl.querySelectorAll('.sim-card-toggle').forEach(b => b.addEventListener('click', () => {
+    const card = b.closest('.sim-card');
+    setCard(card, card.classList.contains('is-collapsed'));
+  }));
   const expandBtn = document.getElementById('btnSimExpand');
   expandBtn.addEventListener('click', () => {
-    const sections = simResultsEl.querySelectorAll('details.sim-section');
     const open = expandBtn.getAttribute('aria-expanded') !== 'true';
-    sections.forEach(d => { d.open = open; });
+    simResultsEl.querySelectorAll('.sim-card').forEach(c => setCard(c, open));
     expandBtn.setAttribute('aria-expanded', String(open));
-    expandBtn.textContent = open ? 'Alle details inklappen' : 'Alle details uitklappen';
+    expandBtn.textContent = open ? 'Alle kaarten inklappen' : 'Alle kaarten uitklappen';
   });
   simStatusEl.innerHTML = '';   // geen "✓ Klaar in … seconden" meer (gebruikerswens)
 }
@@ -10828,6 +10979,9 @@ function pickBotNames(count, taken = []){
 
 const walkBoardEl = document.getElementById('walkBoard');
 const walkPlayersSel = document.getElementById('walkPlayers');
+// namen van de bots in de lobby van Automatisch (bemanningslijst, lobbyRenderSummary in 97-solo.js);
+// dezelfde namen spelen straks mee
+let walkAutoBotNames = [];
 const walkEnergyModeEl = document.getElementById('walkEnergyMode');
 const walkSpeedEl = document.getElementById('walkSpeed');
 const walkSpeedLabelEl = document.getElementById('walkSpeedLabel');
@@ -12025,7 +12179,8 @@ async function runWalkSimulation(){
 
   // geen startpositie vooraf: die kiezen de bots straks zelf, in de volgorde van de worp
   // (walkRunOpening hierboven)
-  const botNames = pickBotNames(playerCount);   // in Automatisch zijn het allemaal bots
+  // in Automatisch zijn het allemaal bots; de namen uit de lobby (bemanningslijst) spelen mee
+  const botNames = walkAutoBotNames.length >= playerCount ? walkAutoBotNames.slice(0, playerCount) : pickBotNames(playerCount);
   const players = Array.from({ length: playerCount }, (_, i) => ({
     idx: i,
     name: botNames[i],
@@ -14397,7 +14552,10 @@ function lobbyPlaceFoot(){
   const intro = toggle && toggle.closest('.walk-intro-toggle');
   const walkStatus = document.getElementById('walkLobbyStatus');
   const mpStatus = document.getElementById('mpStatus');
-  const screen = [...document.querySelectorAll('#walkLobby .lobby-cards')].find(el => !el.closest('[hidden]'));
+  // alleen "hidden" BINNEN de lobby telt: bij het laden is het hele tabblad nog verborgen, en dan
+  // bleef het vinkje onder de kaarten staan (kaarten 38px lager tot je een keer van tabblad wisselde)
+  const shown = el => { for (let n = el; n && n.id !== 'walkLobby'; n = n.parentElement) if (n.hidden) return false; return true; };
+  const screen = [...document.querySelectorAll('#walkLobby .lobby-cards')].find(shown);
   if (screen){
     const introSlot = screen.querySelector('.lobby-intro-slot');
     if (intro && introSlot && !introSlot.children.length) introSlot.append(intro);
@@ -14427,15 +14585,30 @@ function lobbyRenderSummary(){
     ['Modus', 'Automatisch'], ['Spelers', n === 1 ? '1 bot' : `${n} bots`],
     ['Energie', lobbyOptText('walkEnergyMode')], ['Tempo', lobbyOptText('walkSpeed')],
   ]));
-  // bots aan boord: zelfde rijen als de bemanningslijst, maar alleen kijken (namen krijgen ze bij de start)
-  const crew = [];
-  for (let i = 0; i < WALK_MAX_PLAYERS; i++){
-    crew.push(i < n
-      ? `<div class="crew-row" style="--pc:${WALK_PLAYER_COLORS[i]}"><span class="crew-num">${i + 1}</span><span class="crew-dot"></span>` +
-        `<span class="crew-bot-name">Bot</span><span class="crew-role is-bot">bot</span></div>`
-      : `<div class="crew-row is-free">vrij</div>`);
+  // Bots aan boord bij Automatisch: PRECIES dezelfde bemanningslijst als Zelf spelen (gebruikerswens
+  // 2026-11): vijf vaste vakjes per rij, ✕ per bot, onderaan "+ Speler" (hier altijd uit: in
+  // Automatisch spelen alleen bots) en "+ Bot". De namen blijven staan en worden bij de start gebruikt.
+  walkAutoBotNames = walkAutoBotNames.slice(0, n);
+  if (walkAutoBotNames.length < n) walkAutoBotNames = walkAutoBotNames.concat(pickBotNames(n - walkAutoBotNames.length, walkAutoBotNames));
+  const crew = walkAutoBotNames.map((name, i) =>
+    `<div class="crew-row" style="--pc:${WALK_PLAYER_COLORS[i]}"><span class="crew-num">${i + 1}</span><span class="crew-dot"></span>` +
+    `<span class="crew-bot-name" title="${name}">${name}</span><span class="crew-role is-bot">bot</span>` +
+    (n <= 1
+      ? `<button type="button" class="crew-del" disabled aria-label="Er moet minstens één bot spelen" title="Er moet minstens één bot spelen">✕</button>`
+      : `<button type="button" class="crew-del" data-auto-del="${i}" aria-label="${name} weghalen" title="Weghalen">✕</button>`) +
+    `</div>`);
+  const free = WALK_MAX_PLAYERS - n;
+  for (let i = 0; i < free; i++){
+    crew.push(i === 0
+      ? `<div class="crew-row is-free">nog ${free === 1 ? '1 plek' : free + ' plekken'} vrij</div>`
+      : `<div class="crew-row is-free is-blank" aria-hidden="true"></div>`);
   }
-  set('walkAutoCrew', crew.join(''));
+  set('walkAutoCrew',
+    `<div class="crew-list">${crew.join('')}</div>` +
+    `<div class="crew-add">` +
+      `<button type="button" class="ghost" disabled title="Bij Automatisch spelen alleen bots — zelf meedoen kan bij Zelf spelen">+ Speler</button>` +
+      `<button type="button" class="ghost" data-auto-add="bot"${free === 0 ? ' disabled' : ''}>+ Bot</button>` +
+    `</div>`);
   const humans = soloHumanCount, bots = soloBotCount;
   const who = (humans === 1 ? 'Jij' : `${humans} spelers`) + (bots ? ` + ${bots} bot${bots === 1 ? '' : 's'}` : '');
   set('walkSoloSummary', lobbySumHtml([
@@ -14452,6 +14625,26 @@ function lobbyRenderSummary(){
   if (el) el.addEventListener('change', lobbyRenderSummary);
 });
 if (walkSpeedEl) walkSpeedEl.addEventListener('input', lobbyRenderSummary);
+// ✕ / + Bot in de bemanningslijst van Automatisch: zet het verborgen #walkPlayers en laat de
+// gewone 'change' de rest bijwerken (samenvatting, lijst)
+function walkAutoSetCount(n){
+  if (!walkPlayersSel || walkPlayersSel.disabled) return;
+  walkPlayersSel.value = String(Math.max(1, Math.min(WALK_MAX_PLAYERS, n)));
+  walkPlayersSel.dispatchEvent(new Event('change', { bubbles: true }));
+}
+const walkAutoCrewEl = document.getElementById('walkAutoCrew');
+if (walkAutoCrewEl){
+  walkAutoCrewEl.addEventListener('click', (e) => {
+    const del = e.target.closest('[data-auto-del]');
+    if (del && !del.disabled){
+      walkAutoBotNames.splice(parseInt(del.dataset.autoDel, 10), 1);   // precies die bot eruit, de rest houdt zijn naam
+      walkAutoSetCount(walkAutoBotNames.length);
+      return;
+    }
+    const add = e.target.closest('[data-auto-add]');
+    if (add && !add.disabled) walkAutoSetCount(parseInt(walkPlayersSel.value, 10) + 1);
+  });
+}
 function setWalkMode(mode){
   stopWalkSimulation();
   stopSoloGame();

@@ -750,34 +750,84 @@
   }
   .sim-subhead:first-of-type{margin-top:8px; padding-top:0; border-top:none;}
 
-  /* elke sectie van de uitslag is een <details>; standaard dicht, zodat je na het draaien de
-     conclusie ziet en niet 3900px aan tabellen */
+  /* ---------- uitslag als "stoplicht-kaarten" (gekozen variant A uit 4, artifact "Axiom-9
+     Simulatie-uitslag", 2026-11; opbouw in renderSimResults / simCard, 95-simulate.js) ----------
+     Per onderwerp een rij van twee EVEN BREDE kaarten; kaarten in een rij zijn even hoog (stretch),
+     ook als je er een inklapt. Onder 900px één kolom. Elke kaart: titel + oordeelchip + pijltje,
+     groot getal, één zin, diagram, tabel + uitleg achter "Details". */
   .sim-expand-row{display:flex; justify-content:flex-end; margin:2px 0 4px;}
-  /* De secties staan als kaarten in kolommen (3 op een breed scherm, 2 op een laptop, 1 op een
-     telefoon) i.p.v. elk over de volle breedte — daar stond een label helemaal links en zijn
-     getal ±1400px verderop helemaal rechts (gebruikersmelding: "cijfers erg ver uit elkaar").
-     Vaste kolommen (.sim-col, verdeeld door layoutSimSections in 95-simulate.js) i.p.v.
-     CSS-kolommen: die verdeelden bij elk in-/uitklappen alles opnieuw, waardoor kaarten van de
-     linker- naar de middelste kolom sprongen (gebruikersmelding). Nu blijft elke kaart in zijn
-     eigen kolom staan; inklappen schuift alleen de kaarten eronder in díe kolom omhoog. */
-  .sim-sections{display:flex; align-items:flex-start; gap:14px; margin-top:4px;}
-  .sim-col{flex:1 1 0; min-width:0;}
-  .sim-section{
-    margin:0 0 14px;
-    background:var(--hull); border:1px solid var(--line-dim); border-radius:6px; padding:0 14px;
+  .sim-rows{display:grid; gap:14px; margin-top:4px;}
+  .sim-row{display:grid; grid-template-columns:repeat(2, minmax(0, 1fr)); gap:14px; align-items:stretch;}
+  @media (max-width: 900px){ .sim-row{grid-template-columns:minmax(0, 1fr);} }
+  .sim-card{
+    --vc:var(--quest);
+    background:var(--hull); border:1px solid var(--line-dim); border-radius:8px;
+    padding:14px 16px; display:flex; flex-direction:column; gap:10px; min-width:0;
   }
-  /* kaarttitel: groter en dikgedrukt (gebruikerswens: "overzichtelijker") — in de display-letter
-     i.p.v. de kleine grijze mono van .sim-subhead, met een dunne lijn eronder zodat titel en
-     inhoud duidelijk gescheiden zijn */
-  .sim-section > summary.sim-subhead{
-    cursor:var(--cur-click); list-style:none; display:flex; align-items:center; gap:10px;
-    margin:0 0 10px; padding:13px 0 10px; border-top:none; border-bottom:1px solid var(--line-dim);
-    font-family:var(--font-display); font-size:15px; font-weight:700; letter-spacing:.04em;
-    text-transform:none; color:var(--text);
-    transition:color .12s;
+  .sim-card.is-wide{grid-column:1 / -1;}
+  .sim-card.is-ok{--vc:var(--start);}
+  .sim-card.is-warn{--vc:var(--amber);}
+  .sim-card.is-bad{--vc:var(--danger);}
+  .sim-card.is-info{--vc:var(--quest);}
+  .sim-card-head{display:flex; align-items:center; gap:10px;}
+  .sim-card-head h3{
+    flex:1; min-width:0; margin:0;
+    font-family:var(--font-display); font-size:16px; font-weight:700; letter-spacing:.05em;
+    text-transform:uppercase; color:var(--text); line-height:1.1;
   }
-  .sim-section:not([open]) > summary.sim-subhead{margin-bottom:0; border-bottom-color:transparent;}
-  .sim-section > summary.sim-subhead::before{color:var(--quest);}
+  .sim-chip{
+    font-family:var(--font-mono); font-size:10px; font-weight:700; letter-spacing:.1em; text-transform:uppercase;
+    padding:5px 7px; border-radius:4px; white-space:nowrap;
+    color:var(--vc); background:color-mix(in srgb, var(--vc) 14%, transparent);
+  }
+  .sim-card-toggle{
+    flex:none; background:none; border:0; padding:4px; border-radius:4px; color:var(--text-dim);
+    display:grid; place-items:center; cursor:var(--cur-click);
+  }
+  .sim-card-toggle:hover{color:var(--quest);}
+  .sim-card-toggle svg{width:16px; height:16px; transition:transform .2s ease;}
+  .sim-card.is-collapsed .sim-card-toggle svg{transform:rotate(-90deg);}
+  .sim-card.is-collapsed .sim-card-body{display:none;}
+  .sim-card-headline{display:flex; align-items:baseline; gap:10px; flex-wrap:wrap;}
+  .sim-card-headline .big{
+    font-family:var(--font-display); font-size:32px; font-weight:700; line-height:1;
+    color:#eef4fa; font-variant-numeric:tabular-nums; white-space:nowrap;
+  }
+  .sim-card-headline .bl{font-size:13px; color:var(--text-dim); line-height:1.35;}
+  .sim-card-body{display:flex; flex-direction:column; gap:10px; flex:1;}
+  .sim-card-line{margin:0; font-size:14px; color:var(--text);}
+  .sim-chart{display:flex; justify-content:center; min-width:0;}
+  .sim-card svg{max-width:100%; height:auto; display:block;}
+  .sim-card svg text{font-family:var(--font-mono); font-size:11px; fill:var(--text-dim);}
+  .sim-card svg text.sim-svg-tv{fill:var(--text);}
+  .sim-card svg text.sim-svg-big{font-family:var(--font-display); font-weight:700; fill:#eef4fa;}
+  .sim-split{display:grid; grid-template-columns:auto minmax(0, 1fr); gap:14px; align-items:center;}
+  .sim-split-side{min-width:0; display:flex; flex-direction:column; gap:8px;}
+  @media (max-width: 480px){ .sim-split{grid-template-columns:minmax(0, 1fr); justify-items:center;} }
+  .sim-minis{display:grid; grid-template-columns:repeat(3, minmax(0, 1fr)); gap:8px;}
+  .sim-mini{background:var(--panel); border-radius:7px; padding:8px 10px; display:grid; gap:2px; min-width:0;}
+  .sim-mini b{font-family:var(--font-display); font-size:19px; font-weight:700; line-height:1; color:#eef4fa; font-variant-numeric:tabular-nums;}
+  .sim-mini span{font-size:11.5px; color:var(--text-dim); line-height:1.25;}
+  .sim-legend{display:flex; flex-wrap:wrap; gap:6px 12px; font-family:var(--font-mono); font-size:11.5px; line-height:1.3; color:var(--text-dim);}
+  .sim-legend i{display:inline-block; width:9px; height:9px; border-radius:2px; margin-right:5px; vertical-align:-1px;}
+  .sim-more{margin-top:auto;}
+  .sim-more > summary{
+    cursor:var(--cur-click); list-style:none; padding-top:4px;
+    font-family:var(--font-mono); font-size:11px; font-weight:700; letter-spacing:.1em; text-transform:uppercase;
+    color:var(--text-dim);
+  }
+  .sim-more > summary::-webkit-details-marker{display:none;}
+  .sim-more > summary::before{content:'+ ';}
+  .sim-more[open] > summary::before{content:'− ';}
+  .sim-more > summary:hover{color:var(--quest);}
+  .sim-more .hint{font-size:12px; line-height:1.5;}
+  .sim-card .sim-table{margin:8px 0 10px;}
+  .sim-card .sim-table th{vertical-align:bottom; line-height:1.3;}
+  .sim-card .sim-table td .sub{display:block; color:var(--text-dim); font-size:10.5px; margin-top:1px;}
+  .sim-card .sim-hist{margin:4px 0 22px;}
+  .sim-card .sim-heat-legend{flex-wrap:wrap; justify-content:center;}
+  /* de warmtekaart staat nu over de volle breedte: daar mogen de vakjes groter */
+  @media (min-width: 901px){ .sim-card.is-wide .sim-heat-grid{--hcell:13px;} }
   /* percentage met een balkje erachter (barCell in renderSimResults); --w is een kaal getal
      0–100, want een percentage maal een percentage kan calc() niet */
   .sim-bar-cell{position:relative; min-width:110px;}
@@ -786,24 +836,6 @@
     width:calc((100% - 70px) * var(--w) / 100); border-radius:3px;
     background:color-mix(in srgb, var(--amber) 45%, transparent);
   }
-  .sim-section-body{padding:0 0 14px;}
-  .sim-section-body .hint{font-size:12px; line-height:1.5;}
-  /* in een smalle kaart: getallenkoppen mogen over twee regels, en de toelichting achter een
-     naam (bv. de kaarttekst of "(4 energie)") komt eronder i.p.v. de kolom op te rekken */
-  .sim-section .sim-table{margin:6px 0 10px;}
-  .sim-section .sim-table th{vertical-align:bottom; line-height:1.3;}
-  .sim-section .sim-table td .sub{display:block; color:var(--text-dim); font-size:10.5px; margin-top:1px;}
-  .sim-section .sim-heat-legend{flex-wrap:wrap;}
-  .sim-section > summary::-webkit-details-marker{display:none;}
-  .sim-section > summary::before{
-    content:''; flex:none; width:0; height:0;
-    border-left:5px solid currentColor; border-top:4px solid transparent; border-bottom:4px solid transparent;
-    transition:transform .15s;
-  }
-  .sim-section[open] > summary::before{transform:rotate(90deg);}
-  .sim-section > summary:hover{color:var(--quest);}
-  .sim-section-body > .sim-table:first-child,
-  .sim-section-body > p:first-child{margin-top:0;}
 
   .sim-hist{
     display:flex; align-items:flex-end; gap:2px; height:110px; margin:10px 0 22px;

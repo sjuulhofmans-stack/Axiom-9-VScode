@@ -123,6 +123,7 @@ aangeroepen (functiedeclaraties worden gehoist, `const`/`let` niet).
 | hoe een kristal, de kluis of het oprapen eruitziet | `96c-crystals.js` + het kristallen-blok onderaan `styles.css` |
 | de dobbelstenen, de stappenteller of de energiebolletjes | `96d-dice.js` + het dobbelstenen-blok onderaan `styles.css` |
 | de kaders/vlakken ("zwevende kolommen", gekozen variant 5 uit 6, 2026-10; sinds 2026-10 op de HELE pagina, niet alleen tijdens een potje) | blok `"ZWEVENDE KOLOMMEN" OP DE HELE PAGINA` onderaan `styles.css`: `--page-bg` = `#070a0e`, elke `.panel`/pop-up één kaart zonder rand of amber lijntje, het generatorbord zonder stalen kader. Tijdens een potje (`body.is-playing`) ook: spelerskaarten, beide zijkolommen, bord en chat elk één kaart (`--panel`, ronde hoeken, zachte schaduw) op `#070a0e`, alles binnenin plat. Randen houden hun DIKTE (alleen kleur transparent), zodat alle gemeten maten gelijk blijven — gemeten 1920×960 en 1440×780: identiek aan vóór de wijziging |
+| de uitslag van de simulatie ("Stoplicht-kaarten", gekozen variant A uit 4, artifact "Axiom-9 Simulatie-uitslag", 2026-11) | `renderSimResults` + helpers `simCard`/`simRow`/`simDonut`/`simHBars`/`simColumns`/`simStack`/`simDots`/`simRankGrid` in `95-simulate.js`, opmaak blok `uitslag als "stoplicht-kaarten"` in `styles.css`. Oordeelsbalk (4 vakjes) bovenaan, daaronder 7 rijen van 2 even brede kaarten (Eerlijkheid, Tempo en spanning, Geluk, Energie, Acties en portalen, Kristallen, Bord) + de warmtekaart over de volle breedte. Elke kaart: titel + oordeelchip (in orde/let op/probleem/ter info) + pijltje, groot getal, één zin, één SVG-diagram, tabel + uitleg achter "Details". Inklappen per kaart; kaarten in een rij blijven even hoog. Onder 900px één kolom. Gemeten 1920, 1440 en 390 breed: niets loopt over. Nieuwe meting? Een kaart toevoegen in een bestaande rij of een nieuwe rij van twee |
 | de speelweergave (smalle balk, ☰-menu, bordgrootte tijdens een potje) | `body.is-playing` in `styles.css` + `playMenuSetOpen` (80-controls.js) + `walkPauseStopSyncVisibility` (96-walk.js) |
 
 ## Spelregels die in de code zitten
@@ -386,7 +387,7 @@ Check minimaal:
    Animations/transitions op transform/opacity, want de simulatie rekent in brokken van 30 ms op
    dezelfde draad. Eronder alleen potjesteller en "Stoppen" (`button.primary`, zelfde stijl als de
    andere knoppen); bij klaar staat de volle ring nog 0,7 s, dan faadt de uitslag in.
-7. Onderaan de simulatie: tabel "koudste tegels" — geen enkele tegel mag op
+7. Onderaan de simulatie: kaart "Koudste tegels" (tabel achter Details) — geen enkele tegel mag op
    0,0% verkeer staan. Gebeurt dat toch, dan is er een dode lus ontstaan en
    klopt `deadTileCount` in `70-generator.js` niet meer.
 8. Tabblad "Spelen" → modus "Automatisch" → "Start spel" → de pion loopt
