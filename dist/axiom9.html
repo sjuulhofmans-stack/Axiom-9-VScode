@@ -18524,7 +18524,7 @@ const RULES_SCENES = {
           if (r >= 1 && r <= 6 && rc >= 1 && rc <= 6) ch = '.';
           if ((r === 3 || r === 4) && rc === 0) ch = 'D';
           if (r === 7 && (rc === 3 || rc === 4)) ch = 'D';
-          if (r === 0 && rc === 3) ch = 'D';   // maar één deurvakje: geen doorgang
+          if (r === 0 && (rc === 3 || rc === 4)) ch = 'D';
         }
         s += ch;
       }
@@ -18540,15 +18540,13 @@ const RULES_SCENES = {
     g.querySelectorAll('.rg-cell.is-door').forEach(d => anims.push(...rShow(rEl(d, 'rs-door-glow'), 0.08, 0.93, D)));
     // de doorgang: 2 deurvakjes van links + 2 van rechts, tegen elkaar aan
     anims.push(...rShow(rEl(g, 'rs-seam', '', `left:${7 * C - 2}px;top:${3 * C - 2}px;width:${2 * C + 3}px;height:${2 * C + 3}px`), 0.3, 0.93, D));
-    // halve deur rechtsboven: rood
-    anims.push(...rShow(rAt(g, 'rs-bad', 11, 0, C, '✕'), 0.3, 0.93, D, true));
     const pawn = rPawn(g, RULES_PAWN(0), C);
     const path = [[3, 3], [4, 3], [5, 3], [6, 3], [7, 3], [8, 3], [9, 3], [10, 3], [11, 3]];
     anims.push(rWalk(pawn, path, 0.42, 0.045, D));
     anims.push(rTrack(pawn, 'opacity', 0, [[0.36, 1], [0.93, 0]], D, 0.03));
     anims.push(...rCaption(stage, [
       [0.02, 0.28, 'Twee deurvakjes midden op een zijde'],
-      [0.3, 0.95, 'Beide vloer = doorgang · één leeg = muur'],
+      [0.3, 0.95, 'Deurvakjes tegen elkaar = doorgang'],
     ], D));
     return anims;
   },
