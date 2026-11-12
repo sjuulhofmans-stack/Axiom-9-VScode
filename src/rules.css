@@ -30,7 +30,6 @@
   .rules-nav a.active span{border-color:var(--amber); color:var(--amber);}
 
   .rules-main{display:flex; flex-direction:column; gap:14px; min-width:0;}
-  .rules-intro h2{margin-bottom:4px;}
   .rules-section{
     background:var(--panel); border:1px solid var(--line-dim); border-radius:12px;
     padding:20px 22px; scroll-margin-top:var(--rules-top);
