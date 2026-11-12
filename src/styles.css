@@ -58,6 +58,11 @@
      af, maar maakt geen scrollvak. */
   html{overflow-x:hidden;}
   body{overflow-x:clip;}
+  /* Geen tekst selecteren, nergens (gebruikerswens 2026-11: per ongeluk selecteren bij klikken en
+     slepen was irritant). Typen in een veld blijft gewoon werken; de kamercode kopieer je met de knop
+     Kopieer. */
+  body{-webkit-user-select:none; user-select:none;}
+  input, textarea, [contenteditable]{-webkit-user-select:text; user-select:text;}
 
   /* ---------- thema-scrollbalk, overal in het document ---------- */
   /* scrollbar-color/-width is de Firefox-variant (geldt globaal via html, wordt overgeërfd);
