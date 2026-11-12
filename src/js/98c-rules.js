@@ -500,7 +500,7 @@ const RULES_SCENES = {
     const path = [[0, 4], [0, 3], [0, 2], [0, 1], [0, 0], [1, 0], [2, 0], [3, 0]];
     const t0 = 0.16, st = 0.075;
     // voetstappen 1..7
-    path.slice(1).forEach(([c, r], i) => anims.push(...rShow(rAt(g, 'rs-step', c, r, C, String(i + 1)), t0 + (i + 1) * st, 0.93, D, true)));
+    path.slice(1).forEach(([c, r], i) => anims.push(...rShow(rAt(g, 'rs-step' + (i === path.length - 2 ? ' is-last' : ''), c, r, C, String(i + 1)), t0 + (i + 1) * st, 0.93, D, true)));
     // tegenstander + rode ring zodra je ernaast staat
     rAt(g, 'rg-pawn is-static', 1, 2, C, '<i></i>').style.setProperty('--pc', RULES_PAWN(1));
     anims.push(...rShow(rAt(g, 'rs-blocked', 1, 2, C), t0 + 2 * st, t0 + 4 * st, D));
