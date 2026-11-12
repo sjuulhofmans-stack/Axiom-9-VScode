@@ -9,8 +9,8 @@ const EDGE_CELLS = {
 const OPPOSITE = {N:'S', S:'N', E:'W', W:'E'};
 
 // ---------- rotatie ----------
-// tileRotation houdt per tegel 0/90/180/270 bij. De generator werkt altijd met de ONGEDRAAIDE
-// brondata (OPEN_EDGES_RAW) en zet alle rotaties op 0; handmatig draaien doe je daarna zelf.
+// tileRotation houdt per tegel 0/90/180/270 bij. De bordbouwer (70-generator.js) zet voor elke
+// tegel zelf een draaiing; handmatig draaien kan daarna nog.
 const tileRotation = {};
 for (let tid=1; tid<=20; tid++) tileRotation[tid] = 0;
 function resetRotations(){ for (let tid=1; tid<=20; tid++) tileRotation[tid] = 0; }
@@ -84,7 +84,7 @@ function requiredCornerRotation(tid, slotIdx){
 }
 // zet de rotatie van de (tot 4) hoektegels in deze SPECIFIEKE indeling correct, en al het andere
 // terug op 0 — puur functioneel op basis van `lay`, dus veilig om vlak vóór elke rotatie-
-// afhankelijke meting opnieuw aan te roepen (zie `scored()` in 70-generator.js).
+// afhankelijke meting opnieuw aan te roepen (nu alleen nog het vangnet in 70-generator.js).
 function applyCornerRotations(lay){
   resetRotations();
   for (const s of CORNER_SLOTS){

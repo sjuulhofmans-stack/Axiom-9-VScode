@@ -1,367 +1,312 @@
-// ---------- strakke, naadloze indeling (backtracking) ----------
-// Doel: geen doodlopende doorgangen (elke open naad heeft een open naad ernaast) én alle 20 tegels bereikbaar.
-const SLOT_NEIGHBORS = [];
-for (let idx=0; idx<20; idx++){
-  const row = Math.floor(idx/TILE_COLS), col = idx%TILE_COLS;
-  const nb = [];
-  if (row>0) nb.push(['N', idx-TILE_COLS]);
-  if (row<TILE_ROWS-1) nb.push(['S', idx+TILE_COLS]);
-  if (col>0) nb.push(['W', idx-1]);
-  if (col<TILE_COLS-1) nb.push(['E', idx+1]);
-  SLOT_NEIGHBORS.push(nb);
+// ---------- bordbouwer (herschreven 2026-11, na de analyse "Axiom-9 Bordanalyse") ----------
+// Doel: een bord zonder dooie hoeken. Elke naad tussen twee tegels klopt (open tegen open, dicht
+// tegen dicht), alle 20 tegels hangen aan elkaar, zo min mogelijk deuren wijzen het bord af, en het
+// verwachte verkeer is zo gelijk mogelijk over de tegels verdeeld.
+//
+// Waarom herschreven (alles gemeten: 60 borden x 400 potjes met de echte simulatie):
+//  1. De oude test op dode tegels telde ELK vakje met een label als "interessant", dus ook de
+//     kristalvakjes (4.x). Elke gang had er zo zelf één en was nooit dood: 60 van de 60 borden
+//     kregen "0 dode tegels", terwijl 35% een tegel had met <0,5% van het verkeer. Nu tellen alleen
+//     opdrachten (2.x) en startvakjes (3.x) als bron/doel.
+//  2. De tien keuringsregels stonden strikt op volgorde; regel 2 was een getal in de honderden en
+//     vrijwel nooit gelijk, dus regel 3-10 (kamers spreiden, opdrachten uit elkaar...) deden nooit
+//     mee. Nu is het ÉÉN weegscore (genScore).
+//  3. Deuren die het bord af wijzen werden niet geteld: gemiddeld 7,3 doodlopende stompjes per
+//     bord. Nu hooguit 1 of 3 (0 kan niet: de tegels hebben samen 63 deuren, er passen er 62).
+//  4. Alleen de hoektegels werden gedraaid: 2.860 deurpatronen. Nu draait elke tegel: 57.202.
+// Uitkomst van het rekenscript waar dit een overzetting van is (20 borden x 400 potjes): dode
+// tegels 35% -> 0%, stompjes 7,3 -> 1, vakjes waar bijna niemand komt 92 -> 45, drukste tegel
+// 8,9% -> 7,7%, potjes even lang, startposities even eerlijk.
+//
+// Aanpak: (a) genSearch legt met terugsporen een geldig bord (tegel + draaiing per plek) binnen een
+// budget aan deuren naar buiten; (b) genAnneal schuift daarna tegels met dezelfde deurvorm van plek
+// en draait 4-weg-tegels, en houdt het bord met de hoogste genScore; (c) dat een paar keer opnieuw
+// (GEN_RESTARTS), beste wint. Zelfde seed = zelfde bord: alles loopt op de seeded rand, niets op de
+// klok.
+//
+// Bekende grens (niet met de bouwer op te lossen): de twee hoekgangen (tegel 1 en 16) blijven de
+// koudste tegels, rond 2,5% van het verkeer. Een hoek ligt nooit op een kortste route en er ligt
+// niets om voor te komen. Alleen een opdracht op die tegels verhelpt dat (gemeten: 5,8%), en dat is
+// een keuze van de maker.
+
+const GEN_ROTS = [0, 90, 180, 270];
+const GEN_DIR_BIT = { N: 1, S: 2, E: 4, W: 8 };
+const GEN_BOARD_H = TILE_ROWS * TILE_H, GEN_BOARD_W = TILE_COLS * TILE_W, GEN_CELLS = GEN_BOARD_H * GEN_BOARD_W;
+const GEN_RESTARTS = 8;      // zo vaak een nieuw deurpatroon proberen
+const GEN_ITERS = 700;       // schuif-/draaistappen per poging
+const GEN_SEARCH_STEPS = 30000;
+// budget aan deuren die het bord af wijzen, om en om: een volledig open bord (1) meet het best, maar
+// met één muur (3) krijgt niet elk bord dezelfde grote vorm. De score kiest (elk stompje kost punten).
+const GEN_STUB_BUDGETS = [1, 3];
+const GEN_STUB_ESCALATE = [5, 7, 9, 99];   // alleen nodig als de tegels in de editor veranderd zijn
+
+// welke zijden van een plek wijzen het bord af (als bitjes)
+const GEN_OFF_MASK = [];
+for (let s = 0; s < 20; s++){
+  let m = 0;
+  for (const d of offBoardDirs(s)) m |= GEN_DIR_BIT[d];
+  GEN_OFF_MASK.push(m);
 }
-// meest-beperkte posities eerst: dat snoeit de zoekboom het snelst.
-// Als functie, want de tegel-editor kan de regels veranderen.
-function solveOrder(){
-  return Array.from({length:20},(_,i)=>i)
-    .sort((a,b) => ALLOWED_TILES[a].length - ALLOWED_TILES[b].length);
+const GEN_SLOT_OF_CELL = new Uint8Array(GEN_CELLS);
+for (let k = 0; k < GEN_CELLS; k++){
+  GEN_SLOT_OF_CELL[k] = Math.floor(Math.floor(k / GEN_BOARD_W) / TILE_H) * TILE_COLS + Math.floor((k % GEN_BOARD_W) / TILE_W);
+}
+function genPop(m){ return (m & 1) + ((m >> 1) & 1) + ((m >> 2) & 1) + ((m >> 3) & 1); }
+
+// per tegel en draaiing: welke vakjes loopbaar zijn, waar de opdracht/startvakjes liggen en welke
+// zijden open zijn. Elke keer opnieuw opgebouwd (goedkoop), want de tegel-editor kan alles wijzigen.
+// Zelfde draairegel als getDisplayValue in 10-rules.js.
+function genBuildTileTable(){
+  const T = { walk: [], quests: [], starts: [], mask: [], cornerOk: [], room: [] };
+  for (let tid = 1; tid <= 20; tid++){
+    T.walk[tid] = []; T.quests[tid] = []; T.starts[tid] = []; T.mask[tid] = [];
+    T.cornerOk[tid] = isCornerCapable(tid);
+    T.room[tid] = !!ROOM_NAMES[tid];
+    for (let ri = 0; ri < 4; ri++){
+      const walk = new Uint8Array(64), quests = [], starts = [];
+      for (let dr = 0; dr < 8; dr++) for (let dc = 0; dc < 8; dc++){
+        let r = dr, c = dc;
+        for (let i = 0; i < (4 - ri) % 4; i++){ const nr = c, nc = 7 - r; r = nr; c = nc; }
+        const v = tileLookup[tid].get(r + '_' + c);
+        if (v === undefined) continue;
+        walk[dr * 8 + dc] = 1;
+        if (typeof v === 'string'){
+          if (v.startsWith('2.')) quests.push(dr * 8 + dc);
+          else if (v.startsWith('3.')) starts.push(dr * 8 + dc);
+        }
+      }
+      let m = 0;
+      for (const dir in GEN_DIR_BIT){
+        if (EDGE_CELLS[dir].every(([dr, dc]) => walk[dr * 8 + dc])) m |= GEN_DIR_BIT[dir];
+      }
+      T.walk[tid][ri] = walk; T.quests[tid][ri] = quests; T.starts[tid][ri] = starts; T.mask[tid][ri] = m;
+    }
+  }
+  T.totalOpen = 0;
+  for (let tid = 1; tid <= 20; tid++) T.totalOpen += genPop(T.mask[tid][0]);
+  return T;
 }
 
-function layoutIsConnected(lay){
-  const parent = Array.from({length:20},(_,i)=>i);
-  function find(x){ while(parent[x]!==x){ parent[x]=parent[parent[x]]; x=parent[x]; } return x; }
-  for (let s=0; s<20; s++){
-    for (const [dir,n] of SLOT_NEIGHBORS[s]){
-      if (n>s && slotOpenDir(s, lay[s], dir) && slotOpenDir(n, lay[n], OPPOSITE[dir])){
-        const ra=find(s), rb=find(n); if (ra!==rb) parent[ra]=rb;
+function genShuffle(a, rand){
+  for (let i = a.length - 1; i > 0; i--){ const j = Math.floor(rand() * (i + 1)); const t = a[i]; a[i] = a[j]; a[j] = t; }
+  return a;
+}
+
+// Eén zoektocht met terugsporen, plek voor plek (rij voor rij): kies een nog vrije tegel + draaiing
+// die past bij de buren erboven en links, binnen het budget aan deuren naar buiten.
+// Snoeien: elke dichte naad BINNEN het bord ("muur") kost aan het eind twee deuren naar buiten
+// (stompjes = totaal aantal deuren - 2 x open naden), dus een dichte zijde naar een plek die nog
+// komt telt meteen mee. Zonder dat liep de zoektocht pas een rij later vast.
+// Geeft { lay, ri } terug (tegel en draai-index per plek) of null.
+function genSearch(T, rand, maxStubs){
+  const lay = new Array(20).fill(0), ri = new Array(20).fill(0), msk = new Array(20).fill(0);
+  const used = new Array(21).fill(false);
+  let steps = 0, stubs = 0, walls = 0;
+  const base = T.totalOpen - 2 * 31;   // stompjes bij een volledig open bord
+  function connected(){
+    const seen = new Array(20).fill(false); seen[0] = true;
+    const stack = [0]; let n = 1;
+    while (stack.length){
+      const s = stack.pop(), r = Math.floor(s / TILE_COLS), c = s % TILE_COLS, m = msk[s];
+      const nb = [];
+      if ((m & 1) && r > 0) nb.push(s - TILE_COLS);
+      if ((m & 2) && r < TILE_ROWS - 1) nb.push(s + TILE_COLS);
+      if ((m & 4) && c < TILE_COLS - 1) nb.push(s + 1);
+      if ((m & 8) && c > 0) nb.push(s - 1);
+      for (const x of nb) if (!seen[x]){ seen[x] = true; n++; stack.push(x); }
+    }
+    return n === 20;
+  }
+  function backtrack(s){
+    if (++steps > GEN_SEARCH_STEPS) return false;
+    if (s === 20) return connected();
+    const r = Math.floor(s / TILE_COLS), c = s % TILE_COLS;
+    const off = GEN_OFF_MASK[s], isCorner = CORNER_SLOTS.includes(s), isInner = INNER_SLOTS.includes(s);
+    const cands = [];
+    for (let tid = 1; tid <= 20; tid++){
+      if (used[tid]) continue;
+      if (tid === START_TILE && !isInner) continue;
+      if (isCorner && !T.cornerOk[tid]) continue;
+      // per verschillende deurvorm één kandidaat; geven meerdere draaiingen dezelfde vorm (4-weg-
+      // tegel), dan een willekeurige daarvan
+      const order = genShuffle([0, 1, 2, 3], rand), seen = [];
+      for (const q of order){
+        const m = T.mask[tid][q];
+        if (seen.includes(m)) continue;
+        seen.push(m);
+        if (isCorner && (m & off)) continue;                       // hoek: geen deur het bord af
+        if (r > 0 && ((m & 1) !== 0) !== ((msk[s - TILE_COLS] & 2) !== 0)) continue;   // naad boven
+        if (c > 0 && ((m & 8) !== 0) !== ((msk[s - 1] & 4) !== 0)) continue;           // naad links
+        const st = genPop(m & off);
+        let w = 0;
+        if (r < TILE_ROWS - 1 && !(m & 2)) w++;
+        if (c < TILE_COLS - 1 && !(m & 4)) w++;
+        if (stubs + st > maxStubs || base + 2 * (walls + w) > maxStubs) continue;
+        cands.push([tid, q, m, st, w]);
       }
     }
-  }
-  const root = find(0);
-  for (let i=1;i<20;i++) if (find(i)!==root) return false;
-  return true;
-}
-
-// Eén backtracking-poging: elke naad tussen twee tegels moet kloppen (open tegen open, dicht tegen dicht),
-// plus de plaatsingsregels uit ALLOWED_TILES (hoeken, starttegel altijd binnenin). Gebruikt
-// slotOpenDir i.p.v. OPEN_EDGES_STATIC rechtstreeks, zodat een hoek-geschikte tegel op ELKE hoek
-// klopt — welke exacte rotatie dat straks wordt, maakt de zoektocht zelf niet uit (zie
-// applyCornerRotations in 10-rules.js, die dat pas ná het vinden van een geldige indeling regelt).
-//
-// `roomColorPref` (0 of 1) stuurt de VOLGORDE waarin tegels per positie geprobeerd worden: op een
-// schaakbordveld van die kleur eerst de kamertegels, op de andere kleur eerst de gangen. Waarom
-// een schaakbord? Het bord is 4x5 = 10 velden van elke kleur en er zijn precies 10 kamers, dus
-// "alle kamers op één kleur" is exact de indeling waarin geen enkele kamer aan een andere grenst.
-// Helemaal halen kan niet (tegel 1 en 16 zijn gangen die op verschillende kleuren vastliggen —
-// zie de toelichting bij roomSpreadScore), maar eromheen zoeken scheelt enorm.
-//
-// Cruciaal: dit is puur een volgorde, geen filter. Elke kandidaat wordt nog steeds geprobeerd als
-// de voorkeursvolgorde niet uitkomt, dus de zoektocht blijft compleet en vindt nog steeds elke
-// geldige indeling die hij eerst ook vond — alleen kómt hij nu meestal eerst een gespreide tegen.
-// Dat is nodig omdat achteraf de minst geklonterde kandidaat kiezen (compareLayoutQuality) te
-// weinig deed: gemeten bleef de slechtste uitschieter op 9 van de 10 kamers tegen elkaar, simpelweg
-// omdat álle 60 kandidaten in de pool al even sterk geklonterd waren.
-// Snelheid (nr. 31 uit analyse.md, 2026-11): elke zoekstap kijkt in een vooraf berekende tabel
-// (SLOT_OPEN_MASK: per positie en tegel welke zijden open zijn, als bitjes) in plaats van telkens
-// slotOpenDir aan te roepen. De volgorde van de rand()-aanroepen en het aantal stappen zijn exact
-// gelijk gebleven, dus dezelfde seed geeft nog steeds precies hetzelfde bord (gecontroleerd op 8
-// seeds, bord + draaiing). Samen met layoutCellGrid hieronder: gemiddeld 5,8 → 1,7 s rekenen per klik.
-// Niet "slimmer snoeien" zonder dat te beseffen: elke andere zoekvolgorde of stappentelling
-// verandert welk bord bij een seed hoort.
-const GEN_DIR_BIT = { N: 1, S: 2, E: 4, W: 8 };
-// per positie de buren als [buurpositie, mijn bitje, zijn bitje]
-const SLOT_NEIGHBOR_BITS = SLOT_NEIGHBORS.map(nb => nb.map(([dir, n]) => [n, GEN_DIR_BIT[dir], GEN_DIR_BIT[OPPOSITE[dir]]]));
-let slotOpenMaskCache = null, slotOpenMaskSource = null;
-// de tabel hangt af van de tegelvormen: opnieuw zodra recomputeOpenEdges een nieuw object neerzet
-// (tegel-editor), anders hergebruiken
-function slotOpenMasks(){
-  if (slotOpenMaskCache && slotOpenMaskSource === OPEN_EDGES_STATIC) return slotOpenMaskCache;
-  const masks = [];
-  for (let s=0; s<20; s++){
-    const row = new Array(21).fill(0);
-    for (let tid=1; tid<=20; tid++){
-      let m = 0;
-      for (const dir in GEN_DIR_BIT) if (slotOpenDir(s, tid, dir)) m |= GEN_DIR_BIT[dir];
-      row[tid] = m;
+    genShuffle(cands, rand);
+    for (const [tid, q, m, st, w] of cands){
+      lay[s] = tid; ri[s] = q; msk[s] = m; used[tid] = true; stubs += st; walls += w;
+      if (backtrack(s + 1)) return true;
+      used[tid] = false; stubs -= st; walls -= w;
     }
-    masks.push(row);
+    lay[s] = 0;
+    return false;
   }
-  slotOpenMaskCache = masks; slotOpenMaskSource = OPEN_EDGES_STATIC;
-  return masks;
+  return backtrack(0) ? { lay, ri, msk } : null;
 }
 
-function attemptSeamlessLayout(rand, stepBudget, roomColorPref){
-  const SOLVE_ORDER = solveOrder();
-  const MASK = slotOpenMasks();
-  const lay = new Array(20).fill(null);
-  const used = new Array(21).fill(false);
-  let steps = 0;
-  function consistent(slotIdx, tid){
-    const mine = MASK[slotIdx][tid];
-    for (const [n, myBit, theirBit] of SLOT_NEIGHBOR_BITS[slotIdx]){
-      const other = lay[n];
-      if (other !== null && ((mine & myBit) === 0) !== ((MASK[n][other] & theirBit) === 0)) return false;
+// ---------- voorspelling van het verkeer + de weegscore ----------
+// Spelers lopen van opdracht naar opdracht (en één keer van hun start naar de eerste opdracht).
+// Het verwachte verkeer op een vakje = over alle paren (opdracht-opdracht samen 5/6, start-opdracht
+// samen 1/6) het deel van de kortste routes dat over dat vakje loopt. Gemeten tegen de simulatie:
+// samenhang 0,84 per tegel (de oude telling: 0,38), en 0,89 voor de koudste tegel van een bord.
+// Schatting te hoog bij tegels die "één van meerdere even korte routes" zijn (bots kiezen er één).
+const genBuf = {
+  walk: new Uint8Array(GEN_CELLS), queue: new Int32Array(GEN_CELLS), cells: new Int32Array(GEN_CELLS), dist: [], sig: [],
+};
+function genBfs(src, dist, sig){
+  const walk = genBuf.walk, queue = genBuf.queue, W = GEN_BOARD_W;
+  dist.fill(-1); sig.fill(0);
+  dist[src] = 0; sig[src] = 1; queue[0] = src;
+  let head = 0, tail = 1;
+  while (head < tail){
+    const k = queue[head++], d = dist[k] + 1, c = k % W;
+    for (let j = 0; j < 4; j++){
+      let nk;
+      if (j === 0){ nk = k - W; if (nk < 0) continue; }
+      else if (j === 1){ nk = k + W; if (nk >= GEN_CELLS) continue; }
+      else if (j === 2){ if (c === 0) continue; nk = k - 1; }
+      else { if (c === W - 1) continue; nk = k + 1; }
+      if (!walk[nk]) continue;
+      if (dist[nk] === -1){ dist[nk] = d; queue[tail++] = nk; }
+      if (dist[nk] === d) sig[nk] += sig[k];
+    }
+  }
+}
+// meet één bord (tegel + draai-index + deurvorm per plek). Geeft de score en de losse onderdelen.
+function genEvaluate(T, lay, ri, msk){
+  const walk = genBuf.walk, W = GEN_BOARD_W;
+  walk.fill(0);
+  const quests = [], starts = [];
+  for (let s = 0; s < 20; s++){
+    const tid = lay[s], q = ri[s], src = T.walk[tid][q];
+    const R0 = Math.floor(s / TILE_COLS) * TILE_H, C0 = (s % TILE_COLS) * TILE_W;
+    for (let i = 0; i < 64; i++) if (src[i]) walk[(R0 + (i >> 3)) * W + C0 + (i & 7)] = 1;
+    for (const i of T.quests[tid][q]) quests.push((R0 + (i >> 3)) * W + C0 + (i & 7));
+    for (const i of T.starts[tid][q]) starts.push((R0 + (i >> 3)) * W + C0 + (i & 7));
+  }
+  // alleen de loopbare vakjes aflopen (±564 van de 1280): scheelt de helft van het rekenwerk
+  const cells = genBuf.cells; let nCells = 0;
+  for (let k = 0; k < GEN_CELLS; k++) if (walk[k]) cells[nCells++] = k;
+  const nq = quests.length, ns = starts.length, nSrc = nq + ns;
+  let stubs = 0, radj = 0;
+  for (let s = 0; s < 20; s++){
+    stubs += genPop(msk[s] & GEN_OFF_MASK[s]);
+    if (!T.room[lay[s]]) continue;
+    if (s % TILE_COLS < TILE_COLS - 1 && (msk[s] & 4) && T.room[lay[s + 1]]) radj++;
+    if (s + TILE_COLS < 20 && (msk[s] & 2) && T.room[lay[s + TILE_COLS]]) radj++;
+  }
+  if (nq < 2) return { score: -stubs, stubs, radj, share: null };   // niets te voorspellen (bewerkte tegels)
+  while (genBuf.dist.length < nSrc){ genBuf.dist.push(new Int16Array(GEN_CELLS)); genBuf.sig.push(new Float64Array(GEN_CELLS)); }
+  const src = quests.concat(starts);
+  for (let i = 0; i < nSrc; i++) genBfs(src[i], genBuf.dist[i], genBuf.sig[i]);
+
+  const per = new Float64Array(20);
+  const W_START = 1 / 6;
+  function addPair(a, b, w){
+    const da = genBuf.dist[a], db = genBuf.dist[b], sa = genBuf.sig[a], sb = genBuf.sig[b];
+    const d = da[src[b]];
+    if (d < 0) return false;
+    const f = w / sa[src[b]], from = src[a];
+    for (let i = 0; i < nCells; i++){
+      const k = cells[i];
+      if (da[k] + db[k] !== d || k === from) continue;
+      per[GEN_SLOT_OF_CELL[k]] += f * sa[k] * sb[k];
     }
     return true;
   }
-  // in-place: de lijst is altijd al een vers gemaakte kopie
-  function shuffleInPlace(a){
-    for (let i=a.length-1; i>0; i--){ const j=Math.floor(rand()*(i+1)); const t=a[i]; a[i]=a[j]; a[j]=t; }
-    return a;
-  }
-  // kandidaten die bij de schaakbordkleur van deze positie passen eerst, de rest daarna —
-  // binnen elke groep nog steeds willekeurig, zodat dezelfde seed gevarieerde borden blijft geven
-  function orderedCandidates(arr, slotIdx){
-    if (roomColorPref !== 0 && roomColorPref !== 1) return shuffleInPlace(arr);
-    const wantRoom = ((Math.floor(slotIdx/TILE_COLS) + slotIdx%TILE_COLS) % 2) === roomColorPref;
-    const fits = [], rest = [];
-    for (const t of arr) (!!ROOM_NAMES[t] === wantRoom ? fits : rest).push(t);
-    shuffleInPlace(fits); shuffleInPlace(rest);
-    for (const t of rest) fits.push(t);
-    return fits;
-  }
-  function backtrack(i){
-    steps++;
-    if (steps > stepBudget) return false;
-    if (i === SOLVE_ORDER.length) return true;
-    const slotIdx = SOLVE_ORDER[i];
-    const allowed = ALLOWED_TILES[slotIdx];
-    const candidates = [];
-    for (const t of allowed) if (!used[t]) candidates.push(t);
-    for (const tid of orderedCandidates(candidates, slotIdx)){
-      if (consistent(slotIdx, tid)){
-        lay[slotIdx] = tid; used[tid] = true;
-        if (backtrack(i+1)) return true;
-        lay[slotIdx] = null; used[tid] = false;
-      }
+  let reachable = true;
+  const wq = 2 * (1 - W_START) / (nq * (nq - 1)), ws = ns ? W_START / (ns * nq) : 0;
+  for (let a = 0; a < nq; a++) for (let b = a + 1; b < nq; b++) if (!addPair(a, b, wq)) reachable = false;
+  for (let s = 0; s < ns; s++) for (let b = 0; b < nq; b++) if (!addPair(nq + s, b, ws)) reachable = false;
+  if (!reachable) return { score: -1000 - stubs, stubs, radj, share: null };
+
+  let tot = 0; for (let s = 0; s < 20; s++) tot += per[s];
+  const share = Array.from(per, v => 100 * v / tot);
+  // opdrachten even ver van elkaar (gemiddelde afstand naar de andere opdrachten: samenhang 0,86 met
+  // "beurten per opdracht" in de simulatie), kortste afstand tussen twee opdrachten, starts even ver
+  let qdMin = Infinity, qdMax = -Infinity, qmin = Infinity;
+  for (let a = 0; a < nq; a++){
+    let sum = 0;
+    for (let b = 0; b < nq; b++){
+      if (a === b) continue;
+      const d = genBuf.dist[a][src[b]]; sum += d;
+      if (d < qmin) qmin = d;
     }
-    return false;
+    const avg = sum / (nq - 1);
+    if (avg < qdMin) qdMin = avg; if (avg > qdMax) qdMax = avg;
   }
-  return backtrack(0) ? lay : null;
+  let sdMin = Infinity, sdMax = -Infinity;
+  for (let s = 0; s < ns; s++){
+    let sum = 0;
+    for (let b = 0; b < nq; b++) sum += genBuf.dist[nq + s][src[b]];
+    const avg = sum / nq;
+    if (avg < sdMin) sdMin = avg; if (avg > sdMax) sdMax = avg;
+  }
+  const res = { stubs, radj, share, qdSpread: qdMax - qdMin, qmin, sdSpread: ns ? sdMax - sdMin : 0 };
+  res.score = genScore(res);
+  return res;
+}
+// De weegscore (hoger = beter). De gewichten zijn die van het gemeten rekenscript — verander je er
+// één, meet dan opnieuw met de simulatie (koudste tegel, drukste tegel, kamers tegen elkaar).
+function genScore(f){
+  const ps = f.share.slice().sort((a, b) => a - b);
+  let s = 3 * ps[0] + 1.5 * ps[1];                       // de koudste twee tegels optillen
+  for (const x of ps) s += 0.5 * Math.min(x, 4);          // elke tegel richting een eerlijk deel
+  if (ps[19] > 9) s -= 0.25 * (ps[19] - 9);               // geen snelweg-tegel
+  s -= 0.35 * f.qdSpread;                                 // opdrachten ongeveer even ver
+  s -= 0.5 * f.sdSpread;                                  // startposities even eerlijk
+  s -= 1.0 * f.radj;                                      // kamers niet tegen elkaar
+  s += 0.15 * Math.min(f.qmin, 14);                       // opdrachten niet vlak naast elkaar
+  s -= 0.6 * f.stubs;                                     // deuren die het bord af wijzen
+  return s;
 }
 
-// ---------- wurgpunten: kamers die maar via 1 tegel-overgang met de rest verbonden zijn ----------
-// Elke naad kan lokaal kloppen (open tegen open) en alles kan bereikbaar zijn, en toch kan een
-// hele kamer(cluster) via precies één tegel-overgang aan de rest hangen — een brug in de
-// tegel-graaf. Dan moet je, om ergens anders te komen, exact hetzelfde stuk twee keer lopen.
-// Standaard brug-detectie (Tarjan) op de tegel-graaf (20 knopen, kleine graaf, dus goedkoop).
-//
-// roomsBehindBridges() rekent gewoon met de echte tegelvorm uit tiles.json — er is geen
-// tegel die per definitie altijd een wurgpunt is, dus de ondergrens hangt af van de
-// gegenereerde indeling zelf. De generator kiest wel de kandidaat die het dichtst bij
-// die ondergrens komt, in plaats van willekeurig 2 of 3 kamers te laten vastlopen.
-// welke tegelposities zijn onderling verbonden via een open naad (rotatie-bewust, dus ook
-// bruikbaar nadat applyRandomBoardFlip alles 180° gedraaid heeft)
-function tileAdjacency(lay){
-  const adj = Array.from({length:20}, () => []);
-  for (let idx=0; idx<20; idx++){
-    const row = Math.floor(idx/TILE_COLS), col = idx%TILE_COLS;
-    const checks = [];
-    if (col < TILE_COLS-1) checks.push(['E', idx+1]);
-    if (row < TILE_ROWS-1) checks.push(['S', idx+TILE_COLS]);
-    for (const [dir, nIdx] of checks){
-      if (effectiveOpenEdge(lay[idx], dir) && effectiveOpenEdge(lay[nIdx], OPPOSITE[dir])){
-        adj[idx].push(nIdx); adj[nIdx].push(idx);
-      }
+// Eén schuif-/draaistap op een kopie: twee tegels met een verwisselbare deurvorm van plek wisselen
+// (elk gedraaid tot hij op de andere plek past), of een tegel anders draaien zonder dat zijn
+// deurvorm verandert (4-weg-tegel). Het deurpatroon van het bord blijft dus gelijk. null = geen zet.
+function genMutate(T, lay, ri, msk, rand){
+  const rotsFor = (tid, m) => { const out = []; for (let q = 0; q < 4; q++) if (T.mask[tid][q] === m) out.push(q); return out; };
+  if (rand() < 0.2){
+    for (let tries = 0; tries < 20; tries++){
+      const s = Math.floor(rand() * 20);
+      const opts = rotsFor(lay[s], msk[s]).filter(q => q !== ri[s]);
+      if (!opts.length) continue;
+      const r2 = ri.slice(); r2[s] = opts[Math.floor(rand() * opts.length)];
+      return { lay: lay.slice(), ri: r2 };
     }
+    return null;
   }
-  return adj;
+  for (let tries = 0; tries < 40; tries++){
+    const a = Math.floor(rand() * 20), b = Math.floor(rand() * 20);
+    if (a === b) continue;
+    const ta = lay[a], tb = lay[b];
+    if (ta === START_TILE && !INNER_SLOTS.includes(b)) continue;
+    if (tb === START_TILE && !INNER_SLOTS.includes(a)) continue;
+    const ra = rotsFor(ta, msk[b]), rb = rotsFor(tb, msk[a]);
+    if (!ra.length || !rb.length) continue;
+    const l2 = lay.slice(), r2 = ri.slice();
+    l2[a] = tb; r2[a] = rb[Math.floor(rand() * rb.length)];
+    l2[b] = ta; r2[b] = ra[Math.floor(rand() * ra.length)];
+    return { lay: l2, ri: r2 };
+  }
+  return null;
 }
 
-function findTileBridges(lay){
-  const adj = tileAdjacency(lay);
-  const disc = new Array(20).fill(-1), low = new Array(20).fill(-1);
-  const bridges = [];
-  let timer = 0;
-  function dfs(u, parent){
-    disc[u] = low[u] = timer++;
-    for (const v of adj[u]){
-      if (v === parent) continue; // simpele graaf: hoogstens 1 verbinding tussen twee tegels
-      if (disc[v] === -1){
-        dfs(v, u);
-        low[u] = Math.min(low[u], low[v]);
-        if (low[v] > disc[u]) bridges.push([u, v]);
-      } else {
-        low[u] = Math.min(low[u], disc[v]);
-      }
-    }
-  }
-  dfs(0, -1);
-  return { adj, bridges };
-}
-
-// hoeveel UNIEKE kamers zitten er achter minstens 1 brug (dus alleen bereikbaar via terugtrekken)
-function roomsBehindBridges(lay){
-  const { adj, bridges } = findTileBridges(lay);
-  if (!bridges.length) return 0;
-  const trapped = new Set();
-  for (const [u, v] of bridges){
-    // component aan de v-kant zonder de brug u-v
-    const seen = new Set([v]);
-    const stack = [v];
-    while (stack.length){
-      const x = stack.pop();
-      for (const y of adj[x]){
-        if ((x === v && y === u) || (x === u && y === v)) continue;
-        if (!seen.has(y)){ seen.add(y); stack.push(y); }
-      }
-    }
-    const smaller = seen.size * 2 <= 20 ? seen : new Set(Array.from({length:20},(_,i)=>i).filter(i => !seen.has(i)));
-    for (const s of smaller) if (ROOM_NAMES[lay[s]]) trapped.add(s);
-  }
-  return trapped.size;
-}
-
-// ---------- kwaliteit van een indeling: spreiding van kamers + eerlijkheid vanaf elke start ----------
-// Werkt op de ONGEDRAAIDE brondata (net als de rest van de generator); een puntspiegeling
-// achteraf verandert onderlinge afstanden niet, dus scoren vóór applyRandomBoardFlip is prima.
-//
-// Let op over minDist: hier stond ooit dat minDist wiskundig ALTIJD 1 moest zijn, omdat tegel 1
-// vastzat op hoek A ("even" schaakbordveld, (rij+kolom)%2) en tegel 16 op hoek P ("oneven") —
-// twee gangen op verschillende kleuren, dus konden de 10 kamers nooit samen op één kleur en
-// grensde er altijd minstens één kamerpaar aan elkaar. Dat klopt niet meer sinds hoek-geschikte
-// tegels via rotatie op ELKE hoek passen (applyCornerRotations in 10-rules.js): beide gangen
-// kunnen nu op dezelfde kleur, en dan past het volledige schaakbord met alle 10 kamers op de
-// andere kleur. Gemeten: die indelingen komen er nu daadwerkelijk uit (roomAdjacencyCount 0,
-// een perfect R.R.R / .R.R. -patroon), zie de kleurvoorkeur in attemptSeamlessLayout.
-function slotRC(idx){ return [Math.floor(idx/TILE_COLS), idx % TILE_COLS]; }
-
-// hoe verder kamertegels onderling uit elkaar liggen (in tegel-stappen), hoe minder ze klonteren
-function roomSpreadScore(lay){
-  const rooms = [];
-  for (let s=0; s<20; s++) if (ROOM_NAMES[lay[s]]) rooms.push(s);
-  let minDist = Infinity, sumDist = 0, pairs = 0;
-  for (let i=0; i<rooms.length; i++){
-    const [r1,c1] = slotRC(rooms[i]);
-    for (let j=i+1; j<rooms.length; j++){
-      const [r2,c2] = slotRC(rooms[j]);
-      const d = Math.abs(r1-r2) + Math.abs(c1-c2);
-      if (d < minDist) minDist = d;
-      sumDist += d; pairs++;
-    }
-  }
-  return { minDist, avgDist: pairs ? sumDist/pairs : 0 };
-}
-
-// standaarddeviatie van "gemiddelde loopafstand tot elke kamer" over de 4 startvakjes (3.1-3.4):
-// laag = elke startpositie heeft ongeveer evenveel te lopen naar de kamers, dus eerlijker.
-//
-// Let op: gebruikt getDisplayValue() (respecteert tileRotation), niet de ruwe tileLookup-data
-// direct. Nodig omdat applyRandomBoardFlip() bij een muntworp ALLE tegels 180° draait — zonder
-// getDisplayValue zou deze score, aangeroepen ná die worp (zoals de kwaliteitsmelding in
-// 80-controls.js doet), een spookbord meten dat niet is wat er echt op het scherm staat. Tijdens
-// het kandidaten-vergelijken in compareLayoutQuality staat tileRotation nog overal op 0, dus
-// daar verandert dit niets aan het gedrag — alleen de score ná de flip klopt nu ook.
-function startBalanceScore(lay){
-  const H = TILE_ROWS*TILE_H, W = TILE_COLS*TILE_W;
-  const grid = layoutCellGrid(lay);
-  function cellValue(R, C){ return grid[R*W+C]; }
-  const starts = [];
-  const roomSlots = [];
-  for (let s=0; s<20; s++) if (ROOM_NAMES[lay[s]]) roomSlots.push(s);
-  for (let R=0; R<H; R++) for (let C=0; C<W; C++){
-    const v = cellValue(R,C);
-    if (typeof v === 'string' && v.startsWith('3.')) starts.push([R,C]);
-  }
-  if (starts.length !== 4 || !roomSlots.length) return 0; // niets te meten, geen straf
-
-  const roomCells = roomSlots.map(slotIdx => {
-    const [row,col] = slotRC(slotIdx);
-    const cells = [];
-    for (let dr=0; dr<TILE_H; dr++) for (let dc=0; dc<TILE_W; dc++){
-      if (getDisplayValue(lay[slotIdx], dr, dc) !== undefined) cells.push([row*TILE_H+dr, col*TILE_W+dc]);
-    }
-    return cells;
-  });
-
-  function bfsDist(sr, sc){
-    const dist = new Int32Array(H*W).fill(-1);
-    dist[sr*W+sc] = 0;
-    const queue = [[sr,sc]];
-    for (let qi=0; qi<queue.length; qi++){
-      const [R,C] = queue[qi];
-      const d = dist[R*W+C];
-      for (const [dR,dC] of [[-1,0],[1,0],[0,-1],[0,1]]){
-        const nR=R+dR, nC=C+dC;
-        if (nR<0||nR>=H||nC<0||nC>=W) continue;
-        if (dist[nR*W+nC] !== -1) continue;
-        if (cellValue(nR,nC) === undefined) continue;
-        dist[nR*W+nC] = d+1;
-        queue.push([nR,nC]);
-      }
-    }
-    return dist;
-  }
-
-  const avgPerStart = starts.map(([sr,sc]) => {
-    const dist = bfsDist(sr,sc);
-    let total = 0, counted = 0;
-    for (const cells of roomCells){
-      let best = Infinity;
-      for (const [R,C] of cells){ const d = dist[R*W+C]; if (d>=0 && d<best) best = d; }
-      if (best !== Infinity){ total += best; counted++; }
-    }
-    return counted ? total/counted : 0;
-  });
-  const mean = avgPerStart.reduce((a,b)=>a+b,0) / avgPerStart.length;
-  const variance = avgPerStart.reduce((a,b)=>a+(b-mean)**2,0) / avgPerStart.length;
-  return Math.sqrt(variance);
-}
-
-// hoe ver het verste loopbare vakje van de dichtstbijzijnde OPDRACHT ligt (multi-bron BFS
-// vanaf alle 2.x-vakjes tegelijk). Kamers spreiden (roomSpreadScore) is niet hetzelfde: tegel 8
-// (Hibernatie) heeft bewust geen opdracht, dus goed gespreide kamers garanderen geen goed
-// gespreide opdrachten. Een hoge maxDist is precies de "lus zonder opdracht waar nooit iemand
-// komt" die de simulatie-heatmap laat zien — en dit blijft kloppen ongeacht welke/hoeveel
-// tegels op dat moment een opdrachtvakje dragen.
-// (zelfde getDisplayValue-kanttekening als bij startBalanceScore hierboven — anders klopt de
-// score niet meer zodra applyRandomBoardFlip() de tegels 180° gedraaid heeft.)
-function questCoverageScore(lay){
-  const H = TILE_ROWS*TILE_H, W = TILE_COLS*TILE_W;
-  const grid = layoutCellGrid(lay);
-  function cellValue(R, C){ return grid[R*W+C]; }
-  const dist = new Int32Array(H*W).fill(-1);
-  const queue = [];
-  for (let R=0; R<H; R++) for (let C=0; C<W; C++){
-    const v = cellValue(R,C);
-    if (typeof v === 'string' && v.startsWith('2.')){ dist[R*W+C] = 0; queue.push([R,C]); }
-  }
-  if (!queue.length) return { maxDist: 0, avgDist: 0 };
-  for (let qi=0; qi<queue.length; qi++){
-    const [R,C] = queue[qi];
-    const d = dist[R*W+C];
-    for (const [dR,dC] of [[-1,0],[1,0],[0,-1],[0,1]]){
-      const nR=R+dR, nC=C+dC;
-      if (nR<0||nR>=H||nC<0||nC>=W) continue;
-      if (dist[nR*W+nC] !== -1) continue;
-      if (cellValue(nR,nC) === undefined) continue;
-      dist[nR*W+nC] = d+1;
-      queue.push([nR,nC]);
-    }
-  }
-  let maxDist = 0, sum = 0, counted = 0;
-  for (let R=0; R<H; R++) for (let C=0; C<W; C++){
-    const d = dist[R*W+C];
-    if (d < 0) continue;
-    if (d > maxDist) maxDist = d;
-    sum += d; counted++;
-  }
-  return { maxDist, avgDist: counted ? sum/counted : 0 };
-}
-
-// ---------- dode tegels + bijna-dode tegels: waar komt (bijna) niemand ----------
-// questCoverageScore (afstand tot de dichtstbijzijnde opdracht) blijkt hiervoor NIET te volstaan:
-// een tegel kan 5 stappen van een opdracht liggen en toch nooit betreden worden, omdat spelers
-// alleen van opdracht naar opdracht reizen en die tegel op geen enkele route ligt. Dat is precies
-// de buitenrand-"lus" waar in de simulatie 0 bezoeken vielen.
-//
-// Wat wel werkt: tel voor elk vakje op hoeveel KORTSTE paden tussen twee interessante vakjes
-// (opdrachten 2.x + startposities 3.x) het ligt — d(i,cel) + d(cel,j) === d(i,j) voor dat paar
-// (i,j). Een tegel zonder ENIG zo'n vakje wordt door een speler die naar zijn doel loopt nooit
-// aangedaan. Gevalideerd tegen de simulatie: deze test wees exact de 5 tegels aan die 0-17
-// bezoeken kregen terwijl de rest er 4000+ had.
-//
-// Bleek NIET genoeg: de hoek-gangen (tegel 1, 16 — moeten altijd op een hoek liggen, mogen NOOIT
-// een opdracht dragen) lagen soms op precies 1 van de 78 mogelijke paren en golden dus als
-// "niet dood", terwijl de simulatie daar maar 0,2-0,6% van het verkeer liet vallen — technisch
-// bereikbaar, in de praktijk zo goed als nooit. Vandaar tileBetweennessCounts hieronder: geeft
-// per tegel het AANTAL paren terug (i.p.v. alleen dood/niet-dood), zodat compareLayoutQuality ook
-// kan sturen op "de zwakste tegel heeft een COMFORTABELE marge", niet alleen "niet letterlijk 0".
-//
-// Kosten: ~13 bronnen x BFS(530 vakjes) + 78 paren x 1280 vakjes ~ 100k bewerkingen per
-// kandidaat; met 6 kandidaten niet merkbaar op de knop.
 // alle vakjes van een indeling in één keer opzoeken (zelfde waarde als getDisplayValue, dus met de
-// huidige tileRotation) — de metingen hieronder vroegen elk vakje anders tot ±5x per buur opnieuw op
+// huidige tileRotation)
 function layoutCellGrid(lay){
   const H = TILE_ROWS*TILE_H, W = TILE_COLS*TILE_W;
   const grid = new Array(H*W);
@@ -370,345 +315,120 @@ function layoutCellGrid(lay){
   }
   return grid;
 }
-function tileBetweennessCounts(lay){
+// hoe ver het verste loopbare vakje van de dichtstbijzijnde OPDRACHT ligt (multi-bron BFS vanaf
+// alle 2.x-vakjes tegelijk). Niet meer gebruikt door de bouwer zelf; blijft als losse meting.
+function questCoverageScore(lay){
   const H = TILE_ROWS*TILE_H, W = TILE_COLS*TILE_W;
   const grid = layoutCellGrid(lay);
-  function cellValue(R, C){ return grid[R*W+C]; }
-  const sources = [];
-  for (let R=0; R<H; R++) for (let C=0; C<W; C++){
-    if (typeof cellValue(R,C) === 'string') sources.push(R*W+C);
+  const dist = new Int32Array(H*W).fill(-1);
+  const queue = [];
+  for (let k=0; k<H*W; k++){
+    const v = grid[k];
+    if (typeof v === 'string' && v.startsWith('2.')){ dist[k] = 0; queue.push(k); }
   }
-  const cellsPerSlot = new Array(20).fill(0);
-  for (let R=0; R<H; R++) for (let C=0; C<W; C++){
-    if (cellValue(R,C) === undefined) continue;
-    cellsPerSlot[Math.floor(R/TILE_H)*TILE_COLS + Math.floor(C/TILE_W)]++;
-  }
-  if (sources.length < 2) return cellsPerSlot.map(c => c > 0 ? 1 : 0);
-
-  const dists = sources.map(src => {
-    const d = new Int32Array(H*W).fill(-1);
-    d[src] = 0;
-    const queue = [src];
-    for (let qi=0; qi<queue.length; qi++){
-      const k = queue[qi], R = Math.floor(k/W), C = k%W;
-      for (const [dR,dC] of [[-1,0],[1,0],[0,-1],[0,1]]){
-        const nR=R+dR, nC=C+dC;
-        if (nR<0||nR>=H||nC<0||nC>=W) continue;
-        const nk = nR*W+nC;
-        if (d[nk] !== -1 || cellValue(nR,nC) === undefined) continue;
-        d[nk] = d[k]+1;
-        queue.push(nk);
-      }
-    }
-    return d;
-  });
-
-  const onPathCount = new Int32Array(H*W);
-  for (let i=0; i<sources.length; i++){
-    for (let j=i+1; j<sources.length; j++){
-      const dij = dists[i][sources[j]];
-      if (dij < 0) continue;
-      const di = dists[i], dj = dists[j];
-      for (let k=0; k<H*W; k++){
-        if (di[k] < 0 || dj[k] < 0) continue;
-        if (di[k] + dj[k] === dij) onPathCount[k]++;
-      }
+  if (!queue.length) return { maxDist: 0, avgDist: 0 };
+  for (let qi=0; qi<queue.length; qi++){
+    const k = queue[qi], R = Math.floor(k/W), C = k%W;
+    for (const [dR,dC] of [[-1,0],[1,0],[0,-1],[0,1]]){
+      const nR=R+dR, nC=C+dC;
+      if (nR<0||nR>=H||nC<0||nC>=W) continue;
+      const nk = nR*W+nC;
+      if (dist[nk] !== -1 || grid[nk] === undefined) continue;
+      dist[nk] = dist[k]+1;
+      queue.push(nk);
     }
   }
-
-  const countPerSlot = new Array(20).fill(0);
-  for (let R=0; R<H; R++) for (let C=0; C<W; C++){
-    if (cellValue(R,C) === undefined) continue;
-    const slotIdx = Math.floor(R/TILE_H)*TILE_COLS + Math.floor(C/TILE_W);
-    countPerSlot[slotIdx] += onPathCount[R*W+C];
+  let maxDist = 0, sum = 0, counted = 0;
+  for (let k=0; k<H*W; k++){
+    const d = dist[k];
+    if (d < 0) continue;
+    if (d > maxDist) maxDist = d;
+    sum += d; counted++;
   }
-  return countPerSlot;
-}
-// beide lezen dezelfde telling: via scored() maar één keer per kandidaat uitgerekend (was 2x).
-// Mag alleen via scored() aangeroepen worden (dat is ook de enige plek), want scored zet de
-// hoekrotaties van deze kandidaat.
-function deadTileCount(lay){
-  return scored(lay, tileBetweennessCounts).filter(c => c === 0).length;
-}
-// de tegel met de MINSTE steun (kleinste som van paar-kortste-pad-telling over al zijn vakjes) —
-// hoe hoger, hoe minder kwetsbaar de zwakste tegel is voor "bijna dood" verkeer. Vult
-// deadTileCount aan: die stopt bij "niet letterlijk 0 paren", dit dwingt ook een marge daarboven
-// af (zie de hoek-gangen 1/16 hierboven — vaak precies 1, wat deadTileCount niet ziet).
-function minTileBetweenness(lay){
-  return Math.min(...scored(lay, tileBetweennessCounts));
+  return { maxDist, avgDist: counted ? sum/counted : 0 };
 }
 
-// ---------- kamers onderling verbonden ----------
-// "moet ik 4 gangen door voordat ik bij de volgende kamer ben?" — per kamertegel het aantal
-// GANGEN dat tussen hem en de dichtstbijzijnde andere kamer ligt. Het slechtste geval telt:
-// 0 = kamers grenzen direct aan elkaar, 2 = er zitten 2 gangen tussen.
-function roomIsolationScore(lay){
-  const adj = tileAdjacency(lay);
-  const roomSlots = [];
-  for (let s=0; s<20; s++) if (ROOM_NAMES[lay[s]]) roomSlots.push(s);
-  if (roomSlots.length < 2) return 0;
-  let worst = 0;
-  for (const src of roomSlots){
-    const dist = new Array(20).fill(-1);
-    dist[src] = 0;
-    const queue = [src];
-    let found = -1;
-    outer: for (let qi=0; qi<queue.length; qi++){
-      for (const nb of adj[queue[qi]]){
-        if (dist[nb] !== -1) continue;
-        dist[nb] = dist[queue[qi]] + 1;
-        if (ROOM_NAMES[lay[nb]]){ found = dist[nb]; break outer; }
-        queue.push(nb);
-      }
-    }
-    if (found < 0) found = 99; // geen andere kamer bereikbaar: maximaal straffen
-    if (found - 1 > worst) worst = found - 1;
-  }
-  return worst;
-}
-
-// hoeveel deuren zitten er RECHTSTREEKS tussen twee kamertegels (geen gang ertussen)?
-// Gemeten over 40 indelingen (vóór deze aanpassing) lag dit gemiddeld op 5,5 van de 10 kamers
-// met uitschieters tot 9 — in de praktijk complete blokken van 3-4 kamers naast elkaar (bv. een
-// volle rij "RRRR"). roomIsolationScore hierboven blijft de ondergrens (geen kamer die he-le-maal
-// alleen achter een rij gangen wegstopt zit), maar DIT criterium sluit nu aan bij wat daarna komt:
-// zo min mogelijk kamers die daadwerkelijk rechtstreeks aan elkaar grenzen, i.p.v. zoveel mogelijk
-// (was tot voor kort omgekeerd — zie git-geschiedenis als je die vergelijking terug wilt zien).
-function roomAdjacencyCount(lay){
-  const adj = tileAdjacency(lay);
-  let count = 0;
-  for (let s=0; s<20; s++){
-    if (!ROOM_NAMES[lay[s]]) continue;
-    for (const n of adj[s]) if (n > s && ROOM_NAMES[lay[n]]) count++;
-  }
-  return count;
-}
-
-// ---------- opdrachten niet tegen elkaar aan ----------
-// kortste ECHTE loopafstand (in vakjes, niet in tegels) tussen twee opdrachtvakjes. Twee
-// kamers mogen best naast elkaar liggen — zolang hun opdrachtvakjes maar niet op een paar
-// stappen van elkaar zitten, want dan zijn ze in de praktijk één bestemming.
-function questSpacingScore(lay){
-  const H = TILE_ROWS*TILE_H, W = TILE_COLS*TILE_W;
-  const grid = layoutCellGrid(lay);
-  function cellValue(R, C){ return grid[R*W+C]; }
-  const questCells = [];
-  for (let R=0; R<H; R++) for (let C=0; C<W; C++){
-    const v = cellValue(R,C);
-    if (typeof v === 'string' && v.startsWith('2.')) questCells.push(R*W+C);
-  }
-  if (questCells.length < 2) return { minDist: 0, avgDist: 0 };
-  let minDist = Infinity, sum = 0, pairs = 0;
-  for (let i=0; i<questCells.length; i++){
-    const dist = new Int32Array(H*W).fill(-1);
-    dist[questCells[i]] = 0;
-    const queue = [questCells[i]];
-    for (let qi=0; qi<queue.length; qi++){
-      const k = queue[qi], R = Math.floor(k/W), C = k%W;
-      for (const [dR,dC] of [[-1,0],[1,0],[0,-1],[0,1]]){
-        const nR=R+dR, nC=C+dC;
-        if (nR<0||nR>=H||nC<0||nC>=W) continue;
-        const nk = nR*W+nC;
-        if (dist[nk] !== -1 || cellValue(nR,nC) === undefined) continue;
-        dist[nk] = dist[k]+1;
-        queue.push(nk);
-      }
-    }
-    for (let j=i+1; j<questCells.length; j++){
-      const d = dist[questCells[j]];
-      if (d < 0) continue;
-      if (d < minDist) minDist = d;
-      sum += d; pairs++;
-    }
-  }
-  return { minDist: minDist === Infinity ? 0 : minDist, avgDist: pairs ? sum/pairs : 0 };
-}
-
-// Rangorde, strengste eerst:
-//  1. DODE tegels — het ergste wat een indeling kan hebben: een stuk bord waar letterlijk nooit
-//     een speler komt.
-//  2. minTileBetweenness — de zwakste tegel z'n steun BOVEN 0 optrekken. deadTileCount stopt bij
-//     "niet letterlijk dood"; de hoek-gangen (1, 16) haalden dat vaak met precies 1 van de 78
-//     paren en golden dus als "niet dood", terwijl de simulatie daar maar 0,2-0,6% verkeer liet
-//     vallen — technisch niet dood, in de praktijk bijna wel. Zie tileBetweennessCounts hierboven.
-//  3. Kamers achter een wurgpunt — vervelend om te lopen, maar wordt wél gebruikt.
-//  4. roomIsolationScore — geen kamer die achter een rij gangen weggestopt zit ("4 gangen door").
-//     Dit blijft de ondergrens tegen totaal weggestopte kamers, los van spreiding hieronder.
-//  5. roomAdjacencyCount — bij gelijke isolationScore: zo WEINIG mogelijk kamers die ECHT
-//     rechtstreeks aan een andere kamer grenzen (roomIsolationScore kijkt alleen naar het
-//     slechtste geval, dus twee kandidaten kunnen daar allebei op 0 staan terwijl de een veel
-//     meer kamer-kamer deuren heeft dan de ander — en dus meer klontert). Was tot voor kort
-//     omgekeerd (zoveel mogelijk); gemeten over 40 indelingen zat dat gemiddeld op 5,5 van de 10
-//     kamers rechtstreeks tegen een andere aan, met uitschieters tot 9 — in de praktijk complete
-//     blokken van 3-4 kamers naast elkaar. Gebruikersverzoek: kamers zoveel mogelijk over het
-//     bord spreiden, geen clusters.
-//  6. roomSpreadScore.avgDist — fijnere tiebreaker bovenop #5: bij gelijk aantal rechtstreekse
-//     kamer-kamer-buren wint de indeling met de grootste gemiddelde tegel-afstand tussen alle
-//     kamerparen (Manhattan, in tegelstappen). minDist staat hier bewust NIET bij — die is met de
-//     huidige tegelvormen altijd 1 (zie de toelichting bij roomSpreadScore), dus onbruikbaar als
-//     onderscheid.
-//  7. questSpacingScore.minDist — opdrachten niet tegen elkaar aan (grootste minimum wint).
-//     Staat NA de kamerspreiding omdat kamers naast elkaar nog steeds voorkomt (minDist qua
-//     tegels is altijd minstens 1x), en hun opdrachtvakjes dan nog steeds ~8-12 vakjes uit elkaar
-//     liggen binnen de 8x8 tegels.
-//  8-9. afstand tot een opdracht voor het verste vakje, eerlijkheid startposities.
-//  10. questSpacingScore.avgDist als allerlaatste fijnproever.
-// roept fn(lay) aan, maar zet EERST de hoektegel-rotaties voor DEZE kandidaat correct (en al het
-// andere op 0) — nodig omdat deadTileCount/roomIsolationScore/tileAdjacency/questCoverageScore/
-// startBalanceScore de tegelcellen via getDisplayValue()/effectiveOpenEdge() lezen, die de
-// GLOBALE tileRotation volgen. Sinds hoek-geschikte tegels nu via rotatie op elke hoek kunnen
-// liggen (zie applyCornerRotations in 10-rules.js), verschilt de juiste rotatie per kandidaat —
-// zonder deze wrapper zou je exact dezelfde rotatie-vervuiling terugkrijgen die eerder al eens
-// de generator om zeep hielp (zie het commentaar bij constrainedShuffle hieronder).
-//
-// Uitkomsten worden per kandidaat onthouden (scoreCache): de .reduce() in finish() vergelijkt de
-// huidige winnaar telkens opnieuw, en zonder cache werden diens scores dus ~60x herberekend. De
-// metingen zijn puur (applyCornerRotations zet ALLE rotaties), dus de uitkomst blijft gelijk.
-const scoreCache = new WeakMap();
-function scored(lay, fn){
-  let perLay = scoreCache.get(lay);
-  if (!perLay){ perLay = new Map(); scoreCache.set(lay, perLay); }
-  if (perLay.has(fn)) return perLay.get(fn);
-  applyCornerRotations(lay);
-  const v = fn(lay);
-  perLay.set(fn, v);
-  return v;
-}
-function compareLayoutQuality(a, b){
-  const da = scored(a, deadTileCount), db = scored(b, deadTileCount);
-  if (da !== db) return da - db;
-  const ma = scored(a, minTileBetweenness), mb = scored(b, minTileBetweenness);
-  if (ma !== mb) return mb - ma;
-  const ta = scored(a, roomsBehindBridges), tb = scored(b, roomsBehindBridges);
-  if (ta !== tb) return ta - tb;
-  const ia = scored(a, roomIsolationScore), ib = scored(b, roomIsolationScore);
-  if (ia !== ib) return ia - ib;
-  const ra = scored(a, roomAdjacencyCount), rb = scored(b, roomAdjacencyCount);
-  if (ra !== rb) return ra - rb;
-  const sa = scored(a, roomSpreadScore), sb = scored(b, roomSpreadScore);
-  if (Math.abs(sa.avgDist - sb.avgDist) > 1e-9) return sb.avgDist - sa.avgDist;
-  const pa = scored(a, questSpacingScore), pb = scored(b, questSpacingScore);
-  if (pa.minDist !== pb.minDist) return pb.minDist - pa.minDist;
-  const qa = scored(a, questCoverageScore), qb = scored(b, questCoverageScore);
-  if (qa.maxDist !== qb.maxDist) return qa.maxDist - qb.maxDist;
-  const ba = scored(a, startBalanceScore), bb = scored(b, startBalanceScore);
-  if (Math.abs(ba - bb) > 1e-9) return ba - bb;
-  return pb.avgDist - pa.avgDist;
-}
-
-// Elke hoek-geschikte tegel kan nu op elke hoek liggen (zie applyCornerRotations), dus er is geen
-// vaste "tegel 1 hoort op A"-aanname meer. Het bord is 4x5, dus geen vierkant, maar een
-// puntspiegeling (180°) behoudt wel de vorm: A<->T en E<->P wisselen dan van tegel, en elke tegel
-// draait 180° extra mee (BOVENOP een eventuele hoek-rotatie die al gezet was) om alle naden
-// geldig te houden.
+// Het bord is 4x5, dus geen vierkant, maar een puntspiegeling (180°) behoudt wel de vorm: elke
+// tegel verhuist naar de overkant en draait 180° extra mee, zodat alle naden geldig blijven.
 function applyRandomBoardFlip(lay, flip){
-  if (!flip) return lay; // rotaties (incl. eventuele hoek-rotaties) blijven zoals ze al gezet zijn
+  if (!flip) return lay;
   const flipped = new Array(20);
   for (let i=0; i<20; i++) flipped[19-i] = lay[i];
   for (let tid=1; tid<=20; tid++) tileRotation[tid] = ((tileRotation[tid] || 0) + 180) % 360;
   return flipped;
 }
 
-// BUG die hier ooit zat: attemptSeamlessLayout bouwt kandidaten altijd met de ONGEDRAAIDE
-// brondata (OPEN_EDGES_STATIC), maar deadTileCount/startBalanceScore/questCoverageScore lezen de
-// kandidaat-cellen via getDisplayValue(), dat de GLOBALE tileRotation volgt. applyRandomBoardFlip
-// laat die global aan het eind van elke aanroep op overal-0 of overal-180 staan (en handmatig
-// draaien met de tegel-editor kan 'm ook per tegel verzetten) — zonder reset hierboven werd de
-// hele volgende scoringsronde dus de HELFT van de tijd uitgevoerd tegen de verkeerde rotatie.
-// Fix: resetRotations() als allereerste regel.
-//
-// niet zomaar de EERSTE geldige indeling nemen: verzamel een stuk of wat geldige kandidaten en
-// kies daaruit de beste. Pool van 60 (was 20 — gebruikersverzoek voor een gevoeliger criterium
-// tegen bijna-dode hoektegels, zie minTileBetweenness): gemeten over 40 indelingen geeft dat
-// gemiddelde minTileBetweenness 34,8 → 47,9 en laagste hoek-telling 39,4 → 53,1 (+35-37%), tegen
-// ~660ms → ~2000ms per klik. MAX_ATTEMPTS schaalt evenredig mee (4 pogingen per gewenste
-// kandidaat, zelfde verhouding als bij pool 20).
-//
-// Loopt nu in BROKKEN i.p.v. één ononderbroken lus (zelfde patroon als runSimulationBatch in
-// 95-simulate.js) — bij pool 60 zou een blokkerende versie de pagina ~2s laten bevriezen zonder
-// enige terugkoppeling. onProgress(gevonden, doel, poging, maxPogingen) wordt na elk brok
-// aangeroepen zodat de UI een voortgangsbalk kan tonen.
-function constrainedShuffleAsync(seedStr, onProgress){
-  return new Promise((resolve) => {
-    resetRotations();
-    const seedFn = hashSeed(seedStr);
-    const seedInt = Math.floor(seedFn() * 4294967296);
-    const masterRand = mulberry32(seedInt);
+// Bouwt het bord bij een seed. Rekent in brokken van 30 ms, zodat de animatie blijft lopen;
+// onProgress(gedaan, totaal) na elk brok. Zet tileRotation voor ALLE tegels en geeft de indeling
+// (tegel per plek) terug.
+async function constrainedShuffleAsync(seedStr, onProgress){
+  resetRotations();
+  const seedInt = Math.floor(hashSeed(seedStr)() * 4294967296);
+  const rand = mulberry32(seedInt);
+  const T = genBuildTileTable();
+  const CHUNK_BUDGET_MS = 30;
+  const total = GEN_RESTARTS * GEN_ITERS;
+  let chunkStart = performance.now();
+  async function breathe(done){
+    if (performance.now() - chunkStart < CHUNK_BUDGET_MS) return;
+    if (onProgress) onProgress(done, total);
+    await new Promise(res => setTimeout(res, 0));
+    chunkStart = performance.now();
+  }
 
-    const MAX_ATTEMPTS = 240, STEP_BUDGET = 15000, CANDIDATE_POOL = 60;
-    const CHUNK_BUDGET_MS = 30;
-    const candidates = [];
-    let best = null;
-    let attempt = 0;
-
-    function step(){
-      const chunkStart = performance.now();
-      while (attempt < MAX_ATTEMPTS && candidates.length < CANDIDATE_POOL){
-        const attemptSeed = Math.floor(masterRand() * 4294967296) ^ (attempt * 0x9E3779B1);
-        const rand = mulberry32(attemptSeed);
-        // om en om de andere schaakbordkleur als "kamerkleur" proberen: allebei de kleuren geven
-        // heel andere indelingen, en zo staat de pool niet vol met varianten van hetzelfde bord
-        const lay = attemptSeamlessLayout(rand, STEP_BUDGET, attempt % 2);
-        attempt++;
-        if (lay){
-          if (layoutIsConnected(lay)){
-            candidates.push(lay);
-            // de twee zwaarste/altijd nodige metingen meteen in dit brok doen, zodat finish()
-            // niet aan het eind alles in één keer moet scoren (dat bevroor de animatie even)
-            scored(lay, deadTileCount); scored(lay, minTileBetweenness);
-            resetRotations();
-          }
-          else if (!best) best = lay;
-        }
-        if (performance.now() - chunkStart > CHUNK_BUDGET_MS) break;
-      }
-      if (onProgress) onProgress(candidates.length, CANDIDATE_POOL, attempt, MAX_ATTEMPTS);
-      if (attempt < MAX_ATTEMPTS && candidates.length < CANDIDATE_POOL){
-        setTimeout(step, 0);
-      } else {
-        finish();
-      }
+  let best = null;
+  for (let r = 0; r < GEN_RESTARTS; r++){
+    // een geldig beginbord binnen het budget; lukt dat niet (bewerkte tegels), dan ruimer
+    let cur = null;
+    for (const budget of [GEN_STUB_BUDGETS[r % GEN_STUB_BUDGETS.length], ...GEN_STUB_BUDGETS, ...GEN_STUB_ESCALATE]){
+      for (let t = 0; t < 2 && !cur; t++) cur = genSearch(T, rand, budget);
+      if (cur) break;
     }
-
-    function finish(){
-      let result = candidates.length
-        ? candidates.reduce((a,b) => compareLayoutQuality(b,a) < 0 ? b : a)
-        : best;
-
-      if (!result){
-        // fallback: regelgetrouwe verdeling zonder naadgarantie (zelden tot nooit nodig)
-        function shuffleWith(arr, rand){
-          const a = arr.slice();
-          for (let i=a.length-1; i>0; i--){ const j=Math.floor(rand()*(i+1)); [a[i],a[j]]=[a[j],a[i]]; }
-          return a;
+    if (!cur){ await breathe((r + 1) * GEN_ITERS); continue; }
+    let curF = genEvaluate(T, cur.lay, cur.ri, cur.msk);
+    if (!best || curF.score > best.f.score) best = { lay: cur.lay, ri: cur.ri, f: curF };
+    // tegels schuiven en draaien; af en toe een slechtere stap toestaan (steeds minder), anders
+    // blijft de zoektocht in het eerste het beste heuveltje hangen
+    for (let it = 0; it < GEN_ITERS; it++){
+      const mv = genMutate(T, cur.lay, cur.ri, cur.msk, rand);
+      if (mv){
+        const f = genEvaluate(T, mv.lay, mv.ri, cur.msk);
+        const temp = 1.2 * (1 - it / GEN_ITERS) + 0.02;
+        if (f.score >= curF.score || rand() < Math.exp((f.score - curF.score) / temp)){
+          cur.lay = mv.lay; cur.ri = mv.ri; curF = f;
+          if (f.score > best.f.score) best = { lay: mv.lay, ri: mv.ri, f };
         }
-        const fallbackRand = mulberry32(seedInt ^ 0x1234567);
-        const lay = new Array(20).fill(null);
-        const used = new Set();
-        for (const slotIdx of solveOrder()){
-          const cands = ALLOWED_TILES[slotIdx].filter(t => !used.has(t));
-          const pick = shuffleWith(cands, fallbackRand)[0];
-          if (pick !== undefined){ lay[slotIdx] = pick; used.add(pick); }
-        }
-        let leftoverTiles = Array.from({length:20},(_,i)=>i+1).filter(t => !used.has(t));
-        for (let s=0; s<20; s++){
-          if (lay[s] !== null) continue;
-          const allowed = leftoverTiles.filter(t => canTileGoInSlot(t, s));
-          const pick = allowed.length ? allowed[0] : leftoverTiles[0];
-          lay[s] = pick;
-          leftoverTiles = leftoverTiles.filter(t => t !== pick);
-        }
-        result = lay;
       }
-
-      // de rotatie van de GEKOZEN indeling definitief zetten (candidate-scoring hierboven deed
-      // dit zelf al steeds opnieuw per kandidaat via scored(), maar die staat na de laatste
-      // .reduce()-aanroep op de rotatie van welke kandidaat toevallig het laatst gescoord is,
-      // niet per se result)
-      applyCornerRotations(result);
-      resolve(applyRandomBoardFlip(result, masterRand() < 0.5));
+      if ((it & 15) === 15) await breathe(r * GEN_ITERS + it + 1);
     }
+  }
+  if (onProgress) onProgress(total, total);
 
-    step();
-  });
+  let result;
+  if (best){
+    result = best.lay.slice();
+    for (let s = 0; s < 20; s++) tileRotation[result[s]] = GEN_ROTS[best.ri[s]];
+  } else {
+    // vangnet: regelgetrouwe verdeling zonder naadgarantie (alleen als de tegels zo bewerkt zijn
+    // dat er geen geldig bord meer bestaat; 80-controls.js meldt dat dan)
+    const fallbackRand = mulberry32(seedInt ^ 0x1234567);
+    const lay = new Array(20).fill(null);
+    const used = new Set();
+    const order = Array.from({length:20},(_,i)=>i).sort((a,b) => ALLOWED_TILES[a].length - ALLOWED_TILES[b].length);
+    for (const slotIdx of order){
+      const cands = genShuffle(ALLOWED_TILES[slotIdx].filter(t => !used.has(t)), fallbackRand);
+      if (cands.length){ lay[slotIdx] = cands[0]; used.add(cands[0]); }
+    }
+    let leftover = Array.from({length:20},(_,i)=>i+1).filter(t => !used.has(t));
+    for (let s=0; s<20; s++){
+      if (lay[s] !== null) continue;
+      const allowed = leftover.filter(t => canTileGoInSlot(t, s));
+      const pick = allowed.length ? allowed[0] : leftover[0];
+      lay[s] = pick;
+      leftover = leftover.filter(t => t !== pick);
+    }
+    result = lay;
+    applyCornerRotations(result);
+  }
+  return applyRandomBoardFlip(result, rand() < 0.5);
 }
