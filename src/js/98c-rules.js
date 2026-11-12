@@ -234,7 +234,20 @@ function renderRulesTab(){
     }, { threshold: 0.15 });
     rulesScenes.forEach(s => rulesObserver.observe(s.stage));
     rulesWatchNav(sections);
+    window.addEventListener('resize', rulesPinNav);
   }
+  requestAnimationFrame(rulesPinNav);
+}
+
+// De inhoudsopgave blijft staan (sticky). Het punt waar hij blijft hangen moet PRECIES zijn eigen
+// beginplek zijn, anders schuift hij bij het eerste stukje scrollen een paar px omhoog en bovenaan
+// weer terug (gebruikersmelding 2026-11: "beweegt nog steeds"; gemeten 104 tegen 96px). Eén meting
+// bij het openen van het tabblad en bij een andere venstermaat, nooit tijdens het scrollen.
+function rulesPinNav(){
+  const tab = document.getElementById('tabRules');
+  const lay = tab && tab.querySelector('.rules-layout');
+  if (!tab || tab.hidden || !lay) return;
+  tab.style.setProperty('--rules-top', Math.round(lay.getBoundingClientRect().top + window.scrollY) + 'px');
 }
 
 // het hoofdstuk dat bovenin beeld staat, licht op in de inhoudsopgave
