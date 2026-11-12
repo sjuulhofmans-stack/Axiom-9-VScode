@@ -580,7 +580,12 @@ Check minimaal:
 15. Tabblad **Spelregels** (sinds 2026-10, `98c-rules.js`): links de hoofdstukken (blijft staan,
     het hoofdstuk in beeld licht op), rechts bij 10 van de 12 hoofdstukken een animatie die in een lus
     loopt, alleen als hij in beeld is. Animaties = Web Animations op transform/opacity met een vaste
-    duur per scène (`rTrack`/`rShow`/`rWalk`); niets opvragen uit de opmaak. Check: console leeg, alle
+    duur per scène (`rTrack`/`rShow`/`rWalk`); niets opvragen uit de opmaak. De scènes gebruiken de
+    ECHTE spelonderdelen (gebruikersmelding 2026-11: "animaties kloppen niet met het spel"): stenen via
+    `diceDieHtml`/`diceEnergyDieHtml`, portaal = `.walk-portal`, pionkleuren `WALK_PLAYER_COLORS`,
+    vakjes los met 1px ertussen in `--walk`/`--quest`, kristal = langgerekte zeshoek. Verandert zo'n
+    onderdeel in het spel, kijk dan of de scène meeloopt. Een pion loopt alleen over vloervakjes; in
+    de scène Doorgangen liggen de twee tegels tegen elkaar aan (geen lege kolom ertussen). Check: console leeg, alle
     scènes bewegen, en de kop met 6 tabbladen overlapt de titel niet (gemeten op 1920, 1730, 1600,
     1505, 1440, 1366 en 1320 breed).
 

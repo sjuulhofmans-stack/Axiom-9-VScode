@@ -4392,31 +4392,33 @@
   .rules-cap-line{position:absolute; inset:0; display:grid; place-items:center; padding:0 10px; text-align:center;
     font-size:15px; letter-spacing:.03em; color:var(--text); opacity:0; will-change:opacity;}
 
-  /* raster */
+  /* raster: zelfde vakjes als het bord (losse vakjes met 1px ertussen, kleuren --walk/--quest) */
   .rg{position:relative; flex:0 0 auto;}
-  .rg-cell{position:absolute; width:var(--rc); height:var(--rc); background:#26364a; box-shadow:inset 0 0 0 1px #0b1016;}
-  .rg-cell.is-door{background:#34495f;}
-  .rg-cell.is-quest{background:rgba(79,184,224,.35); box-shadow:inset 0 0 0 2px var(--quest);}
+  .rg-cell{position:absolute; border-radius:1.5px; background:var(--walk); box-shadow:inset 0 0 0 1px rgba(0,0,0,.25);}
+  .rg-cell.is-quest{background:var(--quest); box-shadow:0 0 6px rgba(79,184,224,.55);}
+  /* kristalvakje: hetzelfde zeshoekje als .cell.actioncell in styles.css */
   .rg-cell.is-crystal i{
-    position:absolute; inset:22%; background:var(--actioncell);
-    clip-path:polygon(50% 0, 100% 25%, 100% 75%, 50% 100%, 0 75%, 0 25%); will-change:opacity;
+    position:absolute; inset:0; will-change:opacity;
+    background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 290'%3E%3Cpolygon points='100,4 196,62 196,228 100,286 4,228 4,62' fill='%237a3fc4' stroke='%23e0c2ff' stroke-width='20' stroke-linejoin='round'/%3E%3Cpolygon points='100,40 165,80 165,150 100,120 35,150 35,80' fill='%23c79bf7' fill-opacity='.55'/%3E%3C/svg%3E") center / auto 80% no-repeat;
   }
-  .rg-pawn{position:absolute; left:0; top:0; z-index:3; will-change:transform, opacity;}
-  .rg-pawn i{position:absolute; inset:16%; border-radius:50%; background:var(--pc);
-    box-shadow:0 0 0 2px rgba(0,0,0,.55), 0 0 10px var(--pc);}
+  /* pion: rond en vakje-vullend, net als .cell.walk-pawn. De lopende pion is een HEEL vakje breed
+     (rWalk schuift in % daarvan); het rondje laat de 1px tussenruimte vrij. */
+  .rg-pawn{position:absolute; left:0; top:0; z-index:6; will-change:transform, opacity;}
+  .rg-pawn i{position:absolute; left:0; top:0; right:1px; bottom:1px; border-radius:50%; background:var(--pc);
+    box-shadow:0 0 0 1px rgba(0,0,0,.55), 0 0 9px var(--pc);}
+  .rg-pawn.is-static i{right:0; bottom:0;}
   .rs-step{position:absolute; display:grid; place-items:center; font-family:var(--font-mono); font-size:12px;
     color:var(--amber); z-index:2; opacity:0; will-change:transform, opacity;}
   .rs-blocked{position:absolute; z-index:4; border-radius:50%; box-shadow:0 0 0 2px var(--danger), 0 0 12px var(--danger); opacity:0; will-change:opacity;}
   .rs-roll{position:absolute; top:12px; right:12px; display:flex; gap:5px; align-items:center; opacity:0; will-change:transform, opacity;}
   .rs-roll-sum{font-family:var(--font-mono); font-size:15px; color:var(--amber); margin-left:3px;}
 
-  /* dobbelsteen */
-  .rules-die{width:26px; height:26px; border-radius:5px; background:#e9eef3; display:grid; grid-template-columns:repeat(3, 1fr);
-    padding:3px; gap:1px; box-shadow:0 2px 0 #9aa6b2;}
-  .rules-die i{border-radius:50%; margin:1px;}
-  .rules-die i.on{background:#151b22;}
-  .rules-die.is-q{display:grid; place-items:center; grid-template-columns:1fr; background:#26323f; box-shadow:none;
-    color:var(--text-dim); font-family:var(--font-mono); font-size:14px;}
+  /* dobbelsteen: de echte "Pantser"-steen (.sd-die/.sd-edie uit styles.css), hier 26px */
+  .rules-die{position:relative; width:26px; height:26px; flex:none; display:flex;}
+  .rules-die .sd-die, .rules-die .sd-edie{width:100%; height:100%;}
+  .rules-die .sd-q{font-size:13px;}
+  .rules-die .sd-edie .sd-face svg{width:7px; height:11px; margin:-5.5px 0 0 -3.5px;}
+  .rules-die .sd-edie .sd-empty{width:9px; margin-left:-4.5px;}
 
   /* doel: zeshoekjes */
   .rs-hexrow{display:flex; gap:8px;}
@@ -4444,10 +4446,10 @@
   .rs-hib i{border-radius:50%; background:var(--start-glow);}
 
   /* doorgangen */
-  .rs-tile-outline{position:absolute; border:1px dashed rgba(76,120,178,.6); pointer-events:none;}
-  .rs-door-glow{position:absolute; inset:0; background:var(--amber); opacity:0; will-change:opacity;}
+  .rs-tile-outline{position:absolute; box-sizing:border-box; border:1px solid rgba(255,181,69,.45); border-radius:3px; pointer-events:none;}
+  .rs-door-glow{position:absolute; inset:0; border-radius:1.5px; background:var(--amber); box-shadow:inset 0 0 0 1px rgba(0,0,0,.3); opacity:0; will-change:opacity;}
   .rs-seam{position:absolute; border-radius:3px; box-shadow:0 0 0 2px var(--start), 0 0 14px var(--start); opacity:0; will-change:opacity; z-index:2;}
-  .rs-bad{position:absolute; display:grid; place-items:center; color:var(--danger); font-size:14px; font-weight:700; z-index:3;
+  .rs-bad{position:absolute; display:grid; place-items:center; color:#fff; background:var(--danger); border-radius:1.5px; font-size:11px; font-weight:700; z-index:3;
     opacity:0; will-change:transform, opacity;}
 
   /* wie begint */
@@ -4478,7 +4480,7 @@
     color:#14100a; font-family:var(--font-mono); font-size:13px; font-weight:700;}
   .rs-turn-ico{position:absolute; right:12px; display:flex; align-items:center; gap:4px; z-index:3;
     font-family:var(--font-mono); font-size:16px; color:var(--amber); will-change:transform, opacity;}
-  .rs-turn-dice .rules-die{width:20px; height:20px; padding:2px;}
+  .rs-turn-dice .rules-die{width:22px; height:22px;}
 
   /* opdracht */
   .rs-done{position:absolute; z-index:4; display:grid; place-items:center; background:var(--start); color:#0b1712;
@@ -4487,14 +4489,15 @@
     font-size:13px; color:var(--actioncell-glow); opacity:0; will-change:transform, opacity; margin-left:-14px;}
 
   /* energie */
-  .rs-edie{position:relative; width:58px; height:58px; border-radius:12px; background:#123222; border:2px solid var(--start);}
-  .rs-edie-face{position:absolute; inset:0; display:grid; place-items:center; opacity:0; will-change:opacity;
-    font-family:var(--font-mono); font-size:28px; font-weight:700; color:var(--start-glow);}
-  .rs-edie-bolt{position:absolute; right:3px; top:1px; font-size:11px; color:var(--start);}
+  /* energiesteen: de echte steen (42px), alle kanten op elkaar en om de beurt zichtbaar */
+  .rs-edie{position:relative; width:42px; height:42px; transform:scale(1.3);}
+  .rs-edie-face{position:absolute; inset:0; display:flex; opacity:0; will-change:opacity;}
   .rs-ebar{display:flex; align-items:center; gap:0;}
-  .rs-enode{position:relative; width:14px; height:14px; border-radius:50%; background:#1a2530; border:2px solid #2d3d4c; margin-right:8px;}
+  /* stroomcircuit zoals de energiebalk in het spel: knooppunten aan één leiding */
+  .rs-enode{position:relative; width:14px; height:14px; border-radius:50%; background:var(--hull, #1a2530); box-shadow:inset 0 0 0 2px #33424f; margin-right:8px;}
   .rs-enode:last-child{margin-right:0;}
-  .rs-enode-lit{position:absolute; inset:-2px; border-radius:50%; background:var(--start); box-shadow:0 0 8px var(--start); will-change:opacity;}
+  .rs-eseg{position:absolute; left:100%; top:6px; width:8px; height:2px; background:var(--line);}
+  .rs-enode-lit{position:absolute; inset:0; border-radius:50%; background:var(--start-glow); box-shadow:0 0 0 3px rgba(85,214,138,.25), 0 0 10px rgba(85,214,138,.8); will-change:opacity;}
   .rs-enum{position:absolute; right:16px; top:14px; width:32px; height:30px;}
   .rs-enum-v{position:absolute; inset:0; display:grid; place-items:center; font-family:var(--font-mono); font-size:22px; color:var(--start-glow); opacity:0; will-change:opacity;}
   .rs-eact{padding:6px 12px; border-radius:8px; background:var(--panel-2); border:1px solid var(--start); font-size:15px; color:var(--text);
@@ -4502,10 +4505,7 @@
   .rs-eact b{color:#fff;}
 
   /* portalen */
-  .rs-portal{position:absolute; z-index:2; --pcol:#3fa9ff;}
-  .rs-portal.is-red{--pcol:#ff5d5d;}
-  .rs-portal i{position:absolute; inset:2px; border-radius:50%; border:3px solid var(--pcol);
-    background:radial-gradient(circle, transparent 35%, color-mix(in srgb, var(--pcol) 45%, transparent) 100%); will-change:opacity;}
+  .rs-portal{position:absolute; z-index:2;}   /* inhoud = .walk-portal (gyroscoop) uit styles.css */
   .rs-stop{position:absolute; z-index:5; display:grid; place-items:center; width:auto !important; margin-top:-22px; margin-left:-4px;
     padding:0 6px; height:18px !important; border-radius:999px; background:var(--amber); color:#14100a; font-size:12px; font-weight:700;
     opacity:0; will-change:transform, opacity;}
@@ -4516,10 +4516,12 @@
   .rs-crys{gap:0;}
   .rs-slot{position:relative; width:34px; height:34px;}
   .rs-slot svg, .rs-fly svg, .rs-slot-fill svg{width:100%; height:100%; display:block;}
-  .rs-slot > svg polygon{fill:none; stroke:var(--line); stroke-width:2.5; stroke-dasharray:4 3;}
+  .rs-slot > svg .rc-body{fill:none; stroke:var(--line); stroke-width:12; stroke-dasharray:22 16;}
+  .rs-slot > svg .rc-shine{fill:none;}
   .rs-slot-fill{position:absolute; inset:0; opacity:0; will-change:transform, opacity;}
-  .rs-slot-fill svg polygon, .rs-fly svg polygon{fill:var(--actioncell); stroke:var(--actioncell-glow); stroke-width:2;}
-  .rs-fly{position:absolute; z-index:5; padding:5px; opacity:0; will-change:transform, opacity;}
+  .rs-slot-fill svg .rc-body, .rs-fly svg .rc-body{fill:#7a3fc4; stroke:#e0c2ff; stroke-width:14; stroke-linejoin:round;}
+  .rs-slot-fill svg .rc-shine, .rs-fly svg .rc-shine{fill:#c79bf7; fill-opacity:.55;}
+  .rs-fly{position:absolute; z-index:7; padding:3px; box-sizing:border-box; opacity:0; will-change:transform, opacity;}
   .rs-no{position:absolute; z-index:4; display:grid; place-items:center; font-size:16px; font-weight:700;
     color:#fff; background:rgba(255,93,93,.55); box-shadow:inset 0 0 0 2px var(--danger); opacity:0; will-change:transform, opacity;}
 
@@ -18424,12 +18426,12 @@ function rGrid(parent, rows, cell){
   rows.forEach((row, r) => [...row].forEach((ch, c) => {
     if (ch === '#') return;
     const cls = ch === 'Q' ? ' is-quest' : ch === 'C' ? ' is-crystal' : ch === 'D' ? ' is-door' : '';
-    rEl(g, 'rg-cell' + cls, ch === 'C' ? '<i></i>' : '', `left:${c * cell}px;top:${r * cell}px`);
+    rEl(g, 'rg-cell' + cls, ch === 'C' ? '<i></i>' : '', `left:${c * cell}px;top:${r * cell}px;width:${cell - 1}px;height:${cell - 1}px`);
   }));
   return g;
 }
 function rAt(parent, cls, c, r, cell, html = ''){
-  return rEl(parent, cls, html, `left:${c * cell}px;top:${r * cell}px;width:${cell}px;height:${cell}px`);
+  return rEl(parent, cls, html, `left:${c * cell}px;top:${r * cell}px;width:${cell - 1}px;height:${cell - 1}px`);
 }
 function rPawn(parent, color, cell){
   const p = rEl(parent, 'rg-pawn', '<i></i>', `width:${cell}px;height:${cell}px;--pc:${color}`);
@@ -18443,9 +18445,21 @@ function rCaption(stage, texts, dur){
   return anims;
 }
 const RULES_HEX = '<svg viewBox="0 0 48 48"><polygon points="24,3 42,13.5 42,34.5 24,45 6,34.5 6,13.5"/></svg>';
+// De echte stenen uit het spel (diceDieHtml/diceEnergyDieHtml in 96d-dice.js), alleen kleiner.
 function rDie(parent, value){
-  const pips = { 1: [4], 2: [0, 8], 3: [0, 4, 8], 4: [0, 2, 6, 8], 5: [0, 2, 4, 6, 8], 6: [0, 2, 3, 5, 6, 8] }[value] || [];
-  return rEl(parent, 'rules-die', Array.from({ length: 9 }, (_, i) => `<i${pips.includes(i) ? ' class="on"' : ''}></i>`).join(''));
+  return rEl(parent, 'rules-die', diceDieHtml(value));
+}
+function rEnergyDie(parent, value, cls = ''){
+  return rEl(parent, 'rules-die ' + cls, diceEnergyDieHtml(value));
+}
+// de pionkleuren van het spel (speler 1 t/m 4)
+const RULES_PAWN = i => WALK_PLAYER_COLORS[i % WALK_PLAYER_COLORS.length];
+const RULES_PAWN_NAMES = ['Roze', 'Geel', 'Paars', 'Oranje'];
+// het kristal zoals op het bord: een langgerekte zeshoek
+const RULES_CRYSTAL = '<svg viewBox="0 0 200 290"><polygon class="rc-body" points="100,4 196,62 196,228 100,286 4,228 4,62"/><polygon class="rc-shine" points="100,40 165,80 165,150 100,120 35,150 35,80"/></svg>';
+// portaal = de gyroscoop van het bord (.walk-portal in styles.css)
+function rPortal(parent, c, r, cell, red){
+  return rAt(parent, 'rs-portal', c, r, cell, `<span class="walk-portal ${red ? 'is-red' : 'is-blue'}" style="--cell:${cell}px"><b></b></span>`);
 }
 
 // ---------- de scènes ----------
@@ -18495,18 +18509,18 @@ const RULES_SCENES = {
 
   // twee tegels: deurvakjes lichten op, de naad wordt een doorgang, een pion loopt erdoor
   doors(stage){
-    const D = 7500, anims = [], C = 12;
+    const D = 7500, anims = [], C = 14;
     const rows = [];
     for (let r = 0; r < 8; r++){
       let s = '';
-      for (let c = 0; c < 17; c++){
-        const lc = c, rc = c - 9;
+      for (let c = 0; c < 16; c++){
+        const lc = c, rc = c - 8;
         let ch = '#';
         if (c < 8){
           if (r >= 1 && r <= 6 && lc >= 1 && lc <= 6) ch = '.';
           if ((r === 3 || r === 4) && lc === 7) ch = 'D';
           if (r === 0 && (lc === 3 || lc === 4)) ch = 'D';
-        } else if (c > 8){
+        } else {
           if (r >= 1 && r <= 6 && rc >= 1 && rc <= 6) ch = '.';
           if ((r === 3 || r === 4) && rc === 0) ch = 'D';
           if (r === 7 && (rc === 3 || rc === 4)) ch = 'D';
@@ -18519,17 +18533,17 @@ const RULES_SCENES = {
     const scene = rEl(stage, 'rules-scene');
     const g = rGrid(scene, rows, C);
     g.classList.add('rs-doors');
-    // tegelranden
-    rEl(g, 'rs-tile-outline', '', `left:0;top:0;width:${8 * C}px;height:${8 * C}px`);
-    rEl(g, 'rs-tile-outline', '', `left:${9 * C}px;top:0;width:${8 * C}px;height:${8 * C}px`);
-    // deurvakjes oplichten
+    // tegelranden: de tegels liggen tegen elkaar aan, net als op het bord
+    rEl(g, 'rs-tile-outline', '', `left:-3px;top:-3px;width:${8 * C + 2}px;height:${8 * C + 5}px`);
+    rEl(g, 'rs-tile-outline', '', `left:${8 * C - 1}px;top:-3px;width:${8 * C + 3}px;height:${8 * C + 5}px`);
+    // deurvakjes oplichten (elk vakje apart)
     g.querySelectorAll('.rg-cell.is-door').forEach(d => anims.push(...rShow(rEl(d, 'rs-door-glow'), 0.08, 0.93, D)));
-    // de doorgang (naad tussen de tegels) wordt groen
-    anims.push(...rShow(rEl(g, 'rs-seam', '', `left:${7 * C}px;top:${3 * C}px;width:${3 * C}px;height:${2 * C}px`), 0.3, 0.93, D));
+    // de doorgang: 2 deurvakjes van links + 2 van rechts, tegen elkaar aan
+    anims.push(...rShow(rEl(g, 'rs-seam', '', `left:${7 * C - 2}px;top:${3 * C - 2}px;width:${2 * C + 3}px;height:${2 * C + 3}px`), 0.3, 0.93, D));
     // halve deur rechtsboven: rood
-    anims.push(...rShow(rAt(g, 'rs-bad', 12, 0, C, '✕'), 0.3, 0.93, D, true));
-    const pawn = rPawn(g, 'var(--amber)', C);
-    const path = [[4, 3], [5, 3], [6, 3], [7, 3], [8, 3], [9, 3], [10, 3], [11, 3], [12, 3]];
+    anims.push(...rShow(rAt(g, 'rs-bad', 11, 0, C, '✕'), 0.3, 0.93, D, true));
+    const pawn = rPawn(g, RULES_PAWN(0), C);
+    const path = [[3, 3], [4, 3], [5, 3], [6, 3], [7, 3], [8, 3], [9, 3], [10, 3], [11, 3]];
     anims.push(rWalk(pawn, path, 0.42, 0.045, D));
     anims.push(rTrack(pawn, 'opacity', 0, [[0.36, 1], [0.93, 0]], D, 0.03));
     anims.push(...rCaption(stage, [
@@ -18545,16 +18559,16 @@ const RULES_SCENES = {
     const scene = rEl(stage, 'rules-scene');
     const list = rEl(scene, 'rs-open', '', `height:${3 * H}px`);
     const players = [
-      { name: 'Rood', color: '#ff6b6b', d: [4, 3], to: 1 },
-      { name: 'Blauw', color: '#4fb8e0', d: [6, 5], to: 0 },
-      { name: 'Groen', color: '#55d68a', d: [2, 3], to: 2 },
+      { name: RULES_PAWN_NAMES[0], color: RULES_PAWN(0), d: [4, 3], to: 1 },
+      { name: RULES_PAWN_NAMES[1], color: RULES_PAWN(1), d: [6, 5], to: 0 },
+      { name: RULES_PAWN_NAMES[2], color: RULES_PAWN(2), d: [2, 3], to: 2 },
     ];
     players.forEach((p, i) => {
       const row = rEl(list, 'rs-open-row', `<span class="rs-dot" style="background:${p.color}"></span><span class="rs-open-name">${p.name}</span>`, `top:${i * H}px`);
       const dice = rEl(row, 'rs-open-dice');
       p.d.forEach((v, k) => {
         const slot = rEl(dice, 'rs-die-slot');
-        const q = rEl(slot, 'rules-die is-q', '?');
+        const q = rEl(slot, 'rules-die is-q', diceDieHtml('?'));
         const die = rDie(slot, v);
         const t = 0.1 + i * 0.09 + k * 0.03;
         anims.push(rTrack(q, 'opacity', 1, [[t, 0], [0.95, 1]], D));
@@ -18591,7 +18605,7 @@ const RULES_SCENES = {
     const bolt = rEl(list, 'rs-turn-ico', '⚡', `top:${0 * H}px;height:${H - 8}px`);
     anims.push(rTrack(bolt, 'opacity', 0.25, [[0.04, 1], [0.32, 0.25]], D));
     const dice = rEl(list, 'rs-turn-ico rs-turn-dice', '', `top:${1 * H}px;height:${H - 8}px`);
-    rDie(dice, 3); rDie(dice, 4);
+    rDie(dice, 3); rDie(dice, 4); rEnergyDie(dice, 2);
     anims.push(rTrack(dice, 'opacity', 0.25, [[0.35, 1], [0.63, 0.25]], D));
     anims.push(rTrack(dice, 'transform', 'rotate(0deg)', [[0.35, 'rotate(-12deg)'], [0.4, 'rotate(0deg)']], D, 0.03));
     const feet = rEl(list, 'rs-turn-ico', '7 →', `top:${2 * H}px;height:${H - 8}px`);
@@ -18611,9 +18625,9 @@ const RULES_SCENES = {
     // voetstappen 1..7
     path.slice(1).forEach(([c, r], i) => anims.push(...rShow(rAt(g, 'rs-step', c, r, C, String(i + 1)), t0 + (i + 1) * st, 0.93, D, true)));
     // tegenstander + rode ring zodra je ernaast staat
-    rAt(g, 'rg-pawn is-static', 1, 2, C, '<i></i>').style.setProperty('--pc', '#4fb8e0');
+    rAt(g, 'rg-pawn is-static', 1, 2, C, '<i></i>').style.setProperty('--pc', RULES_PAWN(1));
     anims.push(...rShow(rAt(g, 'rs-blocked', 1, 2, C), t0 + 2 * st, t0 + 4 * st, D));
-    const pawn = rPawn(g, 'var(--amber)', C);
+    const pawn = rPawn(g, RULES_PAWN(0), C);
     anims.push(rWalk(pawn, path, t0, st, D));
     anims.push(rTrack(pawn, 'opacity', 0, [[0.04, 1], [0.93, 0]], D));
     // worp
@@ -18635,7 +18649,7 @@ const RULES_SCENES = {
     const scene = rEl(stage, 'rules-scene');
     const g = rGrid(scene, ['....Q...'], C);
     const t0 = 0.14, st = 0.075;
-    const pawn = rPawn(g, 'var(--amber)', C);
+    const pawn = rPawn(g, RULES_PAWN(0), C);
     const path = [[0, 0], [1, 0], [2, 0], [3, 0], [4, 0], [5, 0], [6, 0]];
     anims.push(rWalk(pawn, path, t0, st, D));
     anims.push(rTrack(pawn, 'opacity', 0, [[0.04, 1], [0.93, 0]], D));
@@ -18665,15 +18679,15 @@ const RULES_SCENES = {
     const die = rEl(scene, 'rs-edie');
     const faces = [3, 1, 0, 2, 1, 3, 2];
     faces.forEach((v, i) => {
-      const f = rEl(die, 'rs-edie-face', `<span>${v}</span>`);
+      const f = rEl(die, 'rs-edie-face', diceEnergyDieHtml(v));
       const tIn = 0.04 + i * 0.03, last = i === faces.length - 1;
       anims.push(rTrack(f, 'opacity', 0, [[tIn, 1], [last ? 0.93 : tIn + 0.03, 0]], D, 0.005));
     });
-    rEl(die, 'rs-edie-bolt', '⚡');
     const bar = rEl(scene, 'rs-ebar');
     const startLit = 3, gain = 2, cost = 4;
     for (let i = 0; i < 10; i++){
       const node = rEl(bar, 'rs-enode');
+      if (i < 9) rEl(node, 'rs-eseg');
       const lit = rEl(node, 'rs-enode-lit');
       const pts = [];
       let initial = i < startLit ? 1 : 0;
@@ -18704,17 +18718,16 @@ const RULES_SCENES = {
     const D = 8500, anims = [], C = 30;
     const scene = rEl(stage, 'rules-scene');
     const g = rGrid(scene, ['........', '###.####', '........'], C);
-    const blue = rAt(g, 'rs-portal', 5, 0, C, '<i></i>');
-    const red = rAt(g, 'rs-portal is-red', 2, 2, C, '<i></i>');
-    [blue, red].forEach(p => anims.push(rTrack(p.firstChild, 'opacity', 0.55, [[0.1, 1], [0.2, 0.55], [0.3, 1], [0.4, 0.55], [0.5, 1], [0.95, 0.55]], D, 0.05)));
+    rPortal(g, 5, 0, C, false);
+    rPortal(g, 2, 2, C, true);
     const t0 = 0.14, st = 0.075;
-    const pawn = rPawn(g, 'var(--amber)', C);
+    const pawn = rPawn(g, RULES_PAWN(0), C);
     const path = [[0, 0], [1, 0], [2, 0], [3, 0], [4, 0], [5, 0]];
     anims.push(rWalk(pawn, path, t0, st, D));
     const tIn = t0 + 5 * st;          // op het blauwe portaal
     anims.push(rTrack(pawn, 'opacity', 0, [[0.04, 1], [tIn + 0.02, 0]], D, 0.03));
     // uit het rode portaal: de laatste 3 stappen loop je gewoon door
-    const out = rPawn(g, 'var(--amber)', C);
+    const out = rPawn(g, RULES_PAWN(0), C);
     const tOut = tIn + 0.06;
     anims.push(rWalk(out, [[2, 2], [3, 2], [4, 2], [5, 2]], tOut + 0.04, st, D));
     anims.push(rTrack(out, 'opacity', 0, [[tIn + 0.05, 1], [0.93, 0]], D, 0.03));
@@ -18735,22 +18748,22 @@ const RULES_SCENES = {
     const D = 8500, anims = [], C = 30;
     const scene = rEl(stage, 'rules-scene rs-crys');
     const vault = rEl(scene, 'rs-vault');
-    const slots = [0, 1, 2].map(() => rEl(vault, 'rs-slot', RULES_HEX));
+    const slots = [0, 1, 2].map(() => rEl(vault, 'rs-slot', RULES_CRYSTAL));
     const g = rGrid(scene, ['..C...C..'], C);
     const t0 = 0.14, st = 0.07;
-    const pawn = rPawn(g, 'var(--amber)', C);
+    const pawn = rPawn(g, RULES_PAWN(0), C);
     const path = Array.from({ length: 9 }, (_, i) => [i, 0]);
     anims.push(rWalk(pawn, path, t0, st, D));
     anims.push(rTrack(pawn, 'opacity', 0, [[0.04, 1], [0.93, 0]], D));
     const tHit = t0 + 2 * st, tHit2 = t0 + 6 * st;
     // vliegend kristal: van vakje 2 naar plek 1 van de kluis (kluis en raster allebei gecentreerd)
-    const fly = rAt(g, 'rs-fly', 2, 0, C, RULES_HEX);
+    const fly = rAt(g, 'rs-fly', 2, 0, C, RULES_CRYSTAL);
     // kluis = 3 plekken van 34px met 6px ertussen, 26px boven het raster (zie .rs-vault in rules.css)
     const gridW = 9 * C, vaultW = 3 * 34 + 2 * 6;
     const dx = (gridW - vaultW) / 2 + 17 - (2 * C + C / 2), dy = -(26 + 17 + C / 2);
     anims.push(rTrack(fly, 'opacity', 0, [[tHit, 1], [tHit + 0.16, 0], [0.97, 0]], D, 0.02));
     anims.push(rTrack(fly, 'transform', 'translate(0px, 0px) scale(1)', [[tHit + 0.01, `translate(${dx}px, ${dy}px) scale(1.25)`], [0.97, 'translate(0px, 0px) scale(1)']], D, 0.15));
-    const got = rEl(slots[0], 'rs-slot-fill', RULES_HEX);
+    const got = rEl(slots[0], 'rs-slot-fill', RULES_CRYSTAL);
     anims.push(...rShow(got, tHit + 0.15, 0.93, D, true));
     // eerste kristalvakje is leeg na het oprapen
     const firstGem = g.querySelectorAll('.rg-cell.is-crystal i')[0];
@@ -18771,10 +18784,10 @@ const RULES_SCENES = {
     const scene = rEl(stage, 'rules-scene');
     const list = rEl(scene, 'rs-end');
     const players = [
-      { name: 'Rood', color: '#ff6b6b', done: 0.38, rank: '1e' },
-      { name: 'Blauw', color: '#4fb8e0', done: 0.55, rank: '2e' },
-      { name: 'Groen', color: '#55d68a', done: 0.7, rank: '3e' },
-      { name: 'Geel', color: '#ffd84f', done: null, upto: 4, rank: '4e' },
+      { name: RULES_PAWN_NAMES[0], color: RULES_PAWN(0), done: 0.38, rank: '1e' },
+      { name: RULES_PAWN_NAMES[1], color: RULES_PAWN(1), done: 0.55, rank: '2e' },
+      { name: RULES_PAWN_NAMES[2], color: RULES_PAWN(2), done: 0.7, rank: '3e' },
+      { name: RULES_PAWN_NAMES[3], color: RULES_PAWN(3), done: null, upto: 4, rank: '4e' },
     ];
     players.forEach((p) => {
       const row = rEl(list, 'rs-end-row', `<span class="rs-dot" style="background:${p.color}"></span><span class="rs-open-name">${p.name}</span>`);

@@ -305,12 +305,12 @@ function rGrid(parent, rows, cell){
   rows.forEach((row, r) => [...row].forEach((ch, c) => {
     if (ch === '#') return;
     const cls = ch === 'Q' ? ' is-quest' : ch === 'C' ? ' is-crystal' : ch === 'D' ? ' is-door' : '';
-    rEl(g, 'rg-cell' + cls, ch === 'C' ? '<i></i>' : '', `left:${c * cell}px;top:${r * cell}px`);
+    rEl(g, 'rg-cell' + cls, ch === 'C' ? '<i></i>' : '', `left:${c * cell}px;top:${r * cell}px;width:${cell - 1}px;height:${cell - 1}px`);
   }));
   return g;
 }
 function rAt(parent, cls, c, r, cell, html = ''){
-  return rEl(parent, cls, html, `left:${c * cell}px;top:${r * cell}px;width:${cell}px;height:${cell}px`);
+  return rEl(parent, cls, html, `left:${c * cell}px;top:${r * cell}px;width:${cell - 1}px;height:${cell - 1}px`);
 }
 function rPawn(parent, color, cell){
   const p = rEl(parent, 'rg-pawn', '<i></i>', `width:${cell}px;height:${cell}px;--pc:${color}`);
@@ -324,9 +324,21 @@ function rCaption(stage, texts, dur){
   return anims;
 }
 const RULES_HEX = '<svg viewBox="0 0 48 48"><polygon points="24,3 42,13.5 42,34.5 24,45 6,34.5 6,13.5"/></svg>';
+// De echte stenen uit het spel (diceDieHtml/diceEnergyDieHtml in 96d-dice.js), alleen kleiner.
 function rDie(parent, value){
-  const pips = { 1: [4], 2: [0, 8], 3: [0, 4, 8], 4: [0, 2, 6, 8], 5: [0, 2, 4, 6, 8], 6: [0, 2, 3, 5, 6, 8] }[value] || [];
-  return rEl(parent, 'rules-die', Array.from({ length: 9 }, (_, i) => `<i${pips.includes(i) ? ' class="on"' : ''}></i>`).join(''));
+  return rEl(parent, 'rules-die', diceDieHtml(value));
+}
+function rEnergyDie(parent, value, cls = ''){
+  return rEl(parent, 'rules-die ' + cls, diceEnergyDieHtml(value));
+}
+// de pionkleuren van het spel (speler 1 t/m 4)
+const RULES_PAWN = i => WALK_PLAYER_COLORS[i % WALK_PLAYER_COLORS.length];
+const RULES_PAWN_NAMES = ['Roze', 'Geel', 'Paars', 'Oranje'];
+// het kristal zoals op het bord: een langgerekte zeshoek
+const RULES_CRYSTAL = '<svg viewBox="0 0 200 290"><polygon class="rc-body" points="100,4 196,62 196,228 100,286 4,228 4,62"/><polygon class="rc-shine" points="100,40 165,80 165,150 100,120 35,150 35,80"/></svg>';
+// portaal = de gyroscoop van het bord (.walk-portal in styles.css)
+function rPortal(parent, c, r, cell, red){
+  return rAt(parent, 'rs-portal', c, r, cell, `<span class="walk-portal ${red ? 'is-red' : 'is-blue'}" style="--cell:${cell}px"><b></b></span>`);
 }
 
 // ---------- de scènes ----------
@@ -376,18 +388,18 @@ const RULES_SCENES = {
 
   // twee tegels: deurvakjes lichten op, de naad wordt een doorgang, een pion loopt erdoor
   doors(stage){
-    const D = 7500, anims = [], C = 12;
+    const D = 7500, anims = [], C = 14;
     const rows = [];
     for (let r = 0; r < 8; r++){
       let s = '';
-      for (let c = 0; c < 17; c++){
-        const lc = c, rc = c - 9;
+      for (let c = 0; c < 16; c++){
+        const lc = c, rc = c - 8;
         let ch = '#';
         if (c < 8){
           if (r >= 1 && r <= 6 && lc >= 1 && lc <= 6) ch = '.';
           if ((r === 3 || r === 4) && lc === 7) ch = 'D';
           if (r === 0 && (lc === 3 || lc === 4)) ch = 'D';
-        } else if (c > 8){
+        } else {
           if (r >= 1 && r <= 6 && rc >= 1 && rc <= 6) ch = '.';
           if ((r === 3 || r === 4) && rc === 0) ch = 'D';
           if (r === 7 && (rc === 3 || rc === 4)) ch = 'D';
@@ -400,17 +412,17 @@ const RULES_SCENES = {
     const scene = rEl(stage, 'rules-scene');
     const g = rGrid(scene, rows, C);
     g.classList.add('rs-doors');
-    // tegelranden
-    rEl(g, 'rs-tile-outline', '', `left:0;top:0;width:${8 * C}px;height:${8 * C}px`);
-    rEl(g, 'rs-tile-outline', '', `left:${9 * C}px;top:0;width:${8 * C}px;height:${8 * C}px`);
-    // deurvakjes oplichten
+    // tegelranden: de tegels liggen tegen elkaar aan, net als op het bord
+    rEl(g, 'rs-tile-outline', '', `left:-3px;top:-3px;width:${8 * C + 2}px;height:${8 * C + 5}px`);
+    rEl(g, 'rs-tile-outline', '', `left:${8 * C - 1}px;top:-3px;width:${8 * C + 3}px;height:${8 * C + 5}px`);
+    // deurvakjes oplichten (elk vakje apart)
     g.querySelectorAll('.rg-cell.is-door').forEach(d => anims.push(...rShow(rEl(d, 'rs-door-glow'), 0.08, 0.93, D)));
-    // de doorgang (naad tussen de tegels) wordt groen
-    anims.push(...rShow(rEl(g, 'rs-seam', '', `left:${7 * C}px;top:${3 * C}px;width:${3 * C}px;height:${2 * C}px`), 0.3, 0.93, D));
+    // de doorgang: 2 deurvakjes van links + 2 van rechts, tegen elkaar aan
+    anims.push(...rShow(rEl(g, 'rs-seam', '', `left:${7 * C - 2}px;top:${3 * C - 2}px;width:${2 * C + 3}px;height:${2 * C + 3}px`), 0.3, 0.93, D));
     // halve deur rechtsboven: rood
-    anims.push(...rShow(rAt(g, 'rs-bad', 12, 0, C, '✕'), 0.3, 0.93, D, true));
-    const pawn = rPawn(g, 'var(--amber)', C);
-    const path = [[4, 3], [5, 3], [6, 3], [7, 3], [8, 3], [9, 3], [10, 3], [11, 3], [12, 3]];
+    anims.push(...rShow(rAt(g, 'rs-bad', 11, 0, C, '✕'), 0.3, 0.93, D, true));
+    const pawn = rPawn(g, RULES_PAWN(0), C);
+    const path = [[3, 3], [4, 3], [5, 3], [6, 3], [7, 3], [8, 3], [9, 3], [10, 3], [11, 3]];
     anims.push(rWalk(pawn, path, 0.42, 0.045, D));
     anims.push(rTrack(pawn, 'opacity', 0, [[0.36, 1], [0.93, 0]], D, 0.03));
     anims.push(...rCaption(stage, [
@@ -426,16 +438,16 @@ const RULES_SCENES = {
     const scene = rEl(stage, 'rules-scene');
     const list = rEl(scene, 'rs-open', '', `height:${3 * H}px`);
     const players = [
-      { name: 'Rood', color: '#ff6b6b', d: [4, 3], to: 1 },
-      { name: 'Blauw', color: '#4fb8e0', d: [6, 5], to: 0 },
-      { name: 'Groen', color: '#55d68a', d: [2, 3], to: 2 },
+      { name: RULES_PAWN_NAMES[0], color: RULES_PAWN(0), d: [4, 3], to: 1 },
+      { name: RULES_PAWN_NAMES[1], color: RULES_PAWN(1), d: [6, 5], to: 0 },
+      { name: RULES_PAWN_NAMES[2], color: RULES_PAWN(2), d: [2, 3], to: 2 },
     ];
     players.forEach((p, i) => {
       const row = rEl(list, 'rs-open-row', `<span class="rs-dot" style="background:${p.color}"></span><span class="rs-open-name">${p.name}</span>`, `top:${i * H}px`);
       const dice = rEl(row, 'rs-open-dice');
       p.d.forEach((v, k) => {
         const slot = rEl(dice, 'rs-die-slot');
-        const q = rEl(slot, 'rules-die is-q', '?');
+        const q = rEl(slot, 'rules-die is-q', diceDieHtml('?'));
         const die = rDie(slot, v);
         const t = 0.1 + i * 0.09 + k * 0.03;
         anims.push(rTrack(q, 'opacity', 1, [[t, 0], [0.95, 1]], D));
@@ -472,7 +484,7 @@ const RULES_SCENES = {
     const bolt = rEl(list, 'rs-turn-ico', '⚡', `top:${0 * H}px;height:${H - 8}px`);
     anims.push(rTrack(bolt, 'opacity', 0.25, [[0.04, 1], [0.32, 0.25]], D));
     const dice = rEl(list, 'rs-turn-ico rs-turn-dice', '', `top:${1 * H}px;height:${H - 8}px`);
-    rDie(dice, 3); rDie(dice, 4);
+    rDie(dice, 3); rDie(dice, 4); rEnergyDie(dice, 2);
     anims.push(rTrack(dice, 'opacity', 0.25, [[0.35, 1], [0.63, 0.25]], D));
     anims.push(rTrack(dice, 'transform', 'rotate(0deg)', [[0.35, 'rotate(-12deg)'], [0.4, 'rotate(0deg)']], D, 0.03));
     const feet = rEl(list, 'rs-turn-ico', '7 →', `top:${2 * H}px;height:${H - 8}px`);
@@ -492,9 +504,9 @@ const RULES_SCENES = {
     // voetstappen 1..7
     path.slice(1).forEach(([c, r], i) => anims.push(...rShow(rAt(g, 'rs-step', c, r, C, String(i + 1)), t0 + (i + 1) * st, 0.93, D, true)));
     // tegenstander + rode ring zodra je ernaast staat
-    rAt(g, 'rg-pawn is-static', 1, 2, C, '<i></i>').style.setProperty('--pc', '#4fb8e0');
+    rAt(g, 'rg-pawn is-static', 1, 2, C, '<i></i>').style.setProperty('--pc', RULES_PAWN(1));
     anims.push(...rShow(rAt(g, 'rs-blocked', 1, 2, C), t0 + 2 * st, t0 + 4 * st, D));
-    const pawn = rPawn(g, 'var(--amber)', C);
+    const pawn = rPawn(g, RULES_PAWN(0), C);
     anims.push(rWalk(pawn, path, t0, st, D));
     anims.push(rTrack(pawn, 'opacity', 0, [[0.04, 1], [0.93, 0]], D));
     // worp
@@ -516,7 +528,7 @@ const RULES_SCENES = {
     const scene = rEl(stage, 'rules-scene');
     const g = rGrid(scene, ['....Q...'], C);
     const t0 = 0.14, st = 0.075;
-    const pawn = rPawn(g, 'var(--amber)', C);
+    const pawn = rPawn(g, RULES_PAWN(0), C);
     const path = [[0, 0], [1, 0], [2, 0], [3, 0], [4, 0], [5, 0], [6, 0]];
     anims.push(rWalk(pawn, path, t0, st, D));
     anims.push(rTrack(pawn, 'opacity', 0, [[0.04, 1], [0.93, 0]], D));
@@ -546,15 +558,15 @@ const RULES_SCENES = {
     const die = rEl(scene, 'rs-edie');
     const faces = [3, 1, 0, 2, 1, 3, 2];
     faces.forEach((v, i) => {
-      const f = rEl(die, 'rs-edie-face', `<span>${v}</span>`);
+      const f = rEl(die, 'rs-edie-face', diceEnergyDieHtml(v));
       const tIn = 0.04 + i * 0.03, last = i === faces.length - 1;
       anims.push(rTrack(f, 'opacity', 0, [[tIn, 1], [last ? 0.93 : tIn + 0.03, 0]], D, 0.005));
     });
-    rEl(die, 'rs-edie-bolt', '⚡');
     const bar = rEl(scene, 'rs-ebar');
     const startLit = 3, gain = 2, cost = 4;
     for (let i = 0; i < 10; i++){
       const node = rEl(bar, 'rs-enode');
+      if (i < 9) rEl(node, 'rs-eseg');
       const lit = rEl(node, 'rs-enode-lit');
       const pts = [];
       let initial = i < startLit ? 1 : 0;
@@ -585,17 +597,16 @@ const RULES_SCENES = {
     const D = 8500, anims = [], C = 30;
     const scene = rEl(stage, 'rules-scene');
     const g = rGrid(scene, ['........', '###.####', '........'], C);
-    const blue = rAt(g, 'rs-portal', 5, 0, C, '<i></i>');
-    const red = rAt(g, 'rs-portal is-red', 2, 2, C, '<i></i>');
-    [blue, red].forEach(p => anims.push(rTrack(p.firstChild, 'opacity', 0.55, [[0.1, 1], [0.2, 0.55], [0.3, 1], [0.4, 0.55], [0.5, 1], [0.95, 0.55]], D, 0.05)));
+    rPortal(g, 5, 0, C, false);
+    rPortal(g, 2, 2, C, true);
     const t0 = 0.14, st = 0.075;
-    const pawn = rPawn(g, 'var(--amber)', C);
+    const pawn = rPawn(g, RULES_PAWN(0), C);
     const path = [[0, 0], [1, 0], [2, 0], [3, 0], [4, 0], [5, 0]];
     anims.push(rWalk(pawn, path, t0, st, D));
     const tIn = t0 + 5 * st;          // op het blauwe portaal
     anims.push(rTrack(pawn, 'opacity', 0, [[0.04, 1], [tIn + 0.02, 0]], D, 0.03));
     // uit het rode portaal: de laatste 3 stappen loop je gewoon door
-    const out = rPawn(g, 'var(--amber)', C);
+    const out = rPawn(g, RULES_PAWN(0), C);
     const tOut = tIn + 0.06;
     anims.push(rWalk(out, [[2, 2], [3, 2], [4, 2], [5, 2]], tOut + 0.04, st, D));
     anims.push(rTrack(out, 'opacity', 0, [[tIn + 0.05, 1], [0.93, 0]], D, 0.03));
@@ -616,22 +627,22 @@ const RULES_SCENES = {
     const D = 8500, anims = [], C = 30;
     const scene = rEl(stage, 'rules-scene rs-crys');
     const vault = rEl(scene, 'rs-vault');
-    const slots = [0, 1, 2].map(() => rEl(vault, 'rs-slot', RULES_HEX));
+    const slots = [0, 1, 2].map(() => rEl(vault, 'rs-slot', RULES_CRYSTAL));
     const g = rGrid(scene, ['..C...C..'], C);
     const t0 = 0.14, st = 0.07;
-    const pawn = rPawn(g, 'var(--amber)', C);
+    const pawn = rPawn(g, RULES_PAWN(0), C);
     const path = Array.from({ length: 9 }, (_, i) => [i, 0]);
     anims.push(rWalk(pawn, path, t0, st, D));
     anims.push(rTrack(pawn, 'opacity', 0, [[0.04, 1], [0.93, 0]], D));
     const tHit = t0 + 2 * st, tHit2 = t0 + 6 * st;
     // vliegend kristal: van vakje 2 naar plek 1 van de kluis (kluis en raster allebei gecentreerd)
-    const fly = rAt(g, 'rs-fly', 2, 0, C, RULES_HEX);
+    const fly = rAt(g, 'rs-fly', 2, 0, C, RULES_CRYSTAL);
     // kluis = 3 plekken van 34px met 6px ertussen, 26px boven het raster (zie .rs-vault in rules.css)
     const gridW = 9 * C, vaultW = 3 * 34 + 2 * 6;
     const dx = (gridW - vaultW) / 2 + 17 - (2 * C + C / 2), dy = -(26 + 17 + C / 2);
     anims.push(rTrack(fly, 'opacity', 0, [[tHit, 1], [tHit + 0.16, 0], [0.97, 0]], D, 0.02));
     anims.push(rTrack(fly, 'transform', 'translate(0px, 0px) scale(1)', [[tHit + 0.01, `translate(${dx}px, ${dy}px) scale(1.25)`], [0.97, 'translate(0px, 0px) scale(1)']], D, 0.15));
-    const got = rEl(slots[0], 'rs-slot-fill', RULES_HEX);
+    const got = rEl(slots[0], 'rs-slot-fill', RULES_CRYSTAL);
     anims.push(...rShow(got, tHit + 0.15, 0.93, D, true));
     // eerste kristalvakje is leeg na het oprapen
     const firstGem = g.querySelectorAll('.rg-cell.is-crystal i')[0];
@@ -652,10 +663,10 @@ const RULES_SCENES = {
     const scene = rEl(stage, 'rules-scene');
     const list = rEl(scene, 'rs-end');
     const players = [
-      { name: 'Rood', color: '#ff6b6b', done: 0.38, rank: '1e' },
-      { name: 'Blauw', color: '#4fb8e0', done: 0.55, rank: '2e' },
-      { name: 'Groen', color: '#55d68a', done: 0.7, rank: '3e' },
-      { name: 'Geel', color: '#ffd84f', done: null, upto: 4, rank: '4e' },
+      { name: RULES_PAWN_NAMES[0], color: RULES_PAWN(0), done: 0.38, rank: '1e' },
+      { name: RULES_PAWN_NAMES[1], color: RULES_PAWN(1), done: 0.55, rank: '2e' },
+      { name: RULES_PAWN_NAMES[2], color: RULES_PAWN(2), done: 0.7, rank: '3e' },
+      { name: RULES_PAWN_NAMES[3], color: RULES_PAWN(3), done: null, upto: 4, rank: '4e' },
     ];
     players.forEach((p) => {
       const row = rEl(list, 'rs-end-row', `<span class="rs-dot" style="background:${p.color}"></span><span class="rs-open-name">${p.name}</span>`);
