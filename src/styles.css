@@ -3077,7 +3077,7 @@
   #board{position:relative;}
   .map-ring.is-sel{--qtint:var(--amber); z-index:8;}
   .map-ring.is-home{--qtint:var(--amber); border-style:dashed; box-shadow:none; animation:none; opacity:.55;}
-  .map-ring.is-over{animation:none; z-index:8;}
+  .map-ring.is-over{animation:none; z-index:13;}   /* boven de opgetilde tegel: groen/rood moet zichtbaar blijven */
   /* de echte vakjes van een opgetilde tegel: onzichtbaar, maar de positieletter blijft staan */
   .cell.slot-lifted{visibility:hidden;}
   .cell.slot-lifted .letter-badge{visibility:visible;}

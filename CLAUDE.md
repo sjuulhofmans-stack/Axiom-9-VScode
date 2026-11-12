@@ -47,7 +47,12 @@ src/
     20-connectivity.js naden tussen tegels + bereikbaarheid op vakjesniveau
     30-random.js      seeded random (mulberry32) — zelfde seed = zelfde bord
     40-board.js       het bord tekenen, contour, naadmarkeringen, statusregel
-    50-interaction.js slepen om tegels te verwisselen, selecteren
+    50-interaction.js slepen om tegels te verwisselen, selecteren. Opzet = "Plaats maken" (gekozen variant 2
+                      uit 4, artifact "Axiom-9 Tegels verschuiven", 2026-11): selectie = één kader om de HELE
+                      tegel (`mapRing` in 40-board.js, zelfde `.walk-room-ring` als de opdrachtkamer in een potje);
+                      oppakken = zwevende kopie (`.tile-float`) die de muis volgt en meekantelt, de tegel waar je
+                      boven hangt schuift alvast naar de vrije plek, loslaten = veertje. Tijdens het slepen wordt
+                      het bord NIET opnieuw getekend (renderBoard was de hapering); pas één keer bij het loslaten
     60-palette.js     het register onderaan (twee rijen: Kamers / Gangen). Kaartje = "Tekentafel" (gekozen
                       variant 2 uit 4, artifact "Axiom-9 Kamerkaartjes", 2026-10): grote VASTE naam (geen
                       naamveld meer: de namen staan vast, gebruikerswens), tegel op ruitjespapier, bij muis-erop
@@ -386,7 +391,8 @@ Check minimaal:
 2. Onbereikbare vakjes (bv. na een tegel-bewerking) krijgen een roze/magenta rand
    direct op het bord — geen apart paneel, dit is de enige indicatie.
 3. Een tegel selecteren → draaiknoppen gaan per **90°** (niet 180).
-4. Een tegel over een andere slepen → wisselt om, rood kader = niet toegestaan.
+4. Een tegel over een andere slepen → hij komt los en volgt de muis, de andere tegel schuift alvast opzij;
+   loslaten = wisselen. Rood kader = niet toegestaan (dan blijft de andere liggen en gaat de tegel terug).
 5. Browserconsole moet leeg zijn.
 6. Paneel Simulatie: het aantal potjes is een **rolteller** (gekozen ontwerp B uit 4, sinds 2026-10):
    5 rolcijfers (voorloopnullen gedimd; een hoger cijfer komt van BOVEN binnen en 9 → 0 rolt door als
