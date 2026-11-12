@@ -85,7 +85,7 @@ function mapDragStart(){
   mapSlotHide(from, true);
   boardEl.classList.add('dragging');
   mapRing('sel', null);
-  mapRing('home', from, '#ffb545');
+  mapRing('home', from, '#8794a3');
   requestAnimationFrame(() => { if (!f.done) f.el.classList.add('is-lift'); });
   f.raf = requestAnimationFrame(mapDragFrame);
 }

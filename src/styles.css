@@ -659,16 +659,14 @@
     background-repeat:no-repeat; background-position:center; background-size:auto 80%;}
   .cell.start{background:var(--start); box-shadow:0 0 6px rgba(85,214,138,.55);}
   .cell.empty-slot{background:var(--slot-empty); border-radius:1px;}
-  /* tegelgrens op het tabblad Kaart: zacht grijs (was amber .28; gebruikerswens 2026-11: de oranje
-     stippellijn was te druk en leek op de amber "naad open"-rand) */
-  .cell.tile-edge-r{box-shadow: inset -1px 0 0 0 rgba(150,166,184,.16);}
-  .cell.tile-edge-b{box-shadow: inset 0 -1px 0 0 rgba(150,166,184,.16);}
-  .cell.tile-edge-l{box-shadow: inset 1px 0 0 0 rgba(150,166,184,.16);}
-  .cell.tile-edge-t{box-shadow: inset 0 1px 0 0 rgba(150,166,184,.16);}
-  .cell.tile-edge-r.tile-edge-b{box-shadow: inset -1px 0 0 0 rgba(150,166,184,.16), inset 0 -1px 0 0 rgba(150,166,184,.16);}
-  .cell.tile-edge-r.tile-edge-t{box-shadow: inset -1px 0 0 0 rgba(150,166,184,.16), inset 0 1px 0 0 rgba(150,166,184,.16);}
-  .cell.tile-edge-l.tile-edge-b{box-shadow: inset 1px 0 0 0 rgba(150,166,184,.16), inset 0 -1px 0 0 rgba(150,166,184,.16);}
-  .cell.tile-edge-l.tile-edge-t{box-shadow: inset 1px 0 0 0 rgba(150,166,184,.16), inset 0 1px 0 0 rgba(150,166,184,.16);}
+  .cell.tile-edge-r{box-shadow: inset -1px 0 0 0 rgba(255,181,69,.28);}
+  .cell.tile-edge-b{box-shadow: inset 0 -1px 0 0 rgba(255,181,69,.28);}
+  .cell.tile-edge-l{box-shadow: inset 1px 0 0 0 rgba(255,181,69,.28);}
+  .cell.tile-edge-t{box-shadow: inset 0 1px 0 0 rgba(255,181,69,.28);}
+  .cell.tile-edge-r.tile-edge-b{box-shadow: inset -1px 0 0 0 rgba(255,181,69,.28), inset 0 -1px 0 0 rgba(255,181,69,.28);}
+  .cell.tile-edge-r.tile-edge-t{box-shadow: inset -1px 0 0 0 rgba(255,181,69,.28), inset 0 1px 0 0 rgba(255,181,69,.28);}
+  .cell.tile-edge-l.tile-edge-b{box-shadow: inset 1px 0 0 0 rgba(255,181,69,.28), inset 0 -1px 0 0 rgba(255,181,69,.28);}
+  .cell.tile-edge-l.tile-edge-t{box-shadow: inset 1px 0 0 0 rgba(255,181,69,.28), inset 0 1px 0 0 rgba(255,181,69,.28);}
   .cell.slot-hover{outline:1px solid var(--amber); outline-offset:-1px;}
   .cell.unreachable{
     background:#d451a8 !important;
@@ -3076,7 +3074,9 @@
      .tile-float = losse kopie van een tegel boven het bord; alleen transform beweegt. */
   #board{position:relative;}
   .map-ring.is-sel{--qtint:var(--amber); z-index:8;}
-  .map-ring.is-home{--qtint:var(--amber); border-style:dashed; box-shadow:none; animation:none; opacity:.55;}
+  /* de plek waar de opgepakte tegel vandaan komt: zacht grijs gestippeld (was amber; gebruikerswens
+     2026-11: "onduidelijk, subtieler en grijs"), zodat hij niet op het amber selectiekader lijkt */
+  .map-ring.is-home{--qtint:#8794a3; border-style:dashed; box-shadow:none; animation:none; opacity:.45;}
   .map-ring.is-over{animation:none; z-index:13;}   /* boven de opgetilde tegel: groen/rood moet zichtbaar blijven */
   /* de echte vakjes van een opgetilde tegel: onzichtbaar, maar de positieletter blijft staan */
   .cell.slot-lifted{visibility:hidden;}
