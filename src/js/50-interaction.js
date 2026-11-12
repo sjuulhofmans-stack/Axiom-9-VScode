@@ -48,18 +48,22 @@ function mapFloatTo(el, slot, pitch){
   el.style.transform = `translate(${(slot % TILE_COLS) * pitch}px, ${Math.floor(slot / TILE_COLS) * pitch}px)`;
 }
 // welke tegelplek ligt onder dit punt? Uitgerekend uit de maten van het bord: de vakjes van een
-// opgetilde tegel zijn onzichtbaar en vangen dus geen muis
+// opgetilde tegel zijn onzichtbaar en vangen dus geen muis. Een punt BUITEN het bord telt als de
+// dichtstbijzijnde plek aan de rand: de tegel zelf kan het bord niet af, en anders schoof de tegel
+// eronder steeds terug en weer weg zodra de muis over de rand ging (gebruikersmelding 2026-11:
+// "het veld springt op en neer" bij slepen langs de onderkant).
 function slotFromPoint(x, y){
   if (!dragFx) return null;
   const r = boardEl.getBoundingClientRect();
-  const c = Math.floor((x - r.left) / dragFx.pitch), row = Math.floor((y - r.top) / dragFx.pitch);
-  if (c < 0 || c >= TILE_COLS || row < 0 || row >= TILE_ROWS) return null;
+  const c = Math.max(0, Math.min(TILE_COLS - 1, Math.floor((x - r.left) / dragFx.pitch)));
+  const row = Math.max(0, Math.min(TILE_ROWS - 1, Math.floor((y - r.top) / dragFx.pitch)));
   return row * TILE_COLS + c;
 }
 // alles van een sleep opruimen: kopieën weg, echte vakjes weer zichtbaar
 function mapDragCleanup(f){
   if (!f || f.done) return;
   f.done = true;
+  boardEl.parentElement.classList.remove('is-tile-drag');
   cancelAnimationFrame(f.raf);
   clearTimeout(f.timer);
   f.el.remove();
@@ -84,6 +88,7 @@ function mapDragStart(){
   mapFloatTo(f.el, from, pitch);
   mapSlotHide(from, true);
   boardEl.classList.add('dragging');
+  boardEl.parentElement.classList.add('is-tile-drag');   // bordvak scrolt niet mee, zie styles.css
   mapRing('sel', null);
   mapRing('home', from, '#ffb545');
   requestAnimationFrame(() => { if (!f.done) f.el.classList.add('is-lift'); });

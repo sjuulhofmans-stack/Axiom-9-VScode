@@ -3086,6 +3086,10 @@
   /* de echte vakjes van een opgetilde tegel: onzichtbaar, maar de positieletter blijft staan */
   .cell.slot-lifted{visibility:hidden;}
   .cell.slot-lifted .letter-badge{visibility:visible;}
+  /* Tijdens het slepen mag het bordvak niet gaan scrollen: de opgetilde tegel is iets groter en
+     gekanteld en stak op de onderste rij net onder het bord uit, waardoor er een schuifbalk kwam en
+     het veld op en neer sprong (gebruikersmelding 2026-11). */
+  .board-outer.is-tile-drag{overflow:hidden !important;}
   .tile-float{
     position:absolute; left:0; top:0; z-index:9; pointer-events:none; will-change:transform;
     transition:transform .26s cubic-bezier(.2,.8,.25,1);
