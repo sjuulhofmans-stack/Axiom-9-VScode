@@ -590,26 +590,37 @@
   #tabMap .legend-text i{font-size:12px;}
   #tabMap .legend-row:hover{background:rgba(255,255,255,.03);}
 
-  /* ---------- legenda "Uitgelicht" (variant 4 uit 4, artifact "Axiom-9 Legendavarianten",
-     2026-11): elke regel = streepje | staal | naam | code rechts. Muis erop: streepje amber, de
-     rest van het bord dimt (alleen opacity), uitleg onderin #legendExplain met VASTE hoogte, dus
-     niets verschuift. De regels zijn <button>s (toetsenbord: focus doet hetzelfde als de muis). */
+  /* ---------- legenda "Alles leesbaar" + glijdende markering (variant 3 met de animatie van 4,
+     artifact "Axiom-9 Legenda ronde 2", 2026-11; vervangt "Uitgelicht"). Elke regel = icoonvak |
+     naam + aan/uit | uitleg eronder. De 8 regels sluiten op elkaar aan en verdelen samen de hele
+     hoogte (flex:1): GEEN gaten ertussen, want daar viel de muis even "nergens" en flikkerde het
+     bord (gebruikersmelding "hakkelig"). Het bord gaat pas terug naar gewoon als je de hele lijst
+     verlaat. .legend-marker is één kader dat naar de aangewezen regel glijdt (alleen transform/
+     opacity). Elk icoon staat gecentreerd in een vak van 22x22 (.legend-ic), ook het kristal. */
+  #tabMap .legend{position:relative; justify-content:flex-start;}
   #legend .legend-row{
-    display:grid; grid-template-columns:3px 18px minmax(0,1fr) auto; align-items:center;
-    width:100%; padding:1px 8px 1px 0; border:0; background:none; font:inherit; text-align:left;
-    font-family:var(--font-display);
+    position:relative; flex:1 1 0; min-height:0;
+    display:grid; grid-template-columns:22px minmax(0,1fr) auto; grid-template-rows:auto auto;
+    gap:0 14px; align-content:center; align-items:center;
+    width:100%; padding:0 12px; border:0; border-radius:0; background:none; font:inherit; text-align:left;
+    font-family:var(--font-display); transition:none;
   }
-  #legend .legend-row:hover, #legend .legend-row:focus-visible{background:rgba(255,255,255,.04);}
-  #legend .legend-row:focus-visible{outline:1px solid var(--line); outline-offset:0;}
-  #legend .legend-row.off{color:var(--text-dim);}
-  .legend-bar{height:20px; border-radius:2px; background:var(--amber); opacity:0; transition:opacity .15s;}
-  #legend .legend-row:hover .legend-bar, #legend .legend-row:focus-visible .legend-bar{opacity:1;}
+  #legend .legend-row:hover{background:none;}
+  #legend .legend-row:focus-visible{outline:1px solid var(--line); outline-offset:-1px;}
+  #legend .legend-row.off{opacity:1; color:var(--text-dim);}
+  #legend .legend-row.off .legend-ic{opacity:.4;}
+  .legend-ic{grid-row:1 / 3; width:22px; height:22px; display:grid; place-items:center;}
+  #legend .legend-text{font-weight:700; font-size:15px; line-height:16px;}
+  .legend-desc{grid-column:2 / 4; font-size:12.5px; line-height:14px; color:var(--text-dim); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+  #legend .legend-row.is-on .legend-desc{color:var(--text);}
   .legend-code{font-style:normal; font-family:var(--font-mono); font-size:12px; color:var(--text-dim); opacity:.8; white-space:nowrap;}
-  .legend-explain{
-    flex:none; height:76px; overflow:hidden; margin-top:8px; padding:8px 12px; border-radius:6px;
-    background:rgba(0,0,0,.28); font-size:14px; line-height:1.4; color:var(--text-dim);
+  #legend .legend-row.off .legend-code{color:var(--danger); opacity:1;}
+  .legend-marker{
+    position:absolute; left:0; right:0; top:0; height:40px; border-radius:6px; pointer-events:none;
+    background:rgba(255,181,69,.10); box-shadow:inset 0 0 0 1px rgba(255,181,69,.55);
+    opacity:0; transition:transform .16s ease-out, opacity .16s; will-change:transform, opacity;
   }
-  .legend-explain b{display:block; color:var(--text); font-weight:600; font-size:15px;}
+  #legend.has-spot .legend-marker{opacity:1;}
   /* de schijnwerper: alles dimt, alleen de soort onder de muis blijft licht. De letterbadge en de
      kamernaam zijn kinderen van een vakje, dus bij "Positieletter" blijft dat ene vakje mee licht. */
   #board .cell{transition:opacity .18s;}
@@ -618,7 +629,7 @@
   #board.spot-quest .cell.quest, #board.spot-actioncell .cell.actioncell, #board.spot-start .cell.start,
   #board.spot-empty .cell.empty-slot, #board.spot-seamopen .cell.seam-open, #board.spot-seambroken .cell.seam-broken,
   #board.spot-letters .cell.has-badge{opacity:1;}
-  @media (prefers-reduced-motion:reduce){ #board .cell, .legend-bar{transition:none;} }
+  @media (prefers-reduced-motion:reduce){ #board .cell, .legend-marker{transition:none;} }
 
   /* ---------- board ---------- */
   .board-outer{
@@ -3770,7 +3781,7 @@
   @keyframes crystalPipIn{0%{transform:scale(2.4); opacity:.6;} 100%{transform:none; opacity:1;}}   /* geen filter (prestatieregel) */
 
   /* ---------- kristalvakje op het bord: een zeshoekje binnen het vierkante vakje ---------- */
-  .swatch-crystal{background:var(--actioncell); clip-path:polygon(50% 1.4%,98% 21.4%,98% 78.6%,50% 98.6%,2% 78.6%,2% 21.4%); width:11px !important; border-radius:0 !important;}
+  .swatch-crystal{background:var(--actioncell); clip-path:polygon(50% 0,100% 22%,100% 78%,50% 100%,0 78%,0 22%); width:14px !important; height:20px !important; border-radius:0 !important;}
 
   /* ---------- animaties (vast over de pagina heen) ---------- */
   .crystal-flyer{position:fixed; left:0; top:0; z-index:300; pointer-events:none; --w:200px; transform-origin:50% 50%; will-change:transform;}

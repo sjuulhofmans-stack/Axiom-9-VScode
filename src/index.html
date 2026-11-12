@@ -152,21 +152,21 @@
     <div class="panel">
       <h2>Legenda</h2>
       <div class="controls">
-        <!-- variant 4 "Uitgelicht" (gekozen uit 4, artifact "Axiom-9 Legendavarianten", 2026-11):
-             muis op een regel (of toetsenbordfocus) = alleen die vakjes op het bord blijven licht,
-             de rest dimt; onderaan staat de uitleg (data-info) in een vak met vaste hoogte.
-             Klikken = markering aan/uit, zoals altijd (90-editor.js). -->
+        <!-- "Alles leesbaar" met glijdende markering (gekozen variant 3 + de animatie van 4, artifact
+             "Axiom-9 Legenda ronde 2", 2026-11): onder elke naam staat de uitleg al, de regels sluiten
+             op elkaar aan (geen gaten: daar flikkerde het bord), één kader glijdt met de muis mee.
+             Muis/focus op een regel = alleen die vakjes blijven licht; klik = aan/uit (90-editor.js). -->
         <div class="legend" id="legend">
-          <button type="button" class="legend-row" data-key="walk" aria-pressed="true" data-info="Hier mag je lopen, alleen recht en nooit schuin. Grijs = gang, warmer grijs = kamer."><span class="legend-bar"></span><span class="swatch" style="background:var(--walk)"></span><span class="legend-text">Loopbaar vakje</span><i class="legend-code"></i></button>
-          <button type="button" class="legend-row" data-key="quest" aria-pressed="true" data-info="Hier voltooi je een opdracht. Elke kamer heeft er één, behalve Hibernatie."><span class="legend-bar"></span><span class="swatch" style="background:var(--quest)"></span><span class="legend-text">Opdrachtvakje</span><i class="legend-code">2.x</i></button>
-          <button type="button" class="legend-row" data-key="actioncell" aria-pressed="true" data-info="Loop je erover, dan krijg je een kristal (hooguit één per beurt). Elke gang heeft er één."><span class="legend-bar"></span><span class="swatch swatch-crystal"></span><span class="legend-text">Kristalvakje</span><i class="legend-code">4.x</i></button>
-          <button type="button" class="legend-row" data-key="start" aria-pressed="true" data-info="De vier startplekken. Ze liggen allemaal in Hibernatie."><span class="legend-bar"></span><span class="swatch" style="background:var(--start)"></span><span class="legend-text">Startpositie</span><i class="legend-code">3.x</i></button>
-          <button type="button" class="legend-row" data-key="empty" aria-pressed="true" data-info="Hier ligt geen vloer. Je kunt er niet staan of doorheen lopen."><span class="legend-bar"></span><span class="swatch swatch-empty"></span><span class="legend-text">Leeg vakje</span><i class="legend-code">niet beloopbaar</i></button>
-          <button type="button" class="legend-row" data-key="seamopen" aria-pressed="true" data-info="Twee tegels sluiten hier op elkaar aan, dus je kunt van de ene naar de andere lopen."><span class="legend-bar"></span><span class="swatch swatch-seam" style="--sc:var(--amber)"></span><span class="legend-text">Naad open</span><i class="legend-code">sluit aan</i></button>
-          <button type="button" class="legend-row" data-key="seambroken" aria-pressed="true" data-info="Een doorgang die op een dichte wand uitkomt: hier loop je vast. Hoort er niet te zijn."><span class="legend-bar"></span><span class="swatch swatch-seam" style="--sc:var(--danger)"></span><span class="legend-text">Naad geblokkeerd</span><i class="legend-code">loopt dood</i></button>
-          <button type="button" class="legend-row" data-key="letters" aria-pressed="true" data-info="Waar de tegel ligt: A t/m T, rij voor rij. Rood = hoek, oranje = rand, groen = binnenin."><span class="legend-bar"></span><span class="swatch swatch-letter">A</span><span class="legend-text">Positieletter</span><i class="legend-code">A–T</i></button>
+          <span class="legend-marker" id="legendMarker" aria-hidden="true"></span>
+          <button type="button" class="legend-row" data-key="walk" aria-pressed="true"><span class="legend-ic"><span class="swatch" style="background:var(--walk)"></span></span><span class="legend-text">Loopbaar vakje</span><i class="legend-code">aan</i><span class="legend-desc">Hier mag je lopen</span></button>
+          <button type="button" class="legend-row" data-key="quest" aria-pressed="true"><span class="legend-ic"><span class="swatch" style="background:var(--quest)"></span></span><span class="legend-text">Opdrachtvakje</span><i class="legend-code">aan</i><span class="legend-desc">Hier voltooi je een opdracht</span></button>
+          <button type="button" class="legend-row" data-key="actioncell" aria-pressed="true"><span class="legend-ic"><span class="swatch swatch-crystal"></span></span><span class="legend-text">Kristalvakje</span><i class="legend-code">aan</i><span class="legend-desc">Loop erover en pak een kristal</span></button>
+          <button type="button" class="legend-row" data-key="start" aria-pressed="true"><span class="legend-ic"><span class="swatch" style="background:var(--start)"></span></span><span class="legend-text">Startpositie</span><i class="legend-code">aan</i><span class="legend-desc">De vier startplekken</span></button>
+          <button type="button" class="legend-row" data-key="empty" aria-pressed="true"><span class="legend-ic"><span class="swatch swatch-empty"></span></span><span class="legend-text">Leeg vakje</span><i class="legend-code">aan</i><span class="legend-desc">Geen vloer, niet beloopbaar</span></button>
+          <button type="button" class="legend-row" data-key="seamopen" aria-pressed="true"><span class="legend-ic"><span class="swatch swatch-seam" style="--sc:var(--amber)"></span></span><span class="legend-text">Naad open</span><i class="legend-code">aan</i><span class="legend-desc">Twee tegels sluiten aan</span></button>
+          <button type="button" class="legend-row" data-key="seambroken" aria-pressed="true"><span class="legend-ic"><span class="swatch swatch-seam" style="--sc:var(--danger)"></span></span><span class="legend-text">Naad geblokkeerd</span><i class="legend-code">aan</i><span class="legend-desc">Doorgang loopt dood</span></button>
+          <button type="button" class="legend-row" data-key="letters" aria-pressed="true"><span class="legend-ic"><span class="swatch swatch-letter">A</span></span><span class="legend-text">Positieletter</span><i class="legend-code">aan</i><span class="legend-desc">Waar de tegel ligt, A t/m T</span></button>
         </div>
-        <div class="legend-explain" id="legendExplain" aria-live="polite"><b>Wijs een regel aan</b>Dan licht dat deel van het bord op. Klik om het aan of uit te zetten.</div>
       </div>
     </div>
 

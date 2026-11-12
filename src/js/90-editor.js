@@ -436,34 +436,45 @@ editorRevert.addEventListener('click', ()=>{
 
 // ---------- klikbare legenda: markeringen aan/uit ----------
 // + "Uitgelicht": muis op een regel (of focus) dimt de rest van het bord, alleen die vakjes
-// blijven licht (#board.is-spot.spot-<key>, alleen opacity), en #legendExplain toont data-info
-const legendExplainEl = document.getElementById('legendExplain');
-const LEGEND_EXPLAIN_IDLE = legendExplainEl ? legendExplainEl.innerHTML : '';
-let legendSpotKey = null;
+// blijven licht (#board.is-spot.spot-<key>, alleen opacity); de uitleg staat al onder elke naam
+const legendEl = document.getElementById('legend');
+const legendMarkerEl = document.getElementById('legendMarker');
+let legendSpotKey = null, legendSpotRow = null, legendLeaveTimer = 0;
 function legendSpot(row){
+  clearTimeout(legendLeaveTimer);
+  if (row === legendSpotRow) return;
   if (legendSpotKey) boardEl.classList.remove('spot-'+legendSpotKey);
+  if (legendSpotRow) legendSpotRow.classList.remove('is-on');
+  legendSpotRow = row || null;
   legendSpotKey = row ? row.dataset.key : null;
   boardEl.classList.toggle('is-spot', !!row);
-  if (row) boardEl.classList.add('spot-'+legendSpotKey);
-  if (legendExplainEl){
-    if (row){
-      const b = document.createElement('b');
-      b.textContent = row.querySelector('.legend-text').textContent;
-      legendExplainEl.replaceChildren(b, document.createTextNode(row.dataset.info || ''));
-    } else legendExplainEl.innerHTML = LEGEND_EXPLAIN_IDLE;
+  legendEl.classList.toggle('has-spot', !!row);
+  if (row){
+    boardEl.classList.add('spot-'+legendSpotKey);
+    row.classList.add('is-on');
+    // het kader glijdt naar deze regel (de regels zijn even hoog; de hoogte volgt de regel)
+    legendMarkerEl.style.height = row.offsetHeight + 'px';
+    legendMarkerEl.style.transform = 'translateY(' + row.offsetTop + 'px)';
   }
+}
+// pas terug naar gewoon als de muis de HELE lijst verlaat (met een tel vertraging): tussen twee
+// regels door flikkert het bord dan niet meer
+function legendSpotLeave(){
+  clearTimeout(legendLeaveTimer);
+  legendLeaveTimer = setTimeout(() => legendSpot(null), 120);
 }
 document.querySelectorAll('#legend .legend-row').forEach(row => {
   row.addEventListener('click', ()=>{
     const key = row.dataset.key;
     const off = row.classList.toggle('off');
     row.setAttribute('aria-pressed', String(!off));
+    row.querySelector('.legend-code').textContent = off ? 'uit' : 'aan';
     boardEl.classList.toggle('hide-'+key, off);
   });
-  row.addEventListener('mouseenter', ()=> legendSpot(row));
+  row.addEventListener('pointerenter', ()=> legendSpot(row));
   row.addEventListener('focus', ()=> legendSpot(row));
-  row.addEventListener('mouseleave', ()=> legendSpot(null));
-  row.addEventListener('blur', ()=> legendSpot(null));
+  row.addEventListener('blur', legendSpotLeave);
 });
+if (legendEl) legendEl.addEventListener('pointerleave', legendSpotLeave);
 
 renderBoard();
