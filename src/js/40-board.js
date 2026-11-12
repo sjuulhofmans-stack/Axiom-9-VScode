@@ -1,41 +1,25 @@
-// ---------- contour: rechthoek rondom het volledige 8x8 tegelvlak ----------
-// Elke cel op de rand van het 8x8 blok krijgt de bijbehorende zijde(n) van het kader.
-const SQUARE_SIDES = new Map(); // "dr_dc" -> ['top','right','bottom','left']
-for (let dr=0; dr<TILE_H; dr++){
-  for (let dc=0; dc<TILE_W; dc++){
-    const sides = [];
-    if (dr === 0) sides.push('top');
-    if (dr === TILE_H-1) sides.push('bottom');
-    if (dc === 0) sides.push('left');
-    if (dc === TILE_W-1) sides.push('right');
-    if (sides.length) SQUARE_SIDES.set(dr+'_'+dc, sides);
+// ---------- kader rondom een hele tegel (8x8) ----------
+// Eén los blokje boven het raster per soort kader, hetzelfde kader als om de opdrachtkamer tijdens
+// een potje (.walk-room-ring in styles.css; gebruikerswens 2026-11: "hetzelfde als een kamer die
+// opgelicht staat bij het spelen"). Vroeger kregen 28 losse randvakjes elk een eigen schaduw.
+//   'sel'  = de geselecteerde tegel (amber, pulst zacht)
+//   'home' = de plek waar een opgepakte tegel vandaan komt (gestippeld)
+//   'over' = de plek waar je boven hangt tijdens het slepen (groen = mag, rood = mag niet)
+const mapRings = {};
+function mapRing(kind, slot, color){
+  let el = mapRings[kind];
+  if (!el){
+    el = document.createElement('div');
+    el.className = 'walk-room-ring map-ring is-' + kind;
+    el.hidden = true;
+    boardEl.appendChild(el);
+    mapRings[kind] = el;
   }
-}
-function contourShadow(sides, color, glow){
-  const w = '2px';
-  const parts = sides.map(s => {
-    if (s === 'top')    return `inset 0 ${w} 0 0 ${color}`;
-    if (s === 'bottom') return `inset 0 -${w} 0 0 ${color}`;
-    if (s === 'left')   return `inset ${w} 0 0 0 ${color}`;
-    return `inset -${w} 0 0 0 ${color}`;
-  });
-  if (glow) parts.push(glow);
-  return parts.join(', ');
-}
-// tekent het kader van één tegelpositie in een gegeven kleur
-function outlineSlot(slotIdx, color, glow){
-  const slotI = Math.floor(slotIdx/TILE_COLS), slotJ = slotIdx % TILE_COLS;
-  for (const [key, sides] of SQUARE_SIDES){
-    const [dr, dc] = key.split('_').map(Number);
-    const div = cellEls[slotI*TILE_H + dr][slotJ*TILE_W + dc];
-    div.classList.add('slot-selected');
-    let shadow = contourShadow(sides, color, glow);
-    // .cell.unreachable in styles.css zet ook een !important box-shadow (roze gloed) — een
-    // inline !important met dezelfde importantie wint daarvan door specificiteit en zou de
-    // gloed anders wegdrukken, dus die waarde hier letterlijk meenemen i.p.v. overschrijven
-    if (div.classList.contains('unreachable')) shadow += ', 0 0 0 1px #ff8ad4, 0 0 7px rgba(255,138,212,.75)';
-    div.style.setProperty('box-shadow', shadow, 'important');
-  }
+  if (slot === null || slot === undefined){ el.hidden = true; return; }
+  el.style.setProperty('--rc', slot % TILE_COLS);
+  el.style.setProperty('--rr', Math.floor(slot / TILE_COLS));
+  if (color) el.style.setProperty('--qtint', color);
+  el.hidden = false;
 }
 
 // ---------- board rendering ----------
@@ -88,13 +72,8 @@ function buildBoardSkeleton(){
 let cellEls = buildBoardSkeleton();
 
 function renderBoard(){
-  // reset alles, ook de niet-patroon cellen (die dragen nu het 8x8 selectiekader)
   for (let R=0; R<TILE_ROWS*TILE_H; R++){
-    for (let C=0; C<TILE_COLS*TILE_W; C++){
-      const div = cellEls[R][C];
-      div.classList.remove('slot-selected','unreachable');
-      div.style.removeProperty('box-shadow');
-    }
+    for (let C=0; C<TILE_COLS*TILE_W; C++) cellEls[R][C].classList.remove('unreachable');
   }
   for (let R=0; R<TILE_ROWS*TILE_H; R++){
     for (let C=0; C<TILE_COLS*TILE_W; C++){
@@ -121,24 +100,11 @@ function renderBoard(){
     roomLabelEls[slotIdx].textContent = roomName || '';
   }
 
-  // bereikbaarheid vooraf bepalen (vult 'unreachable' op de cellen) zodat outlineSlot() hieronder
-  // die class al ziet staan en de roze gloed kan combineren i.p.v. overschrijven
   const reach = analyseCellReachability();
   for (const [R,C] of reach.unreachable) cellEls[R][C].classList.add('unreachable');
 
-  // kaders: selectie (amber), sleepbron (amber, gedimd) en sleepdoel (groen = mag, rood = mag niet)
-  if (selectedSlot !== null && dragState.from === null){
-    outlineSlot(selectedSlot, '#ffb545', '0 0 7px rgba(255,181,69,.55)');
-  }
-  if (dragState.from !== null){
-    outlineSlot(dragState.from, '#ffb545', '0 0 7px rgba(255,181,69,.45)');
-    if (dragState.over !== null && dragState.over !== dragState.from){
-      const okDrop = swapAllowed(dragState.from, dragState.over);
-      outlineSlot(dragState.over,
-        okDrop ? '#55d68a' : '#ff5d5d',
-        okDrop ? '0 0 9px rgba(85,214,138,.6)' : '0 0 9px rgba(255,93,93,.6)');
-    }
-  }
+  // kader om de geselecteerde tegel; tijdens het slepen regelt 50-interaction.js de kaders zelf
+  mapRing('sel', dragState.from === null ? selectedSlot : null, '#ffb545');
   layoutCodeEl.textContent = layout.join(',');
 
   // naad-markeringen

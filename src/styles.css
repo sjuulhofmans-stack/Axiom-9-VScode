@@ -659,16 +659,17 @@
     background-repeat:no-repeat; background-position:center; background-size:auto 80%;}
   .cell.start{background:var(--start); box-shadow:0 0 6px rgba(85,214,138,.55);}
   .cell.empty-slot{background:var(--slot-empty); border-radius:1px;}
-  .cell.tile-edge-r{box-shadow: inset -1px 0 0 0 rgba(255,181,69,.28);}
-  .cell.tile-edge-b{box-shadow: inset 0 -1px 0 0 rgba(255,181,69,.28);}
-  .cell.tile-edge-l{box-shadow: inset 1px 0 0 0 rgba(255,181,69,.28);}
-  .cell.tile-edge-t{box-shadow: inset 0 1px 0 0 rgba(255,181,69,.28);}
-  .cell.tile-edge-r.tile-edge-b{box-shadow: inset -1px 0 0 0 rgba(255,181,69,.28), inset 0 -1px 0 0 rgba(255,181,69,.28);}
-  .cell.tile-edge-r.tile-edge-t{box-shadow: inset -1px 0 0 0 rgba(255,181,69,.28), inset 0 1px 0 0 rgba(255,181,69,.28);}
-  .cell.tile-edge-l.tile-edge-b{box-shadow: inset 1px 0 0 0 rgba(255,181,69,.28), inset 0 -1px 0 0 rgba(255,181,69,.28);}
-  .cell.tile-edge-l.tile-edge-t{box-shadow: inset 1px 0 0 0 rgba(255,181,69,.28), inset 0 1px 0 0 rgba(255,181,69,.28);}
+  /* tegelgrens op het tabblad Kaart: zacht grijs (was amber .28; gebruikerswens 2026-11: de oranje
+     stippellijn was te druk en leek op de amber "naad open"-rand) */
+  .cell.tile-edge-r{box-shadow: inset -1px 0 0 0 rgba(150,166,184,.16);}
+  .cell.tile-edge-b{box-shadow: inset 0 -1px 0 0 rgba(150,166,184,.16);}
+  .cell.tile-edge-l{box-shadow: inset 1px 0 0 0 rgba(150,166,184,.16);}
+  .cell.tile-edge-t{box-shadow: inset 0 1px 0 0 rgba(150,166,184,.16);}
+  .cell.tile-edge-r.tile-edge-b{box-shadow: inset -1px 0 0 0 rgba(150,166,184,.16), inset 0 -1px 0 0 rgba(150,166,184,.16);}
+  .cell.tile-edge-r.tile-edge-t{box-shadow: inset -1px 0 0 0 rgba(150,166,184,.16), inset 0 1px 0 0 rgba(150,166,184,.16);}
+  .cell.tile-edge-l.tile-edge-b{box-shadow: inset 1px 0 0 0 rgba(150,166,184,.16), inset 0 -1px 0 0 rgba(150,166,184,.16);}
+  .cell.tile-edge-l.tile-edge-t{box-shadow: inset 1px 0 0 0 rgba(150,166,184,.16), inset 0 1px 0 0 rgba(150,166,184,.16);}
   .cell.slot-hover{outline:1px solid var(--amber); outline-offset:-1px;}
-  .cell.slot-selected{z-index:7; position:relative;}
   .cell.unreachable{
     background:#d451a8 !important;
     box-shadow:0 0 0 1px #ff8ad4, 0 0 7px rgba(255,138,212,.75) !important;
@@ -3069,6 +3070,39 @@
   .cell.seam-broken{box-shadow:0 0 0 1px var(--danger), 0 0 7px rgba(255,93,93,.7) !important; z-index:2; position:relative;}
 
   .slot-hit{position:relative; cursor:var(--cur-grab); touch-action:none;}
+  /* ---------- tegels selecteren en verslepen: "Plaats maken" (variant 2 uit 4, artifact "Axiom-9
+     Tegels verschuiven", 2026-11; code in 50-interaction.js) ----------
+     Kaders = .walk-room-ring (het kader om de opdrachtkamer tijdens een potje) boven het raster.
+     .tile-float = losse kopie van een tegel boven het bord; alleen transform beweegt. */
+  #board{position:relative;}
+  .map-ring.is-sel{--qtint:var(--amber); z-index:8;}
+  .map-ring.is-home{--qtint:var(--amber); border-style:dashed; box-shadow:none; animation:none; opacity:.55;}
+  .map-ring.is-over{animation:none; z-index:8;}
+  /* de echte vakjes van een opgetilde tegel: onzichtbaar, maar de positieletter blijft staan */
+  .cell.slot-lifted{visibility:hidden;}
+  .cell.slot-lifted .letter-badge{visibility:visible;}
+  .tile-float{
+    position:absolute; left:0; top:0; z-index:9; pointer-events:none; will-change:transform;
+    transition:transform .26s cubic-bezier(.2,.8,.25,1);
+  }
+  .tile-float.is-drag{transition:none; z-index:12;}
+  .tile-float.is-dropping{transition:transform .18s cubic-bezier(.2,.8,.25,1); z-index:12;}
+  .tile-float.is-lift{--s:1.09;}
+  .tile-float-in{
+    display:grid; grid-template-columns:repeat(8, var(--cell)); grid-template-rows:repeat(8, var(--cell)); gap:1px;
+    border-radius:4px; transform:scale(var(--s, 1)) rotate(var(--tilt, 0deg));
+    transition:transform .16s cubic-bezier(.2,.9,.3,1.2); will-change:transform;
+  }
+  /* opgetild: een kaartje met het kader om de hele tegel en een schaduw eronder (staat vast, de
+     kopie beweegt als geheel) */
+  .tile-float.is-drag .tile-float-in, .tile-float.is-dropping .tile-float-in{
+    background:color-mix(in srgb, var(--hull) 88%, transparent);
+    box-shadow:0 0 0 2px var(--amber), 0 0 14px rgba(255,181,69,.6), 0 16px 28px rgba(0,0,0,.6);
+  }
+  .tile-float.is-dropping .tile-float-in{box-shadow:0 0 0 2px var(--amber), 0 0 14px rgba(255,181,69,.6);}
+  @media (prefers-reduced-motion: reduce){
+    .tile-float, .tile-float-in{transition-duration:1ms !important;}
+  }
   #board.dragging .slot-hit{cursor:var(--cur-grabbing);}
   .cell.has-badge{position:relative; z-index:3;}
   .letter-badge{
