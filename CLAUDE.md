@@ -634,8 +634,6 @@ Check minimaal:
   portaalkristal is er sinds 2026-10 als **Portaalsleutel**. Andere ideeën die nog niet gemeten konden worden omdat bots ze niet zinnig spelen: een schild
   tegen de volgende hinderkaart, of een energieversperring op een gang naar keuze.
 
-- Elke opdracht (2.1–2.9) heeft nu een naam (`QUEST_NAMES` in `10-rules.js`,
-  zichtbaar in het paneel "Opdrachten" en in de simulatie-uitslag) zodat de
-  fysieke opdrachtkaarten een titel hebben. De speelregel zelf is nog steeds
-  de tijdelijke testregel: een opdracht telt als voltooid zodra je op het
-  vakje staat, zonder verdere actie of inhoud.
+**Opdrachten zijn af, niet meer voorstellen**: kom je op je opdrachtvakje, dan heb je de opdracht.
+Punt. Er komt bewust geen extra actie, inhoud of doel bij (beslissing van de maker, 2026-11). De
+namen (`QUEST_NAMES` in `10-rules.js`) zijn alleen de titel op de fysieke opdrachtkaart.
