@@ -1041,7 +1041,7 @@ function mpHostStartGame(){
   soloRoundPos = 0;
   soloTurn = 0;
   soloDeck = buildActionDeck(soloRand);
-  portalSetup(soloGraph, soloRand);   // twee portalen bij de start; gaan mee in elke stand
+  portalSetup(soloGraph, soloRand);   // vier portalen bij de start; gaan mee in elke stand
   walkPaintPortals(soloGraph);
   crystalResetVault();
   crystalMpReset();
@@ -1067,7 +1067,7 @@ function mpHostStartGame(){
     players: mpPublicPlayers(soloPlayers),
     turnOrder: soloTurnOrder,
     finishTarget: soloFinishTarget,
-    // plek + eigenaar van het blauwe en het rode portaal (zie PORTALEN in 95-simulate.js)
+    // plek + eigenaar van alle vier de portalen (zie PORTALEN in 95-simulate.js)
     portals: mpPortalSnapshot(),
   });
 
@@ -1090,9 +1090,9 @@ function mpPortalSnapshot(){
 function mpApplyPortals(portals){
   if (!portals || !soloGraph) return;
   const P = soloGraph.portals;
-  if (P && P.cells[0] === portals.cells[0] && P.cells[1] === portals.cells[1]
-      && P.owner[0] === portals.owner[0] && P.owner[1] === portals.owner[1]) return;
-  const moved = P ? [0, 1].filter(c => P.cells[c] !== portals.cells[c] && portals.cells[c] >= 0) : [];
+  if (P && P.cells.length === portals.cells.length && P.cells.every((k, c) => k === portals.cells[c]
+      && P.owner[c] === portals.owner[c])) return;
+  const moved = P ? portals.cells.map((k, c) => c).filter(c => P.cells[c] !== portals.cells[c] && portals.cells[c] >= 0) : [];
   soloGraph.portals = { cells: portals.cells.slice(), owner: portals.owner.slice() };
   walkPaintPortals(soloGraph);
   // een mens schoot een portaal: bij de gast ploft het nieuwe open (de vlucht zelf zag hij niet)

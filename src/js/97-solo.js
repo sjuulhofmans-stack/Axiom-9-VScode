@@ -1472,7 +1472,7 @@ function soloUseEnergyAction(id){
 
 // ---------- Portaalkanon: richting kiezen, dan welke kleur ----------
 // Energie-actie (zie PORTALEN in 95-simulate.js). Eerst een richting (knop, of klik op het vakje
-// waar het portaal landt), dan blauw of rood. De keuzes staan in het actiepaneel, dat in
+// waar het portaal landt), dan welke van de vier kleuren. De keuzes staan in het actiepaneel, dat in
 // multiplayer meegaat naar de gast (ownerUi.actionsHtml); de klikken lopen via mpIntercept.
 function soloPortalCannonNow(){
   return soloGraph && soloGraph.portals ? portalCannonOptions(soloGraph, solo().pos, soloOccupied()) : [];
@@ -1511,6 +1511,11 @@ function soloHandlePortalAimClick(key){
   const opt = soloPortalOptions.find(o => o.key === key);
   if (opt) soloResolvePortalAim(opt.dir);
 }
+// "Blauw", "Rood", "Groen", "Geel"
+function soloPortalName(color){
+  const n = PORTAL_NAMES[color].replace(/e$/, '');
+  return n[0].toUpperCase() + n.slice(1);
+}
 // wie legde dit portaal? (voor de kleurkeuze: verplaats je je eigen, dat van een ander, of een nieuw)
 function soloPortalOwnerText(color){
   const owner = soloGraph.portals.owner[color];
@@ -1529,16 +1534,16 @@ function soloResolvePortalAim(dir){
   soloPhase = 'portal-color';
   walkSoloActionsEl.innerHTML =
     `<p class="hint energy-pick-head">Welk portaal verplaats je naar het <b>${SOLO_DIR_NAMES[dir].toLowerCase()}en</b>?</p>` +
-    `<div class="energy-pick-list">` + [0, 1].map(c =>
-      `<button type="button" class="energy-pick walk-pulse-affordable portal-pick is-${c ? 'red' : 'blue'}" data-portal-color="${c}">
+    `<div class="energy-pick-list is-grid">` + PORTAL_NAMES.map((n, c) =>
+      `<button type="button" class="energy-pick walk-pulse-affordable portal-pick ${PORTAL_CLASSES[c]}" data-portal-color="${c}" title="${soloPortalName(c)} portaal: gaat naar het ${PORTAL_NAMES[c ^ 1]}">
         <span class="energy-pick-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.5c3.2 0 5 3.8 5 8.5s-1.8 8.5-5 8.5-5-3.8-5-8.5 1.8-8.5 5-8.5zM12 8.5c1.2 0 2 1.6 2 3.5s-.8 3.5-2 3.5-2-1.6-2-3.5.8-3.5 2-3.5z" fill="currentColor" fill-opacity=".25"></path></svg></span>
-        <span class="energy-pick-text"><b>${c ? 'Rood' : 'Blauw'} verplaatsen</b><span>${soloPortalOwnerText(c)}</span></span>
+        <span class="energy-pick-text"><b>${soloPortalName(c)}</b><span>${soloPortalOwnerText(c)}</span></span>
       </button>`).join('') +
     `</div>`;
   for (const el of walkSoloActionsEl.querySelectorAll('.walk-pulse-affordable')) syncPulse(el);
 }
 function soloResolvePortalColor(color){
-  if (soloPhase !== 'portal-color' || !soloPortalAim || (color !== 0 && color !== 1)) return;
+  if (soloPhase !== 'portal-color' || !soloPortalAim || !Number.isInteger(color) || color < 0 || color >= PORTAL_COUNT) return;
   if (mpIntercept('portalColor', { color })) return;
   const p = solo(), shot = soloPortalAim;
   const placed = portalPlace(soloGraph, shot.key, color, p.idx);
@@ -2118,7 +2123,7 @@ function soloHandleMoveClick(key){
   // richting (instappen kost één stap). Gebruikerswens 2026-11: stoppen voelde als verloren stappen.
   if (match.portal !== undefined){
     const entry = key, exit = match.portal;
-    const colorIn = soloGraph.portals.cells[1] === entry ? 1 : 0;
+    const colorIn = Math.max(0, portalColorAt(soloGraph, entry));
     walkCellDiv(soloGraph, entry).style.setProperty('--pc', p.color);
     walkCellDiv(soloGraph, entry).classList.add('walk-trail', 'walk-jump');
     walkPortalJumpFx(soloGraph, entry, exit);
@@ -2129,7 +2134,7 @@ function soloHandleMoveClick(key){
     soloMove.stepsLeft--;
     if (p.stats){ p.stats.walkSteps++; p.stats.portalJumps = (p.stats.portalJumps || 0) + 1; }
     const rest = soloMove.stepsLeft;
-    walkLog(`Je stapt in het ${PORTAL_NAMES[colorIn]} portaal en komt uit bij het ${PORTAL_NAMES[1 - colorIn]}${rest > 0 ? ` — nog ${rest} ${rest === 1 ? 'stap' : 'stappen'}` : ''}.`, null, p);
+    walkLog(`Je stapt in het ${PORTAL_NAMES[colorIn]} portaal en komt uit bij het ${PORTAL_NAMES[colorIn ^ 1]}${rest > 0 ? ` — nog ${rest} ${rest === 1 ? 'stap' : 'stappen'}` : ''}.`, null, p);
     paintWalkPawns(soloGraph, soloPlayers, p.idx);
     if (soloMove.stepsLeft <= 0){
       soloClearClickable();
@@ -3396,7 +3401,7 @@ function startSoloGame(){
   soloRoundPos = 0;
   soloTurn = 0;
   soloDeck = buildActionDeck(soloRand);
-  portalSetup(soloGraph, soloRand);   // twee portalen liggen al bij de start
+  portalSetup(soloGraph, soloRand);   // vier portalen (twee paren) liggen al bij de start
   walkPaintPortals(soloGraph);
   crystalResetVault();
   diceReset();

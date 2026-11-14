@@ -211,8 +211,8 @@ const ENERGY_ACTIONS = {
              note: `Kies een richting: je schiet rechtdoor tot een muur of pion, hooguit ${GRAVITY_DASH_STEPS} vakjes. Kom je op je opdracht, dan telt die en stop je daar. Daarna gooi je gewoon vanaf je nieuwe plek.` },
   jump:    { cost: 10, name: 'Noodtransport',   hint: `spring vrij tot ${ENERGY_JUMP_RANGE} vakjes, dan gooien`,
              note: 'Geen geen-U-turn-regel en je springt over pionnen heen. Land je op je opdracht, dan is je beurt klaar; anders gooi je daarna gewoon vanaf je nieuwe plek. Kost je hele voorraad.' },
-  portal:  { cost: 7,  name: 'Portaalkanon',    hint: 'schiet een portaal tot de muur, dan gooien',
-             note: 'Kies een richting: het portaal vliegt rechtdoor tot de muur of tot vóór een pion. Daarna kies je of je het blauwe of het rode verplaatst. Stapt iemand in een portaal, dan komt hij uit het andere en loopt hij met de rest van zijn worp door. Staat er een pion op een portaal, dan werkt het paar niet.' },
+  portal:  { cost: 5,  name: 'Portaalkanon',    hint: 'schiet een portaal tot de muur, dan gooien',
+             note: 'Kies een richting: het portaal vliegt rechtdoor tot de muur of tot vóór een pion. Daarna kies je welk van de vier portalen je verplaatst. Stapt iemand in een portaal, dan komt hij uit zijn partner (blauw ↔ rood, groen ↔ geel) en loopt hij met de rest van zijn worp door. Staat er een pion op een portaal, dan werkt het paar niet.' },
   none:    { cost: 0,  name: 'Geen energie',    hint: 'spaart, geeft nooit uit',
              note: 'Doet niets — de handmatige "overslaan"-keuze voor de mens. Zit niet in de bot-strategieën: een speler die een heel potje nooit energie uitgeeft komt in de praktijk niet voor, dus die zou de simulatiecijfers (met name het plafondverlies) alleen maar vertekenen.' },
 };
@@ -303,7 +303,8 @@ function botWantsReorderPeek(graph, player, fromKey){
 }
 
 // ---------- PORTALEN: de 5e energie-actie "Portaalkanon" (2026-10) ----------
-// Er liggen altijd twee portalen op het bord, een blauwe (0) en een rode (1), gedeeld door alle
+// Er liggen altijd vier portalen op het bord, in twee paren: blauw (0) ↔ rood (1) en groen (2) ↔
+// geel (3), gedeeld door alle
 // spelers. Bij de start liggen ze al, op twee willekeurige gewone vakjes die minstens
 // PORTAL_START_MIN_DIST stappen uit elkaar liggen: met maar één portaal gebeurt er niets, dus wie
 // als eerste een portaal legde zou anders voor niets betalen.
@@ -334,21 +335,37 @@ function botWantsReorderPeek(graph, player, fromKey){
 // (soloLegalNextCells in 97-solo.js) kijken naar graph.portals — zo gaan sprongen, sprints en
 // duwkaarten vanzelf niet door een portaal.
 const PORTAL_START_MIN_DIST = 16;
+// Twee portaalparen (gebruikerswens 2026-11: "voelt telkens veel te ver weg"): blauw-rood (0, 1) en
+// groen-geel (2, 3). Elk portaal gaat naar zijn partner, `c ^ 1`. Bij de start ligt geen portaal
+// dichter dan PORTAL_START_SPREAD bij een portaal van het andere paar, zodat ze over het bord
+// verspreid liggen.
+const PORTAL_START_SPREAD = 6;
 // Een bot schiet alleen als het hem minstens zoveel stappen scheelt naar zijn huidige opdracht
 // (gemeten: dan levert een schot gemiddeld ±14 stappen op)
 const PORTAL_BOT_MIN_GAIN = 6;
-const PORTAL_NAMES = ['blauwe', 'rode'];
-// zet graph.portals = { cells: [blauw, rood], owner: [-1, -1] } voor een nieuw potje
+const PORTAL_NAMES = ['blauwe', 'rode', 'groene', 'gele'];
+// klasse per kleur op het bord (opmaak: blok PORTALEN onderaan styles.css)
+const PORTAL_CLASSES = ['is-blue', 'is-red', 'is-green', 'is-yellow'];
+const PORTAL_COUNT = PORTAL_NAMES.length;
+// zet graph.portals = { cells: [blauw, rood, groen, geel], owner: [-1, -1, -1, -1] } voor een nieuw potje
 function portalSetup(graph, rand){
   const normal = portalNormalCells(graph);
-  let a = -1, b = -1;
-  for (let t = 0; t < 400 && b < 0; t++){
-    a = normal[Math.floor(rand() * normal.length)];
-    const d = portalBaseBfs(graph, a);
-    const far = normal.filter(k => d[k] >= PORTAL_START_MIN_DIST);
-    if (far.length) b = far[Math.floor(rand() * far.length)];
+  const cells = [];
+  for (let pair = 0; pair < PORTAL_COUNT / 2; pair++){
+    // vakjes die ver genoeg van de al gelegde portalen liggen (lukt dat niet, dan zonder die eis)
+    const spreadD = cells.map(c => portalBaseBfs(graph, c));
+    const spread = normal.filter(k => spreadD.every(d => d[k] >= PORTAL_START_SPREAD));
+    const pool = spread.length >= 2 ? spread : normal.filter(k => !cells.includes(k));
+    let a = -1, b = -1;
+    for (let t = 0; t < 400 && b < 0; t++){
+      a = pool[Math.floor(rand() * pool.length)];
+      const d = portalBaseBfs(graph, a);
+      const far = pool.filter(k => d[k] >= PORTAL_START_MIN_DIST);
+      if (far.length) b = far[Math.floor(rand() * far.length)];
+    }
+    cells.push(a, b);
   }
-  graph.portals = { cells: [a, b], owner: [-1, -1] };
+  graph.portals = { cells, owner: cells.map(() => -1) };
   return graph.portals;
 }
 // mag hier een portaal liggen? gewone, loopbare vakjes zonder label
@@ -376,17 +393,23 @@ function portalBaseBfs(graph, from){
   }
   return d;
 }
-// Stap je op vakje `k`: kom je dan uit een portaal, en waar? Geeft het andere portaal terug, of
-// -1 (geen portaal, het andere ligt er nog niet, of er staat een pion op een van de twee).
+// Stap je op vakje `k`: kom je dan uit een portaal, en waar? Geeft de partner terug, of -1 (geen
+// portaal, de partner ligt er nog niet, of er staat een pion op een van de twee).
 // `occ` en `occ2` zijn bezette vakjes (occ2 = Blinde Vlek: wel doorheen, niet op eindigen).
 function portalExitFor(graph, k, occ, occ2){
   const P = graph.portals;
   if (!P) return -1;
-  const a = P.cells[0], b = P.cells[1];
-  if (a < 0 || b < 0 || (k !== a && k !== b)) return -1;
-  if (occ && (occ.has(a) || occ.has(b))) return -1;
-  if (occ2 && (occ2.has(a) || occ2.has(b))) return -1;
-  return k === a ? b : a;
+  const c = P.cells.indexOf(k);
+  if (c < 0) return -1;
+  const o = P.cells[c ^ 1];
+  if (o < 0) return -1;
+  if (occ && (occ.has(k) || occ.has(o))) return -1;
+  if (occ2 && (occ2.has(k) || occ2.has(o))) return -1;
+  return o;
+}
+// welke kleur (index in P.cells) ligt er op vakje `k`, of -1
+function portalColorAt(graph, k){
+  return graph.portals ? graph.portals.cells.indexOf(k) : -1;
 }
 // Portaalkanon: per richting waar het portaal landt — rechtdoor over het gewone bord tot een muur
 // of vóór een pion, op het verste vakje waar een portaal mag liggen. `path` = de vlucht.
@@ -417,7 +440,8 @@ function portalPlace(graph, key, color, ownerIdx){
   return { from, stolen: prevOwner >= 0 && prevOwner !== ownerIdx };
 }
 // Bot: het beste schot (richting + kleur) voor zijn huidige opdracht, of null. Via een paar (a, b)
-// is de afstand min(d(jij,a) + d(b,doel), d(jij,b) + d(a,doel)), over het gewone bord.
+// is de afstand min(d(jij,a) + d(b,doel), d(jij,b) + d(a,doel)), over het gewone bord; met twee
+// paren telt het beste paar (de bot rekent niet met twee sprongen achter elkaar).
 function botPortalShot(graph, player, occupied, targets){
   const P = graph.portals, t = targets && targets[0];
   if (!P || t === undefined) return null;
@@ -425,18 +449,26 @@ function botPortalShot(graph, player, occupied, targets){
   if (!opts.length) return null;
   const dS = portalBaseBfs(graph, player.pos), dT = portalBaseBfs(graph, t);
   const far = 1e9;
-  const via = (a, b) => (a < 0 || b < 0 || dS[a] < 0 || dT[b] < 0 || dS[b] < 0 || dT[a] < 0) ? far
+  const via = (a, b) => (a < 0 || b < 0 || dS[a] < 0 || dT[b] < 0 || dS[b] < 0 || dT[a] < 0
+    || (occupied && (occupied.has(a) || occupied.has(b)))) ? far
     : Math.min(dS[a] + dT[b], dS[b] + dT[a]);
-  const pa = P.cells[0], pb = P.cells[1];
   const direct = dS[t] < 0 ? far : dS[t];
-  const blocked = occupied && (occupied.has(pa) || occupied.has(pb));
-  const dNow = Math.min(direct, blocked ? far : via(pa, pb));
+  // beste route via een paar, met portaal `c` eventueel vervangen door vakje `key`
+  const bestVia = (c, key) => {
+    let m = far;
+    for (let q = 0; q < P.cells.length; q += 2){
+      const a = q === c ? key : P.cells[q], b = q + 1 === c ? key : P.cells[q + 1];
+      m = Math.min(m, via(a, b));
+    }
+    return m;
+  };
+  const dNow = Math.min(direct, bestVia(-1, -1));
   let best = null;
   for (const o of opts){
-    for (let color = 0; color < 2; color++){
-      const keep = P.cells[1 - color];
+    for (let color = 0; color < P.cells.length; color++){
+      const keep = P.cells[color ^ 1];
       if (keep < 0 || (occupied && occupied.has(keep))) continue;
-      const gain = dNow - Math.min(direct, via(o.key, keep));
+      const gain = dNow - Math.min(direct, bestVia(color, o.key));
       if (!best || gain > best.gain) best = { dir: o.dir, key: o.key, path: o.path, color, gain };
     }
   }
@@ -1069,25 +1101,26 @@ function buildSimGraph(){
 // heuristiek om onder de DP-bereikbare eindcellen de beste te kiezen. Schrijft in de
 // gedeelde simBfsDist/simBfsStampArr-buffers; geeft het stempel terug waarmee de
 // caller via simDistLookup() alleen de cellen leest die in DEZE aanroep bezocht zijn.
-// Portalen (graph.portals): de twee portaalvakjes tellen als één vakje — instappen in het ene is
-// aankomen bij het andere. `noPortal` = gewone afstand (Noodtransport gaat niet door een portaal).
+// Portalen (graph.portals): de twee vakjes van een paar tellen als één vakje — instappen in het ene
+// is aankomen bij het andere. `noPortal` = gewone afstand (Noodtransport gaat niet door een portaal).
 function simBfsDistances(graph, fromKey, noPortal){
   simBfsStampCounter++;
   const stamp = simBfsStampCounter;
   const { adjKey } = graph;
   const P = !noPortal && graph.portals;
-  const pa = P ? P.cells[0] : -1, pb = P && pa >= 0 ? P.cells[1] : -1;
+  const pc = P ? P.cells : null;
   simBfsStampArr[fromKey] = stamp;
   simBfsDist[fromKey] = 0;
   const queue = [fromKey];
-  // het andere portaal meteen erachter, met dezelfde afstand (zo blijft de wachtrij op volgorde)
+  // de partner meteen erachter, met dezelfde afstand (zo blijft de wachtrij op volgorde)
   const link = (k, d) => {
-    if (pb < 0 || (k !== pa && k !== pb)) return;
-    const o = k === pa ? pb : pa;
-    if (simBfsStampArr[o] === stamp) return;
+    const c = pc.indexOf(k);
+    if (c < 0) return;
+    const o = pc[c ^ 1];
+    if (o < 0 || simBfsStampArr[o] === stamp) return;
     simBfsStampArr[o] = stamp; simBfsDist[o] = d; queue.push(o);
   };
-  link(fromKey, 0);
+  if (pc) link(fromKey, 0);
   let qi = 0;
   while (qi < queue.length){
     const ck = queue[qi++];
@@ -1099,7 +1132,7 @@ function simBfsDistances(graph, fromKey, noPortal){
       simBfsStampArr[nk] = stamp;
       simBfsDist[nk] = d + 1;
       queue.push(nk);
-      if (pb >= 0) link(nk, d + 1);
+      if (pc) link(nk, d + 1);
     }
   }
   return stamp;
@@ -1214,11 +1247,11 @@ function resolveMove(graph, startKey, steps, occupiedSet, targets, rand, endBloc
   const { adjKey, adjDir } = graph;
   const layersKeys = [[startKey]], layersDirs = [[-1]], layersParent = [[]], layersBanked = [[0]], layersVia = [[-1]];
   let wasBlocked = false;
-  // Portalen: stap je in een portaal, dan kom je uit het andere en loop je met de rest van je worp
+  // Portalen: stap je in een portaal, dan kom je uit zijn partner en loop je met de rest van je worp
   // gewoon door (zie het blok PORTALEN). Instappen kost één stap; vanaf de uitgang mag je alle
   // kanten op (richting SIM_DIR_FREE). In de laag staat de uitgang, in layersVia de ingang.
   const P = graph.portals;
-  const portalLive = !!(P && P.cells[0] >= 0 && P.cells[1] >= 0);
+  const portalLive = !!(P && P.cells.some(c => c >= 0));
   let lastStep = steps;
 
   for (let step = 1; step <= steps; step++){
@@ -1667,7 +1700,7 @@ function simulateOneGame(graph, rand, heatmap, questStats, extra){
   const strategies = pickEnergyStrategies(rand);
   for (let i = 0; i < players.length; i++) players[i].strategy = strategies[i];
   const deck = buildActionDeck(rand);   // één gedeelde stapel voor het hele potje
-  portalSetup(graph, rand);             // twee portalen liggen al bij de start (zie PORTALEN)
+  portalSetup(graph, rand);             // vier portalen liggen al bij de start (zie PORTALEN)
   const portalJumpsBy = [0, 0, 0, 0];   // portaalsprongen per speler, voor "meeste teleporteerder wint"
 
   const finishTarget = simFinishTarget(players.length);
@@ -1697,7 +1730,7 @@ function simulateOneGame(graph, rand, heatmap, questStats, extra){
         const jumps = pathPortalJumps(graph, move.path);
         extra.portal.quests += move.bankedCount;
         if (jumps){
-          const P = graph.portals, own = P.owner[0] === pIdx || P.owner[1] === pIdx;
+          const P = graph.portals, own = P.owner.includes(pIdx);
           extra.portal.jumps += jumps;
           if (!own) extra.portal.jumpsOther += jumps;
           extra.portal.jumpQuests += move.bankedCount;
@@ -2587,7 +2620,9 @@ function renderSimResults({ n, stuckCount, startWins, startTurnsSum, startRanks,
     }), { max: 70, ref: noActionPct, w: 320, lw: 110, fmt: v => nl(v, 0) + '%' })),
     details: tbl('<th>Actie</th><th>Per potje</th><th>Opdracht gehaald</th>', yieldRows) });
 
-  // De vier meetpunten uit de analyse "Axiom-9 Portalen", met de grens die daar vooraf is gezet.
+  // De vier meetpunten uit de analyse "Axiom-9 Portalen". De grens voor opdrachten via een portaal
+  // was 5%; sinds de twee paren + kanon voor 5 (gebruikerswens 2026-11: portalen moeten meer
+  // gebruikt worden, gemeten ±24%) is hij 30%.
   const pt = extra.portal;
   if (pt){
     const okTag = (ok, warn) => ok ? '<span class="ok">✓ goed</span>' : warn ? '<span style="color:var(--amber)">≈ randgeval</span>' : '<span class="bad">✕ buiten de grens</span>';
@@ -2598,17 +2633,17 @@ function renderSimResults({ n, stuckCount, startWins, startTurnsSum, startRanks,
     const ptRows = [
       ['Portaalschoten per potje', nl(played ? pt.shots / played : 0, 1), `waarvan <b>${nl(stealPct, 0)}%</b> een portaal van een ander verplaatst ("stelen")`, ''],
       ['Portaalsprongen per potje', nl(played ? pt.jumps / played : 0, 1), `<b>${nl(otherPct, 0)}%</b> door iemand die geen van beide portalen legde`, ''],
-      ['Opdrachten in een beurt met een portaalsprong', nl(questPct, 1) + '%', 'grens: hooguit 5% (10% = randgeval)', okTag(questPct <= 5, questPct <= 10)],
+      ['Opdrachten in een beurt met een portaalsprong', nl(questPct, 1) + '%', 'grens: hooguit 30% (40% = randgeval)', okTag(questPct <= 30, questPct <= 40)],
       ['Meeste teleporteerder wint', nl(topPct, 1) + '%', `grens: hooguit 30% (35% = randgeval) · ${pt.topGames} potjes met één duidelijke koploper in sprongen`, okTag(topPct <= 30, topPct <= 35)],
     ].map(([label, val, sub, tag]) => `<tr><td>${label}<span class="sub">${sub}</span></td><td class="num">${val}</td><td>${tag}</td></tr>`).join('');
-    const ptSt = questPct <= 5 && topPct <= 30 ? 'ok' : questPct <= 10 && topPct <= 35 ? 'warn' : 'bad';
+    const ptSt = questPct <= 30 && topPct <= 30 ? 'ok' : questPct <= 40 && topPct <= 35 ? 'warn' : 'bad';
     cards.portal = simCard({ id: 'portal', title: 'Portalen', st: ptSt,
-      big: `${nl(questPct, 1)}%`, bl: 'van de opdrachten in een beurt met een portaalsprong (grens 5%)',
+      big: `${nl(questPct, 1)}%`, bl: 'van de opdrachten in een beurt met een portaalsprong (grens 30%)',
       line: ptSt === 'ok' ? 'Portalen helpen, maar beslissen het potje niet.' : 'Portalen wegen zwaarder dan de vooraf gezette grens.',
       chart: simSplit(simDonut([{ v: stealPct, c: SIM_COL.red, label: 'gestolen' }, { v: 100 - stealPct, c: SIM_COL.blue, label: 'eigen of nieuw' }], { center: nl(stealPct, 0) + '%', sub: 'gestolen' }),
         simMinis([[nl(played ? pt.shots / played : 0, 1), 'schoten per potje'], [nl(played ? pt.jumps / played : 0, 1), 'sprongen per potje'], [nl(topPct, 0) + '%', 'meeste springer wint']])),
       details: tbl('<th>Meetpunt</th><th>Waarde</th><th>Oordeel</th>', ptRows) +
-        `<p class="hint">Bij de start liggen er twee portalen, minstens ${PORTAL_START_MIN_DIST} stappen uit elkaar. Met het <b>Portaalkanon</b> (${ENERGY_ACTIONS.portal.cost} energie) schiet een speler er een naar de muur; stap je in een portaal, dan kom je uit het andere en loop je door met de rest van je worp. Elke bot schiet als het hem minstens ${PORTAL_BOT_MIN_GAIN} stappen scheelt.</p>` });
+        `<p class="hint">Bij de start liggen er twee portaalparen (blauw ↔ rood, groen ↔ geel), elk paar minstens ${PORTAL_START_MIN_DIST} stappen uit elkaar. Met het <b>Portaalkanon</b> (${ENERGY_ACTIONS.portal.cost} energie) schiet een speler er een naar de muur; stap je in een portaal, dan kom je uit zijn partner en loop je door met de rest van je worp. Elke bot schiet als het hem minstens ${PORTAL_BOT_MIN_GAIN} stappen scheelt.</p>` });
   }
 
   // ---------- Kristallen ----------

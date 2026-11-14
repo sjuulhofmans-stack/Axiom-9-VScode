@@ -4287,6 +4287,9 @@
     will-change:transform, opacity;
   }
   .walk-portal.is-red{--pcol:#ff5a4e; --pglow:rgba(255,90,78,.55); --plight:#ffd0ca;}
+  /* tweede paar (2026-11): groen ↔ geel. Bewust geen paars: dat is de kleur van de kristalvakjes */
+  .walk-portal.is-green{--pcol:#3ddc84; --pglow:rgba(61,220,132,.55); --plight:#c6f7da;}
+  .walk-portal.is-yellow{--pcol:#ffd23f; --pglow:rgba(255,210,63,.55); --plight:#fff1bf;}
   .walk-portal::before{
     content:''; position:absolute; inset:-30%; border-radius:50%;
     background:radial-gradient(closest-side, var(--pglow), transparent);
@@ -4316,6 +4319,10 @@
   .walk-portal-comet.is-tail{background:radial-gradient(closest-side, #8fd2ff, rgba(63,169,255,.5) 55%, transparent);}
   .walk-portal-comet.is-red{background:radial-gradient(closest-side, #fff, #ff5a4e 55%, transparent);}
   .walk-portal-comet.is-red.is-tail{background:radial-gradient(closest-side, #ffb0a6, rgba(255,90,78,.5) 55%, transparent);}
+  .walk-portal-comet.is-green{background:radial-gradient(closest-side, #fff, #3ddc84 55%, transparent);}
+  .walk-portal-comet.is-green.is-tail{background:radial-gradient(closest-side, #a6f0c6, rgba(61,220,132,.5) 55%, transparent);}
+  .walk-portal-comet.is-yellow{background:radial-gradient(closest-side, #fff, #ffd23f 55%, transparent);}
+  .walk-portal-comet.is-yellow.is-tail{background:radial-gradient(closest-side, #ffe68f, rgba(255,210,63,.5) 55%, transparent);}
   /* staat er een pion op het portaal, dan blijft de pion zichtbaar: ring iets lichter */
   #walkBoard .cell.walk-pawn > .walk-portal{opacity:.7;}
   .walk-portal-burst{
@@ -4324,9 +4331,13 @@
   }
   .walk-portal-burst{border:2px solid #8fd2ff; box-shadow:0 0 8px #3fa9ff;}
   .walk-portal-burst.is-red{border-color:#ffb0a6; box-shadow:0 0 8px #ff5a4e;}
+  .walk-portal-burst.is-green{border-color:#a6f0c6; box-shadow:0 0 8px #3ddc84;}
+  .walk-portal-burst.is-yellow{border-color:#ffe68f; box-shadow:0 0 8px #ffd23f;}
   /* kleurkeuze bij het Portaalkanon: het icoontje in de kleur van het portaal */
   #walkSoloPanel .energy-pick.portal-pick .energy-pick-icon{color:#8fd2ff; background:rgba(63,169,255,.16); box-shadow:inset 0 0 0 1px rgba(63,169,255,.6);}
   #walkSoloPanel .energy-pick.portal-pick.is-red .energy-pick-icon{color:#ffb0a6; background:rgba(255,90,78,.16); box-shadow:inset 0 0 0 1px rgba(255,90,78,.6);}
+  #walkSoloPanel .energy-pick.portal-pick.is-green .energy-pick-icon{color:#a6f0c6; background:rgba(61,220,132,.16); box-shadow:inset 0 0 0 1px rgba(61,220,132,.6);}
+  #walkSoloPanel .energy-pick.portal-pick.is-yellow .energy-pick-icon{color:#ffe68f; background:rgba(255,210,63,.16); box-shadow:inset 0 0 0 1px rgba(255,210,63,.6);}
   /* Vijf energie-acties (sinds het Portaalkanon) in hetzelfde vaste vak: de rijen iets krapper,
      zodat de lijst even hoog blijft als met vier (zie .walk-solo-panel). */
   #walkSoloPanel .energy-pick-list.is-actions{gap:4px;}

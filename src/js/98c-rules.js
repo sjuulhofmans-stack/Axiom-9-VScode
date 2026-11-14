@@ -84,7 +84,7 @@ function rulesSections(){
         <li>Iedereen schudt zijn eigen <b>9 opdrachtkaarten</b> en legt ze gedekt neer.</li>
         <li>Je eerste opdracht blijft geheim tot jij je startvak mag kiezen.</li>
         <li>De <b>kristallen</b> vormen één gedeelde, geschudde stapel van ${deckSize}: ${nCrystalKinds} soorten, van elk 2${extraCopies ? ` (${extraCopies})` : ''}.</li>
-        <li>Leg het <b>blauwe</b> en het <b>rode portaal</b> op twee gewone vakjes, minstens ${typeof PORTAL_START_MIN_DIST !== 'undefined' ? PORTAL_START_MIN_DIST : 16} stappen uit elkaar.</li>
+        <li>Leg de twee <b>portaalparen</b> (blauw ↔ rood en groen ↔ geel) op gewone vakjes, de twee van een paar minstens ${typeof PORTAL_START_MIN_DIST !== 'undefined' ? PORTAL_START_MIN_DIST : 16} stappen uit elkaar.</li>
         <li>Iedereen begint met <b>0 energie</b> en een lege kluis.</li>
       </ul>` },
 
@@ -137,11 +137,11 @@ function rulesSections(){
 
     { id: 'portaal', title: 'Portalen', scene: 'portal', html: `
       <ul class="rules-list">
-        <li>Er liggen altijd twee portalen op het bord: een <b>blauwe</b> en een <b>rode</b>. Ze zijn van iedereen.</li>
-        <li>Stap je in een portaal, dan kom je uit het andere en <b>loop je met de rest van je worp gewoon door</b>, welke kant je maar wilt. Instappen kost één stap.</li>
-        <li>Staat er een pion op een van de twee portalen, dan werkt het paar niet.</li>
+        <li>Er liggen altijd vier portalen op het bord, in twee paren: <b>blauw ↔ rood</b> en <b>groen ↔ geel</b>. Ze zijn van iedereen.</li>
+        <li>Stap je in een portaal, dan kom je uit zijn partner en <b>loop je met de rest van je worp gewoon door</b>, welke kant je maar wilt. Instappen kost één stap.</li>
+        <li>Staat er een pion op een portaal, dan werkt dat paar niet. Het andere paar wel.</li>
         <li>Met de energie-actie <b>Portaalkanon</b> of het kristal <b>Portaalsleutel</b> verplaats je een portaal. Het vliegt rechtdoor tot de muur of tot vóór een pion. Hooguit één schot per beurt.</li>
-        <li>Je kiest zelf welke kleur je verplaatst, ook als een ander hem legde.</li>
+        <li>Je kiest zelf welk van de vier je verplaatst, ook als een ander hem legde.</li>
         <li>Een portaal landt nooit op een opdracht-, start- of kristalvakje.</li>
         <li>Noodtransport, de laarzen en het kristal Duwstoot gaan gewoon over een portaal heen.</li>
       </ul>` },

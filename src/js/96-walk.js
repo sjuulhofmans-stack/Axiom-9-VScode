@@ -355,23 +355,24 @@ function walkCellDiv(graph, key){
 }
 
 // ---------- portalen op het bord (zie PORTALEN in 95-simulate.js) ----------
-// Twee vaste elementjes (blauw, rood) die als kind in het vakje van hun portaal hangen; verplaatsen
-// = ander vakje. Alles beweegt alleen in transform/opacity (Prestatie in CLAUDE.md), en er wordt
+// Vier vaste elementjes (blauw, rood, groen, geel) die als kind in het vakje van hun portaal hangen;
+// verplaatsen = ander vakje. Alles beweegt alleen in transform/opacity (Prestatie in CLAUDE.md), en er wordt
 // niets opgemeten: het schot is een lichtje dat vakje voor vakje over de vlucht springt.
-const walkPortalEls = [null, null];
+const walkPortalEls = PORTAL_NAMES.map(() => null);
 function walkPortalEl(color){
   if (!walkPortalEls[color]){
     const el = document.createElement('i');
-    el.className = 'walk-portal ' + (color ? 'is-red' : 'is-blue');
+    el.className = 'walk-portal ' + PORTAL_CLASSES[color];
     el.innerHTML = '<b></b>';
-    el.title = color ? 'Rood portaal' : 'Blauw portaal';
+    const name = PORTAL_NAMES[color].replace(/e$/, '');
+    el.title = name[0].toUpperCase() + name.slice(1) + ' portaal (gaat naar het ' + PORTAL_NAMES[color ^ 1] + ')';
     walkPortalEls[color] = el;
   }
   return walkPortalEls[color];
 }
 function walkPaintPortals(graph){
   const P = graph && graph.portals;
-  for (let color = 0; color < 2; color++){
+  for (let color = 0; color < PORTAL_COUNT; color++){
     const el = walkPortalEl(color);
     const key = P ? P.cells[color] : -1;
     const old = el.parentNode;
@@ -381,7 +382,7 @@ function walkPaintPortals(graph){
     }
     const cell = walkCellDiv(graph, key);
     if (old === cell) continue;
-    if (old && !old.querySelector('.walk-portal:not(.is-' + (color ? 'red' : 'blue') + ')')) old.classList.remove('has-portal');
+    if (old && !old.querySelector('.walk-portal:not(.' + PORTAL_CLASSES[color] + ')')) old.classList.remove('has-portal');
     cell.classList.add('has-portal');
     cell.appendChild(el);
   }
@@ -395,7 +396,7 @@ function walkClearPortals(){
 function walkPortalBurst(graph, key, color, big){
   const cell = walkCellDiv(graph, key);
   const fx = document.createElement('i');
-  fx.className = 'walk-portal-burst ' + (color ? 'is-red' : 'is-blue');
+  fx.className = 'walk-portal-burst ' + PORTAL_CLASSES[color];
   cell.classList.add('has-portal-fx');
   cell.appendChild(fx);
   const a = fx.animate([
@@ -437,7 +438,7 @@ function walkPortalShotFx(graph, path, color, fromKey, fast){
     const lights = [];
     for (let k = 0; k <= PORTAL_COMET_TAIL; k++){
       const el = document.createElement('i');
-      el.className = 'walk-portal-comet' + (k ? ' is-tail' : '') + (color ? ' is-red' : '');
+      el.className = 'walk-portal-comet ' + PORTAL_CLASSES[color] + (k ? ' is-tail' : '');
       start.appendChild(el);
       lights.push(el);
       const s = k ? 0.95 - k * 0.1 : 1.25, o = k ? 0.8 - k * 0.1 : 1;
@@ -474,8 +475,7 @@ function walkPortalShotFx(graph, path, color, fromKey, fast){
 }
 // door een portaal gestapt: flits bij de ingang en bij de uitgang
 function walkPortalJumpFx(graph, entry, exit){
-  const P = graph.portals;
-  const colorOf = k => P && P.cells[1] === k ? 1 : 0;
+  const colorOf = k => Math.max(0, portalColorAt(graph, k));
   walkPortalBurst(graph, entry, colorOf(entry), false);
   walkPortalBurst(graph, exit, colorOf(exit), true);
 }
@@ -1283,7 +1283,7 @@ async function runWalkSimulation(){
   walkScoreOrder = players.map(p => p.idx);
   const finishTarget = simFinishTarget(playerCount);
   const deck = buildActionDeck(rand);   // één gedeelde stapel voor dit potje
-  portalSetup(graph, rand);             // twee portalen liggen al bij de start
+  portalSetup(graph, rand);             // vier portalen (twee paren) liggen al bij de start
   walkPaintPortals(graph);
 
   // eerst dobbelen wie begint, dan kiest iedereen in die volgorde een startpositie — die volgorde

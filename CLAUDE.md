@@ -312,24 +312,37 @@ aangeroepen (functiedeclaraties worden gehoist, `const`/`let` niet).
   kiest aan het begin van elke eigen beurt zelf een actie of spaart (`botStrategyNow`/
   `botSmartPick` in 95-simulate.js); alle strategie-checks lopen via `botStrategyNow`. Zit
   bewust niet in `ENERGY_STRATEGIES` (de batch-simulatie meet de vaste strategieën).
-- **Portalen / Portaalkanon** (5e energie-actie, prijs 7, 2026-10; blok PORTALEN in
-  `95-simulate.js`). Er liggen altijd een blauw en een rood portaal op het bord, gedeeld door
-  iedereen; bij de start al, ≥16 stappen uit elkaar (`portalSetup`). Kanon = vóór de worp een
+- **Portalen / Portaalkanon** (5e energie-actie, prijs 5, 2026-10; blok PORTALEN in
+  `95-simulate.js`). Er liggen altijd **vier portalen in twee paren** op het bord, blauw ↔ rood en
+  groen ↔ geel, gedeeld door iedereen; bij de start al, de twee van een paar ≥16 stappen uit elkaar
+  en ≥6 van het andere paar (`portalSetup`). **Twee paren + prijs 5 (was één paar, prijs 7) is een
+  keuze van de maker (2026-11): "portalen moeten meer gebruikt worden, het voelt telkens te ver
+  weg".** Gemeten (3 borden × 2.000 potjes), oud → nieuw: schoten per potje 4,8 → 8,8, sprongen
+  10,1 → 16,8, opdrachten in een beurt met een sprong 11,8 → 23,7% (grens in de simulatiekaart
+  daarom 30%), potjes 75,3 → 64,7 beurten (−14%), meeste teleporteerder wint 24%, startposities
+  24,2–25,9%, 0 vastgelopen. Energie-acties Stuwstoot / Herprioritering / laarzen / Noodtransport:
+  21,4 / 28,2 / 24,1 / 26,2 → 19,7 / 27,8 / 23,8 / 28,8 (Stuwstoot zakt, Noodtransport stijgt; bij
+  twee paren op prijs 7: 21,7 / 27,0 / 21,6 / 29,6, op 6: 20,0 / 28,7 / 22,5 / 28,8 — de prijs
+  maakt daar weinig uit, het tweede paar wel). Geen paars portaal: dat is de kleur van de
+  kristalvakjes. In de code: `P.cells`/`P.owner` hebben 4 plekken, de partner van kleur `c` is
+  `c ^ 1`, namen/klassen in `PORTAL_NAMES`/`PORTAL_CLASSES`, `portalColorAt`. De cijfers verderop
+  in dit blok zijn van vóór deze wijziging. Kanon = vóór de worp een
   richting kiezen, het portaal vliegt rechtdoor tot de muur of vóór een pion en landt op het
   verste gewone vakje (nooit op opdracht/start/kristal of het andere portaal), daarna kies je
-  welke kleur je verplaatst; de andere blijft liggen, ook als een ander hem legde (stelen).
+  welke van de vier kleuren je verplaatst (2×2 knoppen, gemeten 1920×960 en 1440×780: past in het
+  vaste energievak, niets afgekapt); de rest blijft liggen, ook als een ander hem legde (stelen).
   Stap je in een portaal, dan kom je uit het andere en **loop je met de rest van je worp door**, in
   elke richting (instappen = 1 stap). Spelregel van de maker sinds 2026-11 ("stoppen voelde als
   verloren stappen en frustratie"); daarvoor stopte de zet in het portaal. Gemeten bij de wissel
   (2 borden × 3.000 potjes, stoppen → doorlopen): potjes 77 → 72 en 85 → 78 beurten (−7%),
   opdrachten in een beurt met een sprong 3,1 → 10,6 / 11,5% (de oude grens van 5% in de
   simulatiekaart "Portalen" staat daardoor op rood), meeste teleporteerder wint 17/20 → 26%
-  (grens 30%), energie-acties 23,2–27,7 / 21,0–29,6%, startposities nog eerlijk. Pion op een portaal = het
-  paar werkt niet. Noodtransport, laarzen en duwkaarten
+  (grens 30%), energie-acties 23,2–27,7 / 21,0–29,6%, startposities nog eerlijk. Pion op een portaal = dat
+  paar werkt niet (het andere wel). Noodtransport, laarzen en duwkaarten
   negeren portalen. Techniek: `adjKey` blijft het gewone bord; alleen `resolveMove` (in de DP is de
   uitgang een gewone toestand met richting `SIM_DIR_FREE` = mag alle kanten op; `layersVia` onthoudt
-  de ingang voor het pad), `simBfsDistances` (A en B tellen als één vakje; `noPortal` voor Noodtransport)
-  en `soloLegalNextCells` (mens) kijken naar `graph.portals = { cells: [blauw, rood], owner }`.
+  de ingang voor het pad), `simBfsDistances` (de twee van een paar tellen als één vakje; `noPortal` voor Noodtransport)
+  en `soloLegalNextCells` (mens) kijken naar `graph.portals = { cells: [blauw, rood, groen, geel], owner }`.
   Een pad door een portaal bevat ingang én uitgang (twee vakjes die niet naast elkaar liggen =
   `portalIsJump`); tel die stap niet als gelopen vakje. **Elke bot mag schieten** (ook vaste
   strategieën, via `botStrategyNow` → `botPortalWanted`) als het ≥6 stappen scheelt
@@ -521,12 +534,12 @@ Check minimaal:
     de rand. Verandert de hoogte boven/onder het bord, pas dan de 300px in
     `--wcell` (styles.css) aan.
 12. Zelf spelen → energie-paneel toont 5 acties op prijs (Stuwstoot 4,
-    Herprioritering 4, Zwaartekracht-laarzen 5, Portaalkanon 7, Noodtransport 10), in hetzelfde
-    vaste vak (gemeten: 1920×960 nog 40px ruimte, 1440×780 nog 24px). Op het bord liggen een
-    blauwe en een rode portaalring; Portaalkanon → richting (knop of klik) → kleur ("ligt er sinds
+    Herprioritering 4, Zwaartekracht-laarzen 5, Portaalkanon 5, Noodtransport 10), in hetzelfde
+    vaste vak (gemeten: 1920×960 nog 40px ruimte, 1440×780 nog 24px). Op het bord liggen vier
+    portaalringen (blauw ↔ rood, groen ↔ geel); Portaalkanon → richting (knop of klik) → kleur ("ligt er sinds
     de start" / "gelegd door X") → lichtspoor + nieuw portaal, daarna gooi je. Loop je in een
     portaal: flits, je komt uit het andere en loopt met je resterende stappen door. Simulatie → blok "Portalen" met
-    schoten/gestolen/sprongen en twee oordelen (opdrachten via portaal ≤5%, meeste
+    schoten/gestolen/sprongen en twee oordelen (opdrachten via portaal ≤30%, meeste
     teleporteerder wint ≤30%).
     Herprioritering laat je huidige én volgende opdracht zien en vraagt welke
     eerst; de laarzen tonen de richtingen als knoppen én omrand op het bord, en

@@ -4296,6 +4296,9 @@
     will-change:transform, opacity;
   }
   .walk-portal.is-red{--pcol:#ff5a4e; --pglow:rgba(255,90,78,.55); --plight:#ffd0ca;}
+  /* tweede paar (2026-11): groen ↔ geel. Bewust geen paars: dat is de kleur van de kristalvakjes */
+  .walk-portal.is-green{--pcol:#3ddc84; --pglow:rgba(61,220,132,.55); --plight:#c6f7da;}
+  .walk-portal.is-yellow{--pcol:#ffd23f; --pglow:rgba(255,210,63,.55); --plight:#fff1bf;}
   .walk-portal::before{
     content:''; position:absolute; inset:-30%; border-radius:50%;
     background:radial-gradient(closest-side, var(--pglow), transparent);
@@ -4325,6 +4328,10 @@
   .walk-portal-comet.is-tail{background:radial-gradient(closest-side, #8fd2ff, rgba(63,169,255,.5) 55%, transparent);}
   .walk-portal-comet.is-red{background:radial-gradient(closest-side, #fff, #ff5a4e 55%, transparent);}
   .walk-portal-comet.is-red.is-tail{background:radial-gradient(closest-side, #ffb0a6, rgba(255,90,78,.5) 55%, transparent);}
+  .walk-portal-comet.is-green{background:radial-gradient(closest-side, #fff, #3ddc84 55%, transparent);}
+  .walk-portal-comet.is-green.is-tail{background:radial-gradient(closest-side, #a6f0c6, rgba(61,220,132,.5) 55%, transparent);}
+  .walk-portal-comet.is-yellow{background:radial-gradient(closest-side, #fff, #ffd23f 55%, transparent);}
+  .walk-portal-comet.is-yellow.is-tail{background:radial-gradient(closest-side, #ffe68f, rgba(255,210,63,.5) 55%, transparent);}
   /* staat er een pion op het portaal, dan blijft de pion zichtbaar: ring iets lichter */
   #walkBoard .cell.walk-pawn > .walk-portal{opacity:.7;}
   .walk-portal-burst{
@@ -4333,9 +4340,13 @@
   }
   .walk-portal-burst{border:2px solid #8fd2ff; box-shadow:0 0 8px #3fa9ff;}
   .walk-portal-burst.is-red{border-color:#ffb0a6; box-shadow:0 0 8px #ff5a4e;}
+  .walk-portal-burst.is-green{border-color:#a6f0c6; box-shadow:0 0 8px #3ddc84;}
+  .walk-portal-burst.is-yellow{border-color:#ffe68f; box-shadow:0 0 8px #ffd23f;}
   /* kleurkeuze bij het Portaalkanon: het icoontje in de kleur van het portaal */
   #walkSoloPanel .energy-pick.portal-pick .energy-pick-icon{color:#8fd2ff; background:rgba(63,169,255,.16); box-shadow:inset 0 0 0 1px rgba(63,169,255,.6);}
   #walkSoloPanel .energy-pick.portal-pick.is-red .energy-pick-icon{color:#ffb0a6; background:rgba(255,90,78,.16); box-shadow:inset 0 0 0 1px rgba(255,90,78,.6);}
+  #walkSoloPanel .energy-pick.portal-pick.is-green .energy-pick-icon{color:#a6f0c6; background:rgba(61,220,132,.16); box-shadow:inset 0 0 0 1px rgba(61,220,132,.6);}
+  #walkSoloPanel .energy-pick.portal-pick.is-yellow .energy-pick-icon{color:#ffe68f; background:rgba(255,210,63,.16); box-shadow:inset 0 0 0 1px rgba(255,210,63,.6);}
   /* Vijf energie-acties (sinds het Portaalkanon) in hetzelfde vaste vak: de rijen iets krapper,
      zodat de lijst even hoog blijft als met vier (zie .walk-solo-panel). */
   #walkSoloPanel .energy-pick-list.is-actions{gap:4px;}
@@ -8112,8 +8123,8 @@ const ENERGY_ACTIONS = {
              note: `Kies een richting: je schiet rechtdoor tot een muur of pion, hooguit ${GRAVITY_DASH_STEPS} vakjes. Kom je op je opdracht, dan telt die en stop je daar. Daarna gooi je gewoon vanaf je nieuwe plek.` },
   jump:    { cost: 10, name: 'Noodtransport',   hint: `spring vrij tot ${ENERGY_JUMP_RANGE} vakjes, dan gooien`,
              note: 'Geen geen-U-turn-regel en je springt over pionnen heen. Land je op je opdracht, dan is je beurt klaar; anders gooi je daarna gewoon vanaf je nieuwe plek. Kost je hele voorraad.' },
-  portal:  { cost: 7,  name: 'Portaalkanon',    hint: 'schiet een portaal tot de muur, dan gooien',
-             note: 'Kies een richting: het portaal vliegt rechtdoor tot de muur of tot vóór een pion. Daarna kies je of je het blauwe of het rode verplaatst. Stapt iemand in een portaal, dan komt hij uit het andere en loopt hij met de rest van zijn worp door. Staat er een pion op een portaal, dan werkt het paar niet.' },
+  portal:  { cost: 5,  name: 'Portaalkanon',    hint: 'schiet een portaal tot de muur, dan gooien',
+             note: 'Kies een richting: het portaal vliegt rechtdoor tot de muur of tot vóór een pion. Daarna kies je welk van de vier portalen je verplaatst. Stapt iemand in een portaal, dan komt hij uit zijn partner (blauw ↔ rood, groen ↔ geel) en loopt hij met de rest van zijn worp door. Staat er een pion op een portaal, dan werkt het paar niet.' },
   none:    { cost: 0,  name: 'Geen energie',    hint: 'spaart, geeft nooit uit',
              note: 'Doet niets — de handmatige "overslaan"-keuze voor de mens. Zit niet in de bot-strategieën: een speler die een heel potje nooit energie uitgeeft komt in de praktijk niet voor, dus die zou de simulatiecijfers (met name het plafondverlies) alleen maar vertekenen.' },
 };
@@ -8204,7 +8215,8 @@ function botWantsReorderPeek(graph, player, fromKey){
 }
 
 // ---------- PORTALEN: de 5e energie-actie "Portaalkanon" (2026-10) ----------
-// Er liggen altijd twee portalen op het bord, een blauwe (0) en een rode (1), gedeeld door alle
+// Er liggen altijd vier portalen op het bord, in twee paren: blauw (0) ↔ rood (1) en groen (2) ↔
+// geel (3), gedeeld door alle
 // spelers. Bij de start liggen ze al, op twee willekeurige gewone vakjes die minstens
 // PORTAL_START_MIN_DIST stappen uit elkaar liggen: met maar één portaal gebeurt er niets, dus wie
 // als eerste een portaal legde zou anders voor niets betalen.
@@ -8235,21 +8247,37 @@ function botWantsReorderPeek(graph, player, fromKey){
 // (soloLegalNextCells in 97-solo.js) kijken naar graph.portals — zo gaan sprongen, sprints en
 // duwkaarten vanzelf niet door een portaal.
 const PORTAL_START_MIN_DIST = 16;
+// Twee portaalparen (gebruikerswens 2026-11: "voelt telkens veel te ver weg"): blauw-rood (0, 1) en
+// groen-geel (2, 3). Elk portaal gaat naar zijn partner, `c ^ 1`. Bij de start ligt geen portaal
+// dichter dan PORTAL_START_SPREAD bij een portaal van het andere paar, zodat ze over het bord
+// verspreid liggen.
+const PORTAL_START_SPREAD = 6;
 // Een bot schiet alleen als het hem minstens zoveel stappen scheelt naar zijn huidige opdracht
 // (gemeten: dan levert een schot gemiddeld ±14 stappen op)
 const PORTAL_BOT_MIN_GAIN = 6;
-const PORTAL_NAMES = ['blauwe', 'rode'];
-// zet graph.portals = { cells: [blauw, rood], owner: [-1, -1] } voor een nieuw potje
+const PORTAL_NAMES = ['blauwe', 'rode', 'groene', 'gele'];
+// klasse per kleur op het bord (opmaak: blok PORTALEN onderaan styles.css)
+const PORTAL_CLASSES = ['is-blue', 'is-red', 'is-green', 'is-yellow'];
+const PORTAL_COUNT = PORTAL_NAMES.length;
+// zet graph.portals = { cells: [blauw, rood, groen, geel], owner: [-1, -1, -1, -1] } voor een nieuw potje
 function portalSetup(graph, rand){
   const normal = portalNormalCells(graph);
-  let a = -1, b = -1;
-  for (let t = 0; t < 400 && b < 0; t++){
-    a = normal[Math.floor(rand() * normal.length)];
-    const d = portalBaseBfs(graph, a);
-    const far = normal.filter(k => d[k] >= PORTAL_START_MIN_DIST);
-    if (far.length) b = far[Math.floor(rand() * far.length)];
+  const cells = [];
+  for (let pair = 0; pair < PORTAL_COUNT / 2; pair++){
+    // vakjes die ver genoeg van de al gelegde portalen liggen (lukt dat niet, dan zonder die eis)
+    const spreadD = cells.map(c => portalBaseBfs(graph, c));
+    const spread = normal.filter(k => spreadD.every(d => d[k] >= PORTAL_START_SPREAD));
+    const pool = spread.length >= 2 ? spread : normal.filter(k => !cells.includes(k));
+    let a = -1, b = -1;
+    for (let t = 0; t < 400 && b < 0; t++){
+      a = pool[Math.floor(rand() * pool.length)];
+      const d = portalBaseBfs(graph, a);
+      const far = pool.filter(k => d[k] >= PORTAL_START_MIN_DIST);
+      if (far.length) b = far[Math.floor(rand() * far.length)];
+    }
+    cells.push(a, b);
   }
-  graph.portals = { cells: [a, b], owner: [-1, -1] };
+  graph.portals = { cells, owner: cells.map(() => -1) };
   return graph.portals;
 }
 // mag hier een portaal liggen? gewone, loopbare vakjes zonder label
@@ -8277,17 +8305,23 @@ function portalBaseBfs(graph, from){
   }
   return d;
 }
-// Stap je op vakje `k`: kom je dan uit een portaal, en waar? Geeft het andere portaal terug, of
-// -1 (geen portaal, het andere ligt er nog niet, of er staat een pion op een van de twee).
+// Stap je op vakje `k`: kom je dan uit een portaal, en waar? Geeft de partner terug, of -1 (geen
+// portaal, de partner ligt er nog niet, of er staat een pion op een van de twee).
 // `occ` en `occ2` zijn bezette vakjes (occ2 = Blinde Vlek: wel doorheen, niet op eindigen).
 function portalExitFor(graph, k, occ, occ2){
   const P = graph.portals;
   if (!P) return -1;
-  const a = P.cells[0], b = P.cells[1];
-  if (a < 0 || b < 0 || (k !== a && k !== b)) return -1;
-  if (occ && (occ.has(a) || occ.has(b))) return -1;
-  if (occ2 && (occ2.has(a) || occ2.has(b))) return -1;
-  return k === a ? b : a;
+  const c = P.cells.indexOf(k);
+  if (c < 0) return -1;
+  const o = P.cells[c ^ 1];
+  if (o < 0) return -1;
+  if (occ && (occ.has(k) || occ.has(o))) return -1;
+  if (occ2 && (occ2.has(k) || occ2.has(o))) return -1;
+  return o;
+}
+// welke kleur (index in P.cells) ligt er op vakje `k`, of -1
+function portalColorAt(graph, k){
+  return graph.portals ? graph.portals.cells.indexOf(k) : -1;
 }
 // Portaalkanon: per richting waar het portaal landt — rechtdoor over het gewone bord tot een muur
 // of vóór een pion, op het verste vakje waar een portaal mag liggen. `path` = de vlucht.
@@ -8318,7 +8352,8 @@ function portalPlace(graph, key, color, ownerIdx){
   return { from, stolen: prevOwner >= 0 && prevOwner !== ownerIdx };
 }
 // Bot: het beste schot (richting + kleur) voor zijn huidige opdracht, of null. Via een paar (a, b)
-// is de afstand min(d(jij,a) + d(b,doel), d(jij,b) + d(a,doel)), over het gewone bord.
+// is de afstand min(d(jij,a) + d(b,doel), d(jij,b) + d(a,doel)), over het gewone bord; met twee
+// paren telt het beste paar (de bot rekent niet met twee sprongen achter elkaar).
 function botPortalShot(graph, player, occupied, targets){
   const P = graph.portals, t = targets && targets[0];
   if (!P || t === undefined) return null;
@@ -8326,18 +8361,26 @@ function botPortalShot(graph, player, occupied, targets){
   if (!opts.length) return null;
   const dS = portalBaseBfs(graph, player.pos), dT = portalBaseBfs(graph, t);
   const far = 1e9;
-  const via = (a, b) => (a < 0 || b < 0 || dS[a] < 0 || dT[b] < 0 || dS[b] < 0 || dT[a] < 0) ? far
+  const via = (a, b) => (a < 0 || b < 0 || dS[a] < 0 || dT[b] < 0 || dS[b] < 0 || dT[a] < 0
+    || (occupied && (occupied.has(a) || occupied.has(b)))) ? far
     : Math.min(dS[a] + dT[b], dS[b] + dT[a]);
-  const pa = P.cells[0], pb = P.cells[1];
   const direct = dS[t] < 0 ? far : dS[t];
-  const blocked = occupied && (occupied.has(pa) || occupied.has(pb));
-  const dNow = Math.min(direct, blocked ? far : via(pa, pb));
+  // beste route via een paar, met portaal `c` eventueel vervangen door vakje `key`
+  const bestVia = (c, key) => {
+    let m = far;
+    for (let q = 0; q < P.cells.length; q += 2){
+      const a = q === c ? key : P.cells[q], b = q + 1 === c ? key : P.cells[q + 1];
+      m = Math.min(m, via(a, b));
+    }
+    return m;
+  };
+  const dNow = Math.min(direct, bestVia(-1, -1));
   let best = null;
   for (const o of opts){
-    for (let color = 0; color < 2; color++){
-      const keep = P.cells[1 - color];
+    for (let color = 0; color < P.cells.length; color++){
+      const keep = P.cells[color ^ 1];
       if (keep < 0 || (occupied && occupied.has(keep))) continue;
-      const gain = dNow - Math.min(direct, via(o.key, keep));
+      const gain = dNow - Math.min(direct, bestVia(color, o.key));
       if (!best || gain > best.gain) best = { dir: o.dir, key: o.key, path: o.path, color, gain };
     }
   }
@@ -8970,25 +9013,26 @@ function buildSimGraph(){
 // heuristiek om onder de DP-bereikbare eindcellen de beste te kiezen. Schrijft in de
 // gedeelde simBfsDist/simBfsStampArr-buffers; geeft het stempel terug waarmee de
 // caller via simDistLookup() alleen de cellen leest die in DEZE aanroep bezocht zijn.
-// Portalen (graph.portals): de twee portaalvakjes tellen als één vakje — instappen in het ene is
-// aankomen bij het andere. `noPortal` = gewone afstand (Noodtransport gaat niet door een portaal).
+// Portalen (graph.portals): de twee vakjes van een paar tellen als één vakje — instappen in het ene
+// is aankomen bij het andere. `noPortal` = gewone afstand (Noodtransport gaat niet door een portaal).
 function simBfsDistances(graph, fromKey, noPortal){
   simBfsStampCounter++;
   const stamp = simBfsStampCounter;
   const { adjKey } = graph;
   const P = !noPortal && graph.portals;
-  const pa = P ? P.cells[0] : -1, pb = P && pa >= 0 ? P.cells[1] : -1;
+  const pc = P ? P.cells : null;
   simBfsStampArr[fromKey] = stamp;
   simBfsDist[fromKey] = 0;
   const queue = [fromKey];
-  // het andere portaal meteen erachter, met dezelfde afstand (zo blijft de wachtrij op volgorde)
+  // de partner meteen erachter, met dezelfde afstand (zo blijft de wachtrij op volgorde)
   const link = (k, d) => {
-    if (pb < 0 || (k !== pa && k !== pb)) return;
-    const o = k === pa ? pb : pa;
-    if (simBfsStampArr[o] === stamp) return;
+    const c = pc.indexOf(k);
+    if (c < 0) return;
+    const o = pc[c ^ 1];
+    if (o < 0 || simBfsStampArr[o] === stamp) return;
     simBfsStampArr[o] = stamp; simBfsDist[o] = d; queue.push(o);
   };
-  link(fromKey, 0);
+  if (pc) link(fromKey, 0);
   let qi = 0;
   while (qi < queue.length){
     const ck = queue[qi++];
@@ -9000,7 +9044,7 @@ function simBfsDistances(graph, fromKey, noPortal){
       simBfsStampArr[nk] = stamp;
       simBfsDist[nk] = d + 1;
       queue.push(nk);
-      if (pb >= 0) link(nk, d + 1);
+      if (pc) link(nk, d + 1);
     }
   }
   return stamp;
@@ -9115,11 +9159,11 @@ function resolveMove(graph, startKey, steps, occupiedSet, targets, rand, endBloc
   const { adjKey, adjDir } = graph;
   const layersKeys = [[startKey]], layersDirs = [[-1]], layersParent = [[]], layersBanked = [[0]], layersVia = [[-1]];
   let wasBlocked = false;
-  // Portalen: stap je in een portaal, dan kom je uit het andere en loop je met de rest van je worp
+  // Portalen: stap je in een portaal, dan kom je uit zijn partner en loop je met de rest van je worp
   // gewoon door (zie het blok PORTALEN). Instappen kost één stap; vanaf de uitgang mag je alle
   // kanten op (richting SIM_DIR_FREE). In de laag staat de uitgang, in layersVia de ingang.
   const P = graph.portals;
-  const portalLive = !!(P && P.cells[0] >= 0 && P.cells[1] >= 0);
+  const portalLive = !!(P && P.cells.some(c => c >= 0));
   let lastStep = steps;
 
   for (let step = 1; step <= steps; step++){
@@ -9568,7 +9612,7 @@ function simulateOneGame(graph, rand, heatmap, questStats, extra){
   const strategies = pickEnergyStrategies(rand);
   for (let i = 0; i < players.length; i++) players[i].strategy = strategies[i];
   const deck = buildActionDeck(rand);   // één gedeelde stapel voor het hele potje
-  portalSetup(graph, rand);             // twee portalen liggen al bij de start (zie PORTALEN)
+  portalSetup(graph, rand);             // vier portalen liggen al bij de start (zie PORTALEN)
   const portalJumpsBy = [0, 0, 0, 0];   // portaalsprongen per speler, voor "meeste teleporteerder wint"
 
   const finishTarget = simFinishTarget(players.length);
@@ -9598,7 +9642,7 @@ function simulateOneGame(graph, rand, heatmap, questStats, extra){
         const jumps = pathPortalJumps(graph, move.path);
         extra.portal.quests += move.bankedCount;
         if (jumps){
-          const P = graph.portals, own = P.owner[0] === pIdx || P.owner[1] === pIdx;
+          const P = graph.portals, own = P.owner.includes(pIdx);
           extra.portal.jumps += jumps;
           if (!own) extra.portal.jumpsOther += jumps;
           extra.portal.jumpQuests += move.bankedCount;
@@ -10488,7 +10532,9 @@ function renderSimResults({ n, stuckCount, startWins, startTurnsSum, startRanks,
     }), { max: 70, ref: noActionPct, w: 320, lw: 110, fmt: v => nl(v, 0) + '%' })),
     details: tbl('<th>Actie</th><th>Per potje</th><th>Opdracht gehaald</th>', yieldRows) });
 
-  // De vier meetpunten uit de analyse "Axiom-9 Portalen", met de grens die daar vooraf is gezet.
+  // De vier meetpunten uit de analyse "Axiom-9 Portalen". De grens voor opdrachten via een portaal
+  // was 5%; sinds de twee paren + kanon voor 5 (gebruikerswens 2026-11: portalen moeten meer
+  // gebruikt worden, gemeten ±24%) is hij 30%.
   const pt = extra.portal;
   if (pt){
     const okTag = (ok, warn) => ok ? '<span class="ok">✓ goed</span>' : warn ? '<span style="color:var(--amber)">≈ randgeval</span>' : '<span class="bad">✕ buiten de grens</span>';
@@ -10499,17 +10545,17 @@ function renderSimResults({ n, stuckCount, startWins, startTurnsSum, startRanks,
     const ptRows = [
       ['Portaalschoten per potje', nl(played ? pt.shots / played : 0, 1), `waarvan <b>${nl(stealPct, 0)}%</b> een portaal van een ander verplaatst ("stelen")`, ''],
       ['Portaalsprongen per potje', nl(played ? pt.jumps / played : 0, 1), `<b>${nl(otherPct, 0)}%</b> door iemand die geen van beide portalen legde`, ''],
-      ['Opdrachten in een beurt met een portaalsprong', nl(questPct, 1) + '%', 'grens: hooguit 5% (10% = randgeval)', okTag(questPct <= 5, questPct <= 10)],
+      ['Opdrachten in een beurt met een portaalsprong', nl(questPct, 1) + '%', 'grens: hooguit 30% (40% = randgeval)', okTag(questPct <= 30, questPct <= 40)],
       ['Meeste teleporteerder wint', nl(topPct, 1) + '%', `grens: hooguit 30% (35% = randgeval) · ${pt.topGames} potjes met één duidelijke koploper in sprongen`, okTag(topPct <= 30, topPct <= 35)],
     ].map(([label, val, sub, tag]) => `<tr><td>${label}<span class="sub">${sub}</span></td><td class="num">${val}</td><td>${tag}</td></tr>`).join('');
-    const ptSt = questPct <= 5 && topPct <= 30 ? 'ok' : questPct <= 10 && topPct <= 35 ? 'warn' : 'bad';
+    const ptSt = questPct <= 30 && topPct <= 30 ? 'ok' : questPct <= 40 && topPct <= 35 ? 'warn' : 'bad';
     cards.portal = simCard({ id: 'portal', title: 'Portalen', st: ptSt,
-      big: `${nl(questPct, 1)}%`, bl: 'van de opdrachten in een beurt met een portaalsprong (grens 5%)',
+      big: `${nl(questPct, 1)}%`, bl: 'van de opdrachten in een beurt met een portaalsprong (grens 30%)',
       line: ptSt === 'ok' ? 'Portalen helpen, maar beslissen het potje niet.' : 'Portalen wegen zwaarder dan de vooraf gezette grens.',
       chart: simSplit(simDonut([{ v: stealPct, c: SIM_COL.red, label: 'gestolen' }, { v: 100 - stealPct, c: SIM_COL.blue, label: 'eigen of nieuw' }], { center: nl(stealPct, 0) + '%', sub: 'gestolen' }),
         simMinis([[nl(played ? pt.shots / played : 0, 1), 'schoten per potje'], [nl(played ? pt.jumps / played : 0, 1), 'sprongen per potje'], [nl(topPct, 0) + '%', 'meeste springer wint']])),
       details: tbl('<th>Meetpunt</th><th>Waarde</th><th>Oordeel</th>', ptRows) +
-        `<p class="hint">Bij de start liggen er twee portalen, minstens ${PORTAL_START_MIN_DIST} stappen uit elkaar. Met het <b>Portaalkanon</b> (${ENERGY_ACTIONS.portal.cost} energie) schiet een speler er een naar de muur; stap je in een portaal, dan kom je uit het andere en loop je door met de rest van je worp. Elke bot schiet als het hem minstens ${PORTAL_BOT_MIN_GAIN} stappen scheelt.</p>` });
+        `<p class="hint">Bij de start liggen er twee portaalparen (blauw ↔ rood, groen ↔ geel), elk paar minstens ${PORTAL_START_MIN_DIST} stappen uit elkaar. Met het <b>Portaalkanon</b> (${ENERGY_ACTIONS.portal.cost} energie) schiet een speler er een naar de muur; stap je in een portaal, dan kom je uit zijn partner en loop je door met de rest van je worp. Elke bot schiet als het hem minstens ${PORTAL_BOT_MIN_GAIN} stappen scheelt.</p>` });
   }
 
   // ---------- Kristallen ----------
@@ -11160,23 +11206,24 @@ function walkCellDiv(graph, key){
 }
 
 // ---------- portalen op het bord (zie PORTALEN in 95-simulate.js) ----------
-// Twee vaste elementjes (blauw, rood) die als kind in het vakje van hun portaal hangen; verplaatsen
-// = ander vakje. Alles beweegt alleen in transform/opacity (Prestatie in CLAUDE.md), en er wordt
+// Vier vaste elementjes (blauw, rood, groen, geel) die als kind in het vakje van hun portaal hangen;
+// verplaatsen = ander vakje. Alles beweegt alleen in transform/opacity (Prestatie in CLAUDE.md), en er wordt
 // niets opgemeten: het schot is een lichtje dat vakje voor vakje over de vlucht springt.
-const walkPortalEls = [null, null];
+const walkPortalEls = PORTAL_NAMES.map(() => null);
 function walkPortalEl(color){
   if (!walkPortalEls[color]){
     const el = document.createElement('i');
-    el.className = 'walk-portal ' + (color ? 'is-red' : 'is-blue');
+    el.className = 'walk-portal ' + PORTAL_CLASSES[color];
     el.innerHTML = '<b></b>';
-    el.title = color ? 'Rood portaal' : 'Blauw portaal';
+    const name = PORTAL_NAMES[color].replace(/e$/, '');
+    el.title = name[0].toUpperCase() + name.slice(1) + ' portaal (gaat naar het ' + PORTAL_NAMES[color ^ 1] + ')';
     walkPortalEls[color] = el;
   }
   return walkPortalEls[color];
 }
 function walkPaintPortals(graph){
   const P = graph && graph.portals;
-  for (let color = 0; color < 2; color++){
+  for (let color = 0; color < PORTAL_COUNT; color++){
     const el = walkPortalEl(color);
     const key = P ? P.cells[color] : -1;
     const old = el.parentNode;
@@ -11186,7 +11233,7 @@ function walkPaintPortals(graph){
     }
     const cell = walkCellDiv(graph, key);
     if (old === cell) continue;
-    if (old && !old.querySelector('.walk-portal:not(.is-' + (color ? 'red' : 'blue') + ')')) old.classList.remove('has-portal');
+    if (old && !old.querySelector('.walk-portal:not(.' + PORTAL_CLASSES[color] + ')')) old.classList.remove('has-portal');
     cell.classList.add('has-portal');
     cell.appendChild(el);
   }
@@ -11200,7 +11247,7 @@ function walkClearPortals(){
 function walkPortalBurst(graph, key, color, big){
   const cell = walkCellDiv(graph, key);
   const fx = document.createElement('i');
-  fx.className = 'walk-portal-burst ' + (color ? 'is-red' : 'is-blue');
+  fx.className = 'walk-portal-burst ' + PORTAL_CLASSES[color];
   cell.classList.add('has-portal-fx');
   cell.appendChild(fx);
   const a = fx.animate([
@@ -11242,7 +11289,7 @@ function walkPortalShotFx(graph, path, color, fromKey, fast){
     const lights = [];
     for (let k = 0; k <= PORTAL_COMET_TAIL; k++){
       const el = document.createElement('i');
-      el.className = 'walk-portal-comet' + (k ? ' is-tail' : '') + (color ? ' is-red' : '');
+      el.className = 'walk-portal-comet ' + PORTAL_CLASSES[color] + (k ? ' is-tail' : '');
       start.appendChild(el);
       lights.push(el);
       const s = k ? 0.95 - k * 0.1 : 1.25, o = k ? 0.8 - k * 0.1 : 1;
@@ -11279,8 +11326,7 @@ function walkPortalShotFx(graph, path, color, fromKey, fast){
 }
 // door een portaal gestapt: flits bij de ingang en bij de uitgang
 function walkPortalJumpFx(graph, entry, exit){
-  const P = graph.portals;
-  const colorOf = k => P && P.cells[1] === k ? 1 : 0;
+  const colorOf = k => Math.max(0, portalColorAt(graph, k));
   walkPortalBurst(graph, entry, colorOf(entry), false);
   walkPortalBurst(graph, exit, colorOf(exit), true);
 }
@@ -12088,7 +12134,7 @@ async function runWalkSimulation(){
   walkScoreOrder = players.map(p => p.idx);
   const finishTarget = simFinishTarget(playerCount);
   const deck = buildActionDeck(rand);   // één gedeelde stapel voor dit potje
-  portalSetup(graph, rand);             // twee portalen liggen al bij de start
+  portalSetup(graph, rand);             // vier portalen (twee paren) liggen al bij de start
   walkPaintPortals(graph);
 
   // eerst dobbelen wie begint, dan kiest iedereen in die volgorde een startpositie — die volgorde
@@ -15526,7 +15572,7 @@ function soloUseEnergyAction(id){
 
 // ---------- Portaalkanon: richting kiezen, dan welke kleur ----------
 // Energie-actie (zie PORTALEN in 95-simulate.js). Eerst een richting (knop, of klik op het vakje
-// waar het portaal landt), dan blauw of rood. De keuzes staan in het actiepaneel, dat in
+// waar het portaal landt), dan welke van de vier kleuren. De keuzes staan in het actiepaneel, dat in
 // multiplayer meegaat naar de gast (ownerUi.actionsHtml); de klikken lopen via mpIntercept.
 function soloPortalCannonNow(){
   return soloGraph && soloGraph.portals ? portalCannonOptions(soloGraph, solo().pos, soloOccupied()) : [];
@@ -15565,6 +15611,11 @@ function soloHandlePortalAimClick(key){
   const opt = soloPortalOptions.find(o => o.key === key);
   if (opt) soloResolvePortalAim(opt.dir);
 }
+// "Blauw", "Rood", "Groen", "Geel"
+function soloPortalName(color){
+  const n = PORTAL_NAMES[color].replace(/e$/, '');
+  return n[0].toUpperCase() + n.slice(1);
+}
 // wie legde dit portaal? (voor de kleurkeuze: verplaats je je eigen, dat van een ander, of een nieuw)
 function soloPortalOwnerText(color){
   const owner = soloGraph.portals.owner[color];
@@ -15583,16 +15634,16 @@ function soloResolvePortalAim(dir){
   soloPhase = 'portal-color';
   walkSoloActionsEl.innerHTML =
     `<p class="hint energy-pick-head">Welk portaal verplaats je naar het <b>${SOLO_DIR_NAMES[dir].toLowerCase()}en</b>?</p>` +
-    `<div class="energy-pick-list">` + [0, 1].map(c =>
-      `<button type="button" class="energy-pick walk-pulse-affordable portal-pick is-${c ? 'red' : 'blue'}" data-portal-color="${c}">
+    `<div class="energy-pick-list is-grid">` + PORTAL_NAMES.map((n, c) =>
+      `<button type="button" class="energy-pick walk-pulse-affordable portal-pick ${PORTAL_CLASSES[c]}" data-portal-color="${c}" title="${soloPortalName(c)} portaal: gaat naar het ${PORTAL_NAMES[c ^ 1]}">
         <span class="energy-pick-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.5c3.2 0 5 3.8 5 8.5s-1.8 8.5-5 8.5-5-3.8-5-8.5 1.8-8.5 5-8.5zM12 8.5c1.2 0 2 1.6 2 3.5s-.8 3.5-2 3.5-2-1.6-2-3.5.8-3.5 2-3.5z" fill="currentColor" fill-opacity=".25"></path></svg></span>
-        <span class="energy-pick-text"><b>${c ? 'Rood' : 'Blauw'} verplaatsen</b><span>${soloPortalOwnerText(c)}</span></span>
+        <span class="energy-pick-text"><b>${soloPortalName(c)}</b><span>${soloPortalOwnerText(c)}</span></span>
       </button>`).join('') +
     `</div>`;
   for (const el of walkSoloActionsEl.querySelectorAll('.walk-pulse-affordable')) syncPulse(el);
 }
 function soloResolvePortalColor(color){
-  if (soloPhase !== 'portal-color' || !soloPortalAim || (color !== 0 && color !== 1)) return;
+  if (soloPhase !== 'portal-color' || !soloPortalAim || !Number.isInteger(color) || color < 0 || color >= PORTAL_COUNT) return;
   if (mpIntercept('portalColor', { color })) return;
   const p = solo(), shot = soloPortalAim;
   const placed = portalPlace(soloGraph, shot.key, color, p.idx);
@@ -16172,7 +16223,7 @@ function soloHandleMoveClick(key){
   // richting (instappen kost één stap). Gebruikerswens 2026-11: stoppen voelde als verloren stappen.
   if (match.portal !== undefined){
     const entry = key, exit = match.portal;
-    const colorIn = soloGraph.portals.cells[1] === entry ? 1 : 0;
+    const colorIn = Math.max(0, portalColorAt(soloGraph, entry));
     walkCellDiv(soloGraph, entry).style.setProperty('--pc', p.color);
     walkCellDiv(soloGraph, entry).classList.add('walk-trail', 'walk-jump');
     walkPortalJumpFx(soloGraph, entry, exit);
@@ -16183,7 +16234,7 @@ function soloHandleMoveClick(key){
     soloMove.stepsLeft--;
     if (p.stats){ p.stats.walkSteps++; p.stats.portalJumps = (p.stats.portalJumps || 0) + 1; }
     const rest = soloMove.stepsLeft;
-    walkLog(`Je stapt in het ${PORTAL_NAMES[colorIn]} portaal en komt uit bij het ${PORTAL_NAMES[1 - colorIn]}${rest > 0 ? ` — nog ${rest} ${rest === 1 ? 'stap' : 'stappen'}` : ''}.`, null, p);
+    walkLog(`Je stapt in het ${PORTAL_NAMES[colorIn]} portaal en komt uit bij het ${PORTAL_NAMES[colorIn ^ 1]}${rest > 0 ? ` — nog ${rest} ${rest === 1 ? 'stap' : 'stappen'}` : ''}.`, null, p);
     paintWalkPawns(soloGraph, soloPlayers, p.idx);
     if (soloMove.stepsLeft <= 0){
       soloClearClickable();
@@ -17450,7 +17501,7 @@ function startSoloGame(){
   soloRoundPos = 0;
   soloTurn = 0;
   soloDeck = buildActionDeck(soloRand);
-  portalSetup(soloGraph, soloRand);   // twee portalen liggen al bij de start
+  portalSetup(soloGraph, soloRand);   // vier portalen (twee paren) liggen al bij de start
   walkPaintPortals(soloGraph);
   crystalResetVault();
   diceReset();
@@ -18109,7 +18160,7 @@ function rulesSections(){
         <li>Iedereen schudt zijn eigen <b>9 opdrachtkaarten</b> en legt ze gedekt neer.</li>
         <li>Je eerste opdracht blijft geheim tot jij je startvak mag kiezen.</li>
         <li>De <b>kristallen</b> vormen één gedeelde, geschudde stapel van ${deckSize}: ${nCrystalKinds} soorten, van elk 2${extraCopies ? ` (${extraCopies})` : ''}.</li>
-        <li>Leg het <b>blauwe</b> en het <b>rode portaal</b> op twee gewone vakjes, minstens ${typeof PORTAL_START_MIN_DIST !== 'undefined' ? PORTAL_START_MIN_DIST : 16} stappen uit elkaar.</li>
+        <li>Leg de twee <b>portaalparen</b> (blauw ↔ rood en groen ↔ geel) op gewone vakjes, de twee van een paar minstens ${typeof PORTAL_START_MIN_DIST !== 'undefined' ? PORTAL_START_MIN_DIST : 16} stappen uit elkaar.</li>
         <li>Iedereen begint met <b>0 energie</b> en een lege kluis.</li>
       </ul>` },
 
@@ -18162,11 +18213,11 @@ function rulesSections(){
 
     { id: 'portaal', title: 'Portalen', scene: 'portal', html: `
       <ul class="rules-list">
-        <li>Er liggen altijd twee portalen op het bord: een <b>blauwe</b> en een <b>rode</b>. Ze zijn van iedereen.</li>
-        <li>Stap je in een portaal, dan kom je uit het andere en <b>loop je met de rest van je worp gewoon door</b>, welke kant je maar wilt. Instappen kost één stap.</li>
-        <li>Staat er een pion op een van de twee portalen, dan werkt het paar niet.</li>
+        <li>Er liggen altijd vier portalen op het bord, in twee paren: <b>blauw ↔ rood</b> en <b>groen ↔ geel</b>. Ze zijn van iedereen.</li>
+        <li>Stap je in een portaal, dan kom je uit zijn partner en <b>loop je met de rest van je worp gewoon door</b>, welke kant je maar wilt. Instappen kost één stap.</li>
+        <li>Staat er een pion op een portaal, dan werkt dat paar niet. Het andere paar wel.</li>
         <li>Met de energie-actie <b>Portaalkanon</b> of het kristal <b>Portaalsleutel</b> verplaats je een portaal. Het vliegt rechtdoor tot de muur of tot vóór een pion. Hooguit één schot per beurt.</li>
-        <li>Je kiest zelf welke kleur je verplaatst, ook als een ander hem legde.</li>
+        <li>Je kiest zelf welk van de vier je verplaatst, ook als een ander hem legde.</li>
         <li>Een portaal landt nooit op een opdracht-, start- of kristalvakje.</li>
         <li>Noodtransport, de laarzen en het kristal Duwstoot gaan gewoon over een portaal heen.</li>
       </ul>` },
@@ -19773,7 +19824,7 @@ function mpHostStartGame(){
   soloRoundPos = 0;
   soloTurn = 0;
   soloDeck = buildActionDeck(soloRand);
-  portalSetup(soloGraph, soloRand);   // twee portalen bij de start; gaan mee in elke stand
+  portalSetup(soloGraph, soloRand);   // vier portalen bij de start; gaan mee in elke stand
   walkPaintPortals(soloGraph);
   crystalResetVault();
   crystalMpReset();
@@ -19799,7 +19850,7 @@ function mpHostStartGame(){
     players: mpPublicPlayers(soloPlayers),
     turnOrder: soloTurnOrder,
     finishTarget: soloFinishTarget,
-    // plek + eigenaar van het blauwe en het rode portaal (zie PORTALEN in 95-simulate.js)
+    // plek + eigenaar van alle vier de portalen (zie PORTALEN in 95-simulate.js)
     portals: mpPortalSnapshot(),
   });
 
@@ -19822,9 +19873,9 @@ function mpPortalSnapshot(){
 function mpApplyPortals(portals){
   if (!portals || !soloGraph) return;
   const P = soloGraph.portals;
-  if (P && P.cells[0] === portals.cells[0] && P.cells[1] === portals.cells[1]
-      && P.owner[0] === portals.owner[0] && P.owner[1] === portals.owner[1]) return;
-  const moved = P ? [0, 1].filter(c => P.cells[c] !== portals.cells[c] && portals.cells[c] >= 0) : [];
+  if (P && P.cells.length === portals.cells.length && P.cells.every((k, c) => k === portals.cells[c]
+      && P.owner[c] === portals.owner[c])) return;
+  const moved = P ? portals.cells.map((k, c) => c).filter(c => P.cells[c] !== portals.cells[c] && portals.cells[c] >= 0) : [];
   soloGraph.portals = { cells: portals.cells.slice(), owner: portals.owner.slice() };
   walkPaintPortals(soloGraph);
   // een mens schoot een portaal: bij de gast ploft het nieuwe open (de vlucht zelf zag hij niet)
