@@ -212,7 +212,9 @@ const ENERGY_ACTIONS = {
   jump:    { cost: 10, name: 'Noodtransport',   hint: `spring vrij tot ${ENERGY_JUMP_RANGE} vakjes, dan gooien`,
              note: 'Geen geen-U-turn-regel en je springt over pionnen heen. Land je op je opdracht, dan is je beurt klaar; anders gooi je daarna gewoon vanaf je nieuwe plek. Kost je hele voorraad.' },
   portal:  { cost: 5,  name: 'Portaalkanon',    hint: 'schiet een portaal tot de muur, dan gooien',
-             note: 'Kies een richting: het portaal vliegt rechtdoor tot de muur of tot vóór een pion. Daarna kies je welk van de vier portalen je verplaatst. Stapt iemand in een portaal, dan komt hij uit zijn partner (blauw ↔ rood, groen ↔ geel) en loopt hij met de rest van zijn worp door. Staat er een pion op een portaal, dan werkt het paar niet.' },
+             note: 'Kies een richting: het portaal vliegt rechtdoor tot de muur of tot vóór een pion. Daarna kies je of je het blauwe of het rode portaal verplaatst. Stapt iemand in een portaal, dan komt hij uit het andere en loopt hij met de rest van zijn worp door. Staat er een pion op een portaal, dan werkt het paar niet.' },
+  driver:  { cost: 5,  name: 'Schroevendraaier', hint: 'kruip door een rooster naar een ander rooster',
+             note: 'Je krijgt een schroevendraaier (je kunt er één tegelijk hebben, iedereen ziet het). Sta je op een rooster, ook midden in je zet, dan mag je erin kruipen: dat kost geen stap. Je kiest een vrij rooster als uitgang en loopt met de rest van je worp door. Daarna is de schroevendraaier op.' },
   none:    { cost: 0,  name: 'Geen energie',    hint: 'spaart, geeft nooit uit',
              note: 'Doet niets — de handmatige "overslaan"-keuze voor de mens. Zit niet in de bot-strategieën: een speler die een heel potje nooit energie uitgeeft komt in de praktijk niet voor, dus die zou de simulatiecijfers (met name het plafondverlies) alleen maar vertekenen.' },
 };
@@ -343,9 +345,12 @@ const PORTAL_START_SPREAD = 6;
 // Een bot schiet alleen als het hem minstens zoveel stappen scheelt naar zijn huidige opdracht
 // (gemeten: dan levert een schot gemiddeld ±14 stappen op)
 const PORTAL_BOT_MIN_GAIN = 6;
-const PORTAL_NAMES = ['blauwe', 'rode', 'groene', 'gele'];
+// Sinds de roosters (2026-11, keuze van de maker) weer één paar: blauw ↔ rood. Het tweede paar
+// (groen ↔ geel) kan terug door hier 'groene', 'gele' / 'is-green', 'is-yellow' toe te voegen; de rest
+// van de code werkt met PORTAL_COUNT.
+const PORTAL_NAMES = ['blauwe', 'rode'];
 // klasse per kleur op het bord (opmaak: blok PORTALEN onderaan styles.css)
-const PORTAL_CLASSES = ['is-blue', 'is-red', 'is-green', 'is-yellow'];
+const PORTAL_CLASSES = ['is-blue', 'is-red'];
 const PORTAL_COUNT = PORTAL_NAMES.length;
 // zet graph.portals = { cells: [blauw, rood, groen, geel], owner: [-1, -1, -1, -1] } voor een nieuw potje
 function portalSetup(graph, rand){
@@ -373,7 +378,8 @@ function portalCellAllowed(graph, k){
   if (k < 0 || !graph.adjKey[k]) return false;
   if (graph.actionCells.has(k)) return false;
   if (!graph._portalSpecial){
-    graph._portalSpecial = new Set([...Object.values(graph.questCells), ...Object.values(graph.startCells)]);
+    // ook nooit op een rooster (spelregel van de maker, zie ROOSTERS)
+    graph._portalSpecial = new Set([...Object.values(graph.questCells), ...Object.values(graph.startCells), ...(graph.grates || [])]);
   }
   return !graph._portalSpecial.has(k);
 }
@@ -478,7 +484,8 @@ function botPortalShot(graph, player, occupied, targets){
 // liggen = door een portaal. Voor de statistiek en de animatie.
 function pathPortalJumps(graph, path){
   let n = 0;
-  for (let i = 1; i < path.length; i++) if (portalIsJump(graph, path[i - 1], path[i])) n++;
+  // een kruipsprong (rooster → rooster, zie ROOSTERS) is geen portaalsprong
+  for (let i = 1; i < path.length; i++) if (portalIsJump(graph, path[i - 1], path[i]) && !grateIsCrawl(graph, path[i - 1], path[i])) n++;
   return n;
 }
 function portalIsJump(graph, a, b){
@@ -494,9 +501,66 @@ function botPortalWanted(graph, player){
     const deck = player.order || player.deck;
     const targets = [];
     for (let i = player.nextIdx; i < deck.length; i++) if (deck[i] != null) targets.push(graph.questCells[deck[i]]);
-    player._portalWant = !!botPortalShot(graph, player, null, targets);
+    const shot = botPortalShot(graph, player, null, targets);
+    player._portalWant = !!shot;
+    player._portalGain = shot ? shot.gain : 0;   // voor de afweging tegen de schroevendraaier
   }
   return player._portalWant;
+}
+
+// ---------- ROOSTERS: de 6e energie-actie "Schroevendraaier" (2026-11) ----------
+// Gekozen door de maker na de meting in artifact "Axiom-9 Roosters" (35 varianten × 8.000 potjes):
+//   - Elke gangtegel heeft één roostervakje (labels 5.1–5.10 in tiles.json, verplaatsbaar in de
+//     tegel-editor; nooit tegen het kristalvakje, ook niet schuin). Een portaal ligt nooit op een rooster.
+//   - Schroevendraaier: energie-actie (5) vóór de worp, of het kristal Schroevendraaier. Je kunt er
+//     één tegelijk hebben; iedereen ziet dat je hem hebt (player.screwdriver).
+//   - Sta je met een schroevendraaier op een rooster (ook aan het begin of midden in je zet), dan MAG
+//     je erin kruipen. Kost geen stap. Je komt uit bij een rooster naar keuze waar geen pion op staat
+//     en loopt met de rest van je worp door, in elke richting (net als bij een portaal). Daarna is de
+//     schroevendraaier op.
+//   - Laarzen, Noodtransport en Duwstoot negeren roosters (je kunt er wel op terechtkomen).
+// Gemeten (2 portalen, Portaalkanon 5, schroevendraaier 5, 2 kristallen): 66,6 beurten (met 4 portalen
+// zonder roosters 64,6), 5,5 keer kruipen per potje, startposities 24,6–25,4%, 0 vastgelopen.
+// Stuwstoot 17% en Noodtransport 32,5% (keuze van de maker: zo laten; zie CLAUDE.md voor de meting).
+// Techniek: alleen resolveMove (DP met "heeft nog een schroevendraaier" als extra toestand, zie
+// resolveMoveCrawl) en de stappen van de mens (97-solo.js) kennen kruipen. In een pad staat een
+// kruipsprong als twee roostervakjes na elkaar die niet naast elkaar liggen (grateIsCrawl).
+// Een bot koopt als het hem minstens GRATE_BOT_MIN_GAIN stappen scheelt naar zijn opdracht.
+const GRATE_BOT_MIN_GAIN = 6;
+// is de stap a → b een kruipsprong (rooster naar rooster, niet naast elkaar)?
+function grateIsCrawl(graph, a, b){
+  return !!graph.grateSet && graph.grateSet.has(a) && graph.grateSet.has(b) && portalIsJump(graph, a, b);
+}
+function pathGrateJumps(graph, path){
+  let n = 0;
+  for (let i = 1; i < path.length; i++) if (grateIsCrawl(graph, path[i - 1], path[i])) n++;
+  return n;
+}
+// vrije uitgangen vanaf rooster `from` (geen pion erop)
+function grateExits(graph, from, occupied){
+  return graph.grates ? graph.grates.filter(g => g !== from && !(occupied && occupied.has(g))) : [];
+}
+// Hoeveel stappen scheelt een schroevendraaier naar `targetKey`? Lopen naar het dichtste rooster en
+// eruit bij het rooster het dichtst bij het doel (graph.grateDist), tegenover gewoon lopen.
+function grateGain(graph, pos, targetKey){
+  if (!graph.grateDist || targetKey === undefined) return -99;
+  const d = simDistLookup(simBfsDistances(graph, targetKey), pos);
+  if (d < 0) return -99;
+  return d - (graph.grateDist[pos] + graph.grateDist[targetKey]);
+}
+// Wil een bot deze beurt een schroevendraaier kopen? Eén keer per beurt uitgerekend.
+function botDriverWanted(graph, player){
+  if (!graph.grates || !graph.grates.length || player.screwdriver || player.noGrate) return false;
+  if (player.energy < ENERGY_ACTIONS.driver.cost) return false;
+  const deck = player.order || player.deck;
+  const label = deck && deck[player.nextIdx];
+  if (!label) return false;
+  const key = `${player.ownTurns || 0}/${player.myTurn || 0}/${player.pos}/${player.nextIdx}`;
+  if (player._driverKey !== key){
+    player._driverKey = key;
+    player._driverGain = grateGain(graph, player.pos, graph.questCells[label]);
+  }
+  return player._driverGain >= GRATE_BOT_MIN_GAIN;
 }
 
 // ---------- strategie "Slim": de bot kiest elke beurt zelf ----------
@@ -515,8 +579,14 @@ function botPortalWanted(graph, player){
 // Zit bewust NIET in ENERGY_STRATEGIES (de batch-simulatie meet de vaste strategieën tegen
 // elkaar); te kiezen bij Automatisch → Energie-inzet → "iedereen slim".
 function botStrategyNow(graph, player){
-  // vaste strategie: wel een portaal als dat loont ("niemand geeft uit" blijft niets uitgeven)
-  if (player.strategy !== 'smart') return player.strategy !== 'none' && botPortalWanted(graph, player) ? 'portal' : player.strategy;
+  // vaste strategie: wel een portaal of een schroevendraaier als dat loont ("niemand geeft uit"
+  // blijft niets uitgeven); levert allebei iets op, dan wint wat de meeste stappen scheelt
+  if (player.strategy !== 'smart'){
+    if (player.strategy === 'none') return player.strategy;
+    const portal = botPortalWanted(graph, player);
+    if (botDriverWanted(graph, player) && !(portal && (player._portalGain || 0) >= player._driverGain)) return 'driver';
+    return portal ? 'portal' : player.strategy;
+  }
   const turnKey = `${player.ownTurns || 0}/${player.myTurn || 0}`;
   if (player._smartKey !== turnKey){
     player._smartKey = turnKey;
@@ -545,12 +615,15 @@ function botSmartPick(graph, player){
     }
   }
   // portaal: alleen als het meer oplevert dan een sprint (en de drempel van botPortalShot haalt)
+  let shot = null;
   if (E >= ENERGY_ACTIONS.portal.cost && !player.noPortal && graph.portals){
     const targets = [];
     for (let i = player.nextIdx; i < deck.length; i++) if (deck[i] != null) targets.push(graph.questCells[deck[i]]);
-    const shot = botPortalShot(graph, player, null, targets);
-    if (shot && shot.gain > dashGain) return 'portal';
+    shot = botPortalShot(graph, player, null, targets);
   }
+  // schroevendraaier: als hij meer scheelt dan een sprint én dan een portaalschot (zie ROOSTERS)
+  if (botDriverWanted(graph, player) && player._driverGain > dashGain && (!shot || player._driverGain >= shot.gain)) return 'driver';
+  if (shot && shot.gain > dashGain) return 'portal';
   if (dashGain >= 5) return 'gravity';
   const saving = d > 12 && E >= 7 && E < ENERGY_ACTIONS.jump.cost;
   if (!saving && E >= ENERGY_ACTIONS.boost.cost && d >= 8 && d <= 14) return 'boost';
@@ -624,6 +697,9 @@ const ACTION_CARDS = {
   // gratis versie van de energie-actie Portaalkanon (zelfde paar als de laarzen)
   portalkey: { name: 'Portaalsleutel',        when: 'pre',   text: 'Verplaats gratis een portaal, dan gooi je', hint: 'gratis Portaalkanon' },
   pick:      { name: 'Zelf kiezen',           when: 'start', text: 'Geef één loopsteen een waarde naar keuze', hint: 'kies zelf de waarde van één loopsteen' },
+  // gratis versie van de energie-actie Schroevendraaier (zie ROOSTERS hieronder); 'any', zodat je
+  // hem ook kunt spelen op het moment dat je op een rooster staat
+  driver:    { name: 'Schroevendraaier',      when: 'any',   text: 'Krijg gratis een schroevendraaier',        hint: 'gratis schroevendraaier' },
 };
 // Hoeveel exemplaren van een kristal er in de stapel zitten; niet genoemd = 2 (zie buildActionDeck).
 const ACTION_CARD_COPIES = { portalkey: 5 };
@@ -644,7 +720,7 @@ const ACTION_CARD_HAND_MAX = 3;
 const ACTION_CARD_TINTS = {
   boots: 'amber', boostcell: 'amber', reroll: 'amber',
   ration: 'start', condenser: 'start', leak: 'start', twin: 'start', solar: 'start',
-  blind: 'quest', portalkey: 'quest', pick: 'quest',
+  blind: 'quest', portalkey: 'quest', pick: 'quest', driver: 'quest',
   short: 'danger', shove: 'danger', lockdown: 'danger', outage: 'danger',
 };
 const ACTION_CARD_ICONS = {
@@ -697,6 +773,9 @@ const ACTION_CARD_ICONS = {
   pick: `<rect x="7" y="12" width="24" height="24" rx="4"/>
     <circle cx="13.5" cy="18.5" r="1.7" fill="currentColor" stroke="none"/><circle cx="19" cy="24" r="1.7" fill="currentColor" stroke="none"/><circle cx="24.5" cy="29.5" r="1.7" fill="currentColor" stroke="none"/>
     <path d="M36 17 L40 12 L44 17"/><path d="M36 31 L40 36 L44 31"/>`,
+  // schroevendraaier (gekozen icoon A): het gereedschap zelf, schuin
+  driver: `<rect x="7" y="28" width="10" height="17" rx="3.5" transform="rotate(45 12 36.5)"/>
+    <line x1="17.5" y1="30.5" x2="36" y2="12"/><line x1="36" y1="12" x2="40.5" y2="7.5" stroke-width="4.5"/>`,
 };
 
 // Het kristal zelf (zeshoek met moment, icoon, naam, uitleg en soort) tekent renderCrystal() in
@@ -968,7 +1047,7 @@ function botMoveScore(graph, move, targets){
 // Zelf kiezen: probeer elke steen op elke andere waarde en neem de beste zet. Alleen als dat
 // duidelijk beter is dan de huidige zet (een opdracht erbij, of minstens 2 vakjes dichterbij);
 // anders null en houdt de bot het kristal. `penalty` = Stroomonderbreking (geldt ook voor de nieuwe worp).
-function botPickDieValue(graph, fromKey, dieVals, penalty, occupied, targets, rand, current){
+function botPickDieValue(graph, fromKey, dieVals, penalty, occupied, targets, rand, current, crawl){
   const base = dieVals.reduce((a, b) => a + b, 0);
   let best = null, bestScore = botMoveScore(graph, current, targets) + 1;
   const tried = new Set();
@@ -978,7 +1057,7 @@ function botPickDieValue(graph, fromKey, dieVals, penalty, occupied, targets, ra
       const roll = Math.max(1, base - dieVals[i] + v - (penalty || 0));
       if (tried.has(roll)) continue;             // zelfde aantal stappen = zelfde zet
       tried.add(roll);
-      const move = resolveMove(graph, fromKey, roll, occupied, targets, rand);
+      const move = resolveMove(graph, fromKey, roll, occupied, targets, rand, undefined, crawl);
       const s = botMoveScore(graph, move, targets);
       if (s > bestScore){ bestScore = s; best = { idx: i, value: v, roll, move }; }
     }
@@ -1086,15 +1165,24 @@ function buildSimGraph(){
       adjKey[k] = ks; adjDir[k] = ds;
     }
   }
-  const questCells = {}, startCells = {}, actionCells = new Set();
+  const questCells = {}, startCells = {}, actionCells = new Set(), grates = [];
   for (let k = 0; k < N; k++){
     const v = labelAt[k];
     if (typeof v !== 'string') continue;
     if (v.startsWith('2.')) questCells[v] = k;
     else if (v.startsWith('3.')) startCells[v] = k;
     else if (v.startsWith('4.')) actionCells.add(k);
+    else if (v.startsWith('5.')) grates.push(k);
   }
-  return { H, W, N, adjKey, adjDir, questCells, startCells, actionCells };
+  // roosters (zie ROOSTERS): de vakjes, en per vakje de afstand tot het dichtste rooster (voor de bots)
+  const grateDist = new Int16Array(N).fill(-1);
+  const q = grates.slice();
+  for (const g of grates) grateDist[g] = 0;
+  for (let qi = 0; qi < q.length; qi++){
+    const c = q[qi], nb = adjKey[c] || [];
+    for (let j = 0; j < nb.length; j++){ const n = nb[j]; if (grateDist[n] === -1){ grateDist[n] = grateDist[c] + 1; q.push(n); } }
+  }
+  return { H, W, N, adjKey, adjDir, questCells, startCells, actionCells, grates, grateSet: new Set(grates), grateDist: grates.length ? grateDist : null };
 }
 
 // zuivere topologische afstand vanaf één cel (negeert bezetting/U-turn) — dient als
@@ -1243,7 +1331,10 @@ function pickEnd(graph, layersKeys, layersParent, layersBanked, step, targets, o
 // `endBlockedSet` (optioneel) is de verzameling vakjes waar je wel DOORHEEN mag maar niet op
 // mag EINDIGEN — alleen gebruikt door Blinde Vlek. Geeft null terug als er met die beperking
 // geen zet mogelijk is.
-function resolveMove(graph, startKey, steps, occupiedSet, targets, rand, endBlockedSet){
+// `crawl` (optioneel): de speler heeft een schroevendraaier — dan rekent resolveMoveCrawl ook de
+// kruipsprongen mee (zie ROOSTERS). Zonder schroevendraaier verandert hier niets.
+function resolveMove(graph, startKey, steps, occupiedSet, targets, rand, endBlockedSet, crawl){
+  if (crawl && graph.grates && graph.grates.length) return resolveMoveCrawl(graph, startKey, steps, occupiedSet, targets, rand, endBlockedSet);
   const { adjKey, adjDir } = graph;
   const layersKeys = [[startKey]], layersDirs = [[-1]], layersParent = [[]], layersBanked = [[0]], layersVia = [[-1]];
   let wasBlocked = false;
@@ -1297,6 +1388,124 @@ function resolveMove(graph, startKey, steps, occupiedSet, targets, rand, endBloc
   if (!move) return null;
   move.wasBlocked = wasBlocked;
   return move;
+}
+
+// Zelfde zet als resolveMove, maar met een schroevendraaier op zak. Toestand = (vakje, richting,
+// gepakte opdrachten, schroevendraaier nog over). Sta je met hem op een rooster (aan het begin of na
+// een stap), dan kun je zonder stap naar elk vrij rooster; daarna mag je alle kanten op
+// (SIM_DIR_FREE) en is hij op. Eindvakje: eerst de meeste opdrachten, dan het dichtst bij het
+// volgende doel — waarbij een schroevendraaier die je nog hebt meetelt als hij later een kortere
+// route geeft (graph.grateDist), en bij gelijke stand liever bewaren. `usedSd` in het resultaat zegt
+// of er gekropen is. Overgenomen uit het meetscript van de analyse (zelfde uitkomsten).
+const simCrawlStamp = new Int32Array(SIM_N * 5 * SIM_CHAIN_CAP * 2);
+let simCrawlStampCounter = 0;
+function resolveMoveCrawl(graph, startKey, steps, occupiedSet, targets, rand, endBlockedSet){
+  const { adjKey, adjDir } = graph;
+  const P = graph.portals;
+  const portalLive = !!(P && P.cells.some(c => c >= 0));
+  const mk = () => ({ k: [], d: [], b: [], s: [], p: [], via: [], crawl: [] });
+  const L = [mk()];
+  let wasBlocked = false, stamp = ++simCrawlStampCounter;
+  const push = (lay, k, d, b, s, p, via, crawl) => {
+    const idx = ((k * 5 + d) * SIM_CHAIN_CAP + b) * 2 + s;
+    if (simCrawlStamp[idx] === stamp) return -1;
+    simCrawlStamp[idx] = stamp;
+    lay.k.push(k); lay.d.push(d); lay.b.push(b); lay.s.push(s); lay.p.push(p); lay.via.push(via); lay.crawl.push(crawl);
+    return lay.k.length - 1;
+  };
+  // vanaf een rooster: naar elk vrij rooster, zonder stap
+  const expand = (lay, i) => {
+    const k = lay.k[i];
+    for (let gi = 0; gi < graph.grates.length; gi++){
+      const g = graph.grates[gi];
+      if (g === k || occupiedSet.has(g) || (endBlockedSet && endBlockedSet.has(g))) continue;
+      push(lay, g, SIM_DIR_FREE, lay.b[i], 0, i, -1, 1);
+    }
+  };
+  { const l0 = L[0]; l0.k.push(startKey); l0.d.push(-1); l0.b.push(0); l0.s.push(1); l0.p.push(-1); l0.via.push(-1); l0.crawl.push(0);
+    if (graph.grateSet.has(startKey)) expand(l0, 0); }
+  let lastStep = steps;
+  for (let step = 1; step <= steps; step++){
+    stamp = ++simCrawlStampCounter;
+    const prev = L[step - 1], next = mk();
+    for (let i = 0; i < prev.k.length; i++){
+      const ck = prev.k[i], cd = prev.d[i], banked = prev.b[i], sd = prev.s[i];
+      const neigh = adjKey[ck], dirs = adjDir[ck];
+      for (let j = 0; j < neigh.length; j++){
+        const d = dirs[j];
+        if (cd !== -1 && cd !== SIM_DIR_FREE && d === (cd + 2) % 4) continue;   // geen U-turn
+        const nk = neigh[j];
+        if (occupiedSet.has(nk)){ wasBlocked = true; continue; }
+        let nb = banked;
+        if (banked < targets.length && nk === targets[banked] && !(endBlockedSet && endBlockedSet.has(nk))) nb = banked + 1;
+        let to = nk, toDir = d, via = -1;
+        if (portalLive){
+          const exit = portalExitFor(graph, nk, occupiedSet, endBlockedSet);
+          if (exit >= 0){ to = exit; toDir = SIM_DIR_FREE; via = nk; }
+        }
+        const idx = push(next, to, toDir, nb, sd, i, via, 0);
+        if (idx >= 0 && sd && graph.grateSet.has(to)) expand(next, idx);
+      }
+    }
+    if (next.k.length === 0){ lastStep = step - 1; break; }
+    L.push(next);
+  }
+  // eindvakje kiezen
+  const lay = L[lastStep];
+  let maxB = -1;
+  for (let i = 0; i < lay.k.length; i++){
+    if (endBlockedSet && endBlockedSet.has(lay.k[i])) continue;
+    if (lay.b[i] > maxB) maxB = lay.b[i];
+  }
+  if (maxB < 0) return null;   // Blinde Vlek zonder vrij eindvakje (zie resolveMove)
+  const seen = new Map();      // vakje*2 + schroevendraaier -> eerste index
+  for (let i = 0; i < lay.k.length; i++){
+    if (lay.b[i] !== maxB || (endBlockedSet && endBlockedSet.has(lay.k[i]))) continue;
+    const id = lay.k[i] * 2 + lay.s[i];
+    if (!seen.has(id)) seen.set(id, i);
+  }
+  const cands = Array.from(seen.values());
+  const nextTarget = maxB < targets.length ? targets[maxB] : null;
+  let chosen;
+  if (nextTarget === null){
+    const kept = cands.filter(i => lay.s[i]);
+    const pool = kept.length ? kept : cands;
+    chosen = pool[Math.floor(rand() * pool.length)];
+  } else {
+    const st = simBfsDistances(graph, nextTarget);
+    const gT = graph.grateDist ? graph.grateDist[nextTarget] : 0;
+    let bestScore = Infinity, pool = [];
+    for (const i of cands){
+      let d = simDistLookup(st, lay.k[i]); if (d < 0) d = 9999;
+      let score;
+      if (lay.s[i]){ const v = graph.grateDist[lay.k[i]] + gT; score = v < d ? v * 4 + 2 : d * 4; }
+      else score = d * 4 + 1;
+      if (score < bestScore){ bestScore = score; pool = [i]; }
+      else if (score === bestScore) pool.push(i);
+    }
+    if (pool.length > 1){
+      let maxH = -1, p2 = [];
+      for (const i of pool){
+        let h = 0; const nb = adjKey[lay.k[i]];
+        for (let j = 0; j < nb.length; j++) if (occupiedSet.has(nb[j])) h++;
+        if (h > maxH){ maxH = h; p2 = [i]; } else if (h === maxH) p2.push(i);
+      }
+      pool = p2;
+    }
+    chosen = pool[Math.floor(rand() * pool.length)];
+  }
+  // pad teruglezen (een kruipsprong blijft in dezelfde laag; een portaal zet ingang én uitgang erin)
+  const path = []; let s = lastStep, i = chosen, usedSd = false;
+  while (true){
+    const l = L[s];
+    path.push(l.k[i]);
+    if (l.crawl[i]){ usedSd = true; i = l.p[i]; continue; }
+    if (s > 0 && l.via[i] >= 0) path.push(l.via[i]);
+    if (s === 0) break;
+    i = l.p[i]; s--;
+  }
+  path.reverse();
+  return { key: lay.k[chosen], stepsUsed: lastStep, bankedCount: maxB, bankedQuest: maxB > 0, path, wasBlocked, usedSd };
 }
 
 function simShuffle(arr, rand){
@@ -1525,6 +1734,24 @@ function botPlanTurn(ctx){
   const occupied = new Set();
   for (const other of players) if (other.idx !== pIdx && simOnBoard(other)) occupied.add(other.pos);
 
+  // 2b. schroevendraaier (zie ROOSTERS): het kristal (gratis) gaat voor de energie-actie. Een bot
+  //     koopt alleen als het hem minstens GRATE_BOT_MIN_GAIN stappen scheelt naar zijn opdracht.
+  if (graph.grates && graph.grates.length && !player.screwdriver && !player.noGrate && targets.length){
+    const gain = grateGain(graph, player.pos, targets[0]);
+    if (!cardActionUsed && has('driver') && gain >= GRATE_BOT_MIN_GAIN){
+      player.screwdriver = true;
+      playCard('driver');
+      r.driver = 'card';
+    } else if (!energyActionUsed && botStrategyNow(graph, player) === 'driver' && player.energy >= ENERGY_ACTIONS.driver.cost){
+      payEnergy('driver');
+      player.screwdriver = true;
+      r.driver = 'energy';
+    }
+    if (r.driver && extra && extra.grate){
+      if (r.driver === 'card') extra.grate.cardBuys++; else extra.grate.buys++;
+    }
+  }
+
   // 3. vóór de worp: Noodtransport, Zwaartekracht-laarzen of een portaalschot (energie of kristal),
   //    de keuze in botPreRollMove. Een sprong precies op je opdracht beëindigt de beurt; anders gooi
   //    je daarna vanaf je nieuwe plek. Haalt een sprint je 6e opdracht, dan valt er niets meer te gooien.
@@ -1579,10 +1806,11 @@ function botPlanTurn(ctx){
       player.rollPenalty = 0;
     }
     r.dice.push({ vals: dieVals.slice(), roll, why: 'roll' });
-    let move = resolveMove(graph, rollFrom, roll, occupied, rollTargets, rand);
+    const sd = !!player.screwdriver;   // met een schroevendraaier rekent de zet kruipen mee
+    let move = resolveMove(graph, rollFrom, roll, occupied, rollTargets, rand, undefined, sd);
     // Zelf kiezen: één steen een andere waarde als dat een opdracht of duidelijk winst oplevert
     if (!move.bankedQuest && !cardActionUsed && has('pick')){
-      const pk = botPickDieValue(graph, rollFrom, dieVals, rollPenalty, occupied, rollTargets, rand, move);
+      const pk = botPickDieValue(graph, rollFrom, dieVals, rollPenalty, occupied, rollTargets, rand, move, sd);
       if (pk){
         const was = dieVals[pk.idx];
         dieVals[pk.idx] = pk.value;
@@ -1603,7 +1831,7 @@ function botPlanTurn(ctx){
       if (rollPenalty) roll = Math.max(1, roll - rollPenalty);
       playCard('reroll', { roll });
       r.dice.push({ vals: dieVals.slice(), roll, why: 'reroll' });
-      move = resolveMove(graph, rollFrom, roll, occupied, rollTargets, rand);
+      move = resolveMove(graph, rollFrom, roll, occupied, rollTargets, rand, undefined, sd);
     }
     // Zonnezeil (direct na de worp): energie gelijk aan de laagste steen, als er ruimte is
     if (!cardActionUsed && has('solar') && player.energy + pendingEnergy < ENERGY_MAX){
@@ -1614,8 +1842,16 @@ function botPlanTurn(ctx){
     // 5. Blinde Vlek: een geblokkeerde worp opnieuw uitrekenen, door tegenstanders heen (maar er
     //    niet op eindigen). Geen enkel vrij eindvakje = resolveMove geeft null, de zet blijft staan.
     if (!move.bankedQuest && !cardActionUsed && has('blind') && move.wasBlocked){
-      const retry = resolveMove(graph, rollFrom, roll, SIM_EMPTY_SET, rollTargets, rand, occupied);
+      const retry = resolveMove(graph, rollFrom, roll, SIM_EMPTY_SET, rollTargets, rand, occupied, sd);
       if (retry && retry.key !== move.key){ move = retry; playCard('blind'); }
+    }
+    // gekropen: de schroevendraaier is op (zie ROOSTERS)
+    if (move.usedSd){
+      player.screwdriver = false;
+      player.grateUses = (player.grateUses || 0) + 1;
+      r.crawled = true;
+      if (player.stats) player.stats.crawls = (player.stats.crawls || 0) + 1;
+      if (extra && extra.grate){ extra.grate.uses++; extra.grate.useQuests += (pre ? pre.bankedCount : 0) + move.bankedCount; }
     }
     r.rollMove = move;
     r.move = mergePreRollMove(pre, move);
@@ -1623,7 +1859,7 @@ function botPlanTurn(ctx){
     r.roll = roll; r.rollPenalty = rollPenalty;
     r.portalJumps = pathPortalJumps(graph, move.path);
     if (player.stats){
-      player.stats.walkSteps += move.path.length - 1 - r.portalJumps;
+      player.stats.walkSteps += move.path.length - 1 - r.portalJumps - pathGrateJumps(graph, move.path);
       if (r.portalJumps) player.stats.portalJumps = (player.stats.portalJumps || 0) + r.portalJumps;
     }
   }
@@ -1691,6 +1927,8 @@ function simulateOneGame(graph, rand, heatmap, questStats, extra){
     condenserPending: false, // Condensator gespeeld: de VOLGENDE energiesteen telt dubbel
     lockedNextTurn: false, // getroffen door Vergrendeling: mist volgende beurt energie- én kaartslot
     rollPenalty: 0,        // getroffen door Stroomonderbreking: -N stappen op de eerstvolgende worp
+    screwdriver: false,    // heeft een schroevendraaier (zie ROOSTERS)
+    grateUses: 0,          // keer gekropen dit potje
     rank: 0,       // 0 = nog aan het spelen; 1..4 = binnengekomen op die plaats
     finishTurn: 0, // beurtnummer waarop deze speler binnenkwam
   }));
@@ -1796,6 +2034,15 @@ function simulateOneGame(graph, rand, heatmap, questStats, extra){
         // de achterblijver(s) hebben verloren zonder dat ze nog iets kunnen doen
         for (const p of players) if (!p.rank) p.rank = finished + 1;
         recordGameEndStats(players, halfway, extra);
+        // "meeste kruiper wint": idem voor de roosters
+        if (extra.grate){
+          const most = Math.max(...players.map(p => p.grateUses || 0));
+          const top = players.filter(p => (p.grateUses || 0) === most);
+          if (most > 0 && top.length === 1){
+            extra.grate.topGames++;
+            extra.grate.topWins += rankOverlapFraction(top[0].rank, top[0].rankShare || 1, 1);
+          }
+        }
         // "meeste teleporteerder wint": alleen potjes met één duidelijke koploper in sprongen
         if (extra.portal){
           const most = Math.max(...portalJumpsBy);
@@ -2856,6 +3103,9 @@ function runSimulationBatch(){
         // "Portalen": schoten, gestolen, sprongen (door een ander), opdrachten in een beurt met
         // een sprong, en hoe vaak de speler met de meeste sprongen won
         portal: { shots: 0, steals: 0, jumps: 0, jumpsOther: 0, jumpQuests: 0, quests: 0, topGames: 0, topWins: 0 },
+        // "Roosters": schroevendraaiers gekocht (energie) / als kristal gespeeld, keer gekropen,
+        // opdrachten in een beurt met een kruipsprong, en of de speler die het meest kroop won
+        grate: { buys: 0, cardBuys: 0, uses: 0, useQuests: 0, topGames: 0, topWins: 0 },
       };
       let stuckCount = 0;
 

@@ -14,7 +14,7 @@
 // loslaten wordt er één keer getekend.
 const dragState = { from: null, over: null, moved: false, pointerId: null };
 const DRAG_THRESHOLD = 5; // pixels voordat het een sleep wordt in plaats van een klik
-const MAP_CLONE_CLASSES = ['walk', 'quest', 'start', 'actioncell', 'empty-slot', 'room-tile', 'unreachable'];
+const MAP_CLONE_CLASSES = ['walk', 'quest', 'start', 'actioncell', 'grate', 'empty-slot', 'room-tile', 'unreachable'];
 const MAP_GLIDE_MS = 260, MAP_DROP_MS = 180;
 let dragFx = null;   // alles van de lopende sleep: maten, de zwevende kopie en de uitgeweken tegels
 
@@ -234,6 +234,7 @@ function hoverTipInfo(tileId, dr, dc){
   if (val.startsWith('2.')) return { text: `${QUEST_NAMES[val] || 'Opdracht'} (${val})`, kind: 'quest' };
   if (val.startsWith('3.')) return { text: `Startpositie ${val}`, kind: 'start' };
   if (val.startsWith('4.')) return { text: `Kristalvakje ${val}`, kind: 'actioncell' };
+  if (val.startsWith('5.')) return { text: `Roostervakje ${val}`, kind: 'grate' };
   return null;
 }
 

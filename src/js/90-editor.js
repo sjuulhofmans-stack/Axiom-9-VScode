@@ -8,6 +8,13 @@ const editorClose = document.getElementById('editorClose');
 const editorChecklist = document.getElementById('editorChecklist');
 const toolQuest = document.getElementById('toolQuest');
 const toolCard = document.getElementById('toolCard');
+const toolGrate = document.getElementById('toolGrate');
+// per gereedschap met een nummer: welk soort label het legt en hoe het heet in de meldingen
+const EDITOR_LABEL_TOOLS = {
+  quest: { prefix: '2.', what: 'Een opdrachtvakje', labels: () => Array.from({length:9}, (_,i) => '2.'+(i+1)) },
+  card:  { prefix: '4.', what: 'Een kristalvakje',  labels: () => ACTION_CELL_LABELS.slice() },
+  grate: { prefix: '5.', what: 'Een roostervakje',  labels: () => GRATE_LABELS.slice() },
+};
 const editorMsg = document.getElementById('editorMsg');
 const editorRevert = document.getElementById('editorRevert');
 const toolWalkSwatch = document.getElementById('toolWalkSwatch');
@@ -160,6 +167,31 @@ function tileValidationIssues(tid){
       issues.push({ category: 'actioncell', cells: [k], message: `kristalvakje mag niet op een deurvakje of het vakje direct erachter staan.` });
     }
   }
+  // roostervakje (zie ROOSTERS in 95-simulate.js): precies één per gang, nooit in een kamer, niet bij
+  // een doorgang en niet tegen het kristalvakje aan (ook niet schuin) — spelregel van de maker
+  const grateCells = [...m.entries()].filter(([,v]) => typeof v === 'string' && v.startsWith('5.')).map(([k])=>k);
+  if (ROOM_NAMES[tid]){
+    if (grateCells.length > 0){
+      issues.push({ category: 'grate', cells: grateCells, message: `kamertegels mogen geen roostervakje hebben — dat is alleen voor gangen.` });
+    }
+  } else {
+    if (grateCells.length < 1){
+      issues.push({ category: 'grate', cells: [], message: `gangtegel moet 1 roostervakje hebben.` });
+    }
+    if (grateCells.length > 1){
+      issues.push({ category: 'grate', cells: grateCells, message: `maximaal 1 roostervakje per tegel toegestaan (nu ${grateCells.length}).` });
+    }
+  }
+  for (const k of grateCells){
+    if (DOOR_KEYS.has(k) || DOOR_INWARD_VALUES.has(k)){
+      issues.push({ category: 'grate', cells: [k], message: `roostervakje mag niet op een deurvakje of het vakje direct erachter staan.` });
+    }
+    const [gr, gc] = k.split('_').map(Number);
+    const touching = actionCells.find(a => { const [ar, ac] = a.split('_').map(Number); return Math.abs(ar - gr) <= 1 && Math.abs(ac - gc) <= 1; });
+    if (touching){
+      issues.push({ category: 'grate', cells: [k, touching], message: `roostervakje mag niet tegen het kristalvakje aan liggen (ook niet schuin).` });
+    }
+  }
   return issues;
 }
 // vertaalt de losse issues naar 4 brede checklist-punten voor de tegel-editor
@@ -171,7 +203,8 @@ function tileChecklistItems(tid){
     { label: 'Minimaal 2 doorgangen', ok: !has('exits') },
     { label: 'Doorgangen kloppen (geen halve deuren)', ok: !has('doors') },
     { label: 'Alle vakjes met elkaar verbonden', ok: !has('connected') },
-    ...(isRoom ? [{ label: '1 opdrachtvakje', ok: !has('quest') }] : [{ label: '1 kristalvakje', ok: !has('actioncell') }]),
+    ...(isRoom ? [{ label: '1 opdrachtvakje', ok: !has('quest') }]
+      : [{ label: '1 kristalvakje', ok: !has('actioncell') }, { label: '1 roostervakje, los van het kristal', ok: !has('grate') }]),
   ];
 }
 // welke 2.x / 3.x labels zijn nog vrij (buiten deze tegel)
@@ -184,15 +217,13 @@ function labelsInUse(exceptTile){
   return used;
 }
 function refreshLabelOptions(){
-  const wantLabel = editorTool === 'quest' || editorTool === 'card';
+  const wantLabel = !!EDITOR_LABEL_TOOLS[editorTool];
   // niet verbergen maar onzichtbaar maken: het veld houdt zijn plek, zodat de kolom niet verspringt
   labelField.classList.toggle('is-off', !wantLabel);
   labelSelect.disabled = !wantLabel;
   if (!wantLabel) return;
   const used = labelsInUse(editorTile);
-  const opts = editorTool === 'quest'
-    ? Array.from({length:9}, (_,i) => '2.'+(i+1))
-    : ACTION_CELL_LABELS.slice();
+  const opts = EDITOR_LABEL_TOOLS[editorTool].labels();
   labelSelect.innerHTML = opts.map(o =>
     `<option value="${o}"${used.has(o) ? ' data-used="1"' : ''}>${o}${used.has(o) ? ' (al in gebruik)' : ''}</option>`
   ).join('');
@@ -230,7 +261,8 @@ function openTileEditor(tid){
   toolWalkSwatch.style.background = isRoom ? 'var(--walk-room)' : 'var(--walk)';
   toolQuest.hidden = !isRoom;
   toolCard.hidden = isRoom;
-  if ((!isRoom && editorTool === 'quest') || (isRoom && editorTool === 'card')){
+  if (toolGrate) toolGrate.hidden = isRoom;
+  if ((!isRoom && editorTool === 'quest') || (isRoom && (editorTool === 'card' || editorTool === 'grate'))){
     document.querySelectorAll('#toolList .tool').forEach(b => b.classList.remove('active'));
     document.querySelector('#toolList .tool[data-tool="walk"]').classList.add('active');
     editorTool = 'walk';
@@ -351,14 +383,16 @@ function paintCell(key){
     }
   } else {
     // opdracht-/actiekaartvakjes alleen op gewone vakjes, nooit op een deurvakje of het vakje erachter
-    const what = editorTool === 'quest' ? 'Een opdrachtvakje' : 'Een kristalvakje';
+    const tool = EDITOR_LABEL_TOOLS[editorTool];
+    if (!tool) return;
+    const what = tool.what;
     if (DOOR_KEYS.has(key) || DOOR_INWARD_VALUES.has(key)){ setEditorMsg(what + ' mag niet bij een doorgang liggen.'); return; }
     // het label wordt over een AL LOOPBAAR vakje gelegd (of over een vakje met hetzelfde
     // labeltype, om het label te wisselen) — nooit op een lege/onbenutte sjabloonplek of een
     // vakje van het ANDERE labeltype. Kon dat eerder wel: dan werd de tegelvorm ongemerkt
     // uitgebreid met dat vakje, en zodra je het label daarna verplaatste, viel de oude plek
     // altijd terug op "loopbaar" (1) in plaats van weer leeg — ook als hij dat origineel nooit was.
-    const prefix = editorTool === 'quest' ? '2.' : '4.';
+    const prefix = tool.prefix;
     const cur = m.get(key);
     if (cur !== 1 && !(typeof cur === 'string' && cur.startsWith(prefix))){ setEditorMsg(what + ' leg je op een loopvakje.'); return; }
     const label = labelSelect.value;

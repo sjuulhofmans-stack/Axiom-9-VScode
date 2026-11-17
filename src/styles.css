@@ -630,8 +630,8 @@
      kamernaam zijn kinderen van een vakje, dus bij "Positieletter" blijft dat ene vakje mee licht. */
   #board .cell{transition:opacity .18s;}
   #board.is-spot .cell{opacity:.12;}
-  #board.spot-walk .cell.walk, #board.spot-walk .cell.quest, #board.spot-walk .cell.start, #board.spot-walk .cell.actioncell,
-  #board.spot-quest .cell.quest, #board.spot-actioncell .cell.actioncell, #board.spot-start .cell.start,
+  #board.spot-walk .cell.walk, #board.spot-walk .cell.quest, #board.spot-walk .cell.start, #board.spot-walk .cell.actioncell, #board.spot-walk .cell.grate,
+  #board.spot-quest .cell.quest, #board.spot-actioncell .cell.actioncell, #board.spot-grate .cell.grate, #board.spot-start .cell.start,
   #board.spot-empty .cell.empty-slot, #board.spot-seamopen .cell.seam-open, #board.spot-seambroken .cell.seam-broken,
   #board.spot-letters .cell.has-badge{opacity:1;}
   @media (prefers-reduced-motion:reduce){ #board .cell, .legend-marker{transition:none;} }
@@ -662,6 +662,13 @@
   .cell.actioncell{background-color:var(--walk); box-shadow:inset 0 0 0 1px rgba(0,0,0,.25);
     background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 290'%3E%3Cpolygon points='100,4 196,62 196,228 100,286 4,228 4,62' fill='%237a3fc4' stroke='%23e0c2ff' stroke-width='20' stroke-linejoin='round'/%3E%3Cpolygon points='100,40 165,80 165,150 100,120 35,150 35,80' fill='%23c79bf7' fill-opacity='.55'/%3E%3C/svg%3E");
     background-repeat:no-repeat; background-position:center; background-size:auto 80%;}
+  /* roostervakje (luchtschacht, zie ROOSTERS in 95-simulate.js): gekozen ontwerp D4 uit artifact
+     "Axiom-9 Roosters" (2026-11) — donker vak, koperen kader met vier schroefjes, grijze lamellen.
+     Eén SVG als achtergrond (geen extra elementen, geen ::before: die gebruiken doel/spoor al). */
+  :root{
+    --grate-img:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 30 30'%3E%3Crect width='30' height='30' fill='%23161b22'/%3E%3Crect x='2.5' y='2.5' width='25' height='25' rx='2' fill='none' stroke='%23e0915c' stroke-width='2.2'/%3E%3Crect x='7.5' y='9.5' width='15' height='2.4' fill='%23c5ced6'/%3E%3Crect x='7.5' y='13.8' width='15' height='2.4' fill='%23c5ced6'/%3E%3Crect x='7.5' y='18.1' width='15' height='2.4' fill='%23c5ced6'/%3E%3Ccircle cx='6.2' cy='6.2' r='1.5' fill='%23e0915c'/%3E%3Ccircle cx='23.8' cy='6.2' r='1.5' fill='%23e0915c'/%3E%3Ccircle cx='6.2' cy='23.8' r='1.5' fill='%23e0915c'/%3E%3Ccircle cx='23.8' cy='23.8' r='1.5' fill='%23e0915c'/%3E%3C/svg%3E");
+  }
+  .cell.grate, .swatch-grate{background:#161b22 var(--grate-img) center / 100% 100% no-repeat;}
   .cell.start{background:var(--start); box-shadow:0 0 6px rgba(85,214,138,.55);}
   .cell.empty-slot{background:var(--slot-empty); border-radius:1px;}
   /* tegelgrens op het tabblad Kaart: zacht grijs (was amber .28; gebruikerswens 2026-11: de oranje
@@ -2996,14 +3003,16 @@
     position:relative;
   }
   /* voorproefje: wat er gebeurt als je klikt (outline verschuift niets) */
-  .editor-grid[data-tool="walk"] .ed-cell:not(.outside-pattern):not(.quest):not(.actioncell):hover{outline:2px solid var(--walk); outline-offset:1px;}
+  .editor-grid[data-tool="walk"] .ed-cell:not(.outside-pattern):not(.quest):not(.actioncell):not(.grate):hover{outline:2px solid var(--walk); outline-offset:1px;}
   .editor-grid[data-tool="quest"] .ed-cell.walk:not(.door):hover{outline:2px solid var(--quest); outline-offset:1px;}
   .editor-grid[data-tool="card"] .ed-cell.walk:not(.door):hover{outline:2px solid var(--actioncell); outline-offset:1px;}
+  .editor-grid[data-tool="grate"] .ed-cell.walk:not(.door):hover{outline:2px solid #e0915c; outline-offset:1px;}
   .editor-grid[data-tool="erase"] .ed-cell:not(.outside-pattern):hover{outline:2px dashed var(--danger); outline-offset:1px;}
   .ed-cell.walk{background:var(--walk); border-color:#5f6b77;}
   .ed-cell.walk.room-tile{background:var(--walk-room); border-color:#a89d8e;}
   .ed-cell.quest{background:var(--quest); border-color:#7fd4f5;}
   .ed-cell.actioncell{background:var(--actioncell); border-color:#d9b3ff;}
+  .ed-cell.grate{background:#161b22 var(--grate-img) center / 100% 100% no-repeat; border-color:#e0915c;}
   .ed-cell.start{background:var(--start); border-color:#9bffc6;}
   .ed-cell.door{box-shadow:inset 0 0 0 2px rgba(255,181,69,.85);}
   .ed-cell.outside-pattern{background:none; border-color:transparent; box-shadow:none; cursor:var(--cur-normal);}
@@ -3151,6 +3160,7 @@
   #board.hide-walk .cell.walk{background:transparent !important; box-shadow:none !important;}
   #board.hide-quest .cell.quest{background:transparent !important; box-shadow:none !important;}
   #board.hide-actioncell .cell.actioncell{background:transparent !important; box-shadow:none !important;}
+  #board.hide-grate .cell.grate{background:transparent !important; box-shadow:none !important;}
   #board.hide-start .cell.start{background:transparent !important; box-shadow:none !important;}
   #board.hide-empty .cell.empty-slot{background:transparent !important;}
   #board.hide-seamopen .cell.seam-open{box-shadow:none !important;}
@@ -3238,6 +3248,7 @@
   .thumb-cell.walk.room-tile{background:var(--walk-room);}
   .thumb-cell.quest{background:var(--quest);}
   .thumb-cell.actioncell{background:var(--actioncell);}
+  .thumb-cell.grate{background:#e0915c;}
   .thumb-cell.start{background:var(--start);}
   .thumb-cell.empty-slot{background:var(--slot-empty);}
 
@@ -3324,6 +3335,7 @@
   }
   .cell-hover-tip.quest{border-left-color:var(--quest);}
   .cell-hover-tip.actioncell{border-left-color:var(--actioncell);}
+  .cell-hover-tip.grate{border-left-color:#e0915c;}
   .cell-hover-tip.start{border-left-color:var(--start);}
 
   /* Op een telefoon wordt het bord tot 40 vakjes breed teruggerekend en houd je vakjes van

@@ -203,8 +203,11 @@ function cellType(v){
   if (typeof v === 'string' && v.startsWith('2.')) return 'quest';
   if (typeof v === 'string' && v.startsWith('3.')) return 'start';
   if (typeof v === 'string' && v.startsWith('4.')) return 'actioncell';
+  if (typeof v === 'string' && v.startsWith('5.')) return 'grate';
   return '';
 }
+// roostervakjes (luchtschacht) in de gangtegels: 5.1–5.10, één per gang (zie ROOSTERS in 95-simulate.js)
+const GRATE_LABELS = Array.from({length:10}, (_,i) => '5.' + (i+1));
 // vaste labels voor de actiekaartvakjes in gangtegels (analoog aan 2.x voor opdrachten) — puur
 // een technisch label, geen thema/naam nodig zoals bij QUEST_NAMES
 const ACTION_CELL_LABELS = Array.from({length:10}, (_,i) => '4.' + (i+1));

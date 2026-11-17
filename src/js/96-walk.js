@@ -335,6 +335,8 @@ function renderWalkBoard(){
           div.title = `${val} · ${QUEST_NAMES[val] || val} — ${room}`;
         } else if (type === 'actioncell'){
           div.title = 'Extra kristal';
+        } else if (type === 'grate'){
+          div.title = 'Rooster: kruip erin met een schroevendraaier';
         }
       } else if (patternSet.has(dr+'_'+dc)){
         div.classList.add('empty-slot');
