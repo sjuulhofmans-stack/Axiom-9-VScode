@@ -643,6 +643,20 @@ Check minimaal:
 
 ## Nog te doen
 
+- **Roosters + schroevendraaier (6e energie-actie) — gekozen, nog niet gebouwd** (artifact "Axiom-9
+  Roosters", meting 2026-11: 35 varianten × 8.000 potjes, meetscript los van het project). Keuzes van
+  de maker (2026-11): terug naar **2 portalen** (één paar blauw ↔ rood), Portaalkanon 5,
+  **schroevendraaier 5 energie**, plus een kristal Schroevendraaier (2 in de stapel). Elke gangtegel
+  één roostervakje, nooit tegen (ook niet schuin naast) het kristalvakje; een portaal ligt nooit op
+  een rooster. Kopen vóór je worp (telt als je energie-actie), max. één tegelijk, iedereen ziet dat je
+  hem hebt. Sta je op een rooster (ook midden in je zet), dan mag je kiezen of je kruipt; kost geen
+  stap; uit bij een vrij rooster naar keuze en **doorlopen** met de rest van je worp; daarna is hij op
+  (opnieuw kopen). Laarzen lopen over een rooster heen; Duwstoot mag iemand op een rooster duwen.
+  Uiterlijk: rooster **D4** (donker vak met koperen kader), icoon schroevendraaier **A**, uitgang kiezen
+  = **schijnwerper**, kruipspoor = **rechte lijn**, openen = **losschroeven**. Gemeten: 66,6 beurten
+  (nu met 4 portalen 64,6), 5,5× kruipen per potje, Stuwstoot zakt naar 17%, Noodtransport 33% —
+  balans van die twee wordt apart gemeten. Het energievak is vol: eerst kiest de maker een
+  kluisvariant (artifact "Axiom-9 Kluisvarianten").
 - De 5e energie-actie is het **Portaalkanon** geworden (zie Portalen hierboven); het
   portaalkristal is er sinds 2026-10 als **Portaalsleutel**. Andere ideeën die nog niet gemeten konden worden omdat bots ze niet zinnig spelen: een schild
   tegen de volgende hinderkaart, of een energieversperring op een gang naar keuze.
