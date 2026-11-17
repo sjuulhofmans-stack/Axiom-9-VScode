@@ -1106,6 +1106,15 @@ function mpPortalJumpFxFromState(move){
   const key = `${soloTurn}|${n}|${b}`;
   if (key === mpPortalFxSeen || !portalIsJump(soloGraph, a, b)) return;
   mpPortalFxSeen = key;
+  // rooster → rooster = kruipen (zie ROOSTERS): de pion staat in de stand al bij de uitgang, dus
+  // meteen van het bord en pas na het lichtje weer tekenen
+  if (grateIsCrawl(soloGraph, a, b)){
+    const idx = soloActiveIdx;
+    walkFlyingIdx.add(idx);
+    paintWalkPawns(soloGraph, soloPlayers, idx);
+    walkCrawlPawn(soloGraph, soloPlayers, idx, a, b, {});
+    return;
+  }
   walkPortalJumpFx(soloGraph, a, b);
 }
 function mpTileRotationSnapshot(){
@@ -1582,7 +1591,7 @@ function mpIntentContext(){
     soloPortalOptions || [], soloPortalAim || null, soloCurrentLegalMoves, soloPendingBoost, soloUsedBoots,
     soloUsedJump, soloTargetSwapped, soloUsedEnergyId, soloUsedCardId, soloDiscardedCardId,
     soloBlindOfferAvailable, soloLockedThisTurn, soloOpening || null,
-    p ? [p.pos, p.energy, p.cards ? p.cards.length : 0] : null,
+    p ? [p.pos, p.energy, p.cards ? p.cards.length : 0, !!p.screwdriver] : null,
     walkCardActionsEl ? (walkCardActionsEl.dataset.pendingCard || '') : '']);
 }
 
@@ -1602,6 +1611,11 @@ const MP_INTENT_HANDLERS = {
   reorderChoice: (a) => soloResolveReorder(!!a.swap),
   jumpClick: (a) => soloHandleJumpClick(a.key),
   blindOffer: (a) => soloResolveBlindOffer(a.yes),
+  // roosters (zie soloStartCrawlPick e.v. in 97-solo.js)
+  crawlStart: () => soloStartCrawlPick(),
+  crawlCancel: () => soloCancelCrawlPick(),
+  crawlStop: () => soloCrawlStop(),
+  crawlPick: (a) => soloHandleCrawlPick(a.key),
   openingRoll: () => soloOpeningRoll(),
   openingPick: (a) => soloOpeningPick(a.key),
 };

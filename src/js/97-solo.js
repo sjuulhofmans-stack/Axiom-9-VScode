@@ -547,6 +547,7 @@ function soloClearClickable(){
     el.classList.remove('walk-clickable');
     delete el.dataset.key;
   }
+  if (walkBoardEl.classList.contains('is-grate-pick')) walkBoardEl.classList.remove('is-grate-pick');
 }
 // Draaien de stenen van een verse worp nog uit, dan pas omranden zodra ze stilliggen (diceBusyMs,
 // 96d-dice.js) — gebruikersmelding: je kon al lopen terwijl de dobbelanimatie nog bezig was.
@@ -559,6 +560,9 @@ function soloMarkClickable(graph, keys){
     el.classList.add('walk-clickable');
     el.dataset.key = k;
   }
+  // uitgang kiezen bij het kruipen: schijnwerper op de vrije roosters (ook bij een gast, die de fase
+  // uit de stand van de host krijgt)
+  if (soloPhase === 'crawl-pick' && walkBoardEl) walkBoardEl.classList.add('is-grate-pick');
 }
 
 if (walkBoardEl){
@@ -570,6 +574,7 @@ if (walkBoardEl){
     else if (soloPhase === 'jump-target') soloHandleJumpClick(key);
     else if (soloPhase === 'boots-direction') soloHandleDashCellClick(key);
     else if (soloPhase === 'portal-aim') soloHandlePortalAimClick(key);
+    else if (soloPhase === 'crawl-pick') soloHandleCrawlPick(key);
     else if (soloPhase === 'opening-pick') soloOpeningPick(key);
   });
 }
@@ -973,6 +978,8 @@ const ENERGY_ACTION_ICONS = {
   jump: 'M4 18c2.5-9 13.5-9 16 0M16 15.5l4 2.5 1.5-4.5M4 18h3',
   // portaalkanon: twee ovale portalen met een schot ertussen
   portal: 'M6.5 6c2 0 3 2.7 3 6s-1 6-3 6-3-2.7-3-6 1-6 3-6zM17.5 6c2 0 3 2.7 3 6s-1 6-3 6-3-2.7-3-6 1-6 3-6zM9.5 12h5M12.5 10l2 2-2 2',
+  // schroevendraaier (gekozen icoon A): handvat linksonder, schacht schuin omhoog
+  driver: 'M3.5 17.5l3.5-3.5 3 3-3.5 3.5zM8.5 15.5L18.5 5.5M18.5 5.5l2-2',
 };
 // De 'choose-action'-fase toont ALLEEN de energie-acties — die moet je immers vóór het dobbelen
 // inzetten. De meeste kaarten spelen/afleggen kan pas ná het dobbelen, vóór of tijdens het
@@ -986,7 +993,7 @@ function soloRenderActionPanel(){
   // spiegel van de check aan de kaart-kant in soloCardBlockReason (allebei een gratis 3e steen).
   const boostcellUsed = soloUsedCardId === 'boostcell';
   // volgorde oplopend op kosten (gebruikerswens: de goedkoopste actie bovenaan)
-  const ids = ['boost', 'reorder', 'gravity', 'portal', 'jump'].sort((a, b) => ENERGY_ACTIONS[a].cost - ENERGY_ACTIONS[b].cost);
+  const ids = ['boost', 'reorder', 'gravity', 'portal', 'driver', 'jump'].sort((a, b) => ENERGY_ACTIONS[a].cost - ENERGY_ACTIONS[b].cost);
   // waarom kan een actie nu niet (naast te weinig energie)? Zelfde paren als in de simulatie:
   // Stuwlading/Stuwstoot en de laarzen-kaart/-actie sluiten elkaar uit.
   const blockReason = (id) => {
@@ -997,6 +1004,8 @@ function soloRenderActionPanel(){
     if (id === 'gravity' && !soloDashOptions().length) return 'in geen enkele richting ruimte';
     if (id === 'portal' && soloUsedCardId === 'portalkey') return 'je hebt deze beurt al een portaal geschoten';
     if (id === 'portal' && !soloPortalCannonNow().length) return 'in geen enkele richting ruimte';
+    if (id === 'driver' && p.screwdriver) return 'je hebt al een schroevendraaier';
+    if (id === 'driver' && !soloHasGrates()) return 'geen roosters op dit bord';
     return undefined;
   };
   const locked = (id) => p.energy < ENERGY_ACTIONS[id].cost || !!blockReason(id);
@@ -1033,6 +1042,9 @@ if (walkSoloActionsEl){
     else if (soloPhase === 'portal-aim' && btn.dataset.portalDir !== undefined) soloResolvePortalAim(parseInt(btn.dataset.portalDir, 10));
     else if (soloPhase === 'portal-color' && btn.dataset.portalColor !== undefined) soloResolvePortalColor(parseInt(btn.dataset.portalColor, 10));
     else if (soloPhase === 'reorder-peek' && btn.dataset.reorder) soloResolveReorder(btn.dataset.reorder === 'swap');
+    else if (soloPhase === 'moving' && btn.dataset.crawl === 'go') soloStartCrawlPick();
+    else if (soloPhase === 'moving' && btn.dataset.crawl === 'stop') soloCrawlStop();
+    else if (soloPhase === 'crawl-pick' && btn.dataset.crawl === 'cancel') soloCancelCrawlPick();
   });
 }
 
@@ -1086,7 +1098,9 @@ function soloCardBlockReason(id){
   const when = ACTION_CARDS[id].when;
   // midden in een keuze (richting, doelwit, opdracht, Blinde Vlek, sprongdoel): eerst die afmaken —
   // de kluis staat er nu altijd bij, dus anders stond hier misleidend "pas na het dobbelen"
-  if (['boots-direction', 'target-pick', 'die-pick', 'reorder-peek', 'blind-offer', 'jump-target', 'portal-aim', 'portal-color'].includes(soloPhase)) return 'maak eerst je keuze af';
+  if (['boots-direction', 'target-pick', 'die-pick', 'reorder-peek', 'blind-offer', 'jump-target', 'portal-aim', 'portal-color', 'crawl-pick', 'crawling'].includes(soloPhase)) return 'maak eerst je keuze af';
+  if (id === 'driver' && p.screwdriver) return 'je hebt al een schroevendraaier';
+  if (id === 'driver' && !soloHasGrates()) return 'geen roosters op dit bord';
   // Blinde Vlek is puur reactief: die krijg je vanzelf aangeboden op het moment dat je zet
   // daadwerkelijk op een tegenstander stukloopt (zie soloOfferBlindSpot)
   if (when === 'auto') return 'wordt vanzelf aangeboden zodra je route geblokkeerd raakt';
@@ -1135,7 +1149,18 @@ function soloRefreshCardVault(){
   // het 2e "of" hoort alleen bij de keuze vóór het dobbelen (zie soloRenderActionPanel)
   if (walkOrSep2El && soloPhase !== 'choose-action') walkOrSep2El.hidden = true;
   if (soloPhase === 'moving' || soloPhase === 'rolling'){
-    if (walkSoloActionsEl) walkSoloActionsEl.innerHTML = '';
+    // tijdens je zet: het aanbod om te kruipen als je met een schroevendraaier op een rooster staat
+    // (zie soloCrawlOfferHtml); anders leeg
+    if (walkSoloActionsEl){
+      const html = soloCrawlOfferHtml();
+      // alleen opnieuw in de DOM als het echt anders is (anders begint de puls telkens opnieuw)
+      if (!html){ if (walkSoloActionsEl.firstChild) walkSoloActionsEl.innerHTML = ''; }
+      else if (walkSoloActionsEl.dataset.offer !== html || !walkSoloActionsEl.querySelector('.crawl-offer')){
+        walkSoloActionsEl.innerHTML = html;
+        walkSoloActionsEl.dataset.offer = html;
+        for (const el of walkSoloActionsEl.querySelectorAll('.walk-pulse-affordable')) syncPulse(el);
+      }
+    }
     soloClearCardActionsPanel();
   }
   if (!walkCardVaultEl) return;
@@ -1378,6 +1403,11 @@ function soloPlayCard(id){
       useActionCard(p0, 'twin', soloDeck);
       soloUsedCardId = 'twin';
       walkLog(`Je speelt <b>Dubbele steen</b>: bij deze worp gooi je 2 energiestenen.`, null, p0);
+    } else if (id === 'driver'){
+      p0.screwdriver = true;
+      useActionCard(p0, 'driver', soloDeck);
+      soloUsedCardId = 'driver';
+      walkLog(`Je speelt het kristal <b>Schroevendraaier</b>: sta je op een rooster, dan kun je erin kruipen.`, null, p0);
     }
     renderSoloDicePending();
     soloRenderActionPanel();
@@ -1414,6 +1444,14 @@ function soloPlayCard(id){
     renderWalkDice(soloMove.d1, soloMove.d2, soloEnergyRoll, false, soloMove.d3, soloMove.roll, { key: diceSoloRollKey(), spinMs: DICE_SPIN_SHORT_MS });
     walkLog(`Je speelt <b>Stuwlading</b>: gratis derde loopsteen (${d3}) → ${soloMove.stepsLeft} stappen te gaan.`, null, p);
     soloAfterCardAction();
+  } else if (id === 'driver'){
+    // tijdens je zet: sta je al op een rooster, dan krijg je meteen de knop om te kruipen
+    p.screwdriver = true;
+    useActionCard(p, 'driver', soloDeck);
+    soloUsedCardId = 'driver';
+    walkLog(`Je speelt het kristal <b>Schroevendraaier</b>.`, null, p);
+    renderWalkScore(soloPlayers, soloActiveIdx);
+    soloAfterCardAction();
   } else if (id === 'condenser'){
     // een investering voor je VOLGENDE beurt: die energiesteen telt dan dubbel. Je weet dus
     // nog niet wat je gooit — anders dan bij de andere kaarten is dit een gok vooruit.
@@ -1448,6 +1486,7 @@ function soloUseEnergyAction(id){
   if (p.energy < act.cost) return;
   // de laarzen alleen als er ook echt een richting vrij is (anders betaal je voor niets)
   if (id === 'gravity' && (soloUsedBoots || !soloDashOptions().length)) return;
+  if (id === 'driver' && (p.screwdriver || !soloHasGrates())) return;
   p.energy -= act.cost;
   p.actionUses = (p.actionUses || 0) + 1;   // telde vroeger alleen bij bots; nu ook voor het winscherm
   statsUseEnergy(p, id);
@@ -1467,7 +1506,106 @@ function soloUseEnergyAction(id){
     soloEnterJumpTarget();
   } else if (id === 'portal'){
     soloEnterPortalAim();
+  } else if (id === 'driver'){
+    // zie ROOSTERS in 95-simulate.js: je houdt hem tot je kruipt; daarna gooi je gewoon
+    p.screwdriver = true;
+    walkLog(`Je koopt een <b>schroevendraaier</b> (−${act.cost}). Sta je op een rooster, dan kun je erin kruipen.`, null, p);
+    renderWalkScore(soloPlayers, soloActiveIdx);
+    soloProceedToRoll();
   }
+}
+
+// ---------- ROOSTERS: kruipen met een schroevendraaier (zie ROOSTERS in 95-simulate.js) ----------
+// Sta je tijdens je zet (ook bij de eerste stap) met een schroevendraaier op een rooster, dan staat
+// in het energievak de knop "Kruip door de luchtschacht" — je mag ook gewoon verder lopen. Klik je
+// erop, dan dimt het bord en lichten de vrije roosters op (schijnwerper, fase 'crawl-pick'); klik er
+// één aan en de pion kruipt erheen (fase 'crawling', walkCrawlFx in 96-walk.js). Kost geen stap; je
+// loopt daarna met de rest van je worp door, in elke richting. De schroevendraaier is dan op.
+let soloCrawlStuck = false;   // geen gewone stap meer mogelijk, alleen nog kruipen of stoppen
+function soloHasGrates(){ return !!(soloGraph && soloGraph.grates && soloGraph.grates.length); }
+function soloCrawlExits(){
+  const p = solo();
+  if (!p || !p.screwdriver || !soloHasGrates() || !soloGraph.grateSet.has(p.pos)) return [];
+  return grateExits(soloGraph, p.pos, soloOccupied());
+}
+const SOLO_DRIVER_SVG = `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="${ENERGY_ACTION_ICONS.driver}"></path></svg>`;
+function soloCrawlOfferHtml(){
+  if (soloPhase !== 'moving' || !soloMove || !soloCrawlExits().length) return '';
+  const rest = soloMove.stepsLeft;
+  return `<div class="crawl-offer">` +
+    `<button type="button" class="energy-pick crawl-btn walk-pulse-affordable" data-crawl="go">` +
+      `<span class="energy-pick-icon">${SOLO_DRIVER_SVG}</span>` +
+      `<span class="energy-pick-text"><b>Kruip door de luchtschacht</b><span>kies een rooster${rest > 0 ? `, daarna nog ${rest} ${rest === 1 ? 'stap' : 'stappen'}` : ''}</span></span>` +
+    `</button>` +
+    (soloCrawlStuck
+      ? `<button type="button" class="energy-pick crawl-btn is-plain" data-crawl="stop"><span class="energy-pick-text"><b>Hier stoppen</b><span>${rest > 0 ? 'je kunt geen gewone stap meer zetten' : 'je stappen zijn op'}</span></span></button>`
+      : `<p class="hint crawl-hint">Je staat op een rooster met een schroevendraaier. Of loop gewoon verder.</p>`) +
+  `</div>`;
+}
+function soloStartCrawlPick(){
+  if (soloPhase !== 'moving') return;
+  const exits = soloCrawlExits();
+  if (!exits.length) return;
+  if (mpIntercept('crawlStart', {})) return;
+  soloPhase = 'crawl-pick';
+  soloHideStepCounter();
+  soloRefreshCardVault();
+  soloMarkClickable(soloGraph, exits);
+  walkSoloActionsEl.innerHTML =
+    `<div class="crawl-offer"><p class="walk-target-picker-hint">Kies op het bord een <b>rooster</b> om uit te komen.</p>` +
+    `<button type="button" class="energy-pick crawl-btn is-plain" data-crawl="cancel"><span class="energy-pick-text"><b>Toch niet</b><span>terug naar je zet</span></span></button></div>`;
+}
+function soloCancelCrawlPick(){
+  if (soloPhase !== 'crawl-pick') return;
+  if (mpIntercept('crawlCancel', {})) return;
+  soloPhase = 'moving';
+  soloAdvanceMovePhase();
+}
+function soloCrawlStop(){
+  if (soloPhase !== 'moving') return;
+  if (mpIntercept('crawlStop', {})) return;   // (een gast kent soloCrawlStuck niet; de host checkt hieronder)
+  if (!soloCrawlStuck) return;
+  soloCrawlStuck = false;
+  soloClearClickable();
+  soloHideStepCounter();
+  if (walkSoloActionsEl) walkSoloActionsEl.innerHTML = '';
+  if (soloBankCountThisTurn > 0) soloEndMoveAlreadyBanked();
+  else soloFinishTurn(false);
+}
+async function soloHandleCrawlPick(key){
+  if (soloPhase !== 'crawl-pick') return;
+  if (!soloCrawlExits().includes(key)) return;
+  if (mpIntercept('crawlPick', { key })) return;
+  const p = solo(), entry = p.pos, runId = soloRunId;
+  soloPhase = 'crawling';
+  soloClearClickable();
+  if (walkSoloActionsEl) walkSoloActionsEl.innerHTML = '';
+  p.screwdriver = false;
+  p.grateUses = (p.grateUses || 0) + 1;
+  if (p.stats) p.stats.crawls = (p.stats.crawls || 0) + 1;
+  const rest = soloMove.stepsLeft;
+  walkLog(`Je schroeft het rooster los en kruipt door de luchtschacht${rest > 0 ? ` — nog ${rest} ${rest === 1 ? 'stap' : 'stappen'}` : ''}.`, null, p);
+  renderWalkScore(soloPlayers, soloActiveIdx);
+  const leaving = walkCellDiv(soloGraph, entry);
+  leaving.style.setProperty('--pc', p.color);
+  leaving.classList.add('walk-trail');
+  await walkCrawlPawn(soloGraph, soloPlayers, p.idx, entry, key, { atExit: () => { p.pos = key; } });
+  if (runId !== soloRunId || soloPhase !== 'crawling') return;
+  p.pos = key;
+  soloMove.path.push(key);
+  soloMove.lastDir = -1;          // uit het rooster mag je alle kanten op
+  soloMove.viaCrawl = true;
+  soloPhase = 'moving';
+  paintWalkPawns(soloGraph, soloPlayers, p.idx);
+  if (soloMove.stepsLeft <= 0){
+    soloClearClickable();
+    if (soloBankCountThisTurn > 0) soloEndMoveAlreadyBanked();
+    else soloFinishTurn(false);
+  } else {
+    soloAdvanceMovePhase();
+  }
+  // in Multiplayer de nieuwe stand meteen naar de gasten (de klik zelf was al eerder verwerkt)
+  if (typeof mp !== 'undefined' && mp.active && mp.isHost && typeof mpBroadcastState === 'function') mpBroadcastState();
 }
 
 // ---------- Portaalkanon: richting kiezen, dan welke kleur ----------
@@ -1968,7 +2106,21 @@ function soloBlindLegal(){
 function soloAdvanceMovePhase(){
   const occ = soloOccupied();
   const blind = soloUsedCardId === 'blind';
-  const legal = blind ? soloBlindLegal() : soloLegalNextCells(soloGraph, solo().pos, soloMove.lastDir, occ);
+  // stappen op (alleen mogelijk via soloStepsDone: je staat dan nog op een rooster en mag kruipen)
+  const legal = soloMove.stepsLeft <= 0 ? []
+    : blind ? soloBlindLegal() : soloLegalNextCells(soloGraph, solo().pos, soloMove.lastDir, occ);
+  soloCrawlStuck = false;
+  // geen gewone stap meer, maar je staat met een schroevendraaier op een rooster: dan kun je nog
+  // kruipen (of hier stoppen) — zie soloCrawlOfferHtml
+  if (!legal.length && soloMove.stepsLeft >= 0 && soloCrawlExits().length){
+    soloPhase = 'moving';
+    soloCrawlStuck = true;
+    soloClearClickable();
+    soloHideStepCounter();
+    renderSoloMeta(soloMove.stepsLeft);
+    soloRefreshCardVault();
+    return;
+  }
   if (!legal.length && blind){
     // met Blinde Vlek geen enkele stap die niet op een pion eindigt: de zet stopt hier
     soloHideStepCounter();
@@ -2159,17 +2311,23 @@ function soloHandleMoveClick(key){
     if (won){
       soloEndMoveAlreadyBanked();
     } else if (soloMove.stepsLeft <= 0){
-      soloEndMoveAlreadyBanked();
+      soloStepsDone();
     } else {
       soloAdvanceMovePhase();
     }
   } else if (soloMove.stepsLeft <= 0){
-    soloClearClickable();
-    if (soloBankCountThisTurn > 0) soloEndMoveAlreadyBanked();
-    else soloFinishTurn(false);
+    soloStepsDone();
   } else {
     soloAdvanceMovePhase();
   }
+}
+// je stappen zijn op: klaar, tenzij je met een schroevendraaier op een rooster staat — kruipen kost
+// geen stap, dus dat mag dan nog (zie soloCrawlOfferHtml, knop "Hier stoppen")
+function soloStepsDone(){
+  if (soloCrawlExits().length){ soloAdvanceMovePhase(); return; }
+  soloClearClickable();
+  if (soloBankCountThisTurn > 0) soloEndMoveAlreadyBanked();
+  else soloFinishTurn(false);
 }
 
 // welke kaart deze beurt is AFGELEGD i.p.v. gespeeld — zelfde badge-stijl als walkActionNote/
@@ -2229,7 +2387,8 @@ function soloFinishTurn(banked){
       return;
     }
   } else {
-    const extra = soloMove.viaPortal ? ' — door het portaal'
+    const extra = soloMove.viaCrawl ? ' — door de luchtschacht'
+      : soloMove.viaPortal ? ' — door het portaal'
       : (roll && stepsUsed < roll) ? ` — kon maar ${stepsUsed} stappen zetten (doodlopend)` : '';
     walkLog(`Beurt ${soloTurn}: <b>${rollText}</b>${walkEnergyNote(soloEnergyRoll, soloEnergyGain, p)}${turnNote} → onderweg naar ${targetLabel}${extra}`, null, p);
   }
@@ -2435,7 +2594,11 @@ async function soloAnimateBotTurn(player, replay, logNodes, runId){
       leaving.classList.add('walk-trail');
       if (special) leaving.classList.add('walk-jump');
       const viaPortal = portalIsJump(soloGraph, path[i - 1], path[i]);
-      if (viaPortal) walkPortalJumpFx(soloGraph, path[i - 1], path[i]);
+      // rooster → rooster: kruipen (losschroeven + lichtje, zie walkCrawlFx in 96-walk.js)
+      if (viaPortal && grateIsCrawl(soloGraph, path[i - 1], path[i])){
+        await walkCrawlPawn(soloGraph, soloPlayers, player.idx, path[i - 1], path[i], { fast: sp.stepMs < 140, activeIdx: pIdx, atExit: () => { player.pos = path[i]; } });
+        if (!alive()) return false;
+      } else if (viaPortal) walkPortalJumpFx(soloGraph, path[i - 1], path[i]);
       player.pos = path[i];
       walkAdvanceShownTarget(soloGraph, bank, player.pos, player.color, othersOcc, false);
       paint();

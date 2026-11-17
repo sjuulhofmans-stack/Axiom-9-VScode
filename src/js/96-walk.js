@@ -481,6 +481,91 @@ function walkPortalJumpFx(graph, entry, exit){
   walkPortalBurst(graph, entry, colorOf(entry), false);
   walkPortalBurst(graph, exit, colorOf(exit), true);
 }
+// ---------- ROOSTERS: kruipen (zie ROOSTERS in 95-simulate.js) ----------
+// Gekozen in artifact "Axiom-9 Roosters" (2026-11): openen = LOSSCHROEVEN (het rooster draait een halve
+// slag en schuift weg, eronder een donker gat), spoor = RECHTE LIJN (een koperen lichtje met staart
+// rechtdoor van rooster naar rooster). Volgorde: ingang open → pion weg → lichtje → uitgang open → pion
+// erin → beide roosters weer dicht. Alleen transform/opacity, niets opgemeten (Prestatie in CLAUDE.md).
+// `hide()`/`show()`: de aanroeper haalt de pion van het bord en zet hem bij de uitgang terug.
+// Geeft een Promise die klaar is als de pion bij de uitgang staat (de roosters sluiten daarna vanzelf).
+const GRATE_LID_MS = 480;          // losschroeven
+const GRATE_TRAIL_MS_PER_CELL = 32; // het lichtje: per vakje, tussen 450 en 1000 ms
+function walkGrateLid(graph, key, open, ms){
+  const cell = walkCellDiv(graph, key);
+  const lid = document.createElement('i');
+  lid.className = 'walk-grate-lid';
+  cell.classList.add('has-grate-fx', 'is-grate-open');
+  cell.appendChild(lid);
+  const shut = [{ transform: 'rotate(0deg) translateY(0)', opacity: 1 }];
+  const turned = { transform: 'rotate(180deg) translateY(0)', opacity: 1, offset: 0.6 };
+  const away = { transform: 'rotate(180deg) translateY(-85%) scale(.85)', opacity: 0 };
+  const frames = open ? [shut[0], turned, away] : [away, { ...turned, offset: 0.4 }, shut[0]];
+  const a = lid.animate(frames, { duration: ms, easing: 'ease-in-out', fill: 'forwards' });
+  return a.finished.catch(() => {}).then(() => {
+    // open: het gat blijft (is-grate-open), het laagje mag weg; dicht: gat weer dicht
+    lid.remove();
+    if (!open) cell.classList.remove('is-grate-open');
+    if (!cell.querySelector('.walk-grate-lid, .walk-crawl-light') && !cell.classList.contains('is-grate-open')) cell.classList.remove('has-grate-fx');
+  });
+}
+function walkCrawlFx(graph, entry, exit, { fast = false, hide, show } = {}){
+  const reduced = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  if (reduced || typeof Element.prototype.animate !== 'function'){
+    if (hide) hide(); if (show) show();
+    return Promise.resolve();
+  }
+  const speed = fast ? 0.45 : 1;
+  const lidMs = Math.round(GRATE_LID_MS * speed);
+  const dc = (exit % graph.W) - (entry % graph.W), dr = Math.floor(exit / graph.W) - Math.floor(entry / graph.W);
+  const cells = Math.hypot(dc, dr);
+  const flyMs = Math.round(Math.max(450, Math.min(1000, cells * GRATE_TRAIL_MS_PER_CELL)) * speed);
+  const sleep = ms => new Promise(res => setTimeout(res, ms));
+  const tr = (f, s) => `translate(calc(${dc * f * 100}% + ${dc * f}px), calc(${dr * f * 100}% + ${dr * f}px)) scale(${s})`;
+  return (async () => {
+    // 1. ingang los, pion zakt erin
+    const openIn = walkGrateLid(graph, entry, true, lidMs);
+    await sleep(Math.round(lidMs * 0.6));
+    if (hide) hide();
+    await openIn;
+    // 2. het lichtje rechtdoor naar de uitgang
+    const start = walkCellDiv(graph, entry);
+    const lights = [];
+    for (let k = 0; k < 5; k++){
+      const el = document.createElement('i');
+      el.className = 'walk-crawl-light' + (k ? ' is-tail' : '');
+      start.appendChild(el);
+      lights.push(el);
+      const s = k ? 0.9 - k * 0.12 : 1.15, o = k ? 0.85 - k * 0.14 : 1;
+      el.animate([
+        { transform: tr(0, s * 0.4), opacity: 0 },
+        { transform: tr(0.05, s), opacity: o, offset: 0.08 },
+        { transform: tr(1, s), opacity: o, offset: 0.95 },
+        { transform: tr(1, s * 0.5), opacity: 0 },
+      ], { duration: flyMs, delay: k * Math.round(45 * speed), easing: 'cubic-bezier(.4,.05,.4,1)', fill: 'both' });
+    }
+    await sleep(flyMs);
+    // 3. uitgang los, pion komt eruit
+    const openOut = walkGrateLid(graph, exit, true, Math.round(lidMs * 0.6));
+    await sleep(Math.round(lidMs * 0.35));
+    if (show) show();
+    await openOut;
+    setTimeout(() => { for (const el of lights) el.remove(); }, Math.round(250 * speed));
+    // 4. beide roosters weer dicht (de zet gaat intussen gewoon verder)
+    walkGrateLid(graph, entry, false, Math.round(lidMs * 0.7));
+    walkGrateLid(graph, exit, false, Math.round(lidMs * 0.7));
+  })();
+}
+// pion `idx` even van het bord tijdens het kruipen (paintWalkPawns slaat walkFlyingIdx over);
+// `atExit()` zet de pion op de uitgang, vlak voordat hij weer getekend wordt
+function walkCrawlPawn(graph, players, idx, entry, exit, opts = {}){
+  const paint = () => paintWalkPawns(graph, players, opts.activeIdx !== undefined ? opts.activeIdx : idx);
+  return walkCrawlFx(graph, entry, exit, {
+    fast: opts.fast,
+    hide: () => { walkFlyingIdx.add(idx); paint(); },
+    show: () => { if (opts.atExit) opts.atExit(); walkFlyingIdx.delete(idx); paint(); },
+  });
+}
+
 // logregel voor een schot
 function walkPortalShotText(name, shot, stolen){
   const namen = ['noorden', 'oosten', 'zuiden', 'westen'];
@@ -512,6 +597,7 @@ function botTurnOpeningLog(player, r, reveal){
   const n = player.name, lines = [];
   if (r.locked) lines.push(`${n} is <b>vergrendeld</b> en slaat zijn energie- en kristalactie over.`);
   if (r.condenserCashed) lines.push(`${n} verzilvert de <b>Condensator</b>: energiesteen ${r.energyRoll} telt dubbel.`);
+  if (r.driver) lines.push(r.driver === 'card' ? `${n} speelt het kristal <b>Schroevendraaier</b>.` : `${n} koopt een <b>schroevendraaier</b>.`);
   for (const ev of r.cards) if (BOT_OPENING_CARD_IDS.has(ev.id)) lines.push(botTurnCardLogText(player, ev));
   if (r.reorder){
     const { before, swapped } = r.reorder;
@@ -541,6 +627,7 @@ function botTurnRollLog(player, r){
   const lines = [];
   if (r.rollPenalty && r.dice.length) lines.push(`${player.name} verliest ${r.rollPenalty} stappen door <b>Stroomonderbreking</b> → ${r.dice[0].roll}.`);
   for (const ev of r.cards) if (ev.id === 'pick' || ev.id === 'reroll' || ev.id === 'solar') lines.push(botTurnCardLogText(player, ev));
+  if (r.crawled) lines.push(`${player.name} schroeft een rooster los en kruipt door de luchtschacht.`);
   return lines;
 }
 
@@ -1124,6 +1211,8 @@ function walkIsIn(p){ return p.completed >= SIM_QUESTS_TO_WIN; }
 // beneden mee met wie er aan de beurt is, in plaats van door elkaar te springen. Wordt per
 // potje gezet (beide modi loten de volgorde) en op null gezet zodra er geen potje loopt.
 let walkScoreOrder = null;
+// gekozen icoon A uit artifact "Axiom-9 Roosters": koperen handvat, grijze schacht
+const WALK_DRIVER_SVG = '<svg viewBox="0 0 24 24" aria-hidden="true"><g transform="rotate(45 12 12)"><rect x="9.6" y="1" width="4.8" height="9.5" rx="2.2" fill="#e0915c"/><rect x="11.1" y="10.5" width="1.8" height="9" fill="#c5ced6"/><rect x="10.3" y="19" width="3.4" height="3" rx=".6" fill="#c5ced6"/></g></svg>';
 function renderWalkScore(players, activeIdx){
   if (!walkScoreEl && !walkScoreActiveEl) return;
   const ordered = walkScoreOrder
@@ -1141,12 +1230,14 @@ function renderWalkScore(players, activeIdx){
       : `<span class="walk-player-tag turn" aria-hidden="true">aan zet</span>`;
     const me = p.isHuman && typeof soloIsMe === 'function' && soloIsMe(p)
       ? `<span class="walk-player-me">jij</span>` : '';
+    // schroevendraaier (zie ROOSTERS): iedereen ziet wie er een heeft (gekozen icoon A)
+    const sd = p.screwdriver ? `<span class="walk-player-sd" title="Heeft een schroevendraaier">${WALK_DRIVER_SVG}</span>` : '';
     const stat = (label, value, extra) =>
       `<span class="walk-player-stat${extra || ''}"><span class="lbl">${label}</span><b>${value}</b></span>`;
     return `<div class="${cls}" style="--pc:${p.color}"${p.idx === activeIdx ? ' aria-current="true"' : ''}>` +
       `<span class="walk-player-who">` +
         `<span class="walk-player-dot"></span>` +
-        `<span class="walk-player-name" title="${p.name}">${p.name}</span>` + me + tag +
+        `<span class="walk-player-name" title="${p.name}">${p.name}</span>` + sd + me + tag +
       `</span>` +
       `<span class="walk-player-stats">` +
         // lang label op een breed scherm, kort ("Voltooid") waar het anders niet op één regel past
@@ -1366,9 +1457,13 @@ async function runWalkSimulation(){
           leaving.style.setProperty('--pc', player.color);
           leaving.classList.add('walk-trail');
           if (special) leaving.classList.add('walk-jump');
-          // door een portaal (twee vakjes die niet naast elkaar liggen): flits, geen stap op de teller
+          // door een portaal (twee vakjes die niet naast elkaar liggen): flits, geen stap op de teller;
+          // rooster → rooster is kruipen (zie ROOSTERS): losschroeven + lichtje, daarna verder
           const viaPortal = portalIsJump(graph, path[i - 1], path[i]);
-          if (viaPortal) walkPortalJumpFx(graph, path[i - 1], path[i]);
+          if (viaPortal && grateIsCrawl(graph, path[i - 1], path[i])){
+            await walkCrawlPawn(graph, players, pIdx, path[i - 1], path[i], { fast: walkSpeed().stepMs < 140, atExit: () => { player.pos = path[i]; } });
+            if (aborted()) return false;
+          } else if (viaPortal) walkPortalJumpFx(graph, path[i - 1], path[i]);
           player.pos = path[i];
           walkAdvanceShownTarget(graph, bank, player.pos, player.color, occupiedNow(), true);
           if (offset + i === r.cellIdx) crystalFxAnon(player.pos, player, cellFull, walkSpeed().stepMs < 140, graph);
@@ -1429,6 +1524,7 @@ async function runWalkSimulation(){
         }
         const solar = r.cards.find(c => c.id === 'solar');
         if (solar) walkLog(botTurnCardLogText(player, solar), null, player);
+        if (r.crawled) walkLog(`${player.name} schroeft een rooster los en kruipt door de luchtschacht.`, null, player);
         // opgeteld: wat de sprint vóór de worp al pakte is al getoond (bank.shown)
         bank.limit = (pre ? pre.bankedCount : 0) + r.rollMove.bankedCount;
         if (!await walkPath(r.rollMove.path, false, pre ? pre.path.length - 1 : 0)) return;

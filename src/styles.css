@@ -4291,7 +4291,35 @@
      Alleen transform/opacity beweegt (Prestatie in CLAUDE.md). Het schot (de komeet, zie
      walkPortalShotFx) en de flits (.walk-portal-burst) zijn Web Animations op transform/opacity.
      pointer-events:none: klikken gaan gewoon naar het vakje. */
-  #walkBoard .cell.has-portal, #walkBoard .cell.has-portal-fx{position:relative;}
+  #walkBoard .cell.has-portal, #walkBoard .cell.has-portal-fx, #walkBoard .cell.has-grate-fx{position:relative;}
+  /* ---------- ROOSTERS: kruipen (walkCrawlFx in 96-walk.js) ----------
+     Het rooster dat losdraait is een losse laag met hetzelfde plaatje; eronder een donker gat. Het
+     lichtje is koper (de kleur van het rooster). Alleen transform/opacity. */
+  #walkBoard .cell.grate.is-grate-open{background:#05070a; box-shadow:inset 0 0 0 1px #2a1a10;}
+  .walk-grate-lid{
+    position:absolute; inset:0; pointer-events:none; z-index:7; will-change:transform, opacity;
+    background:#161b22 var(--grate-img) center / 100% 100% no-repeat;
+  }
+  .walk-crawl-light{
+    position:absolute; inset:0; border-radius:50%; pointer-events:none; z-index:9; opacity:0;
+    background:radial-gradient(closest-side, #fff4e8, #e0915c 55%, transparent);
+    will-change:transform, opacity;
+  }
+  .walk-crawl-light.is-tail{background:radial-gradient(closest-side, #ffcf9f, rgba(224,145,92,.8) 55%, transparent);}
+  /* uitgang kiezen = SCHIJNWERPER (gekozen): de rest van het bord dimt, de vrije roosters lichten op
+     met een kloppende koperen ring (alleen opacity) */
+  #walkBoard.is-grate-pick .cell:not(.grate):not(.walk-pawn):not(.walk-target){opacity:.35;}
+  #walkBoard.is-grate-pick .cell.grate.walk-clickable{position:relative; z-index:3;}
+  #walkBoard.is-grate-pick .cell.grate.walk-clickable::after{
+    content:""; position:absolute; inset:-35%; border-radius:50%; pointer-events:none;
+    box-shadow:0 0 0 2px #e0915c, 0 0 12px rgba(224,145,92,.6); will-change:opacity;
+    animation:grateRing 1.9s ease-in-out infinite;
+  }
+  @keyframes grateRing{0%,100%{opacity:.35;} 50%{opacity:1;}}
+  @media (prefers-reduced-motion:reduce){ #walkBoard.is-grate-pick .cell.grate.walk-clickable::after{animation:none; opacity:1;} }
+  /* schroevendraaier op het spelerskaartje (iedereen ziet wie er een heeft) */
+  .walk-player-sd{flex:none; display:inline-grid; place-items:center; width:18px; height:18px;}
+  .walk-player-sd svg{width:16px; height:16px; display:block;}
   .walk-portal{
     --pcol:#3fa9ff; --pglow:rgba(63,169,255,.55); --plight:#bfe4ff;
     --pring:max(2px, calc(var(--cell, 20px) * .11));
