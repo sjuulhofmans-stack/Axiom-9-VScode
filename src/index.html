@@ -634,6 +634,15 @@
               </div>
             </div>
 
+            <!-- tabbladen Energie | Kluis (gekozen variant C, artifact "Axiom-9 Kluisvarianten",
+                 2026-11): zodra de kluis er staat (.has-vault) krijgt elk tabblad de hele rest van
+                 de kolom. Wisselen + vanzelf wisselen bij een vervolgkeuze: crystalSyncStack in
+                 96c-crystals.js. Het tabblad Kluis pulst als je nu een kristal kunt spelen. -->
+            <div class="walk-side-tabs" id="walkSideTabs" role="tablist" aria-label="Energie of kluis">
+              <button type="button" class="walk-side-tab" id="walkTabEnergy" role="tab" data-tab="energy" aria-selected="true">Energie</button>
+              <button type="button" class="walk-side-tab" id="walkTabVault" role="tab" data-tab="vault" aria-selected="false"><span class="walk-side-tab-glow" aria-hidden="true"></span>Kluis <b id="walkTabVaultCount">0 / 3</b></button>
+            </div>
+
             <!-- "of": je kunt dobbelen, óf eerst een energie-actie inzetten. Zichtbaar zolang de
                  solo-UI actief is (zelfde hidden-toggle als walkSoloPanel hieronder). -->
             <p class="walk-or-sep" id="walkOrSep1" hidden>of</p>

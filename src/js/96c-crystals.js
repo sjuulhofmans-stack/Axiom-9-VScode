@@ -153,6 +153,10 @@ function crystalRenderVault(cards, { reason = () => null, canDiscard = false, id
   }
   const count = cards.filter((_, i) => shown(i)).length;
   if (crystalVaultCountEl) crystalSetText(crystalVaultCountEl, `${count} / ${ACTION_CARD_HAND_MAX}`);
+  if (crystalTabCountEl) crystalSetText(crystalTabCountEl, `${count} / ${ACTION_CARD_HAND_MAX}`);
+  // tabblad Kluis pulst als je nu een kristal kunt spelen (alleen te zien als Energie open staat)
+  const canNow = !idle && cards.some((c, i) => shown(i) && !reason(c));
+  if (crystalTabVaultEl && crystalTabVaultEl.classList.contains('can') !== canNow) crystalTabVaultEl.classList.toggle('can', canNow);
 
   const id = crystalSel === null ? null : cards[crystalSel];
   const r = id ? why(id) : null;
@@ -190,17 +194,48 @@ function crystalSetText(el, text){ if (el.textContent !== text) el.textContent =
 
 // ---------- klassen op de zijkolom (i.p.v. CSS :has(), dat bij elke kleine DOM-wijziging de hele
 // kolom liet herberekenen — gemeten: merkbaar hakkelig) ----------
-//   has-vault     de kluis staat er: kolom even hoog als het bord, kluis onderaan
+//   has-vault     de kluis staat er: kolom even hoog als het bord, met de tabbladen Energie | Kluis
+//   tab-energy / tab-vault   welk tabblad open is (gekozen variant C, 2026-11)
 const crystalStackEl = document.getElementById('walkSideStack');
 const crystalSoloActionsEl = document.getElementById('walkSoloActions');
 const crystalCardActionsEl = document.getElementById('walkCardActions');
+const crystalTabEnergyEl = document.getElementById('walkTabEnergy');
+const crystalTabVaultEl = document.getElementById('walkTabVault');
+const crystalTabCountEl = document.getElementById('walkTabVaultCount');
+// Welk tabblad open is. Kiest de speler zelf; alleen een vervolgkeuze zet het vanzelf om: de keuze
+// na een kristal (doelwit, Zelf kiezen, Blinde Vlek; #walkCardActions staat in de kluis) opent
+// Kluis, een keuze in het energievak (richting, kleur, sprongdoel, Herprioritering) opent Energie.
+let crystalTab = 'energy';
+let crystalForcedTab = '';   // welke vervolgkeuze er bij de vorige controle openstond
+function crystalSetTab(tab){ crystalTab = tab; crystalSyncStack(); }
 function crystalSyncStack(){
   if (!crystalStackEl) return;
   const vault = document.getElementById('walkCardVault');
   const set = (cls, on) => { if (crystalStackEl.classList.contains(cls) !== on) crystalStackEl.classList.toggle(cls, on); };
-  set('has-vault', !!vault && !vault.hidden);
-  // (vroeger: 'vault-compact' vóór het dobbelen en 'vault-off' tijdens een vervolgkeuze — sinds
-  // de energie-acties 2x2-tegels zijn staat de kluis altijd groot, gebruikerswens)
+  const hasVault = !!vault && !vault.hidden;
+  set('has-vault', hasVault);
+  // alleen op het moment dat zo'n keuze verschijnt; daarna mag je zelf weer wisselen
+  const forced = crystalCardActionsEl && crystalCardActionsEl.childElementCount ? 'vault'
+    : crystalSoloActionsEl && crystalSoloActionsEl.childElementCount && !crystalSoloActionsEl.querySelector('.is-actions') ? 'energy' : '';
+  if (forced && forced !== crystalForcedTab) crystalTab = forced;
+  crystalForcedTab = forced;
+  const onVault = hasVault && crystalTab === 'vault';
+  set('tab-vault', onVault);
+  set('tab-energy', hasVault && !onVault);
+  for (const [el, on] of [[crystalTabEnergyEl, !onVault], [crystalTabVaultEl, onVault]]){
+    if (el && el.getAttribute('aria-selected') !== String(on)) el.setAttribute('aria-selected', String(on));
+  }
+}
+const crystalTabsEl = document.getElementById('walkSideTabs');
+if (crystalTabsEl) crystalTabsEl.addEventListener('click', (e) => {
+  const b = e.target.closest('button[data-tab]');
+  if (b) crystalSetTab(b.dataset.tab);
+});
+// wat je ziet van de kluis: de kluis zelf, of het tabblad als Energie open staat (voor de gloed bij
+// oprapen en het schudden bij een volle kluis)
+function crystalVaultShownEl(){
+  const vault = document.getElementById('walkCardVault');
+  return vault && vault.getClientRects().length ? vault : (crystalTabVaultEl || vault);
 }
 for (const el of [crystalSoloActionsEl, crystalCardActionsEl]){
   if (el) new MutationObserver(crystalSyncStack).observe(el, { childList: true });
@@ -208,7 +243,7 @@ for (const el of [crystalSoloActionsEl, crystalCardActionsEl]){
 function crystalSelectedId(cards){ return crystalSel === null ? null : (cards[crystalSel] || null); }
 // nieuw potje: kluis-UI terug naar af
 function crystalResetVault(){
-  crystalSel = null; crystalFocusShown = '';
+  crystalSel = null; crystalFocusShown = ''; crystalTab = 'energy'; crystalForcedTab = '';
   crystalHiddenSlots.clear(); crystalNew.clear(); crystalAnonPending.clear();
   crystalFxClear();
 }
@@ -394,7 +429,7 @@ function crystalFxGain(fromKey, slot, owner){
     if (owner) crystalRepaintPips(owner);
     const el = crystalSlotEl(slot);
     if (el) el.classList.add('is-landing');
-    const vault = document.getElementById('walkCardVault');
+    const vault = crystalVaultShownEl();
     // gloed = laagje dat in opacity in/uit faadt (styles.css), dus geen herstart via offsetWidth nodig
     if (vault){ vault.classList.add('is-glow'); crystalLater(() => vault.classList.remove('is-glow'), 900); }
   };
@@ -433,7 +468,7 @@ function crystalFxGain(fromKey, slot, owner){
     if (!toEl){ el.remove(); land(); return false; }
     const toR = toEl.getBoundingClientRect(), C = crystalCenter(toR);
     // in de compacte kluis is het doel een rijtje: krimpen tot de hoogte daarvan
-    const sEnd = toEl.classList.contains('crystal-row') ? toR.height * 1.6 / CRYSTAL_FLY_H : toR.width / CRYSTAL_FLY_W;
+    const sEnd = toEl.classList.contains('crystal-row') || toEl === crystalTabVaultEl ? toR.height * 1.6 / CRYSTAL_FLY_H : toR.width / CRYSTAL_FLY_W;
     const dist = Math.hypot(C[0] - B[0], C[1] - B[1]);
     const P = [(B[0] + C[0]) / 2, Math.min(B[1], C[1]) - Math.max(80, dist * .35)];
     const k = crystalEaseInOut(Math.min(1, (t - T_GROW - T_HOLD) / T_FLY));
@@ -448,18 +483,19 @@ function crystalFxGain(fromKey, slot, owner){
   });
 }
 
-// het zichtbare plekje in de kluis (de rail in de gewone kluis, een rijtje in de compacte)
+// het zichtbare plekje in de kluis (de rail in de gewone kluis, een rijtje in de compacte); staat
+// het tabblad Energie open, dan het tabblad Kluis
 function crystalSlotEl(slot){
   for (const el of document.querySelectorAll(`#walkCardVault [data-slot="${slot}"]`)){
     if (el.getClientRects().length) return el;
   }
-  return null;
+  return crystalTabVaultEl && crystalTabVaultEl.getClientRects().length ? crystalTabVaultEl : null;
 }
 
 // jouw kluis is vol: een zilver vraagteken-kristal groeit uit het vakje, trilt, en knalt in 12 scherven
 function crystalFxFull(fromKey){
-  const vault = document.getElementById('walkCardVault');
   const shake = () => {
+    const vault = crystalVaultShownEl();
     if (!vault) return;
     // rode gloed via de klasse (opacity), het schudden als Web Animation: die start elke keer
     // opnieuw zonder offsetWidth-truc (zie Prestatie in CLAUDE.md)

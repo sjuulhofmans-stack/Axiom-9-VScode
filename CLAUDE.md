@@ -127,6 +127,7 @@ aangeroepen (functiedeclaraties worden gehoist, `const`/`let` niet).
 | een kristal toevoegen / tekst of moment aanpassen | `95-simulate.js`: `ACTION_CARDS` (name/text/when/hint) + `ACTION_CARD_TINTS` + `ACTION_CARD_ICONS`; hoeveel er in de stapel zitten in `ACTION_CARD_COPIES` (standaard 2). Daarna de bot-keuze op ÉÉN plek: `botPlanTurn` in 95-simulate.js (geldt voor simulatie, Automatisch én Zelf spelen/Multiplayer); een logregel in `botTurnCardLogText` (96-walk.js); de mens in `soloPlayCard`/`soloCardBlockReason` (97-solo.js) |
 | iets aan wat een bot in zijn beurt doet (volgorde, wanneer hij een kristal/energie-actie inzet) | `botPlanTurn` + `botFinishTurn` in 95-simulate.js (2026-11, nr. 35: was drie losse kopieën). De modi doen alleen log/animatie: simulateOneGame (tellers), de lus in `runWalkSimulation` (96-walk.js ; afspelen, `botFinishTurn` pas als de pion is aangekomen) en `soloResolveBotTurn` (97-solo.js, daarna naspelen). Gecontroleerd: 800 batch-potjes gaven exact dezelfde uitkomst als vóór het samenvoegen |
 | hoe een kristal, de kluis of het oprapen eruitziet | `96c-crystals.js` + het kristallen-blok onderaan `styles.css` |
+| de tabbladen Energie \| Kluis in de zijkolom (variant C, 2026-11) | `#walkSideTabs` in index.html, `crystalSyncStack`/`crystalSetTab` in `96c-crystals.js`, blok `ZIJKOLOM: TABBLADEN` onderaan `styles.css` |
 | de dobbelstenen, de stappenteller of de energiebolletjes | `96d-dice.js` + het dobbelstenen-blok onderaan `styles.css` |
 | de kaders/vlakken ("zwevende kolommen", gekozen variant 5 uit 6, 2026-10; sinds 2026-10 op de HELE pagina, niet alleen tijdens een potje) | blok `"ZWEVENDE KOLOMMEN" OP DE HELE PAGINA` onderaan `styles.css`: `--page-bg` = `#070a0e`, elke `.panel`/pop-up één kaart zonder rand of amber lijntje, het generatorbord zonder stalen kader. Tijdens een potje (`body.is-playing`) ook: spelerskaarten, beide zijkolommen, bord en chat elk één kaart (`--panel`, ronde hoeken, zachte schaduw) op `#070a0e`, alles binnenin plat. Randen houden hun DIKTE (alleen kleur transparent), zodat alle gemeten maten gelijk blijven — gemeten 1920×960 en 1440×780: identiek aan vóór de wijziging |
 | de uitslag van de simulatie ("Stoplicht-kaarten", gekozen variant A uit 4, artifact "Axiom-9 Simulatie-uitslag", 2026-11) | `renderSimResults` + helpers `simCard`/`simRow`/`simDonut`/`simHBars`/`simColumns`/`simStack`/`simDots`/`simRankGrid` in `95-simulate.js`, opmaak blok `uitslag als "stoplicht-kaarten"` in `styles.css`. Oordeelsbalk (4 vakjes) bovenaan, daaronder 7 rijen van 2 even brede kaarten (Eerlijkheid, Tempo en spanning, Geluk, Energie, Acties en portalen, Kristallen, Bord) + de warmtekaart over de volle breedte. Elke kaart: titel + oordeelchip (in orde/let op/probleem/ter info) + pijltje, groot getal, één zin, één SVG-diagram, tabel + uitleg achter "Details". Inklappen per kaart; kaarten in een rij blijven even hoog. Onder 900px één kolom. Gemeten 1920, 1440 en 390 breed: niets loopt over. Nieuwe meting? Een kaart toevoegen in een bestaande rij of een nieuwe rij van twee |
@@ -226,21 +227,26 @@ aangeroepen (functiedeclaraties worden gehoist, `const`/`let` niet).
   kristal mag: zowel het label op het kristal (`CRYSTAL_WHEN`) als de regel in
   `soloCardBlockReason` lezen het ('pre' vóór de worp, 'any' vóór of na, 'start' na de worp
   maar vóór je eerste stap, 'post' tijdens je zet, 'auto' vanzelf aangeboden).
-  **Kluis**: altijd open in de zijkolom, onderaan gelijk met het bord. Groot het gekozen
-  kristal, ernaast de 3 plekken, de reden waarom het nu (niet) kan, Gebruik/Afleggen. Alleen
-  het gekozen plekje pulst (`crystalPulse`, zelfde ritme als de dobbelknop). De kluis staat
-  ALTIJD groot (gebruikerswens), ook vóór het dobbelen en tijdens een doelwit-/richtingkeuze.
-  De vervolgkeuze van een kristal (doelwit, Zelf kiezen, Blinde-Vlek-aanbod; `#walkCardActions`)
-  staat sinds 2026-11 BINNEN de kluis als laag eroverheen (eronder stak hij tot 174px onder het bord
-  uit). Gemeten 1920×960 en 1440×780: kluis en Gebruik/Afleggen verspringen niet, niets scrolt.
-  De energie-acties staan weer ONDER ELKAAR (gebruikerswens: de 2x2-tegels stonden scheef en de
-  tekst liep door het vak; alleen de laarzen-richtingen zijn nog 2x2); het grote kristal schaalt
-  met `--wcell`. Dobbelvak (134px) en energievak hebben een VASTE hoogte, vóór én na de worp —
-  anders schuift de kolom bij het dobbelen (gebruikersmelding). Energievak: 300px met icoonrijen
-  + uitlegregel (Full HD, gemeten max. 298px bij 0 energie), en onder 865px hoogte of 1630px
-  breedte 196px: kleine iconen, geen uitlegregel (tooltip) (`.is-actions` in styles.css).
-  Gemeten: kolom = bordhoogte op 1440×780 (559px), 1920×870 (717px) én 1920×960. Iets
-  toevoegen in de zijkolom? Opnieuw meten.
+  **Kluis = tabblad** (variant C "Tabbladen in de kolom", gekozen uit 6, artifact "Axiom-9
+  Kluisvarianten", 2026-11; vervangt "de kluis staat altijd groot onderaan"). Onder het dobbelvak
+  `#walkSideTabs` met Energie | Kluis (aantal x/3); elk tabblad krijgt de hele rest van de kolom
+  (`.has-vault.tab-energy` / `.tab-vault` op #walkSideStack, gezet in `crystalSyncStack`, blok
+  `ZIJKOLOM: TABBLADEN` onderaan styles.css). De "of"-regels zijn dan weg. Het tabblad Kluis pulst
+  (`.can`, crystalPulse) als je nu een kristal kunt spelen. **Vanzelf wisselen alleen op het moment
+  dat een vervolgkeuze verschijnt** (daarna mag je zelf weer wisselen): een keuze na een kristal
+  (`#walkCardActions`, doelwit/Zelf kiezen/Blinde Vlek, staat als laag ín de kluis) → Kluis; een
+  keuze in het energievak (alles in #walkSoloActions zonder `.is-actions`: richting, kleur, sprong,
+  Herprioritering; ook na de Portaalsleutel) → Energie. Opgeraapt terwijl Energie open staat: het
+  kristal vliegt naar het tabblad Kluis (`crystalSlotEl`), gloed/schudden op het tabblad
+  (`crystalVaultShownEl`). In de kluis: groot het gekozen kristal, eronder de 3 plekken, de reden,
+  Gebruik/Afleggen; alleen het gekozen plekje pulst. Nieuw potje = tabblad Energie.
+  De energie-acties staan ONDER ELKAAR (de 2x2-tegels stonden scheef; alleen de
+  laarzen-richtingen zijn nog 2x2). Dobbelvak 134px vast; het open tabblad vult de rest, dus de
+  kolom houdt zijn vaste hoogte (even hoog als het bord) en niets verschuift bij dobbelen of
+  wisselen. Met de tabbladen staat de uitlegregel bij elke actie ook op een laptop weer in beeld.
+  Gemeten (vijf acties, 2026-11): 1920×889 kolom 736 = bord, tabblad 544px, inhoud 542;
+  1440×780 kolom 559 = bord, tabblad 367px, acties mét uitleg tot 124px boven de onderrand (ruimte
+  voor de 6e actie), pagina scrolt niet. Iets toevoegen in de zijkolom? Opnieuw meten.
   **Energiebalk = stroomcircuit** (gekozen uit 10 ontwerpen): 10 knooppunten (`.ec-node`) aan
   één leiding (`.ec-seg`), opgebouwd in `soloRenderEnergyOverview`. Opladen: stroom over het
   leidingstukje, knooppunt ploft aan met een ring; leeglopen: van achteren af, flakkeren +
@@ -655,10 +661,12 @@ Check minimaal:
   Uiterlijk: rooster **D4** (donker vak met koperen kader), icoon schroevendraaier **A**, uitgang kiezen
   = **schijnwerper**, kruipspoor = **rechte lijn**, openen = **losschroeven**. Gemeten: 66,6 beurten
   (nu met 4 portalen 64,6), 5,5× kruipen per potje, Stuwstoot zakt naar 17%, Noodtransport 33% —
-  balans van die twee wordt apart gemeten. Het energievak is vol, daarom wordt de kluis **variant C
-  "Tabbladen in de kolom"** (gekozen uit 6, artifact "Axiom-9 Kluisvarianten", 2026-11): onder het
-  dobbelvak twee tabbladen Energie | Kluis, elk met de hele rest van de kolom; het tabblad Kluis pulst
-  als je nu een kristal kunt spelen.
+  balans: zie hieronder. De ruimte voor de 6e actie is er sinds de kluis een tabblad is (zie
+  **Kluis = tabblad** hierboven). Balansmeting (4 borden × 3.000, winst% Stuwstoot / Herpr. /
+  laarzen / Noodtr.): gekozen opzet 17,1 / 26,9 / 23,5 / 32,5; Noodtransport bereik 9 of 10 of prijs 9
+  helpt nauwelijks (31–33); Stuwstoot 3 → 19,4; Stuwstoot = 2 extra stenen voor 4 → 31,7 (te sterk),
+  voor 5 → 28,5, voor 6 → 27,1, **voor 7 → 26,2 / 24,9 / 20,5 / 28,4** (alle vier binnen 19–31%).
+  Keuze nog aan de maker.
 - De 5e energie-actie is het **Portaalkanon** geworden (zie Portalen hierboven); het
   portaalkristal is er sinds 2026-10 als **Portaalsleutel**. Andere ideeën die nog niet gemeten konden worden omdat bots ze niet zinnig spelen: een schild
   tegen de volgende hinderkaart, of een energieversperring op een gang naar keuze.
