@@ -655,8 +655,10 @@ Check minimaal:
   Uiterlijk: rooster **D4** (donker vak met koperen kader), icoon schroevendraaier **A**, uitgang kiezen
   = **schijnwerper**, kruipspoor = **rechte lijn**, openen = **losschroeven**. Gemeten: 66,6 beurten
   (nu met 4 portalen 64,6), 5,5× kruipen per potje, Stuwstoot zakt naar 17%, Noodtransport 33% —
-  balans van die twee wordt apart gemeten. Het energievak is vol: eerst kiest de maker een
-  kluisvariant (artifact "Axiom-9 Kluisvarianten").
+  balans van die twee wordt apart gemeten. Het energievak is vol, daarom wordt de kluis **variant C
+  "Tabbladen in de kolom"** (gekozen uit 6, artifact "Axiom-9 Kluisvarianten", 2026-11): onder het
+  dobbelvak twee tabbladen Energie | Kluis, elk met de hele rest van de kolom; het tabblad Kluis pulst
+  als je nu een kristal kunt spelen.
 - De 5e energie-actie is het **Portaalkanon** geworden (zie Portalen hierboven); het
   portaalkristal is er sinds 2026-10 als **Portaalsleutel**. Andere ideeën die nog niet gemeten konden worden omdat bots ze niet zinnig spelen: een schild
   tegen de volgende hinderkaart, of een energieversperring op een gang naar keuze.
