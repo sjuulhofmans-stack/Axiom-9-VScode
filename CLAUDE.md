@@ -87,7 +87,7 @@ src/
     97-solo.js        tabblad "Spelen": modus Zelf spelen, eigen speler besturen tussen bots, energiekaarten
     98-cards.js       tabblad Speelkaarten: vitrine + zoom voor opdrachtkaarten en kristallen
     98b-avatar.js     avatars in de multiplayer-kamer: 5 karakters, 5 brillen, 5 hoedjes (SVG) + editor
-    98c-rules.js      tabblad Spelregels: 12 hoofdstukken (bord opbouwen t/m einde) + kleine animaties
+    98c-rules.js      tabblad Spelregels: 13 hoofdstukken (bord opbouwen t/m einde) + kleine animaties
     99-multiplayer.js tabblad "Multiplayer": lobby + peer-to-peer spelen met vrienden (WebRTC)
 build.py              plakt alles tot dist/axiom9.html
 dist/axiom9.html      GEBOUWD — niet handmatig bewerken
@@ -119,6 +119,7 @@ aangeroepen (functiedeclaraties worden gehoist, `const`/`let` niet).
 | de spelsimulatie aanpassen                  | `95-simulate.js`      |
 | een energie-actie of de prijs ervan aanpassen | `95-simulate.js` (`ENERGY_ACTIONS`, `botPreRollMove`) + knoppen in `97-solo.js` (`soloRenderActionPanel`/`soloUseEnergyAction`) |
 | iets aan de portalen (regels, bot-keuze, hoe ze eruitzien) | regels + bot: blok PORTALEN in `95-simulate.js`; bord/animatie: `walkPaintPortals` e.v. in `96-walk.js` + blok PORTALEN onderaan `styles.css`; keuze van de mens: `soloEnterPortalAim` e.v. in `97-solo.js` |
+| iets aan de roosters / schroevendraaier (regels, bot, kruipen, uiterlijk) | regels + bot: blok ROOSTERS in `95-simulate.js`; mens: blok ROOSTERS in `97-solo.js`; animatie `walkCrawlFx` (96-walk.js); vakje + schijnwerper: `.cell.grate` en blok "ROOSTERS: kruipen" in styles.css; plek van een rooster: tegel-editor (labels 5.x) |
 | iets aan "Spelen" → Automatisch (pion, tempo) | `96-walk.js`   |
 | de modus-schakelaar zelf (Automatisch/Zelf spelen) | `97-solo.js` (`setWalkMode`) |
 | het tabblad Multiplayer (deelt #tabWalk met Spelen) | `80-controls.js` (`switchTab`, tab `multi`) |
@@ -319,7 +320,9 @@ aangeroepen (functiedeclaraties worden gehoist, `const`/`let` niet).
   `botSmartPick` in 95-simulate.js); alle strategie-checks lopen via `botStrategyNow`. Zit
   bewust niet in `ENERGY_STRATEGIES` (de batch-simulatie meet de vaste strategieën).
 - **Portalen / Portaalkanon** (5e energie-actie, prijs 5, 2026-10; blok PORTALEN in
-  `95-simulate.js`). Er liggen altijd **vier portalen in twee paren** op het bord, blauw ↔ rood en
+  `95-simulate.js`). **Sinds de roosters (2026-11, keuze van de maker) weer één paar: blauw ↔ rood**
+  (`PORTAL_NAMES`; het tweede paar terugzetten = twee namen/klassen erbij). Wat hieronder over twee
+  paren staat is de geschiedenis. Er lagen **vier portalen in twee paren** op het bord, blauw ↔ rood en
   groen ↔ geel, gedeeld door iedereen; bij de start al, de twee van een paar ≥16 stappen uit elkaar
   en ≥6 van het andere paar (`portalSetup`). **Twee paren + prijs 5 (was één paar, prijs 7) is een
   keuze van de maker (2026-11): "portalen moeten meer gebruikt worden, het voelt telkens te ver
@@ -539,10 +542,13 @@ Check minimaal:
     rechts Voltooid / Energie / Kaarten; "aan zet" en de eindplaats als tabje op
     de rand. Verandert de hoogte boven/onder het bord, pas dan de 300px in
     `--wcell` (styles.css) aan.
-12. Zelf spelen → energie-paneel toont 5 acties op prijs (Stuwstoot 4,
-    Herprioritering 4, Zwaartekracht-laarzen 5, Portaalkanon 5, Noodtransport 10), in hetzelfde
-    vaste vak (gemeten: 1920×960 nog 40px ruimte, 1440×780 nog 24px). Op het bord liggen vier
-    portaalringen (blauw ↔ rood, groen ↔ geel); Portaalkanon → richting (knop of klik) → kleur ("ligt er sinds
+12. Zelf spelen → tabblad Energie toont de acties op prijs (Stuwstoot 4,
+    Herprioritering 4, Zwaartekracht-laarzen 5, Portaalkanon 5, Schroevendraaier 5, Noodtransport 10)
+    mét uitlegregel (gemeten 1440×780: 84px ruimte over). Schroevendraaier → op een rooster staan →
+    knop "Kruip door de luchtschacht" → vrije roosters lichten op (rest gedimd, je doel niet) → klik →
+    rooster schroeft los, koperen lichtje, je loopt met dezelfde stappen door; icoon op je spelerskaartje
+    tot je kruipt. Op het bord liggen een
+    blauwe en een rode portaalring; Portaalkanon → richting (knop of klik) → kleur ("ligt er sinds
     de start" / "gelegd door X") → lichtspoor + nieuw portaal, daarna gooi je. Loop je in een
     portaal: flits, je komt uit het andere en loopt met je resterende stappen door. Simulatie → blok "Portalen" met
     schoten/gestolen/sprongen en twee oordelen (opdrachten via portaal ≤30%, meeste
@@ -612,7 +618,7 @@ Check minimaal:
     uitgegeven wordt? Daar ook die aanroep toevoegen.
 
 15. Tabblad **Spelregels** (sinds 2026-10, `98c-rules.js`): links de hoofdstukken (blijft staan,
-    het hoofdstuk in beeld licht op), rechts bij 10 van de 12 hoofdstukken een animatie die in een lus
+    het hoofdstuk in beeld licht op), rechts bij 10 van de 13 hoofdstukken een animatie die in een lus
     loopt, alleen als hij in beeld is. Animaties = Web Animations op transform/opacity met een vaste
     duur per scène (`rTrack`/`rShow`/`rWalk`); niets opvragen uit de opmaak. De scènes gebruiken de
     ECHTE spelonderdelen (gebruikersmelding 2026-11: "animaties kloppen niet met het spel"): stenen via
@@ -649,8 +655,22 @@ Check minimaal:
 
 ## Nog te doen
 
-- **Roosters + schroevendraaier (6e energie-actie) — gekozen, nog niet gebouwd** (artifact "Axiom-9
-  Roosters", meting 2026-11: 35 varianten × 8.000 potjes, meetscript los van het project). Keuzes van
+- **Roosters + schroevendraaier (6e energie-actie) — GEBOUWD 2026-11** (artifact "Axiom-9
+  Roosters", meting 2026-11: 35 varianten × 8.000 potjes, meetscript los van het project). Code: blok
+  ROOSTERS in `95-simulate.js` (`resolveMoveCrawl` = de zet met schroevendraaier als extra toestand,
+  `grateGain`/`botDriverWanted`, kopen in `botPlanTurn` stap 2b, `r.crawled`), labels 5.1–5.10 in
+  tiles.json (`GRATE_LABELS`, `cellType` 'grate'), editor-gereedschap Roostervakje + controle in
+  `tileValidationIssues`, legendaregel (9 regels van 30px, gemeten 1920/1440/1366: niets afgekapt).
+  Mens: blok ROOSTERS in `97-solo.js` (`soloCrawlOfferHtml` in het energievak tijdens de zet, fase
+  'crawl-pick' = schijnwerper `#walkBoard.is-grate-pick`, fase 'crawling', `soloStepsDone`: ook na je
+  laatste stap mag je nog kruipen). Animatie `walkCrawlFx`/`walkCrawlPawn` (96-walk.js; pion even in
+  `walkFlyingIdx`), ook bij bot-replays en bij de gast (`mpPortalJumpFxFromState`). Multiplayer-intents
+  crawlStart/crawlPick/crawlCancel/crawlStop. Spelerskaartje: icoon als `p.screwdriver`. Simulatie-uitslag:
+  kaart "Roosters" naast Portalen ("Wat levert een actie op?" staat daarom over de volle breedte).
+  Spelregels: hoofdstuk 'rooster'. Nagemeten met de echte code (4 borden × 1.500): 66,6 beurten, 5,4×
+  kruipen per potje, startposities 24,8–25,2%, 0 vast. Getest: zes acties passen op 1440×780 (84px
+  over), potjes Zelf spelen en Automatisch uitgespeeld zonder fouten; Multiplayer nog niet met twee
+  vensters getest. Keuzes van
   de maker (2026-11): terug naar **2 portalen** (één paar blauw ↔ rood), Portaalkanon 5,
   **schroevendraaier 5 energie**, plus een kristal Schroevendraaier (2 in de stapel). Elke gangtegel
   één roostervakje, nooit tegen (ook niet schuin naast) het kristalvakje; een portaal ligt nooit op

@@ -19,6 +19,7 @@ const RULES_ENERGY_TEXT = {
   reorder: 'Bekijk je volgende opdracht en kies welke van de twee je eerst doet.',
   gravity: `Schiet eerst rechtdoor tot een muur of pion, hooguit ${typeof GRAVITY_DASH_STEPS !== 'undefined' ? GRAVITY_DASH_STEPS : 8} vakjes. Kom je op je opdracht, dan stop je daar. Daarna gooi je.`,
   portal:  'Schiet een portaal rechtdoor tot de muur of tot vóór een pion, en kies welke kleur je verplaatst. Daarna gooi je.',
+  driver:  'Koop een schroevendraaier. Sta je op een rooster, dan kruip je zonder stap naar een ander rooster en loop je door. Daarna is hij op.',
   jump:    `Spring eerst vrij naar een vakje binnen ${typeof ENERGY_JUMP_RANGE !== 'undefined' ? ENERGY_JUMP_RANGE : 11} stappen, over pionnen heen. Land je op je opdracht, dan is je beurt klaar; anders gooi je daarna.`,
 };
 const RULES_TINT_COLOR = { amber: 'var(--amber)', start: 'var(--start)', quest: 'var(--quest)', danger: 'var(--danger)', dim: 'var(--text-dim)' };
@@ -63,7 +64,7 @@ function rulesSections(){
     { id: 'bord', title: 'Het bord opbouwen', scene: 'board', html: `
       <ul class="rules-list">
         <li>Het bord bestaat uit <b>20 tegels</b> van 8 × 8 vakjes, in 4 rijen van 5. De plekken heten A t/m T.</li>
-        <li>Er zijn <b>10 kamers</b> en <b>10 gangen</b>. Elke kamer behalve Hibernatie heeft een opdrachtvakje (9 in totaal), elke gang een kristalvakje.</li>
+        <li>Er zijn <b>10 kamers</b> en <b>10 gangen</b>. Elke kamer behalve Hibernatie heeft een opdrachtvakje (9 in totaal), elke gang een kristalvakje en een <b>rooster</b>.</li>
         <li>Je mag elke tegel een kwartslag draaien, zo vaak als je wilt.</li>
         <li><b>Hibernatie</b> heeft de 4 startvakjes en ligt binnenin: op G, H, I, L, M of N.</li>
         <li>Op een <b>hoek</b> (A, E, P en T) mag geen doorgang naar de rand van het bord wijzen.</li>
@@ -84,7 +85,7 @@ function rulesSections(){
         <li>Iedereen schudt zijn eigen <b>9 opdrachtkaarten</b> en legt ze gedekt neer.</li>
         <li>Je eerste opdracht blijft geheim tot jij je startvak mag kiezen.</li>
         <li>De <b>kristallen</b> vormen één gedeelde, geschudde stapel van ${deckSize}: ${nCrystalKinds} soorten, van elk 2${extraCopies ? ` (${extraCopies})` : ''}.</li>
-        <li>Leg de twee <b>portaalparen</b> (blauw ↔ rood en groen ↔ geel) op gewone vakjes, de twee van een paar minstens ${typeof PORTAL_START_MIN_DIST !== 'undefined' ? PORTAL_START_MIN_DIST : 16} stappen uit elkaar.</li>
+        <li>Leg het <b>blauwe en het rode portaal</b> op gewone vakjes (niet op een rooster), minstens ${typeof PORTAL_START_MIN_DIST !== 'undefined' ? PORTAL_START_MIN_DIST : 16} stappen uit elkaar.</li>
         <li>Iedereen begint met <b>0 energie</b> en een lege kluis.</li>
       </ul>` },
 
@@ -137,13 +138,24 @@ function rulesSections(){
 
     { id: 'portaal', title: 'Portalen', scene: 'portal', html: `
       <ul class="rules-list">
-        <li>Er liggen altijd vier portalen op het bord, in twee paren: <b>blauw ↔ rood</b> en <b>groen ↔ geel</b>. Ze zijn van iedereen.</li>
-        <li>Stap je in een portaal, dan kom je uit zijn partner en <b>loop je met de rest van je worp gewoon door</b>, welke kant je maar wilt. Instappen kost één stap.</li>
-        <li>Staat er een pion op een portaal, dan werkt dat paar niet. Het andere paar wel.</li>
+        <li>Er liggen altijd twee portalen op het bord: <b>blauw</b> en <b>rood</b>. Ze zijn van iedereen.</li>
+        <li>Stap je in een portaal, dan kom je uit het andere en <b>loop je met de rest van je worp gewoon door</b>, welke kant je maar wilt. Instappen kost één stap.</li>
+        <li>Staat er een pion op een portaal, dan werken de portalen niet.</li>
         <li>Met de energie-actie <b>Portaalkanon</b> of het kristal <b>Portaalsleutel</b> verplaats je een portaal. Het vliegt rechtdoor tot de muur of tot vóór een pion. Hooguit één schot per beurt.</li>
-        <li>Je kiest zelf welk van de vier je verplaatst, ook als een ander hem legde.</li>
-        <li>Een portaal landt nooit op een opdracht-, start- of kristalvakje.</li>
+        <li>Je kiest zelf welk van de twee je verplaatst, ook als een ander hem legde.</li>
+        <li>Een portaal landt nooit op een opdracht-, start-, kristal- of roostervakje.</li>
         <li>Noodtransport, de laarzen en het kristal Duwstoot gaan gewoon over een portaal heen.</li>
+      </ul>` },
+
+    { id: 'rooster', title: 'Roosters', html: `
+      <ul class="rules-list">
+        <li>Elke gang heeft een <b>rooster</b> naar de luchtschacht: een donker vakje met een koperen rand.</li>
+        <li>Met een <b>schroevendraaier</b> kun je erin. Je koopt hem vóór je gooit met de energie-actie <b>Schroevendraaier</b> (${typeof ENERGY_ACTIONS !== 'undefined' && ENERGY_ACTIONS.driver ? ENERGY_ACTIONS.driver.cost : 5} energie), of je krijgt hem met het kristal Schroevendraaier.</li>
+        <li>Je kunt er <b>één</b> tegelijk hebben. Iedereen ziet wie er een heeft.</li>
+        <li>Sta je met een schroevendraaier op een rooster, ook midden in je zet of na je laatste stap, dan <b>mag</b> je erin kruipen. Dat kost geen stap.</li>
+        <li>Je komt uit bij een rooster naar keuze waar geen pion op staat, en <b>loopt met de rest van je worp door</b>, welke kant je maar wilt.</li>
+        <li>Daarna is de schroevendraaier <b>op</b>. Voor de volgende keer koop je een nieuwe.</li>
+        <li>De laarzen lopen gewoon over een rooster heen, en met Duwstoot kun je iemand op een rooster duwen.</li>
       </ul>` },
 
     { id: 'kristal', title: 'Kristallen', scene: 'crystal', html: `

@@ -2865,7 +2865,8 @@ function renderSimResults({ n, stuckCount, startWins, startTurnsSum, startRanks,
       const st = extra.energyStats[id], v = pctOf(st.banked, st.uses);
       return { label: ENERGY_ACTIONS[id].name.replace('Zwaartekracht-', ''), v, c: v > noActionPct ? SIM_COL.green : SIM_COL.dim };
     }), { max: 70, ref: noActionPct, w: 320, lw: 110, fmt: v => nl(v, 0) + '%' })),
-    details: tbl('<th>Actie</th><th>Per potje</th><th>Opdracht gehaald</th>', yieldRows) });
+    // over de volle breedte: zo blijven alle andere rijen paren (sinds de kaart Roosters, 2026-11)
+    details: tbl('<th>Actie</th><th>Per potje</th><th>Opdracht gehaald</th>', yieldRows), wide: true });
 
   // De vier meetpunten uit de analyse "Axiom-9 Portalen". De grens voor opdrachten via een portaal
   // was 5%; sinds de twee paren + kanon voor 5 (gebruikerswens 2026-11: portalen moeten meer
@@ -2890,7 +2891,35 @@ function renderSimResults({ n, stuckCount, startWins, startTurnsSum, startRanks,
       chart: simSplit(simDonut([{ v: stealPct, c: SIM_COL.red, label: 'gestolen' }, { v: 100 - stealPct, c: SIM_COL.blue, label: 'eigen of nieuw' }], { center: nl(stealPct, 0) + '%', sub: 'gestolen' }),
         simMinis([[nl(played ? pt.shots / played : 0, 1), 'schoten per potje'], [nl(played ? pt.jumps / played : 0, 1), 'sprongen per potje'], [nl(topPct, 0) + '%', 'meeste springer wint']])),
       details: tbl('<th>Meetpunt</th><th>Waarde</th><th>Oordeel</th>', ptRows) +
-        `<p class="hint">Bij de start liggen er twee portaalparen (blauw ↔ rood, groen ↔ geel), elk paar minstens ${PORTAL_START_MIN_DIST} stappen uit elkaar. Met het <b>Portaalkanon</b> (${ENERGY_ACTIONS.portal.cost} energie) schiet een speler er een naar de muur; stap je in een portaal, dan kom je uit zijn partner en loop je door met de rest van je worp. Elke bot schiet als het hem minstens ${PORTAL_BOT_MIN_GAIN} stappen scheelt.</p>` });
+        `<p class="hint">Bij de start liggen er ${PORTAL_COUNT / 2 === 1 ? 'een blauw en een rood portaal' : `${PORTAL_COUNT / 2} portaalparen`}, minstens ${PORTAL_START_MIN_DIST} stappen uit elkaar. Met het <b>Portaalkanon</b> (${ENERGY_ACTIONS.portal.cost} energie) schiet een speler er een naar de muur; stap je in een portaal, dan kom je uit het andere en loop je door met de rest van je worp. Elke bot schiet als het hem minstens ${PORTAL_BOT_MIN_GAIN} stappen scheelt.</p>` });
+  }
+
+  // ---------- Roosters (zie ROOSTERS) ----------
+  // Grenzen zoals bij de portalen: wie het vaakst kruipt mag niet te vaak winnen (≤30%), en kruipen
+  // mag niet te veel opdrachten beslissen (≤10%; gemeten bij het inbouwen ±2%).
+  const gr = extra.grate;
+  if (gr && graph.grates && graph.grates.length){
+    const okTag = (ok, warn) => ok ? '<span class="ok">✓ goed</span>' : warn ? '<span style="color:var(--amber)">≈ randgeval</span>' : '<span class="bad">✕ buiten de grens</span>';
+    const per = v => nl(played ? v / played : 0, 1);
+    const got = gr.buys + gr.cardBuys;
+    const usedPct = pctOf(gr.uses, got);
+    const gQuestPct = pctOf(gr.useQuests, pt ? pt.quests : 0);
+    const gTopPct = pctOf(gr.topWins, gr.topGames);
+    const grRows = [
+      ['Schroevendraaiers gekocht per potje', per(gr.buys), `voor ${ENERGY_ACTIONS.driver.cost} energie`, ''],
+      ['Als kristal gespeeld per potje', per(gr.cardBuys), `${actionCardCopies('driver')} in de stapel`, ''],
+      ['Keer gekropen per potje', per(gr.uses), `<b>${nl(usedPct, 0)}%</b> van de schroevendraaiers is gebruikt`, ''],
+      ['Opdrachten in een beurt met kruipen', nl(gQuestPct, 1) + '%', 'grens: hooguit 10% (15% = randgeval)', okTag(gQuestPct <= 10, gQuestPct <= 15)],
+      ['Meeste kruiper wint', nl(gTopPct, 1) + '%', `grens: hooguit 30% (35% = randgeval) · ${gr.topGames} potjes met één duidelijke koploper`, okTag(gTopPct <= 30, gTopPct <= 35)],
+    ].map(([label, val, sub, tag]) => `<tr><td>${label}<span class="sub">${sub}</span></td><td class="num">${val}</td><td>${tag}</td></tr>`).join('');
+    const grSt = gQuestPct <= 10 && gTopPct <= 30 ? 'ok' : gQuestPct <= 15 && gTopPct <= 35 ? 'warn' : 'bad';
+    cards.grate = simCard({ id: 'grate', title: 'Roosters', st: grSt,
+      big: per(gr.uses), bl: 'keer gekropen per potje (door alle spelers samen)',
+      line: grSt === 'ok' ? 'De luchtschacht is een snelle route, maar beslist het potje niet.' : 'Kruipen weegt zwaarder dan de vooraf gezette grens.',
+      chart: simSplit(simDonut([{ v: usedPct, c: '#e0915c', label: 'gebruikt' }, { v: 100 - usedPct, c: SIM_COL.dim, label: 'niet gebruikt' }], { center: nl(usedPct, 0) + '%', sub: 'gebruikt' }),
+        simMinis([[per(gr.buys), 'gekocht per potje'], [per(gr.cardBuys), 'als kristal'], [nl(gTopPct, 0) + '%', 'meeste kruiper wint']])),
+      details: tbl('<th>Meetpunt</th><th>Waarde</th><th>Oordeel</th>', grRows) +
+        `<p class="hint">Elke gang heeft een rooster (${graph.grates.length} op dit bord). Met een <b>schroevendraaier</b> (${ENERGY_ACTIONS.driver.cost} energie of het kristal) kruip je zonder stap van rooster naar rooster en loop je met de rest van je worp door; daarna is hij op. Een bot koopt er een als het hem minstens ${GRATE_BOT_MIN_GAIN} stappen scheelt.</p>` });
   }
 
   // ---------- Kristallen ----------
@@ -2971,7 +3000,8 @@ function renderSimResults({ n, stuckCount, startWins, startTurnsSum, startRanks,
     [cards.len, cards.tension],
     [cards.comeback, cards.search],
     [cards.strat, cards.energy],
-    [cards.yield, cards.portal],
+    [cards.yield],
+    [cards.portal, cards.grate],
     [cards.cardwin, cards.carduse],
     [cards.quests, cards.cold],
     [cards.heat],
