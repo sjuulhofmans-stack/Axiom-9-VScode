@@ -20,6 +20,7 @@ const RULES_ENERGY_TEXT = {
   gravity: `Schiet eerst rechtdoor tot een muur of pion, hooguit ${typeof GRAVITY_DASH_STEPS !== 'undefined' ? GRAVITY_DASH_STEPS : 8} vakjes. Kom je op je opdracht, dan stop je daar. Daarna gooi je.`,
   portal:  'Schiet een portaal rechtdoor tot de muur of tot vóór een pion, en kies welke kleur je verplaatst. Daarna gooi je.',
   driver:  'Koop een schroevendraaier. Sta je op een rooster, dan kruip je zonder stap naar een ander rooster en loop je door. Daarna is hij op.',
+  redie:   'De enige actie ná het dobbelen: gooi één loopsteen naar keuze opnieuw, vóór je eerste stap. De nieuwe waarde telt, ook als die lager is.',
   jump:    `Spring eerst vrij naar een vakje binnen ${typeof ENERGY_JUMP_RANGE !== 'undefined' ? ENERGY_JUMP_RANGE : 11} stappen, over pionnen heen. Land je op je opdracht, dan is je beurt klaar; anders gooi je daarna.`,
 };
 const RULES_TINT_COLOR = { amber: 'var(--amber)', start: 'var(--start)', quest: 'var(--quest)', danger: 'var(--danger)', dim: 'var(--text-dim)' };
@@ -100,7 +101,7 @@ function rulesSections(){
 
     { id: 'beurt', title: 'Je beurt', scene: 'turn', html: `
       <ol class="rules-steps">
-        <li><b>Energie-actie</b> (mag). Kies er hooguit één en zet hem meteen in, vóór je gooit.</li>
+        <li><b>Energie-actie</b> (mag). Kies er hooguit één en zet hem meteen in, vóór je gooit (alleen Herworp kies je ná de worp).</li>
         <li><b>Dobbelen.</b> Gooi de 2 loopstenen en de energiesteen.</li>
         <li><b>Lopen.</b> Zet precies zoveel stappen als de loopstenen samen aangeven.</li>
       </ol>
@@ -132,7 +133,7 @@ function rulesSections(){
         <li>De energiesteen heeft de kanten <b>${faces}</b>. Wat je gooit, krijg je erbij.</li>
         <li>Je hebt hoogstens <b>${eMax} energie</b>. Wat erboven komt, valt weg.</li>
         <li>Wat je deze beurt gooit, kun je pas <b>volgende beurt</b> uitgeven.</li>
-        <li>Een energie-actie kies je vóór je gooit, hooguit één per beurt:</li>
+        <li>Een energie-actie kies je vóór je gooit, hooguit één per beurt. Alleen Herworp kies je ná de worp, en dan alleen als je nog geen andere actie hebt gebruikt:</li>
       </ul>
       <ul class="rules-energy">${energyRows}</ul>` },
 

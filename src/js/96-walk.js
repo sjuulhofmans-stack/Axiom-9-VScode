@@ -623,10 +623,15 @@ function botTurnPreLog(player, r, graph){
   return `${player.name} schiet met <b>Zwaartekracht-laarzen</b>${pre.kind === 'bootsCard' ? ' (kristal)' : ''} ${pre.path.length - 1} vakjes rechtdoor${dir ? ` naar het ${dir}` : ''}.`;
 }
 // rond de worp: Stroomonderbreking en de kristallen die op de worp reageren, in die volgorde
+// Herworp (energie-actie ná de worp, zie botPickRedie in 95-simulate.js)
+function botRedieLogText(player, r){
+  return `${player.name} zet <b>Herworp</b> in (−${ENERGY_ACTIONS.redie.cost}): een ${r.redie.was} wordt een ${r.redie.value} → <b>${r.redie.roll}</b> stappen.`;
+}
 function botTurnRollLog(player, r){
   const lines = [];
   if (r.rollPenalty && r.dice.length) lines.push(`${player.name} verliest ${r.rollPenalty} stappen door <b>Stroomonderbreking</b> → ${r.dice[0].roll}.`);
   for (const ev of r.cards) if (ev.id === 'pick' || ev.id === 'reroll' || ev.id === 'solar') lines.push(botTurnCardLogText(player, ev));
+  if (r.redie) lines.push(botRedieLogText(player, r));
   if (r.crawled) lines.push(`${player.name} schroeft een rooster los en kruipt door de luchtschacht.`);
   return lines;
 }
@@ -1512,6 +1517,8 @@ async function runWalkSimulation(){
           const spin = st.why === 'pick' || fast ? 0 : DICE_SPIN_SHORT_MS;
           if (st.why === 'roll'){
             if (r.rollPenalty) walkLog(`${player.name} verliest ${r.rollPenalty} stappen door <b>Stroomonderbreking</b> → ${st.roll}.`, null, player);
+          } else if (st.why === 'redie'){
+            walkLog(botRedieLogText(player, r), null, player);
           } else {
             const ev = r.cards.find(c => c.id === st.why);
             if (ev) walkLog(botTurnCardLogText(player, ev), null, player);

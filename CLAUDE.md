@@ -117,7 +117,7 @@ aangeroepen (functiedeclaraties worden gehoist, `const`/`let` niet).
 | een spelregel-tekst of -animatie aanpassen  | `98c-rules.js` (`rulesSections` = teksten, `RULES_SCENES` = animaties) + `rules.css`. Energie-acties, kristallen en getallen (6 opdrachten, max. 10 energie, kluis 3, afstand tussen de portalen bij de start) komen uit de spelgegevens, dus die lopen vanzelf mee; een eigen korte zin voor een energie-actie in `RULES_ENERGY_TEXT`. Verander je een spelregel in de code, pas dan ook de tekst hier aan |
 | iets aan de tegel-editor                    | `90-editor.js`        |
 | de spelsimulatie aanpassen                  | `95-simulate.js`      |
-| een energie-actie of de prijs ervan aanpassen | `95-simulate.js` (`ENERGY_ACTIONS`, `botPreRollMove`) + knoppen in `97-solo.js` (`soloRenderActionPanel`/`soloUseEnergyAction`) |
+| een energie-actie of de prijs ervan aanpassen | `95-simulate.js` (`ENERGY_ACTIONS`, `botPreRollMove`) + knoppen in `97-solo.js` (`soloRenderActionPanel`/`soloUseEnergyAction`). Herworp (ná de worp) apart: `botPickRedie` + `soloRedie` |
 | iets aan de portalen (regels, bot-keuze, hoe ze eruitzien) | regels + bot: blok PORTALEN in `95-simulate.js`; bord/animatie: `walkPaintPortals` e.v. in `96-walk.js` + blok PORTALEN onderaan `styles.css`; keuze van de mens: `soloEnterPortalAim` e.v. in `97-solo.js` |
 | iets aan de roosters / schroevendraaier (regels, bot, kruipen, uiterlijk) | regels + bot: blok ROOSTERS in `95-simulate.js`; mens: blok ROOSTERS in `97-solo.js`; animatie `walkCrawlFx` (96-walk.js); vakje + schijnwerper: `.cell.grate` en blok "ROOSTERS: kruipen" in styles.css; plek van een rooster: tegel-editor (labels 5.x) |
 | iets aan "Spelen" → Automatisch (pion, tempo) | `96-walk.js`   |
@@ -300,6 +300,20 @@ aangeroepen (functiedeclaraties worden gehoist, `const`/`let` niet).
   één per beurt; wat de energiesteen oplevert geef je pas **volgende beurt** uit.
   Dat geldt voor mens én bot in alle drie de modi (vroeger mochten bots meteen
   uitgeven en Noodtransport ná de worp doen — dat maakte de simulatie te gunstig).
+  **Uitzondering: Herworp** (`redie`, 1 energie, 2026-11, idee van de maker tegen "te vaak onder
+  de 7"): ná de worp, vóór je eerste stap, één loopsteen naar keuze opnieuw gooien; de nieuwe
+  waarde telt. Alleen als je die beurt nog geen andere energie-actie gebruikte (hij neemt dat ene
+  slot). Bot: `botPickRedie` (gemiddelde uitkomst per steen, moet ≥ `REDIE_BOT_MARGIN` vakjes
+  schelen), in `botPlanTurn` na Koerscorrectie; mens: `soloRedie`/`soloRedieOfferHtml` (97-solo.js),
+  geen stap mogelijk na de worp → eerst nog het aanbod (`soloMove.redieStuck`, knop "Niet
+  herwerpen"); multiplayer-intents `redie`/`redieSkip`. Meetknoppen in de console:
+  `ENERGY_REDIE_ON`, `SIM_SETUP_HOOK` (per potje spelers aanpassen, bv. `p.noRedie`).
+  **Gemeten** (1 bord, telkens 500 potjes per meting; uit → aan voor iedereen): worp van 2 stenen
+  onder de 7: 40 → 32%, 4 of minder: 16 → 11%, stappen per worp 7,4 → 7,8, potjes 65,0 → 63,4
+  beurten, ±3,7× per speler per potje, de 4 vaste strategieën verschuiven niet. Eén speler mét
+  Herworp tegen drie zonder wint bij prijs **1: 31,3%** (10 metingen, 25,1–36,0; boven de grens van
+  31%), bij prijs **2: 25,6%** (6 metingen) met bijna dezelfde winst in gevoel (onder de 7: 32,9%,
+  potjes niet korter). Prijs 1 is de keuze van de maker; 2 is de gemeten eerlijke prijs.
   Vier acties: Stuwstoot (4, 3 loopstenen), Herprioritering (4, eerst je volgende
   opdrachtkaart bekijken en dan kiezen of je wisselt), Zwaartekracht-laarzen (5,
   eerst tot 8 vakjes rechtdoor tot een muur/pion, dan gooien) en Noodtransport
@@ -542,9 +556,12 @@ Check minimaal:
     rechts Voltooid / Energie / Kaarten; "aan zet" en de eindplaats als tabje op
     de rand. Verandert de hoogte boven/onder het bord, pas dan de 300px in
     `--wcell` (styles.css) aan.
-12. Zelf spelen → tabblad Energie toont de acties op prijs (Stuwstoot 4,
+12. Zelf spelen → tabblad Energie toont de acties op prijs (Herworp 1, Stuwstoot 4,
     Herprioritering 4, Zwaartekracht-laarzen 5, Portaalkanon 5, Schroevendraaier 5, Noodtransport 10)
-    mét uitlegregel (gemeten 1440×780: 84px ruimte over). Schroevendraaier → op een rooster staan →
+    mét uitlegregel. De lijst vult de hele kolom (rijen groeien mee, max. 76px; blok "ENERGIEVAK
+    UITGEREKT" in styles.css); gemeten 1920×889 rijen 61px, 1440×780 rijen 37px, niets scrolt.
+    Herworp staat vóór de worp grijs ("kies je ná het dobbelen"); na de worp staat er per steen een
+    knop "Gooi steen X opnieuw" tot je je eerste stap zet. Schroevendraaier → op een rooster staan →
     knop "Kruip door de luchtschacht" → vrije roosters lichten op (rest gedimd, je doel niet) → klik →
     rooster schroeft los, koperen lichtje, je loopt met dezelfde stappen door; icoon op je spelerskaartje
     tot je kruipt. Op het bord liggen een

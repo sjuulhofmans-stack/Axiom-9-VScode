@@ -4449,6 +4449,23 @@
   .walk-side-stack.has-vault #walkCardVault .crystal-vault-why{text-align:center;}
   /* "Kristallen 3 / 3" staat al op het tabblad */
   .walk-side-stack.has-vault #walkCardVault .crystal-vault-head{display:none;}
+  /* ENERGIEVAK UITGEREKT (gebruikerswens 2026-11): sinds de kluis een eigen tabblad is, vult de lijst
+     met energie-acties de hele rest van de kolom. Elke rij groeit even hard mee (flex:1), met een
+     plafond zodat een paar rijen (bv. de Herworp-keuze na de worp) geen enorme knoppen worden. Alleen
+     opmaak, geen animatie (prestatieregels). */
+  .walk-side-stack.has-vault #walkSoloPanel > .walk-solo-actions:not(:empty){
+    flex:1 1 auto; min-height:0; display:flex; flex-direction:column; flex-wrap:nowrap; gap:8px;
+  }
+  .walk-side-stack.has-vault #walkSoloPanel > .walk-solo-actions > .energy-pick-list.is-actions{flex:1 1 auto; min-height:0;}
+  .walk-side-stack.has-vault #walkSoloPanel > .walk-solo-actions > .energy-pick-list.is-actions > .energy-pick{flex:1 1 0; max-height:76px;}
+  .walk-side-stack.has-vault #walkSoloPanel > .walk-solo-actions > .energy-pick-list.is-actions > .energy-pick .energy-pick-text span{white-space:normal;}
+  /* Herworp-keuze na de worp: kopregel + per steen een rij (dobbelsteen in het icoonvak) */
+  #walkSoloPanel .redie-offer .redie-head{margin:0 0 2px; font-size:13px; line-height:1.35; color:var(--text-dim); flex:none;}
+  #walkSoloPanel .redie-offer .redie-head b{color:var(--text); font-family:var(--font-display); letter-spacing:.06em; text-transform:uppercase;}
+  #walkSoloPanel .redie-offer .redie-hint{margin:2px 0 0; flex:none;}
+  #walkSoloPanel .redie-offer .energy-pick-icon.redie-die{background:none; box-shadow:none;}
+  #walkSoloPanel .redie-offer .energy-pick-icon.redie-die .sd-die{width:100%; height:100%;}
+  #walkSoloPanel .redie-offer .energy-pick.is-plain{border-style:dashed;}
   /* laptop: met een eigen tabblad is er weer ruimte voor de uitlegregel bij elke energie-actie */
   @media (max-height: 865px), (max-width: 1630px){
     .walk-side-stack.has-vault #walkSoloPanel{gap:8px;}

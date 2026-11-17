@@ -4458,6 +4458,23 @@
   .walk-side-stack.has-vault #walkCardVault .crystal-vault-why{text-align:center;}
   /* "Kristallen 3 / 3" staat al op het tabblad */
   .walk-side-stack.has-vault #walkCardVault .crystal-vault-head{display:none;}
+  /* ENERGIEVAK UITGEREKT (gebruikerswens 2026-11): sinds de kluis een eigen tabblad is, vult de lijst
+     met energie-acties de hele rest van de kolom. Elke rij groeit even hard mee (flex:1), met een
+     plafond zodat een paar rijen (bv. de Herworp-keuze na de worp) geen enorme knoppen worden. Alleen
+     opmaak, geen animatie (prestatieregels). */
+  .walk-side-stack.has-vault #walkSoloPanel > .walk-solo-actions:not(:empty){
+    flex:1 1 auto; min-height:0; display:flex; flex-direction:column; flex-wrap:nowrap; gap:8px;
+  }
+  .walk-side-stack.has-vault #walkSoloPanel > .walk-solo-actions > .energy-pick-list.is-actions{flex:1 1 auto; min-height:0;}
+  .walk-side-stack.has-vault #walkSoloPanel > .walk-solo-actions > .energy-pick-list.is-actions > .energy-pick{flex:1 1 0; max-height:76px;}
+  .walk-side-stack.has-vault #walkSoloPanel > .walk-solo-actions > .energy-pick-list.is-actions > .energy-pick .energy-pick-text span{white-space:normal;}
+  /* Herworp-keuze na de worp: kopregel + per steen een rij (dobbelsteen in het icoonvak) */
+  #walkSoloPanel .redie-offer .redie-head{margin:0 0 2px; font-size:13px; line-height:1.35; color:var(--text-dim); flex:none;}
+  #walkSoloPanel .redie-offer .redie-head b{color:var(--text); font-family:var(--font-display); letter-spacing:.06em; text-transform:uppercase;}
+  #walkSoloPanel .redie-offer .redie-hint{margin:2px 0 0; flex:none;}
+  #walkSoloPanel .redie-offer .energy-pick-icon.redie-die{background:none; box-shadow:none;}
+  #walkSoloPanel .redie-offer .energy-pick-icon.redie-die .sd-die{width:100%; height:100%;}
+  #walkSoloPanel .redie-offer .energy-pick.is-plain{border-style:dashed;}
   /* laptop: met een eigen tabblad is er weer ruimte voor de uitlegregel bij elke energie-actie */
   @media (max-height: 865px), (max-width: 1630px){
     .walk-side-stack.has-vault #walkSoloPanel{gap:8px;}
@@ -8283,6 +8300,8 @@ const ENERGY_ACTIONS = {
              note: 'Kies een richting: het portaal vliegt rechtdoor tot de muur of tot vóór een pion. Daarna kies je of je het blauwe of het rode portaal verplaatst. Stapt iemand in een portaal, dan komt hij uit het andere en loopt hij met de rest van zijn worp door. Staat er een pion op een portaal, dan werkt het paar niet.' },
   driver:  { cost: 5,  name: 'Schroevendraaier', hint: 'kruip door een rooster naar een ander rooster',
              note: 'Je krijgt een schroevendraaier (je kunt er één tegelijk hebben, iedereen ziet het). Sta je op een rooster, ook midden in je zet, dan mag je erin kruipen: dat kost geen stap. Je kiest een vrij rooster als uitgang en loopt met de rest van je worp door. Daarna is de schroevendraaier op.' },
+  redie:   { cost: 1,  name: 'Herworp',         hint: 'ná de worp: gooi 1 loopsteen opnieuw',
+             note: 'Na het dobbelen gooi je één loopsteen naar keuze opnieuw; de nieuwe waarde telt, ook als die lager is. Kan alleen als je deze beurt nog geen andere energie-actie hebt gebruikt.' },
   none:    { cost: 0,  name: 'Geen energie',    hint: 'spaart, geeft nooit uit',
              note: 'Doet niets — de handmatige "overslaan"-keuze voor de mens. Zit niet in de bot-strategieën: een speler die een heel potje nooit energie uitgeeft komt in de praktijk niet voor, dus die zou de simulatiecijfers (met name het plafondverlies) alleen maar vertekenen.' },
 };
@@ -9112,6 +9131,52 @@ function botMoveScore(graph, move, targets){
   const d = simDistLookup(simBfsDistances(graph, next), move.key);
   return b * 1000 - (d >= 0 ? d : 999);
 }
+// ---------- Herworp (energie-actie, 1): ná de worp één loopsteen opnieuw gooien ----------
+// Uitzondering op "energie-actie vóór de worp": deze kies je pas als je de stenen ziet, en alleen
+// als je deze beurt nog geen andere energie-actie hebt gebruikt (hij gebruikt dus je ene slot).
+// Meetknoppen (let, voor de console): ENERGY_REDIE_ON zet hem helemaal uit, SIM_SETUP_HOOK mag in
+// de batch-simulatie per potje spelers aanpassen (bv. p.noRedie = true voor een vergelijking).
+let ENERGY_REDIE_ON = true;
+let SIM_SETUP_HOOK = null;
+// hoeveel vakjes de verwachte zet minstens beter moet zijn voordat een bot er 1 energie aan geeft
+let REDIE_BOT_MARGIN = 1;
+// "Hoeveel werk is er nog?" na een zet: afstand tot het volgende doel + de afstand van dat doel
+// naar het doel erna (zodat een gehaalde opdracht eerlijk meetelt tegen gewoon dichterbij komen).
+function botRemainingWork(graph, move, targets, legs){
+  const b = move.bankedCount || 0;
+  const next = targets[b];
+  if (next === undefined) return 0;
+  const d = simDistLookup(simBfsDistances(graph, next), move.key);
+  return (d >= 0 ? d : 60) + (b === 0 ? legs : 0);
+}
+// Welke steen opnieuw gooien? Per steen de gemiddelde uitkomst over de 6 mogelijke waarden; de
+// beste steen als die gemiddeld minstens REDIE_BOT_MARGIN vakjes werk scheelt, anders null.
+function botPickRedie(graph, fromKey, dieVals, penalty, occupied, targets, rand, current, crawl){
+  let legs = 0;
+  if (targets[1] !== undefined){
+    const dl = simDistLookup(simBfsDistances(graph, targets[1]), targets[0]);
+    legs = dl >= 0 ? dl : 0;
+  }
+  const now = botRemainingWork(graph, current, targets, legs);
+  if (now === 0) return null;
+  const base = dieVals.reduce((a, b) => a + b, 0);
+  const cache = new Map();
+  const workFor = (roll) => {
+    if (!cache.has(roll)) cache.set(roll, botRemainingWork(graph, resolveMove(graph, fromKey, roll, occupied, targets, rand, undefined, crawl), targets, legs));
+    return cache.get(roll);
+  };
+  let best = null, bestWork = now - REDIE_BOT_MARGIN;
+  const tried = new Set();
+  for (let i = 0; i < dieVals.length; i++){
+    if (tried.has(dieVals[i])) continue;   // twee gelijke stenen = zelfde keuze
+    tried.add(dieVals[i]);
+    let total = 0;
+    for (let v = 1; v <= 6; v++) total += workFor(Math.max(1, base - dieVals[i] + v - (penalty || 0)));
+    const avg = total / 6;
+    if (avg < bestWork){ bestWork = avg; best = { idx: i }; }
+  }
+  return best;
+}
 // Zelf kiezen: probeer elke steen op elke andere waarde en neem de beste zet. Alleen als dat
 // duidelijk beter is dan de huidige zet (een opdracht erbij, of minstens 2 vakjes dichterbij);
 // anders null en houdt de bot het kristal. `penalty` = Stroomonderbreking (geldt ook voor de nieuwe worp).
@@ -9901,6 +9966,23 @@ function botPlanTurn(ctx){
       r.dice.push({ vals: dieVals.slice(), roll, why: 'reroll' });
       move = resolveMove(graph, rollFrom, roll, occupied, rollTargets, rand, undefined, sd);
     }
+    // Herworp (energie, ná de worp): één steen opnieuw, alleen als het energieslot nog vrij is
+    if (ENERGY_REDIE_ON && !player.noRedie && !move.bankedQuest && !energyActionUsed && player.energy >= ENERGY_ACTIONS.redie.cost){
+      const pk = botPickRedie(graph, rollFrom, dieVals, rollPenalty, occupied, rollTargets, rand, move, sd);
+      if (pk){
+        const was = dieVals[pk.idx];
+        dieVals[pk.idx] = simRollD6(rand, player);
+        if (pk.idx < 2) statsRecordRoll(player, dieVals[0] + dieVals[1]);
+        roll = Math.max(1, sum() - rollPenalty);
+        payEnergy('redie');
+        r.redie = { idx: pk.idx, was, value: dieVals[pk.idx], roll };
+        r.dice.push({ vals: dieVals.slice(), roll, why: 'redie' });
+        move = resolveMove(graph, rollFrom, roll, occupied, rollTargets, rand, undefined, sd);
+        // "Wat levert een actie op?": hoeveel hoger de steen gemiddeld werd (kan ook lager zijn)
+        const st = extra && extra.energyStats.redie;
+        if (st) st.steps += dieVals[pk.idx] - was;
+      }
+    }
     // Zonnezeil (direct na de worp): energie gelijk aan de laagste steen, als er ruimte is
     if (!cardActionUsed && has('solar') && player.energy + pendingEnergy < ENERGY_MAX){
       const g = simGainEnergy(player, solarGain(dieVals));
@@ -10005,6 +10087,7 @@ function simulateOneGame(graph, rand, heatmap, questStats, extra){
   // strategieën loten, zodat "welke actie wint" niet vervuild wordt door de startpositie
   const strategies = pickEnergyStrategies(rand);
   for (let i = 0; i < players.length; i++) players[i].strategy = strategies[i];
+  if (SIM_SETUP_HOOK) SIM_SETUP_HOOK(players, rand);   // alleen voor metingen vanuit de console
   const deck = buildActionDeck(rand);   // één gedeelde stapel voor het hele potje
   portalSetup(graph, rand);             // vier portalen liggen al bij de start (zie PORTALEN)
   const portalJumpsBy = [0, 0, 0, 0];   // portaalsprongen per speler, voor "meeste teleporteerder wint"
@@ -10914,9 +10997,10 @@ function renderSimResults({ n, stuckCount, startWins, startTurnsSum, startRanks,
     if (id === 'gravity') return `gem. ${nl(st.steps / st.uses, 1)} vakjes rechtdoor · ${nl(pctOf(st.direct, st.uses), 0)}% pakt meteen de opdracht`;
     if (id === 'jump') return `gem. ${nl(st.steps / st.uses, 1)} vakjes gesprongen · ${nl(pctOf(st.direct, st.uses), 0)}% landt precies op de opdracht`;
     if (id === 'portal') return 'elke bot schiet als het hem ≥' + PORTAL_BOT_MIN_GAIN + ' stappen scheelt';
+    if (id === 'redie') return `ná de worp · de steen wordt gem. ${nl(st.steps / st.uses, 1)} hoger`;
     return '—';
   };
-  const yieldIds = [...ENERGY_STRATEGIES, 'portal'].filter(id => extra.energyStats[id]);
+  const yieldIds = [...ENERGY_STRATEGIES, 'portal', 'redie'].filter(id => extra.energyStats[id]);
   const noActionPct = pctOf(extra.noEnergyBanked, extra.noEnergyTurns);
   const yieldRows = yieldIds.map(id => {
     const st = extra.energyStats[id];
@@ -11192,7 +11276,7 @@ function runSimulationBatch(){
         // opdracht, verplaatste vakjes (sprint/sprong) of extra steen (Stuwstoot), direct op de
         // opdracht geland, en bij Herprioritering: keer gewisseld + vakjes gescheeld
         // ('portal' erbij: geen vaste strategie, maar elke bot mag schieten — zie botPortalWanted)
-        energyStats: Object.fromEntries([...ENERGY_STRATEGIES, 'portal'].map(id =>
+        energyStats: Object.fromEntries([...ENERGY_STRATEGIES, 'portal', 'redie'].map(id =>
           [id, { uses: 0, banked: 0, steps: 0, direct: 0, swaps: 0, saved: 0 }])),
         noEnergyTurns: 0, noEnergyBanked: 0,
         // "Pech-reeksen" en "Kan de achterste nog terugkomen?"
@@ -11910,10 +11994,15 @@ function botTurnPreLog(player, r, graph){
   return `${player.name} schiet met <b>Zwaartekracht-laarzen</b>${pre.kind === 'bootsCard' ? ' (kristal)' : ''} ${pre.path.length - 1} vakjes rechtdoor${dir ? ` naar het ${dir}` : ''}.`;
 }
 // rond de worp: Stroomonderbreking en de kristallen die op de worp reageren, in die volgorde
+// Herworp (energie-actie ná de worp, zie botPickRedie in 95-simulate.js)
+function botRedieLogText(player, r){
+  return `${player.name} zet <b>Herworp</b> in (−${ENERGY_ACTIONS.redie.cost}): een ${r.redie.was} wordt een ${r.redie.value} → <b>${r.redie.roll}</b> stappen.`;
+}
 function botTurnRollLog(player, r){
   const lines = [];
   if (r.rollPenalty && r.dice.length) lines.push(`${player.name} verliest ${r.rollPenalty} stappen door <b>Stroomonderbreking</b> → ${r.dice[0].roll}.`);
   for (const ev of r.cards) if (ev.id === 'pick' || ev.id === 'reroll' || ev.id === 'solar') lines.push(botTurnCardLogText(player, ev));
+  if (r.redie) lines.push(botRedieLogText(player, r));
   if (r.crawled) lines.push(`${player.name} schroeft een rooster los en kruipt door de luchtschacht.`);
   return lines;
 }
@@ -12799,6 +12888,8 @@ async function runWalkSimulation(){
           const spin = st.why === 'pick' || fast ? 0 : DICE_SPIN_SHORT_MS;
           if (st.why === 'roll'){
             if (r.rollPenalty) walkLog(`${player.name} verliest ${r.rollPenalty} stappen door <b>Stroomonderbreking</b> → ${st.roll}.`, null, player);
+          } else if (st.why === 'redie'){
+            walkLog(botRedieLogText(player, r), null, player);
           } else {
             const ev = r.cards.find(c => c.id === st.why);
             if (ev) walkLog(botTurnCardLogText(player, ev), null, player);
@@ -15650,6 +15741,8 @@ const ENERGY_ACTION_ICONS = {
   portal: 'M6.5 6c2 0 3 2.7 3 6s-1 6-3 6-3-2.7-3-6 1-6 3-6zM17.5 6c2 0 3 2.7 3 6s-1 6-3 6-3-2.7-3-6 1-6 3-6zM9.5 12h5M12.5 10l2 2-2 2',
   // schroevendraaier (gekozen icoon A): handvat linksonder, schacht schuin omhoog
   driver: 'M3.5 17.5l3.5-3.5 3 3-3.5 3.5zM8.5 15.5L18.5 5.5M18.5 5.5l2-2',
+  // Herworp: een dobbelsteen met drie stippen en een pijltje dat eromheen draait
+  redie: 'M6 8h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-8a2 2 0 0 1 2-2zM7.5 11.5h.01M10 14h.01M12.5 16.5h.01M9 4.5a8 8 0 0 1 11 6M20 6.5v4h-4',
 };
 // De 'choose-action'-fase toont ALLEEN de energie-acties — die moet je immers vóór het dobbelen
 // inzetten. De meeste kaarten spelen/afleggen kan pas ná het dobbelen, vóór of tijdens het
@@ -15663,12 +15756,14 @@ function soloRenderActionPanel(){
   // spiegel van de check aan de kaart-kant in soloCardBlockReason (allebei een gratis 3e steen).
   const boostcellUsed = soloUsedCardId === 'boostcell';
   // volgorde oplopend op kosten (gebruikerswens: de goedkoopste actie bovenaan)
-  const ids = ['boost', 'reorder', 'gravity', 'portal', 'driver', 'jump'].sort((a, b) => ENERGY_ACTIONS[a].cost - ENERGY_ACTIONS[b].cost);
+  // Herworp staat er ook bij (bovenaan, prijs 1), maar kies je pas ná het dobbelen: hier alleen ter info
+  const ids = [...(ENERGY_REDIE_ON ? ['redie'] : []), 'boost', 'reorder', 'gravity', 'portal', 'driver', 'jump'].sort((a, b) => ENERGY_ACTIONS[a].cost - ENERGY_ACTIONS[b].cost);
   // waarom kan een actie nu niet (naast te weinig energie)? Zelfde paren als in de simulatie:
   // Stuwlading/Stuwstoot en de laarzen-kaart/-actie sluiten elkaar uit.
   const blockReason = (id) => {
     // Vergrendeling (soloBeginHumanTurn zet soloUsedEnergyId = 'locked'): deze beurt geen enkele energie-actie
     if (soloLockedThisTurn) return 'je bent vergrendeld';
+    if (id === 'redie') return p.energy < ENERGY_ACTIONS.redie.cost ? 'nog 1 energie nodig' : 'kies je ná het dobbelen';
     if (id === 'boost' && boostcellUsed) return 'je hebt deze beurt al Stuwlading gespeeld';
     if (id === 'gravity' && soloUsedBoots) return 'je hebt deze beurt al gesprint';
     if (id === 'gravity' && !soloDashOptions().length) return 'in geen enkele richting ruimte';
@@ -15684,7 +15779,7 @@ function soloRenderActionPanel(){
   // zien er anders uit alsof het paneel stuk is. Bewust één korte regel: met 4 acties paste de
   // oude zin van twee regels niet meer in het vaste vak (.walk-solo-panel) en moest je scrollen
   // bij 0–3 energie, dus bijna elke beurt aan het begin van een potje (gebruikersmelding).
-  const allLocked = ids.every(locked);
+  const allLocked = ids.every(id => id === 'redie' || locked(id));
   const note = allLocked
     ? `<p class="hint energy-pick-none">Te weinig energie voor een actie — gooi gewoon.</p>`
     : '';
@@ -15712,6 +15807,8 @@ if (walkSoloActionsEl){
     else if (soloPhase === 'portal-aim' && btn.dataset.portalDir !== undefined) soloResolvePortalAim(parseInt(btn.dataset.portalDir, 10));
     else if (soloPhase === 'portal-color' && btn.dataset.portalColor !== undefined) soloResolvePortalColor(parseInt(btn.dataset.portalColor, 10));
     else if (soloPhase === 'reorder-peek' && btn.dataset.reorder) soloResolveReorder(btn.dataset.reorder === 'swap');
+    else if (soloPhase === 'moving' && btn.dataset.redie === 'skip') soloRedieSkip();
+    else if (soloPhase === 'moving' && btn.dataset.redie !== undefined) soloRedie(parseInt(btn.dataset.redie, 10));
     else if (soloPhase === 'moving' && btn.dataset.crawl === 'go') soloStartCrawlPick();
     else if (soloPhase === 'moving' && btn.dataset.crawl === 'stop') soloCrawlStop();
     else if (soloPhase === 'crawl-pick' && btn.dataset.crawl === 'cancel') soloCancelCrawlPick();
@@ -15822,10 +15919,11 @@ function soloRefreshCardVault(){
     // tijdens je zet: het aanbod om te kruipen als je met een schroevendraaier op een rooster staat
     // (zie soloCrawlOfferHtml); anders leeg
     if (walkSoloActionsEl){
-      const html = soloCrawlOfferHtml();
+      // (of, vóór je eerste stap, Herworp: zie soloRedieOfferHtml)
+      const html = soloCrawlOfferHtml() || soloRedieOfferHtml();
       // alleen opnieuw in de DOM als het echt anders is (anders begint de puls telkens opnieuw)
       if (!html){ if (walkSoloActionsEl.firstChild) walkSoloActionsEl.innerHTML = ''; }
-      else if (walkSoloActionsEl.dataset.offer !== html || !walkSoloActionsEl.querySelector('.crawl-offer')){
+      else if (walkSoloActionsEl.dataset.offer !== html || !walkSoloActionsEl.querySelector('.crawl-offer, .redie-offer')){
         walkSoloActionsEl.innerHTML = html;
         walkSoloActionsEl.dataset.offer = html;
         for (const el of walkSoloActionsEl.querySelectorAll('.walk-pulse-affordable')) syncPulse(el);
@@ -16211,6 +16309,69 @@ function soloCrawlOfferHtml(){
       ? `<button type="button" class="energy-pick crawl-btn is-plain" data-crawl="stop"><span class="energy-pick-text"><b>Hier stoppen</b><span>${rest > 0 ? 'je kunt geen gewone stap meer zetten' : 'je stappen zijn op'}</span></span></button>`
       : `<p class="hint crawl-hint">Je staat op een rooster met een schroevendraaier. Of loop gewoon verder.</p>`) +
   `</div>`;
+}
+
+// ---------- Herworp: energie-actie (1) ná de worp, één loopsteen opnieuw ----------
+// De enige energie-actie die je ná het dobbelen kiest (zie ENERGY_ACTIONS.redie en botPickRedie in
+// 95-simulate.js): alleen vóór je eerste stap en alleen als je deze beurt nog geen andere
+// energie-actie hebt gebruikt. In het energievak staat dan per steen een knop; met je eerste stap
+// vervalt het aanbod. Kun je na de worp geen enkele stap zetten, dan blijft je zet even staan
+// (soloMove.redieStuck) zodat je toch nog kunt herwerpen, of met "Niet herwerpen" stopt.
+// Multiplayer: intent 'redie' (MP_INTENT_HANDLERS, 99-multiplayer.js).
+function soloRedieAvailable(){
+  const p = solo();
+  return !!(ENERGY_REDIE_ON && p && p.isHuman && soloPhase === 'moving' && soloMove && soloMove.path
+    && soloMove.path.length === 1 && soloMove.stepsLeft === soloMove.roll && !soloMove.redieDeclined
+    && soloBankCountThisTurn === 0 && !soloEnergyActionUsed() && !soloLockedThisTurn
+    && p.energy >= ENERGY_ACTIONS.redie.cost);
+}
+function soloRedieOfferHtml(){
+  if (!soloRedieAvailable()) return '';
+  const act = ENERGY_ACTIONS.redie;
+  const price = `<span class="energy-pick-price">${act.cost}<svg viewBox="0 0 14 24" aria-hidden="true"><path d="M9.4 .8 1.6 13.4h4.3L4.6 23.2l7.8-13h-4.5z"></path></svg></span>`;
+  const btns = soloDieValues().map((v, i) =>
+    `<button type="button" class="energy-pick redie-btn walk-pulse-affordable" data-redie="${i}" title="${act.name} (${act.cost} energie) — ${act.note}">` +
+      `<span class="energy-pick-icon redie-die">${diceDieHtml(v)}</span>` +
+      `<span class="energy-pick-text"><b>Gooi steen ${i + 1} opnieuw</b><span>nu een ${v} · de nieuwe waarde telt</span></span>` +
+      price +
+    `</button>`).join('');
+  const tail = soloMove.redieStuck
+    ? `<button type="button" class="energy-pick redie-btn is-plain" data-redie="skip"><span class="energy-pick-text"><b>Niet herwerpen</b><span>je kunt met deze worp geen stap zetten, je zet stopt hier</span></span></button>`
+    : `<p class="hint redie-hint">Of loop gewoon: met je eerste stap vervalt Herworp.</p>`;
+  return `<div class="energy-pick-list is-actions redie-offer">` +
+    `<p class="redie-head"><b>Herworp</b> · ${soloMove.roll} stappen gegooid. Eén steen opnieuw voor ${act.cost} energie?</p>` +
+    btns + tail + `</div>`;
+}
+function soloRedie(die){
+  if (mpIntercept('redie', { die })) return;
+  if (!soloRedieAvailable()) return;
+  const vals = soloDieValues();
+  if (!(die >= 0 && die < vals.length)) return;
+  const p = solo(), act = ENERGY_ACTIONS.redie;
+  p.energy -= act.cost;
+  p.actionUses = (p.actionUses || 0) + 1;
+  statsUseEnergy(p, 'redie');
+  soloUsedEnergyId = 'redie';
+  soloRenderEnergyOverview();
+  const was = vals[die], value = simRollD6(soloRand, p);
+  if (die === 0) soloMove.d1 = value; else if (die === 1) soloMove.d2 = value; else soloMove.d3 = value;
+  if (die < 2) statsRecordRoll(p, soloMove.d1 + soloMove.d2);
+  // een Stroomonderbreking op de worp blijft gelden
+  soloMove.roll = Math.max(1, soloMove.d1 + soloMove.d2 + (soloMove.d3 || 0) - (soloMove.penalty || 0));
+  soloMove.stepsLeft = soloMove.roll;
+  soloMove.redieStuck = false;
+  renderWalkDice(soloMove.d1, soloMove.d2, soloEnergyRoll, false, soloMove.d3, soloMove.roll, { key: diceSoloRollKey() + '|rd' + die + value, spinMs: DICE_SPIN_SHORT_MS });
+  walkLog(`Je zet <b>Herworp</b> in (−${act.cost}): steen ${die + 1} was een ${was} en wordt een ${value} → <b>${soloMove.roll}</b> stappen.`, null, p);
+  renderWalkScore(soloPlayers, soloActiveIdx);
+  soloAdvanceMovePhase();
+}
+// vastgelopen na de worp en geen zin in herwerpen: de zet afmaken zoals zonder Herworp
+function soloRedieSkip(){
+  if (mpIntercept('redieSkip', {})) return;
+  if (soloPhase !== 'moving' || !soloMove || !soloMove.redieStuck) return;
+  soloMove.redieDeclined = true;
+  soloMove.redieStuck = false;
+  soloAdvanceMovePhase();
 }
 function soloStartCrawlPick(){
   if (soloPhase !== 'moving') return;
@@ -16790,6 +16951,20 @@ function soloAdvanceMovePhase(){
     renderSoloMeta(soloMove.stepsLeft);
     soloRefreshCardVault();
     return;
+  }
+  // geen stap mogelijk direct na de worp: eerst nog Herworp aanbieden (zie soloRedieOfferHtml)
+  if (!legal.length && soloMove.path.length === 1 && soloMove.stepsLeft > 0){
+    const prevPhase = soloPhase;
+    soloPhase = 'moving';   // soloRedieAvailable kijkt naar de fase
+    if (!soloRedieAvailable()) soloPhase = prevPhase;
+    else {
+      soloMove.redieStuck = true;
+      soloClearClickable();
+      soloHideStepCounter();
+      renderSoloMeta(soloMove.stepsLeft);
+      soloRefreshCardVault();
+      return;
+    }
   }
   if (!legal.length && blind){
     // met Blinde Vlek geen enkele stap die niet op een pion eindigt: de zet stopt hier
@@ -17561,7 +17736,7 @@ if (walkStatsBodyEl){
 // ---------- grafieken in de statistieken (SVG, met de hand getekend: geen library nodig) ----------
 // Gegevens komen uit newPlayerStats (95-simulate.js): hist (stand bij het begin van elke eigen
 // beurt), rolls (som van de 2 loopstenen), energyUse en cardUse, plus walkSteps/dashSteps.
-const STATS_ENERGY_COLORS = { boost: '#ffb545', reorder: '#4fb8e0', gravity: '#b98cff', portal: '#ff6b5d', jump: '#55d68a' };
+const STATS_ENERGY_COLORS = { redie: '#e8edf2', boost: '#ffb545', reorder: '#4fb8e0', gravity: '#b98cff', portal: '#ff6b5d', jump: '#55d68a' };
 // genoeg verschillende tinten voor alle kristallen (15 soorten; met 8 deelden sommige een kleur)
 const STATS_CARD_PALETTE = ['#4fb8e0', '#ffb545', '#b98cff', '#55d68a', '#ff7a45', '#ff4fd8', '#e6e15a', '#8fa3b8',
   '#2f7fff', '#c46b2b', '#7a5cff', '#1fb39a', '#ff9db0', '#a3d65c', '#d4a4ff', '#5ad1e6', '#b8865a', '#e85d5d'];
@@ -18829,6 +19004,7 @@ const RULES_ENERGY_TEXT = {
   gravity: `Schiet eerst rechtdoor tot een muur of pion, hooguit ${typeof GRAVITY_DASH_STEPS !== 'undefined' ? GRAVITY_DASH_STEPS : 8} vakjes. Kom je op je opdracht, dan stop je daar. Daarna gooi je.`,
   portal:  'Schiet een portaal rechtdoor tot de muur of tot vóór een pion, en kies welke kleur je verplaatst. Daarna gooi je.',
   driver:  'Koop een schroevendraaier. Sta je op een rooster, dan kruip je zonder stap naar een ander rooster en loop je door. Daarna is hij op.',
+  redie:   'De enige actie ná het dobbelen: gooi één loopsteen naar keuze opnieuw, vóór je eerste stap. De nieuwe waarde telt, ook als die lager is.',
   jump:    `Spring eerst vrij naar een vakje binnen ${typeof ENERGY_JUMP_RANGE !== 'undefined' ? ENERGY_JUMP_RANGE : 11} stappen, over pionnen heen. Land je op je opdracht, dan is je beurt klaar; anders gooi je daarna.`,
 };
 const RULES_TINT_COLOR = { amber: 'var(--amber)', start: 'var(--start)', quest: 'var(--quest)', danger: 'var(--danger)', dim: 'var(--text-dim)' };
@@ -18909,7 +19085,7 @@ function rulesSections(){
 
     { id: 'beurt', title: 'Je beurt', scene: 'turn', html: `
       <ol class="rules-steps">
-        <li><b>Energie-actie</b> (mag). Kies er hooguit één en zet hem meteen in, vóór je gooit.</li>
+        <li><b>Energie-actie</b> (mag). Kies er hooguit één en zet hem meteen in, vóór je gooit (alleen Herworp kies je ná de worp).</li>
         <li><b>Dobbelen.</b> Gooi de 2 loopstenen en de energiesteen.</li>
         <li><b>Lopen.</b> Zet precies zoveel stappen als de loopstenen samen aangeven.</li>
       </ol>
@@ -18941,7 +19117,7 @@ function rulesSections(){
         <li>De energiesteen heeft de kanten <b>${faces}</b>. Wat je gooit, krijg je erbij.</li>
         <li>Je hebt hoogstens <b>${eMax} energie</b>. Wat erboven komt, valt weg.</li>
         <li>Wat je deze beurt gooit, kun je pas <b>volgende beurt</b> uitgeven.</li>
-        <li>Een energie-actie kies je vóór je gooit, hooguit één per beurt:</li>
+        <li>Een energie-actie kies je vóór je gooit, hooguit één per beurt. Alleen Herworp kies je ná de worp, en dan alleen als je nog geen andere actie hebt gebruikt:</li>
       </ul>
       <ul class="rules-energy">${energyRows}</ul>` },
 
@@ -21133,6 +21309,9 @@ const MP_INTENT_HANDLERS = {
   discardCard: (a) => soloDiscardCard(a.id),
   resolveTarget: (a) => soloResolveTargetCard(a.cardId, a.targetIdx),
   pickDie: (a) => soloResolveDiePick(a.die, a.value),
+  // Herworp (energie-actie ná de worp, zie soloRedie in 97-solo.js)
+  redie: (a) => soloRedie(a.die),
+  redieSkip: () => soloRedieSkip(),
   resolveBoots: (a) => soloResolveBoots(a.dir),
   portalAim: (a) => soloResolvePortalAim(a.dir),
   portalColor: (a) => soloResolvePortalColor(a.color),

@@ -1605,6 +1605,9 @@ const MP_INTENT_HANDLERS = {
   discardCard: (a) => soloDiscardCard(a.id),
   resolveTarget: (a) => soloResolveTargetCard(a.cardId, a.targetIdx),
   pickDie: (a) => soloResolveDiePick(a.die, a.value),
+  // Herworp (energie-actie ná de worp, zie soloRedie in 97-solo.js)
+  redie: (a) => soloRedie(a.die),
+  redieSkip: () => soloRedieSkip(),
   resolveBoots: (a) => soloResolveBoots(a.dir),
   portalAim: (a) => soloResolvePortalAim(a.dir),
   portalColor: (a) => soloResolvePortalColor(a.color),
