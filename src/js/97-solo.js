@@ -949,6 +949,8 @@ if (walkQuestChecklistEl){
 // ---------- actiepaneel (begin van de beurt) ----------
 function renderEnergySoloButton(id, disabled, reason){
   const act = ENERGY_ACTIONS[id];
+  // GEEN title (gebruikerswens 2026-11): die gaf een tekstblokje naast de muis met dezelfde uitleg die
+  // al onderin het uitlegvak staat. Alleen voor schermlezers, als aria-label.
   const title = reason ? `${act.name} — ${reason}` : `${act.name} (${act.cost} energie) — ${act.note || act.hint}`;
   // puls per knop, niet op de hele kolom (gebruikerswens) — alleen de acties die je NU echt
   // kunt kiezen knipperen; `disabled` dekt zowel te weinig energie als een geblokkeerde
@@ -965,7 +967,7 @@ function renderEnergySoloButton(id, disabled, reason){
   // energie: in de uitlegregel hoeveel je nog mist
   const short = Math.max(0, act.cost - solo().energy);
   const sub = reason || (short > 0 ? `nog ${short} energie nodig` : act.hint);
-  return `<button type="button" class="energy-pick${disabled ? ' is-disabled' : ''}${pulse ? ' walk-pulse-affordable' : ''}" data-energy="${id}"${disabled ? ' disabled' : ''} title="${title}">
+  return `<button type="button" class="energy-pick${disabled ? ' is-disabled' : ''}${pulse ? ' walk-pulse-affordable' : ''}" data-energy="${id}"${disabled ? ' disabled' : ''} aria-label="${title}">
     <span class="energy-pick-icon">${id === 'driver' ? crystalDriverSvg('mono') : `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="${ENERGY_ACTION_ICONS[id] || ''}"></path></svg>`}</span>
     <span class="energy-pick-text">
       <b>${act.name}</b>
