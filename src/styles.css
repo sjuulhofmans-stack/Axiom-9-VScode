@@ -4325,6 +4325,9 @@
   /* het vakje waar het lichtje uit vertrekt even bovenop, zodat het lichtje over pionnen, spoor en
      doelvakjes heen schuift in plaats van eronder */
   #walkBoard .cell.is-crawl-src{z-index:30 !important;}
+  /* het rooster wiebelt en schuift bij het openen buiten zijn vakje: dat vakje dan boven de buren */
+  #walkBoard .cell.has-grate-fx{z-index:25 !important;}
+  .walk-grate-lid{box-shadow:0 2px 6px rgba(0,0,0,.6);}
   .walk-grate-lid{
     position:absolute; inset:0; pointer-events:none; z-index:7; will-change:transform, opacity;
     background:#161b22 var(--grate-img) center / 100% 100% no-repeat;

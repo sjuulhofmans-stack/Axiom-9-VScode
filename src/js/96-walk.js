@@ -482,37 +482,57 @@ function walkPortalJumpFx(graph, entry, exit){
   walkPortalBurst(graph, exit, colorOf(exit), true);
 }
 // ---------- ROOSTERS: kruipen (zie ROOSTERS in 95-simulate.js) ----------
-// Gekozen in artifact "Axiom-9 Roosters" (2026-11): openen = LOSSCHROEVEN (het rooster draait een halve
-// slag en schuift weg, eronder een donker gat), spoor = RECHTE LIJN (een koperen lichtje met staart
+// Gekozen in artifact "Axiom-9 Roosters" (2026-11): openen = LOSSCHROEVEN (het rooster wiebelt los, komt
+// omhoog en schuift weg, eronder een donker gat), spoor = RECHTE LIJN (een koperen lichtje met staart
 // rechtdoor van rooster naar rooster). Volgorde: ingang open → pion weg → lichtje → uitgang open → pion
-// erin → beide roosters weer dicht. Alleen transform/opacity, niets opgemeten (Prestatie in CLAUDE.md).
+// eruit (zie hieronder). Alleen transform/opacity, niets opgemeten (Prestatie in CLAUDE.md).
 // `hide()`/`show()`: de aanroeper haalt de pion van het bord en zet hem bij de uitgang terug.
-// Geeft een Promise die klaar is als de pion bij de uitgang staat (de roosters sluiten daarna vanzelf).
-// Tempo (gebruikersmelding 2026-11: "gaat mega snel en werkt niet goed"; was 480 ms losschroeven en
-// 450–1000 ms vliegen, alles in ±1,5 s en de pion verdween in één keer): nu ±3,5 s, in vijf duidelijke
-// stappen — rooster schroeft los ONDER de pion, pion zakt het gat in, lichtje door de schacht, uitgang
-// schroeft los, pion komt omhoog. De pion is tijdens het kruipen een losse schijf (.walk-crawl-pawn),
-// want de echte pion is het vakje zelf (.cell.walk-pawn) en kan niet krimpen.
-const GRATE_LID_MS = 850;            // losschroeven
-const GRATE_SINK_MS = 480;           // pion zakt erin / komt eruit
-const GRATE_TRAIL_MS_PER_CELL = 110; // het lichtje: per vakje, tussen 900 en 2000 ms
+// Geeft een Promise die klaar is als de pion bij de uitgang staat en alle roosters weer gewoon zijn.
+// Tempo en volgorde (gebruikersmeldingen 2026-11: eerst "gaat mega snel en werkt niet goed", daarna
+// "het rooster opengaan gaat fout, je gaat nog steeds teringsnel naar de andere kant en dan flipt het
+// openen weer"). Wat er mis was: de pionschijf lag bovenop het rooster en verborg het losschroeven; een
+// halve slag draaien van een vierkant rooster ziet er precies hetzelfde uit; en het rooster bij de
+// UITGANG ging achteraf weer dicht OVER de pion heen (pion weg, pion terug = de "flip"). Nu:
+//   1. pion krimpt een beetje, rooster eronder wiebelt los (schroeven), komt omhoog en schuift weg
+//   2. pion zakt het zwarte gat in; het ingangsrooster gaat achter hem rustig weer dicht
+//   3. koperen lichtje traag door de schacht (170 ms per vakje, 1,4–3 s)
+//   4. pas als het lichtje er is: uitgangsrooster wiebelt los en schuift weg
+//   5. pion komt omhoog; het uitgangsrooster gaat NIET dicht (de pion staat erop en bedekt het)
+// De pion is tijdens het kruipen een losse schijf (.walk-crawl-pawn), want de echte pion is het vakje
+// zelf (.cell.walk-pawn) en kan niet krimpen. Snelle stand (bots in Automatisch): alles ×0,5.
+const GRATE_LID_MS = 1100;           // rooster los (wiebelen + wegschuiven)
+const GRATE_SHUT_MS = 650;           // rooster terug
+const GRATE_SINK_MS = 650;           // pion zakt erin / komt eruit
+const GRATE_TRAIL_MS_PER_CELL = 170; // het lichtje: per vakje, tussen 1400 en 3000 ms
 function walkGrateLid(graph, key, open, ms){
   const cell = walkCellDiv(graph, key);
+  for (const old of cell.querySelectorAll('.walk-grate-lid')) old.remove();
   const lid = document.createElement('i');
   lid.className = 'walk-grate-lid';
   cell.classList.add('has-grate-fx', 'is-grate-open');
   cell.appendChild(lid);
-  const shut = [{ transform: 'rotate(0deg) translateY(0)', opacity: 1 }];
-  const turned = { transform: 'rotate(180deg) translateY(0)', opacity: 1, offset: 0.6 };
-  const away = { transform: 'rotate(180deg) translateY(-85%) scale(.85)', opacity: 0 };
-  const frames = open ? [shut[0], turned, away] : [away, { ...turned, offset: 0.4 }, shut[0]];
+  const at = (rot, lift, sc, op, offset) => {
+    const f = { transform: `translateY(${lift}%) rotate(${rot}deg) scale(${sc})`, opacity: op };
+    if (offset !== undefined) f.offset = offset;
+    return f;
+  };
+  // open: drie keer wiebelen (schroeven los), optillen, opzij en weg. dicht: terugschuiven en neerploffen.
+  const frames = open
+    ? [at(0, 0, 1, 1), at(-14, 0, 1, 1, .12), at(12, 0, 1, 1, .24), at(-9, 0, 1, 1, .36), at(6, 0, 1, 1, .46),
+       at(0, 0, 1, 1, .54), at(0, -12, 1.18, 1, .7), at(18, -70, 1.1, 0)]
+    : [at(18, -70, 1.1, 0), at(0, -12, 1.18, 1, .55), at(0, 0, .96, 1, .85), at(0, 0, 1, 1)];
   const a = lid.animate(frames, { duration: ms, easing: 'ease-in-out', fill: 'forwards' });
   return a.finished.catch(() => {}).then(() => {
+    if (!lid.isConnected) return;
     // open: het gat blijft (is-grate-open), het laagje mag weg; dicht: gat weer dicht
     lid.remove();
-    if (!open) cell.classList.remove('is-grate-open');
-    if (!cell.querySelector('.walk-grate-lid, .walk-crawl-light, .walk-crawl-pawn') &&!cell.classList.contains('is-grate-open')) cell.classList.remove('has-grate-fx');
+    if (!open) walkGrateClear(cell);
   });
+}
+// rooster in één keer weer "gewoon" (geen gat, geen laagjes)
+function walkGrateClear(cell){
+  cell.classList.remove('is-grate-open');
+  if (!cell.querySelector('.walk-grate-lid, .walk-crawl-light, .walk-crawl-pawn')) cell.classList.remove('has-grate-fx');
 }
 function walkCrawlFx(graph, entry, exit, { fast = false, hide, show, color } = {}){
   const reduced = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -520,12 +540,12 @@ function walkCrawlFx(graph, entry, exit, { fast = false, hide, show, color } = {
     if (hide) hide(); if (show) show();
     return Promise.resolve();
   }
-  const speed = fast ? 0.45 : 1;
+  const speed = fast ? 0.5 : 1;
   const ms = v => Math.round(v * speed);
-  const lidMs = ms(GRATE_LID_MS), sinkMs = ms(GRATE_SINK_MS);
+  const lidMs = ms(GRATE_LID_MS), shutMs = ms(GRATE_SHUT_MS), sinkMs = ms(GRATE_SINK_MS);
   const dc = (exit % graph.W) - (entry % graph.W), dr = Math.floor(exit / graph.W) - Math.floor(entry / graph.W);
   const cells = Math.hypot(dc, dr);
-  const flyMs = ms(Math.max(900, Math.min(2000, cells * GRATE_TRAIL_MS_PER_CELL)));
+  const flyMs = ms(Math.max(1400, Math.min(3000, cells * GRATE_TRAIL_MS_PER_CELL)));
   const sleep = t => new Promise(res => setTimeout(res, t));
   const tr = (f, s) => `translate(calc(${dc * f * 100}% + ${dc * f}px), calc(${dr * f * 100}% + ${dr * f}px)) scale(${s})`;
   const inCell = walkCellDiv(graph, entry), outCell = walkCellDiv(graph, exit);
@@ -541,18 +561,19 @@ function walkCrawlFx(graph, entry, exit, { fast = false, hide, show, color } = {
   const anim = (el, frames, duration, easing = 'ease-in-out') =>
     el.animate(frames, { duration, easing, fill: 'forwards' }).finished.catch(() => {});
   return (async () => {
-    // 1. de echte pion wordt een losse schijf; het rooster schroeft er ONDER los
+    // 1. de echte pion wordt een losse schijf die iets krimpt, zodat je het rooster eronder ziet losgaan
     const gIn = ghost(inCell);
     if (hide) hide();
+    anim(gIn, [{ transform: 'scale(1)' }, { transform: 'scale(.55)' }], ms(300));
     await walkGrateLid(graph, entry, true, lidMs);
-    // 2. pion zakt het gat in (krimpt, wordt donkerder)
+    // 2. pion zakt het gat in; het rooster gaat achter hem weer dicht
     await anim(gIn, [
-      { transform: 'scale(1)', opacity: 1 },
-      { transform: 'scale(1.12)', opacity: 1, offset: 0.25 },
-      { transform: 'scale(.15)', opacity: 0 },
+      { transform: 'scale(.55)', opacity: 1 },
+      { transform: 'scale(.62)', opacity: 1, offset: 0.2 },
+      { transform: 'scale(.1)', opacity: 0 },
     ], sinkMs, 'ease-in');
     gIn.remove();
-    await sleep(ms(120));
+    walkGrateLid(graph, entry, false, shutMs);
     // 3. het lichtje rechtdoor door de schacht naar de uitgang; het vakje tijdelijk bovenop
     //    (.is-crawl-src), anders schoof het lichtje onder pionnen en spoorvakjes door
     inCell.classList.add('is-crawl-src');
@@ -565,30 +586,29 @@ function walkCrawlFx(graph, entry, exit, { fast = false, hide, show, color } = {
       const s = k ? 0.9 - k * 0.11 : 1.2, o = k ? 0.85 - k * 0.12 : 1;
       el.animate([
         { transform: tr(0, s * 0.4), opacity: 0 },
-        { transform: tr(0.04, s), opacity: o, offset: 0.1 },
-        { transform: tr(1, s), opacity: o, offset: 0.92 },
+        { transform: tr(0.04, s), opacity: o, offset: 0.08 },
+        { transform: tr(1, s), opacity: o, offset: 0.94 },
         { transform: tr(1, s * 0.5), opacity: 0 },
-      ], { duration: flyMs, delay: k * ms(70), easing: 'cubic-bezier(.45,.05,.45,1)', fill: 'both' });
+      ], { duration: flyMs, delay: k * ms(80), easing: 'cubic-bezier(.35,.05,.45,1)', fill: 'both' });
     }
-    // 4. uitgang schroeft los, net voordat het lichtje aankomt
-    await sleep(Math.max(0, flyMs - Math.round(lidMs * 0.5)));
-    const openOut = walkGrateLid(graph, exit, true, Math.round(lidMs * 0.8));
-    await openOut;
+    // het lichtje blijft even op het uitgangsrooster hangen (staart komt binnen)
+    await sleep(flyMs + ms(80) * 2);
+    // 4. uitgang wiebelt los en schuift weg
+    await walkGrateLid(graph, exit, true, lidMs);
     for (const el of lights) el.remove();
     inCell.classList.remove('is-crawl-src');
-    // 5. pion komt omhoog uit het gat
+    walkGrateClear(inCell);
+    // 5. pion komt omhoog uit het gat; daarna staat hij op het rooster (dat gaat niet over hem heen dicht)
     const gOut = ghost(outCell);
     await anim(gOut, [
-      { transform: 'scale(.15)', opacity: 0 },
+      { transform: 'scale(.1)', opacity: 0 },
       { transform: 'scale(1.15)', opacity: 1, offset: 0.7 },
       { transform: 'scale(1)', opacity: 1 },
     ], sinkMs, 'ease-out');
     if (show) show();
     gOut.remove();
-    // 6. beide roosters weer dicht (de zet gaat intussen gewoon verder)
-    walkGrateLid(graph, entry, false, Math.round(lidMs * 0.7));
-    walkGrateLid(graph, exit, false, Math.round(lidMs * 0.7));
-    await sleep(ms(200));
+    walkGrateClear(outCell);
+    await sleep(ms(250));
   })();
 }
 // pion `idx` even van het bord tijdens het kruipen (paintWalkPawns slaat walkFlyingIdx over);
