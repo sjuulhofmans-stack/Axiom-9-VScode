@@ -2308,7 +2308,7 @@ function soloEndMoveAlreadyBanked(){
   soloContinueLoop();
 }
 
-function soloHandleMoveClick(key){
+async function soloHandleMoveClick(key){
   const occ = soloOccupied();
   const legal = soloPhase === 'moving' && soloUsedCardId === 'blind'
     ? soloBlindLegal()
@@ -2327,7 +2327,6 @@ function soloHandleMoveClick(key){
     const colorIn = Math.max(0, portalColorAt(soloGraph, entry));
     walkCellDiv(soloGraph, entry).style.setProperty('--pc', p.color);
     walkCellDiv(soloGraph, entry).classList.add('walk-trail', 'walk-jump');
-    walkPortalJumpFx(soloGraph, entry, exit);
     p.pos = exit;
     soloMove.lastDir = -1;
     soloMove.path.push(entry, exit);
@@ -2336,7 +2335,20 @@ function soloHandleMoveClick(key){
     if (p.stats){ p.stats.walkSteps++; p.stats.portalJumps = (p.stats.portalJumps || 0) + 1; }
     const rest = soloMove.stepsLeft;
     walkLog(`Je stapt in het ${PORTAL_NAMES[colorIn]} portaal en komt uit bij het ${PORTAL_NAMES[colorIn ^ 1]}${rest > 0 ? ` — nog ${rest} ${rest === 1 ? 'stap' : 'stappen'}` : ''}.`, null, p);
+    // sprong-animatie (zelfde opzet als kruipen, walkPortalPawn in 96-walk.js; gebruikerswens 2026-11:
+    // "nu floep je ineens naar de andere kant"). De stand staat al op de uitgang (ook voor Multiplayer);
+    // tijdens de animatie fase 'crawling', dus geen klikken of pijltjes.
+    const runId = soloRunId;
+    soloPhase = 'crawling';
+    soloClearClickable();
+    if (walkSoloActionsEl) walkSoloActionsEl.innerHTML = '';
+    // Multiplayer: de gasten meteen de sprong laten zien (mpPortalJumpFxFromState), niet pas erna
+    if (typeof mp !== 'undefined' && mp.active && mp.isHost && typeof mpBroadcastState === 'function') mpBroadcastState();
+    await walkPortalPawn(soloGraph, soloPlayers, p.idx, entry, exit, {});
+    if (runId !== soloRunId || soloPhase !== 'crawling') return;
+    soloPhase = 'moving';
     paintWalkPawns(soloGraph, soloPlayers, p.idx);
+    if (typeof mp !== 'undefined' && mp.active && mp.isHost && typeof mpBroadcastState === 'function') setTimeout(mpBroadcastState, 0);
     if (soloMove.stepsLeft <= 0){
       soloClearClickable();
       if (soloBankCountThisTurn > 0) soloEndMoveAlreadyBanked();
@@ -2647,13 +2659,17 @@ async function soloAnimateBotTurn(player, replay, logNodes, runId){
       if (viaPortal && grateIsCrawl(soloGraph, path[i - 1], path[i])){
         await walkCrawlPawn(soloGraph, soloPlayers, player.idx, path[i - 1], path[i], { fast: sp.stepMs < 140, activeIdx: pIdx, atExit: () => { player.pos = path[i]; } });
         if (!alive()) return false;
-      } else if (viaPortal) walkPortalJumpFx(soloGraph, path[i - 1], path[i]);
+      } else if (viaPortal){
+        // door een portaal: pion draait weg, lichtje naar het andere portaal, pion draait eruit
+        await walkPortalPawn(soloGraph, soloPlayers, player.idx, path[i - 1], path[i], { fast: sp.stepMs < 140, activeIdx: pIdx, atExit: () => { player.pos = path[i]; } });
+        if (!alive()) return false;
+      }
       player.pos = path[i];
       walkAdvanceShownTarget(soloGraph, bank, player.pos, player.color, othersOcc, false);
       paint();
       soloReplayCrystals(replay, player.pos);
       if (!special && !viaPortal) diceProgressStep();
-      await walkSleep(sp.stepMs * (viaPortal ? 2 : 1));
+      await walkSleep(sp.stepMs);
       if (!alive()) return false;
     }
     return true;

@@ -374,7 +374,7 @@ aangeroepen (functiedeclaraties worden gehoist, `const`/`let` niet).
   `portalIsJump`); tel die stap niet als gelopen vakje. **Elke bot mag schieten** (ook vaste
   strategieën, via `botStrategyNow` → `botPortalWanted`) als het ≥6 stappen scheelt
   (`botPortalShot`); de Slim-bot alleen als het meer oplevert dan een sprint (`botSmartPick`).
-  Bord: `walkPaintPortals`/`walkPortalShotFx`/`walkPortalJumpFx` (96-walk.js), opmaak blok
+  Bord: `walkPaintPortals`/`walkPortalShotFx`/`walkPortalPawn` (96-walk.js), opmaak blok
   PORTALEN onderaan styles.css (alleen transform/opacity). Uiterlijk gekozen uit 10 + 10
   varianten (artifact "Axiom-9 Portaalontwerpen", 2026-10): portaal = **gyroscoop** (tweede
   ronde, variant 16 uit 20, artifact "Axiom-9 Portaalvormen": twee ringen die samen om een felle
@@ -571,7 +571,10 @@ Check minimaal:
     tot je kruipt. Op het bord liggen een
     blauwe en een rode portaalring; Portaalkanon → richting (knop of klik) → kleur ("ligt er sinds
     de start" / "gelegd door X") → lichtspoor + nieuw portaal, daarna gooi je. Loop je in een
-    portaal: flits, je komt uit het andere en loopt met je resterende stappen door. Simulatie → blok "Portalen" met
+    portaal: pion draait als een kolk weg, lichtje in de portaalkleur naar het andere portaal (zelfde
+    tempo als kruipen), schokgolven, pion draait eruit en loopt met je resterende stappen door
+    (`walkPortalPawn` = `walkCrawlFx` met kind 'portal', 96-walk.js; sinds 2026-11, daarvoor floepte
+    je in één keer over). Simulatie → blok "Portalen" met
     schoten/gestolen/sprongen en twee oordelen (opdrachten via portaal ≤30%, meeste
     teleporteerder wint ≤30%).
     Herprioritering laat je huidige én volgende opdracht zien en vraagt welke

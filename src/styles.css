@@ -4325,6 +4325,11 @@
   /* het vakje waar het lichtje uit vertrekt even bovenop, zodat het lichtje over pionnen, spoor en
      doelvakjes heen schuift in plaats van eronder */
   #walkBoard .cell.is-crawl-src{z-index:30 !important;}
+  /* door een portaal: de schijf draait als een kolk; het witte glimlichtje laat het draaien zien */
+  .walk-crawl-pawn.is-warp::after{
+    content:""; position:absolute; left:36%; top:7%; width:28%; height:28%; border-radius:50%;
+    background:#fff; opacity:.9;
+  }
   /* het rooster wiebelt en schuift bij het openen buiten zijn vakje: dat vakje dan boven de buren */
   #walkBoard .cell.has-grate-fx{z-index:25 !important;}
   .walk-grate-lid{box-shadow:0 2px 6px rgba(0,0,0,.6);}

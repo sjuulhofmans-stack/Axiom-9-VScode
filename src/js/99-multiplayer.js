@@ -1098,7 +1098,7 @@ function mpApplyPortals(portals){
   // een mens schoot een portaal: bij de gast ploft het nieuwe open (de vlucht zelf zag hij niet)
   for (const c of moved) walkPortalBurst(soloGraph, portals.cells[c], c, true);
 }
-// gast: stapte de speler aan zet net door een portaal? Dan dezelfde flits als bij de host.
+// gast: stapte de speler aan zet net door een portaal? Dan dezelfde sprong-animatie als bij de host.
 let mpPortalFxSeen = '';
 function mpPortalJumpFxFromState(move){
   if (!move || !move.path || move.path.length < 2 || !soloGraph) return;
@@ -1115,7 +1115,11 @@ function mpPortalJumpFxFromState(move){
     walkCrawlPawn(soloGraph, soloPlayers, idx, a, b, {});
     return;
   }
-  walkPortalJumpFx(soloGraph, a, b);
+  // portaal: zelfde sprong-animatie als bij de host (pion draait weg, lichtje, pion draait eruit)
+  const idx = soloActiveIdx;
+  walkFlyingIdx.add(idx);
+  paintWalkPawns(soloGraph, soloPlayers, idx);
+  walkPortalPawn(soloGraph, soloPlayers, idx, a, b, {});
 }
 function mpTileRotationSnapshot(){
   const rot = {};

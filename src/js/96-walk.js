@@ -534,12 +534,20 @@ function walkGrateClear(cell){
   cell.classList.remove('is-grate-open');
   if (!cell.querySelector('.walk-grate-lid, .walk-crawl-light, .walk-crawl-pawn')) cell.classList.remove('has-grate-fx');
 }
-function walkCrawlFx(graph, entry, exit, { fast = false, hide, show, color } = {}){
+// `kind`: 'grate' (kruipen, zie hierboven) of 'portal' (door een portaal stappen; gebruikerswens 2026-11:
+// "zelfde animatie als bij de roosters, nu floep je ineens naar de andere kant"). Bij een portaal geen
+// roosters: de pion draait als een kolk weg in het portaal (flits), het lichtje heeft de kleur van het
+// portaal waar je in stapte (de komeet-lichtjes van het Portaalkanon), bij de uitgang twee schokgolven
+// en de pion draait er weer uit. Het witte glimlichtje op de schijf (.is-warp) laat het draaien zien.
+function walkCrawlFx(graph, entry, exit, { fast = false, hide, show, color, kind = 'grate' } = {}){
   const reduced = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   if (reduced || typeof Element.prototype.animate !== 'function'){
     if (hide) hide(); if (show) show();
     return Promise.resolve();
   }
+  const portal = kind === 'portal';
+  const pColor = portal ? Math.max(0, portalColorAt(graph, entry)) : 0;
+  const pOut = portal ? Math.max(0, portalColorAt(graph, exit)) : 0;
   const speed = fast ? 0.5 : 1;
   const ms = v => Math.round(v * speed);
   const lidMs = ms(GRATE_LID_MS), shutMs = ms(GRATE_SHUT_MS), sinkMs = ms(GRATE_SINK_MS);
@@ -552,7 +560,7 @@ function walkCrawlFx(graph, entry, exit, { fast = false, hide, show, color } = {
   // losse pionschijf in een vakje (zie de kop hierboven)
   const ghost = (cell) => {
     const g = document.createElement('i');
-    g.className = 'walk-crawl-pawn';
+    g.className = 'walk-crawl-pawn' + (portal ? ' is-warp' : '');
     if (color) g.style.setProperty('--gp', color);
     cell.classList.add('has-grate-fx');
     cell.appendChild(g);
@@ -561,26 +569,38 @@ function walkCrawlFx(graph, entry, exit, { fast = false, hide, show, color } = {
   const anim = (el, frames, duration, easing = 'ease-in-out') =>
     el.animate(frames, { duration, easing, fill: 'forwards' }).finished.catch(() => {});
   return (async () => {
-    // 1. de echte pion wordt een losse schijf die iets krimpt, zodat je het rooster eronder ziet losgaan
     const gIn = ghost(inCell);
     if (hide) hide();
-    anim(gIn, [{ transform: 'scale(1)' }, { transform: 'scale(.55)' }], ms(300));
-    await walkGrateLid(graph, entry, true, lidMs);
-    // 2. pion zakt het gat in; het rooster gaat achter hem weer dicht
-    await anim(gIn, [
-      { transform: 'scale(.55)', opacity: 1 },
-      { transform: 'scale(.62)', opacity: 1, offset: 0.2 },
-      { transform: 'scale(.1)', opacity: 0 },
-    ], sinkMs, 'ease-in');
-    gIn.remove();
-    walkGrateLid(graph, entry, false, shutMs);
-    // 3. het lichtje rechtdoor door de schacht naar de uitgang; het vakje tijdelijk bovenop
-    //    (.is-crawl-src), anders schoof het lichtje onder pionnen en spoorvakjes door
+    if (portal){
+      // 1+2. portaal: de pion draait als een kolk weg (anderhalve slag, krimpt), flits bij de ingang
+      walkPortalBurst(graph, entry, pColor, false);
+      await anim(gIn, [
+        { transform: 'rotate(0deg) scale(1)', opacity: 1 },
+        { transform: 'rotate(160deg) scale(.9)', opacity: 1, offset: 0.35 },
+        { transform: 'rotate(540deg) scale(.08)', opacity: 0 },
+      ], ms(950), 'ease-in');
+      gIn.remove();
+      walkPortalBurst(graph, entry, pColor, false);
+    } else {
+      // 1. de echte pion wordt een losse schijf die iets krimpt, zodat je het rooster eronder ziet losgaan
+      anim(gIn, [{ transform: 'scale(1)' }, { transform: 'scale(.55)' }], ms(300));
+      await walkGrateLid(graph, entry, true, lidMs);
+      // 2. pion zakt het gat in; het rooster gaat achter hem weer dicht
+      await anim(gIn, [
+        { transform: 'scale(.55)', opacity: 1 },
+        { transform: 'scale(.62)', opacity: 1, offset: 0.2 },
+        { transform: 'scale(.1)', opacity: 0 },
+      ], sinkMs, 'ease-in');
+      gIn.remove();
+      walkGrateLid(graph, entry, false, shutMs);
+    }
+    // 3. het lichtje rechtdoor naar de uitgang; het vakje tijdelijk bovenop (.is-crawl-src), anders
+    //    schoof het lichtje onder pionnen en spoorvakjes door
     inCell.classList.add('is-crawl-src');
     const lights = [];
     for (let k = 0; k < 6; k++){
       const el = document.createElement('i');
-      el.className = 'walk-crawl-light' + (k ? ' is-tail' : '');
+      el.className = (portal ? 'walk-portal-comet ' + PORTAL_CLASSES[pColor] : 'walk-crawl-light') + (k ? ' is-tail' : '');
       inCell.appendChild(el);
       lights.push(el);
       const s = k ? 0.9 - k * 0.11 : 1.2, o = k ? 0.85 - k * 0.12 : 1;
@@ -591,37 +611,53 @@ function walkCrawlFx(graph, entry, exit, { fast = false, hide, show, color } = {
         { transform: tr(1, s * 0.5), opacity: 0 },
       ], { duration: flyMs, delay: k * ms(80), easing: 'cubic-bezier(.35,.05,.45,1)', fill: 'both' });
     }
-    // het lichtje blijft even op het uitgangsrooster hangen (staart komt binnen)
+    // het lichtje blijft even op de uitgang hangen (staart komt binnen)
     await sleep(flyMs + ms(80) * 2);
-    // 4. uitgang wiebelt los en schuift weg
-    await walkGrateLid(graph, exit, true, lidMs);
+    // 4. uitgang: rooster wiebelt los en schuift weg / portaal slaat twee schokgolven uit
+    if (portal){
+      walkPortalBurst(graph, exit, pOut, true);
+      setTimeout(() => walkPortalBurst(graph, exit, pOut, true), ms(160));
+      await sleep(ms(260));
+    } else {
+      await walkGrateLid(graph, exit, true, lidMs);
+    }
     for (const el of lights) el.remove();
     inCell.classList.remove('is-crawl-src');
     walkGrateClear(inCell);
-    // 5. pion komt omhoog uit het gat; daarna staat hij op het rooster (dat gaat niet over hem heen dicht)
+    // 5. pion komt omhoog (rooster) of draait eruit (portaal); het rooster gaat niet over hem heen dicht
     const gOut = ghost(outCell);
-    await anim(gOut, [
+    await anim(gOut, portal ? [
+      { transform: 'rotate(-540deg) scale(.08)', opacity: 0 },
+      { transform: 'rotate(-60deg) scale(1.15)', opacity: 1, offset: 0.75 },
+      { transform: 'rotate(0deg) scale(1)', opacity: 1 },
+    ] : [
       { transform: 'scale(.1)', opacity: 0 },
       { transform: 'scale(1.15)', opacity: 1, offset: 0.7 },
       { transform: 'scale(1)', opacity: 1 },
-    ], sinkMs, 'ease-out');
+    ], portal ? ms(800) : sinkMs, 'ease-out');
     if (show) show();
     gOut.remove();
     walkGrateClear(outCell);
     await sleep(ms(250));
   })();
 }
-// pion `idx` even van het bord tijdens het kruipen (paintWalkPawns slaat walkFlyingIdx over);
-// `atExit()` zet de pion op de uitgang, vlak voordat hij weer getekend wordt
+// pion `idx` even van het bord tijdens het kruipen/de portaalsprong (paintWalkPawns slaat walkFlyingIdx
+// over); `atExit()` zet de pion op de uitgang, vlak voordat hij weer getekend wordt. opts.kind: 'grate'
+// (standaard) of 'portal'.
 function walkCrawlPawn(graph, players, idx, entry, exit, opts = {}){
   const paint = () => paintWalkPawns(graph, players, opts.activeIdx !== undefined ? opts.activeIdx : idx);
   const pl = players.find(p => p && p.idx === idx) || players[idx];
   return walkCrawlFx(graph, entry, exit, {
     fast: opts.fast,
+    kind: opts.kind,
     color: pl && pl.color,
     hide: () => { walkFlyingIdx.add(idx); paint(); },
     show: () => { if (opts.atExit) opts.atExit(); walkFlyingIdx.delete(idx); paint(); },
   });
+}
+// door een portaal stappen = dezelfde opzet als kruipen (zie walkCrawlFx, kind 'portal')
+function walkPortalPawn(graph, players, idx, entry, exit, opts = {}){
+  return walkCrawlPawn(graph, players, idx, entry, exit, { ...opts, kind: 'portal' });
 }
 
 // logregel voor een schot
@@ -1515,20 +1551,24 @@ async function runWalkSimulation(){
           leaving.style.setProperty('--pc', player.color);
           leaving.classList.add('walk-trail');
           if (special) leaving.classList.add('walk-jump');
-          // door een portaal (twee vakjes die niet naast elkaar liggen): flits, geen stap op de teller;
+          // door een portaal (twee vakjes die niet naast elkaar liggen): sprong-animatie, geen stap op de teller;
           // rooster → rooster is kruipen (zie ROOSTERS): losschroeven + lichtje, daarna verder
           const viaPortal = portalIsJump(graph, path[i - 1], path[i]);
           if (viaPortal && grateIsCrawl(graph, path[i - 1], path[i])){
             await walkCrawlPawn(graph, players, pIdx, path[i - 1], path[i], { fast: walkSpeed().stepMs < 140, atExit: () => { player.pos = path[i]; } });
             if (aborted()) return false;
-          } else if (viaPortal) walkPortalJumpFx(graph, path[i - 1], path[i]);
+          } else if (viaPortal){
+            // door een portaal: pion draait weg, lichtje naar het andere portaal, pion draait eruit
+            await walkPortalPawn(graph, players, pIdx, path[i - 1], path[i], { fast: walkSpeed().stepMs < 140, atExit: () => { player.pos = path[i]; } });
+            if (aborted()) return false;
+          }
           player.pos = path[i];
           walkAdvanceShownTarget(graph, bank, player.pos, player.color, occupiedNow(), true);
           if (offset + i === r.cellIdx) crystalFxAnon(player.pos, player, cellFull, walkSpeed().stepMs < 140, graph);
           paintWalkPawns(graph, players, pIdx);
           if (!special && !viaPortal) diceProgressStep();
           renderWalkMeta({ player, turn, stepsLeft: path.length - 1 - i });
-          await walkTick(walkSpeed().stepMs * (viaPortal ? 2 : 1));
+          await walkTick(walkSpeed().stepMs);
         }
         return true;
       }
