@@ -833,8 +833,14 @@ if (walkSoloActionsEl){
     if (!btn) return;   // gaatje tussen de knoppen: preview laten staan
     const act = ENERGY_ACTIONS[btn.dataset.energy];
     soloPreviewEnergyCost(act && !btn.disabled ? act.cost : null);
+    soloEnergyNoteShow(btn.dataset.energy);   // uitlegvak onder de lijst
   });
-  walkSoloActionsEl.addEventListener('mouseleave', () => soloPreviewEnergyCost(null));
+  walkSoloActionsEl.addEventListener('mouseleave', () => { soloPreviewEnergyCost(null); soloEnergyNoteShow(soloEnergyNoteDefault); });
+  // toetsenbord: de actie met focus staat in het uitlegvak
+  walkSoloActionsEl.addEventListener('focusin', (e) => {
+    const btn = e.target.closest('button.energy-pick[data-energy]');
+    if (btn) soloEnergyNoteShow(btn.dataset.energy);
+  });
 }
 function soloRefreshTarget(){
   const p = solo();
@@ -986,6 +992,41 @@ const ENERGY_ACTION_ICONS = {
 // stappen zetten (via het kaartvenster, zie hieronder) — behalve Noodrantsoen/Stuwlading, die
 // mogen ook al hier (zie SOLO_PRE_ROLL_CARDS/soloCardBlockReason), maar die tonen we via de
 // kaartkluis (#walkCardVault) net als anders, niet in dit energiepaneel.
+// ---------- uitlegvak onder de energie-acties ----------
+// Toont de uitleg van de actie waar je muis (of toetsenbordfocus) op staat; anders die van de eerste
+// actie die je nu kunt kiezen. Bovenin: naam + wat het met je energie doet (of waarom het niet kan).
+// De rijen zelf tonen alleen icoon, naam en prijs. `var` (geen let): soloRenderActionPanel kan al
+// tijdens het laden lopen, vóór deze regels.
+var soloEnergyNotes = {};          // id -> { reason, energy } van de laatste keer tekenen
+var soloEnergyNoteDefault = null;  // wat er staat zonder muis erop (null = je kunt niets)
+var soloEnergyNoteShown;           // wat er nu staat (om niets opnieuw te zetten als het gelijk is)
+function soloEnergyNoteHtml(id){
+  if (!id || !ENERGY_ACTIONS[id] || !soloEnergyNotes[id]){
+    return `<div class="energy-note-head"><b>Te weinig energie</b></div>` +
+      `<p>Je kunt deze beurt geen actie betalen. Gooi gewoon: wat de energiesteen geeft, kun je volgende beurt uitgeven.</p>`;
+  }
+  const act = ENERGY_ACTIONS[id], info = soloEnergyNotes[id];
+  const short = act.cost - info.energy;
+  const state = info.reason ? `<span class="is-no">${info.reason}</span>`
+    : short > 0 ? `<span class="is-no">nog ${short} energie nodig</span>`
+    : `<span>${act.cost} energie · houdt ${info.energy - act.cost} over</span>`;
+  const text = (typeof RULES_ENERGY_TEXT !== 'undefined' && RULES_ENERGY_TEXT[id]) || act.note || act.hint;
+  return `<div class="energy-note-head"><b>${act.name}</b>${state}</div><p>${text}</p>`;
+}
+function soloEnergyNoteMark(id){
+  if (!walkSoloActionsEl) return;
+  for (const b of walkSoloActionsEl.querySelectorAll('.is-energy > .energy-pick')){
+    const on = b.dataset.energy === id;
+    if (b.classList.contains('is-noted') !== on) b.classList.toggle('is-noted', on);
+  }
+}
+function soloEnergyNoteShow(id){
+  const box = walkSoloActionsEl && walkSoloActionsEl.querySelector('.energy-note');
+  if (!box || id === soloEnergyNoteShown) return;
+  soloEnergyNoteShown = id;
+  box.innerHTML = soloEnergyNoteHtml(id);
+  soloEnergyNoteMark(id);
+}
 function soloRenderActionPanel(){
   if (!walkSoloActionsEl) return;
   const p = solo();
@@ -1011,16 +1052,19 @@ function soloRenderActionPanel(){
   const locked = (id) => p.energy < ENERGY_ACTIONS[id].cost || !!blockReason(id);
   const energyBtns = ids.map(id => renderEnergySoloButton(id, locked(id), blockReason(id))).join('');
   // Kun je er geen enkele betalen, zeg dat dan met zoveel woorden — uitgegrijsde rijen
-  // zien er anders uit alsof het paneel stuk is. Bewust één korte regel: met 4 acties paste de
-  // oude zin van twee regels niet meer in het vaste vak (.walk-solo-panel) en moest je scrollen
-  // bij 0–3 energie, dus bijna elke beurt aan het begin van een potje (gebruikersmelding).
+  // zien er anders uit alsof het paneel stuk is. Staat sinds 2026-11 in het uitlegvak (als er
+  // geen muis op een actie staat), niet meer als losse regel onder de lijst.
   const allLocked = ids.every(id => locked(id));
-  const note = allLocked
-    ? `<p class="hint energy-pick-none">Te weinig energie voor een actie — gooi gewoon.</p>`
-    : '';
-  // onder elkaar, met de uitleg eronder (gebruikerswens: de 2x2-tegels stonden scheef en de
-  // tekst liep door het vak heen; nu het bord en dus de kolom hoger is, past de lijst weer)
-  walkSoloActionsEl.innerHTML = `<div class="energy-pick-list is-actions">${energyBtns}</div>${note}`;
+  // het uitlegvak (gekozen 2026-11: "staande meter" + "uitlegvak", artifact "Axiom-9 Energie en
+  // kluis"): per actie wat er in het vak komt; standaard de eerste die je nu kunt kiezen
+  soloEnergyNotes = {};
+  for (const id of ids) soloEnergyNotes[id] = { reason: blockReason(id), energy: p.energy };
+  soloEnergyNoteDefault = allLocked ? null : ids.find(id => !locked(id));
+  // onder elkaar (gebruikerswens: de 2x2-tegels stonden scheef), met het uitlegvak eronder
+  walkSoloActionsEl.innerHTML = `<div class="energy-pick-list is-actions is-energy">${energyBtns}</div>` +
+    `<div class="energy-note" aria-live="polite">${soloEnergyNoteHtml(soloEnergyNoteDefault)}</div>`;
+  soloEnergyNoteShown = soloEnergyNoteDefault;
+  soloEnergyNoteMark(soloEnergyNoteDefault);
   // net aangemaakte knoppen beginnen anders allemaal weer bij 0 — zie PULSE_EPOCH hierboven.
   for (const el of walkSoloActionsEl.querySelectorAll('.walk-pulse-affordable')) syncPulse(el);
   // 2e "of": alleen zichtbaar zolang je vóór het dobbelen zit én Noodrantsoen/Stuwlading nu

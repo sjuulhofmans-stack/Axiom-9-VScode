@@ -255,6 +255,19 @@ aangeroepen (functiedeclaraties worden gehoist, `const`/`let` niet).
   knooppunt per `ENERGY_STEP_MS`. Het getal staat rechts met een vaste breedte (verspringt niet
   bij 10). De energiebolletjes landen op de knooppunten (`walkEnergyNodes`). Acties = icoonrijen
   (`ENERGY_ACTION_ICONS`, `renderEnergySoloButton` in 97-solo.js).
+  **Energievak = staande meter + uitlegvak** (gekozen 2026-11: variant 3 met het uitlegvak van
+  variant 6, artifact "Axiom-9 Energie en kluis"; blok `ENERGIEVAK: STAANDE METER + UITLEGVAK`
+  onderaan styles.css). Met de tabbladen (.has-vault) staat het circuit RECHTOP links in het
+  energievak (knooppunt 1 onderaan, getal erboven, bliksempje eronder; zelfde elementen en
+  animaties, alleen scaleY / `ecPacketUp`). Rechts de acties als korte rijen (icoon, naam, prijs;
+  de uitlegregel per rij is weg) met daaronder een uitlegvak met VASTE hoogte: de actie waar je
+  muis/focus op staat, anders de eerste die je kunt kiezen (`soloEnergyNoteHtml`/`soloEnergyNoteShow`,
+  tekst uit `RULES_ENERGY_TEXT` in 98c-rules.js). Kop van het vak: "5 energie · houdt 2 over", of in
+  rood waarom het niet kan. Kun je niets betalen: "Te weinig energie" in het vak. Gemeten (7
+  energie): 1920×889 rijen 62px, vak 112px; 1440×780 rijen 37px, vak 102px (de langste uitleg,
+  laarzen en schroevendraaier, heeft 100px nodig); kolom = bord, niets scrolt of wordt afgeknipt.
+  Langere tekst in `RULES_ENERGY_TEXT`? Opnieuw meten (`--note-h`).
+  De kluis blijft voorlopig zoals hij is: de maker ontwerpt de kristallen eerst opnieuw.
   **Oprapen** (`crystalEvent`, op elke plek waar iemand een kristal krijgt of een volle kluis
   heeft): eigen kristal groeit uit het vakje en vliegt in een boog naar je kluis ("Nieuw" tot je
   erop klikt); kluis vol = zilver vraagteken-kristal dat uit elkaar knalt (bewust niet het
@@ -549,8 +562,9 @@ Check minimaal:
     `--wcell` (styles.css) aan.
 12. Zelf spelen → tabblad Energie toont de acties op prijs (Stuwstoot 4,
     Herprioritering 4, Zwaartekracht-laarzen 5, Portaalkanon 5, Schroevendraaier 5, Noodtransport 10)
-    mét uitlegregel. De lijst vult de hele kolom (rijen groeien mee, max. 76px; blok "ENERGIEVAK
-    UITGEREKT" in styles.css); gemeten 1920×889 rijen 61px, 1440×780 rijen 37px, niets scrolt.
+    naast een staande energiemeter, met onderaan het uitlegvak (muis op een actie = zijn uitleg, en
+    de knooppunten die hij kost knipperen bovenaan de meter). De lijst vult de kolom (rijen max.
+    62px); gemeten 1920×889 rijen 62px, 1440×780 rijen 37px, niets scrolt.
     Na de worp is het energievak leeg (behalve het kruip-aanbod op een rooster). Schroevendraaier → op een rooster staan →
     knop "Kruip door de luchtschacht" → vrije roosters lichten op (rest gedimd, je doel niet) → klik →
     rooster schroeft los, koperen lichtje, je loopt met dezelfde stappen door; icoon op je spelerskaartje
