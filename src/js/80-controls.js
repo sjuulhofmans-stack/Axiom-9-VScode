@@ -378,7 +378,7 @@ function switchTab(name){
   tabPanels.walk.classList.toggle('is-multi-tab', name === 'multi');
   const multiModeOn = typeof walkModeMultiBtn !== 'undefined' && walkModeMultiBtn && walkModeMultiBtn.classList.contains('active');
   if (name === 'multi' && !multiModeOn) setWalkMode('multi');
-  else if (name === 'walk' && multiModeOn) setWalkMode('auto');
+  else if (name === 'walk' && multiModeOn) setWalkMode('solo');
   // "Nieuw potje" (97-solo.js) leeft in de tabbladenbalk zelf, niet in #tabWalk — die balk
   // verbergt niet vanzelf mee met de rest van dit tabblad, dus hier expliciet herchecken.
   walkSoloResetSyncVisibility();

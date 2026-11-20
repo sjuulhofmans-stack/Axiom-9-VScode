@@ -407,7 +407,7 @@ function lobbyRenderSummary(){
   const set = (id, html) => { const el = document.getElementById(id); if (el && el.innerHTML !== html) el.innerHTML = html; };
   const n = parseInt(walkPlayersSel ? walkPlayersSel.value : '4', 10) || 4;
   set('walkAutoSummary', lobbySumHtml([
-    ['Modus', 'Automatisch'], ['Spelers', n === 1 ? '1 bot' : `${n} bots`],
+    ['Modus', 'Bots spelen'], ['Spelers', n === 1 ? '1 bot' : `${n} bots`],
     ['Energie', lobbyOptText('walkEnergyMode')], ['Tempo', lobbyOptText('walkSpeed')],
   ]));
   // Bots aan boord bij Automatisch: PRECIES dezelfde bemanningslijst als Zelf spelen (gebruikerswens
@@ -431,7 +431,7 @@ function lobbyRenderSummary(){
   set('walkAutoCrew',
     `<div class="crew-list">${crew.join('')}</div>` +
     `<div class="crew-add">` +
-      `<button type="button" class="ghost" disabled title="Bij Automatisch spelen alleen bots — zelf meedoen kan bij Zelf spelen">+ Speler</button>` +
+      `<button type="button" class="ghost" disabled title="Bij Bots spelen doen alleen bots mee — zelf meedoen kan bij Zelf spelen">+ Speler</button>` +
       `<button type="button" class="ghost" data-auto-add="bot"${free === 0 ? ' disabled' : ''}>+ Bot</button>` +
     `</div>`);
   const humans = soloHumanCount, bots = soloBotCount;
@@ -3709,9 +3709,7 @@ function walkSoloResetSyncVisibility(){
   btnWalkSoloReset.hidden = !(onWalkTab && soloActive && playing && !inMultiplayer);
 }
 
-// "Automatisch" is de standaard-actieve tab (zie de HTML), maar zonder deze aanroep bleef de
-// solo-opzet-UI (spelerskeuze + "Potje starten"/"Nieuw potje") gewoon zichtbaar bij het laden
-// van de pagina — soloRebuildSetup() vult en toont 'm namelijk onvoorwaardelijk, ongeacht welke
-// tab actief is. setWalkMode('auto') zet alle mode-afhankelijke zichtbaarheid meteen goed (en
-// bouwt de solo-spelerobjecten pas op zodra je écht naar "Zelf spelen" wisselt).
-setWalkMode('auto');
+// "Zelf spelen" is de standaard-actieve tab (zie de HTML; sinds 2026-11, gebruikerswens — daarvoor
+// was dat "Automatisch", op het scherm nu "Bots spelen"). Deze aanroep zet alle mode-afhankelijke
+// zichtbaarheid bij het laden meteen goed en bouwt de solo-opzet op.
+setWalkMode('solo');
