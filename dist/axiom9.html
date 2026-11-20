@@ -4535,11 +4535,17 @@
   }
   .walk-side-stack.has-vault #walkSoloPanel > .walk-solo-actions{grid-column:2; grid-row:1; min-width:0;}
   .walk-side-stack.has-vault #walkSoloPanel > .mp-wait-turn{grid-column:2; grid-row:1; align-self:start;}
-  /* getal boven: groot cijfer, "/ 10" klein eronder (zo past ook "10" in de smalle meter) */
+  /* getal boven de meter: groot cijfer en "/ 10" NAAST elkaar op één lijn (gebruikerswens 2026-11: ze
+     stonden onder elkaar). Het cijfer heeft een vaste breedte voor twee tekens, rechts uitgelijnd,
+     zodat niets verschuift bij 9 → 10; de kolom is daarvoor iets breder (76px, laptop 66px). */
+  .walk-side-stack.has-vault #walkSoloPanel > .walk-energy-overview{width:76px;}
   .walk-side-stack.has-vault #walkSoloPanel .walk-energy-overview .walk-energy-value{
-    width:auto; flex-direction:column; align-items:center; gap:3px; font-size:12px; letter-spacing:.04em;
+    width:auto; flex-direction:row; align-items:baseline; justify-content:center; gap:3px;
+    font-size:12px; letter-spacing:.02em; white-space:nowrap;
   }
-  .walk-side-stack.has-vault #walkSoloPanel .walk-energy-overview .walk-energy-value b{font:700 32px/1 var(--font-display); min-width:0; text-align:center;}
+  .walk-side-stack.has-vault #walkSoloPanel .walk-energy-overview .walk-energy-value b{
+    font:700 26px/1 var(--font-display); min-width:2ch; text-align:right; letter-spacing:0;
+  }
   .walk-side-stack.has-vault #walkSoloPanel .walk-energy-overview.is-full .walk-energy-value b{color:var(--amber);}
   .walk-side-stack.has-vault #walkSoloPanel .walk-energy-cells{
     flex:1 1 auto; width:var(--nd); height:auto; min-height:120px; align-self:center;
@@ -4584,9 +4590,10 @@
   .energy-note p{margin:0; font:400 14px/1.35 var(--font-display); letter-spacing:.01em; color:var(--text);}
   /* laptop en lagere schermen: kleiner, zelfde opbouw */
   @media (max-height: 865px), (max-width: 1630px){
-    .walk-side-stack.has-vault #walkSoloPanel > .walk-energy-overview{--nd:16px; width:46px; gap:8px;}
+    .walk-side-stack.has-vault #walkSoloPanel > .walk-energy-overview{--nd:16px; width:66px; gap:8px;}
     .walk-side-stack.has-vault #walkSoloPanel{column-gap:12px;}
-    .walk-side-stack.has-vault #walkSoloPanel .walk-energy-overview .walk-energy-value b{font-size:26px;}
+    .walk-side-stack.has-vault #walkSoloPanel .walk-energy-overview .walk-energy-value b{font-size:22px;}
+    .walk-side-stack.has-vault #walkSoloPanel .walk-energy-overview .walk-energy-value{font-size:11px;}
     .walk-side-stack.has-vault #walkSoloPanel .walk-energy-cells{min-height:90px;}
     .walk-side-stack.has-vault #walkSoloPanel .walk-solo-actions:not(:empty){gap:6px;}
     .walk-side-stack.has-vault #walkSoloPanel .energy-pick-list.is-energy{gap:4px;}

@@ -564,7 +564,10 @@ Check minimaal:
     Herprioritering 4, Zwaartekracht-laarzen 5, Portaalkanon 5, Schroevendraaier 5, Noodtransport 10)
     naast een staande energiemeter, met onderaan het uitlegvak (muis op een actie = zijn uitleg, en
     de knooppunten die hij kost knipperen bovenaan de meter). De lijst vult de kolom (rijen max.
-    62px); gemeten 1920×889 rijen 62px, 1440×780 rijen 37px, niets scrolt.
+    62px); gemeten 1920×889 rijen 62px, 1440×780 rijen 37px, niets scrolt. Boven de meter staat het
+    getal NAAST "/ 10" op één regel (gebruikerswens 2026-11; stond onder elkaar): meterkolom 76px
+    (laptop 66px), cijfer 26px (laptop 22px) met vaste breedte van 2 tekens. Gemeten 1920×945 en
+    1440×780: "10 / 10" 54 resp. 48px breed, één regel, alle actienamen nog volledig leesbaar.
     Na de worp is het energievak leeg (behalve het kruip-aanbod op een rooster). Schroevendraaier → op een rooster staan →
     knop "Kruip door de luchtschacht" → vrije roosters lichten op (rest gedimd, je doel niet) → klik →
     rooster schroeft los, koperen lichtje, je loopt met dezelfde stappen door; icoon op je spelerskaartje
