@@ -194,29 +194,28 @@ function walkTryStart(startFn){
   const err = walkLobbyValidate();
   if (walkLobbyStatusEl) walkLobbyStatusEl.innerHTML = err ? `<span class="bad">✕ ${err}</span>` : '';
   if (err) return;
-  // startanimatie (aftellen + hyperjump, 96b-intro.js) als die in de lobby aan staat. Daarna
-  // meteen (achter het nog zwarte scherm) naar het speelscherm wisselen, zonder crossfade —
-  // anders schemerde de lobby nog door terwijl de animatie wegfaadde.
-  if (introEnabled()){
-    // waar stond je bij de klik? Wissel je tijdens de animatie van tabblad of modus, dan start het
-    // potje NIET (anders liep er een Automatisch-potje in het tabblad Multiplayer, zonder Stoppen)
-    const where = () => {
-      const tab = document.querySelector('[data-tab].active');
-      const mode = [walkModeAutoBtn, walkModeSoloBtn, walkModeMultiBtn].find(b => b && b.classList.contains('active'));
-      return (tab ? tab.dataset.tab : '') + '|' + (mode ? mode.id : '');
-    };
-    const startedAt = where();
-    if (!introRunning) playStartIntro(() => {
-      if (where() !== startedAt) return;
-      if (walkLobbyEl) walkLobbyEl.hidden = true;
-      if (walkPlayAreaEl){ walkPlayAreaEl.classList.remove('walk-fade-hidden'); walkPlayAreaEl.hidden = false; }
-      walkFooterSyncVisibility();
-      startFn();
-    });
-  } else {
-    walkFadeToPlay();
+  // startanimatie (aftellen + hyperjump, 96b-intro.js) als die in de lobby aan staat; anders een
+  // rustige fade over het hele scherm (playStartFade, gebruikerswens 2026-11: "floept pats boem op het
+  // scherm"). In beide gevallen wisselt alles (achter het donkere scherm) in één keer naar het
+  // speelscherm, zonder crossfade — anders schemerde de lobby nog door.
+  if (introRunning) return;
+  // waar stond je bij de klik? Wissel je tijdens de animatie van tabblad of modus, dan start het
+  // potje NIET (anders liep er een Automatisch-potje in het tabblad Multiplayer, zonder Stoppen)
+  const where = () => {
+    const tab = document.querySelector('[data-tab].active');
+    const mode = [walkModeAutoBtn, walkModeSoloBtn, walkModeMultiBtn].find(b => b && b.classList.contains('active'));
+    return (tab ? tab.dataset.tab : '') + '|' + (mode ? mode.id : '');
+  };
+  const startedAt = where();
+  const enterPlay = () => {
+    if (where() !== startedAt) return;
+    if (walkLobbyEl) walkLobbyEl.hidden = true;
+    if (walkPlayAreaEl){ walkPlayAreaEl.classList.remove('walk-fade-hidden'); walkPlayAreaEl.hidden = false; }
+    walkFooterSyncVisibility();
     startFn();
-  }
+  };
+  if (introEnabled()) playStartIntro(enterPlay);
+  else playStartFade(enterPlay);
 }
 
 let walkCellEls = null;      // [R][C] -> div, pas opgebouwd bij het eerste gebruik

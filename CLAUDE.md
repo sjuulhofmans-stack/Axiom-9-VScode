@@ -74,7 +74,10 @@ src/
                       schudden + opbouw, BAM, hyperjump, het zwarte gat in met een gong (gekozen uit 15
                       geluiden; ±10,6 s) + vinkje in de lobby. Overgang naar het spel: een zwart gordijn
                       over het HELE scherm (`.start-intro-curtain`) gaat mee dicht met de duik, daaronder
-                      wisselen kop/achtergrond/bord, pas na 2 getekende beeldjes faadt het in 0,8 s weg
+                      wisselen kop/achtergrond/bord, pas na 2 getekende beeldjes faadt het in 0,8 s weg.
+                      Startanimatie UIT: `playStartFade` (zelfde file): hele scherm 0,65 s naar donker,
+                      daarachter naar het speelscherm, na 2 beeldjes 0,9 s infaden (was: "floept pats boem";
+                      Multiplayer: host stuurt 'intro' met { fade: true }, gast faadt in zodra het potje er is)
     96c-crystals.js   kristallen: tekenen (renderCrystal), de kluis, de animaties bij oprapen, zeshoekjes op
                       de spelerskaartjes. Staat bewust vóór 97-solo.js (zie de kop van het bestand)
     96d-dice.js       dobbelvak: stenen "Pantser" (afgeschuind, ruitstippen), wachten = puls, gooien =

@@ -1143,6 +1143,9 @@
   .start-intro-curtain.is-on{opacity:1;}
   .start-intro-curtain.is-quick{transition-duration:.25s;}
   .start-intro-curtain.is-leaving{opacity:0; transition:opacity .8s cubic-bezier(.25,.1,.25,1);}
+  /* zonder startanimatie: zachte fade over het hele scherm (playStartFade in 96b-intro.js). Vangt
+     klikken op zolang hij er is (geen dubbele start). Opacity via een Web Animation. */
+  .start-fade-curtain{position:fixed; inset:0; z-index:1000; background:#05070a; opacity:0; will-change:opacity;}
   .start-intro canvas{position:absolute; inset:0; width:100%; height:100%; display:block;}
   /* Titan (gekozen uit 4 plasmavarianten, 2026-10): blauwe plasmaletters in Orbitron 900, ingebakken
      als 'Axiom Orbitron' (src/assets/orbitron900.b64, zodat het offline werkt). Gloed = text-shadow
@@ -11639,29 +11642,28 @@ function walkTryStart(startFn){
   const err = walkLobbyValidate();
   if (walkLobbyStatusEl) walkLobbyStatusEl.innerHTML = err ? `<span class="bad">✕ ${err}</span>` : '';
   if (err) return;
-  // startanimatie (aftellen + hyperjump, 96b-intro.js) als die in de lobby aan staat. Daarna
-  // meteen (achter het nog zwarte scherm) naar het speelscherm wisselen, zonder crossfade —
-  // anders schemerde de lobby nog door terwijl de animatie wegfaadde.
-  if (introEnabled()){
-    // waar stond je bij de klik? Wissel je tijdens de animatie van tabblad of modus, dan start het
-    // potje NIET (anders liep er een Automatisch-potje in het tabblad Multiplayer, zonder Stoppen)
-    const where = () => {
-      const tab = document.querySelector('[data-tab].active');
-      const mode = [walkModeAutoBtn, walkModeSoloBtn, walkModeMultiBtn].find(b => b && b.classList.contains('active'));
-      return (tab ? tab.dataset.tab : '') + '|' + (mode ? mode.id : '');
-    };
-    const startedAt = where();
-    if (!introRunning) playStartIntro(() => {
-      if (where() !== startedAt) return;
-      if (walkLobbyEl) walkLobbyEl.hidden = true;
-      if (walkPlayAreaEl){ walkPlayAreaEl.classList.remove('walk-fade-hidden'); walkPlayAreaEl.hidden = false; }
-      walkFooterSyncVisibility();
-      startFn();
-    });
-  } else {
-    walkFadeToPlay();
+  // startanimatie (aftellen + hyperjump, 96b-intro.js) als die in de lobby aan staat; anders een
+  // rustige fade over het hele scherm (playStartFade, gebruikerswens 2026-11: "floept pats boem op het
+  // scherm"). In beide gevallen wisselt alles (achter het donkere scherm) in één keer naar het
+  // speelscherm, zonder crossfade — anders schemerde de lobby nog door.
+  if (introRunning) return;
+  // waar stond je bij de klik? Wissel je tijdens de animatie van tabblad of modus, dan start het
+  // potje NIET (anders liep er een Automatisch-potje in het tabblad Multiplayer, zonder Stoppen)
+  const where = () => {
+    const tab = document.querySelector('[data-tab].active');
+    const mode = [walkModeAutoBtn, walkModeSoloBtn, walkModeMultiBtn].find(b => b && b.classList.contains('active'));
+    return (tab ? tab.dataset.tab : '') + '|' + (mode ? mode.id : '');
+  };
+  const startedAt = where();
+  const enterPlay = () => {
+    if (where() !== startedAt) return;
+    if (walkLobbyEl) walkLobbyEl.hidden = true;
+    if (walkPlayAreaEl){ walkPlayAreaEl.classList.remove('walk-fade-hidden'); walkPlayAreaEl.hidden = false; }
+    walkFooterSyncVisibility();
     startFn();
-  }
+  };
+  if (introEnabled()) playStartIntro(enterPlay);
+  else playStartFade(enterPlay);
 }
 
 let walkCellEls = null;      // [R][C] -> div, pas opgebouwd bij het eerste gebruik
@@ -13435,6 +13437,35 @@ function introAudio(){
 
 // ---------- beeld ----------
 let introRunning = false;
+
+// ---------- ZONDER startanimatie: rustig uit- en infaden (gebruikerswens 2026-11) ----------
+// Vroeger faadde alleen het lobbyvak over naar het speelvak, terwijl de kop, de achtergrond en de
+// opbouw van de pagina (body.is-playing) in één keer omsprongen: "het spel floept pats boem op het
+// scherm". Nu dezelfde opzet als het gordijn van de startanimatie, maar kort en zacht: het HELE scherm
+// faadt naar donker, daarachter wisselt alles naar het speelscherm (`onDone`), en pas als dat getekend
+// is (2 beeldjes) faadt het weer in. `waitFor` (optioneel): pas infaden als dit waar is (de
+// Multiplayer-gast wacht op het potje van de host, hooguit 4 s). Alleen opacity (Prestatie in CLAUDE.md).
+const START_FADE = { out: 650, in: 900 };
+function playStartFade(onDone, waitFor){
+  if (introRunning) return false;
+  introRunning = true;
+  const reduced = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const curtain = document.createElement('div');
+  curtain.className = 'start-fade-curtain';
+  document.body.appendChild(curtain);
+  const fade = (from, to, ms, easing) => curtain.animate([{ opacity: from }, { opacity: to }],
+    { duration: reduced ? 0 : ms, easing, fill: 'forwards' }).finished.catch(() => {});
+  fade(0, 1, START_FADE.out, 'cubic-bezier(.45,0,.55,1)').then(async () => {
+    try { onDone(); } catch (e){ console.error(e); }
+    const t0 = performance.now();
+    while (waitFor && !waitFor() && performance.now() - t0 < 4000) await genNextFrames(1);
+    await genNextFrames(2);
+    await fade(1, 0, START_FADE.in, 'cubic-bezier(.22,.1,.25,1)');
+    curtain.remove();
+    introRunning = false;
+  });
+  return true;
+}
 function playStartIntro(onDone){
   if (introRunning) return;
   introRunning = true;
@@ -20303,7 +20334,12 @@ function mpRegisterActions(room){
   mp.actions.stop.onMessage = () => { if (!mp.isHost) mpClientOnStop(); };
   // de host start het potje met de startanimatie (96b-intro.js): iedereen speelt hem tegelijk
   // af; het potje zelf ('start') komt pas zodra de animatie bij de host klaar is
-  mp.actions.intro.onMessage = () => { if (!mp.isHost && mp.phase === 'joining') playStartIntro(() => {}); };
+  // ({ fade: true } = zonder startanimatie: alleen de rustige fade, infaden zodra het potje er is)
+  mp.actions.intro.onMessage = (data) => {
+    if (mp.isHost || mp.phase !== 'joining') return;
+    if (data && data.fade) playStartFade(() => {}, () => mp.phase === 'in-game');
+    else playStartIntro(() => {});
+  };
 
   // room.onPeerJoin vuurt pas zodra de WebRTC-datachannel naar die peer daadwerkelijk klaar is
   // (dat kan een paar seconden na joinRoom() duren, via de signaling-relay) — een 'hello' die je
@@ -20840,7 +20876,10 @@ function mpHostStartClick(){
     // alleen starten als de kamer er na de animatie nog is (niet intussen afgebroken)
     playStartIntro(() => { if (mp.isHost && mp.phase === 'hosting') mpHostStartGame(); });
   } else {
-    mpHostStartGame();
+    // zonder startanimatie: rustige fade (playStartFade, 96b-intro.js); de gasten faden tegelijk
+    // naar donker en pas weer in als het potje bij hen binnen is
+    if (mp.actions && mp.actions.intro) mp.actions.intro.send({ fade: true });
+    playStartFade(() => { if (mp.isHost && mp.phase === 'hosting') mpHostStartGame(); });
   }
 }
 function mpHostStartGame(){

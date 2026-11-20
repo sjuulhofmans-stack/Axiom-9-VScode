@@ -204,6 +204,35 @@ function introAudio(){
 
 // ---------- beeld ----------
 let introRunning = false;
+
+// ---------- ZONDER startanimatie: rustig uit- en infaden (gebruikerswens 2026-11) ----------
+// Vroeger faadde alleen het lobbyvak over naar het speelvak, terwijl de kop, de achtergrond en de
+// opbouw van de pagina (body.is-playing) in één keer omsprongen: "het spel floept pats boem op het
+// scherm". Nu dezelfde opzet als het gordijn van de startanimatie, maar kort en zacht: het HELE scherm
+// faadt naar donker, daarachter wisselt alles naar het speelscherm (`onDone`), en pas als dat getekend
+// is (2 beeldjes) faadt het weer in. `waitFor` (optioneel): pas infaden als dit waar is (de
+// Multiplayer-gast wacht op het potje van de host, hooguit 4 s). Alleen opacity (Prestatie in CLAUDE.md).
+const START_FADE = { out: 650, in: 900 };
+function playStartFade(onDone, waitFor){
+  if (introRunning) return false;
+  introRunning = true;
+  const reduced = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const curtain = document.createElement('div');
+  curtain.className = 'start-fade-curtain';
+  document.body.appendChild(curtain);
+  const fade = (from, to, ms, easing) => curtain.animate([{ opacity: from }, { opacity: to }],
+    { duration: reduced ? 0 : ms, easing, fill: 'forwards' }).finished.catch(() => {});
+  fade(0, 1, START_FADE.out, 'cubic-bezier(.45,0,.55,1)').then(async () => {
+    try { onDone(); } catch (e){ console.error(e); }
+    const t0 = performance.now();
+    while (waitFor && !waitFor() && performance.now() - t0 < 4000) await genNextFrames(1);
+    await genNextFrames(2);
+    await fade(1, 0, START_FADE.in, 'cubic-bezier(.22,.1,.25,1)');
+    curtain.remove();
+    introRunning = false;
+  });
+  return true;
+}
 function playStartIntro(onDone){
   if (introRunning) return;
   introRunning = true;

@@ -443,7 +443,12 @@ function mpRegisterActions(room){
   mp.actions.stop.onMessage = () => { if (!mp.isHost) mpClientOnStop(); };
   // de host start het potje met de startanimatie (96b-intro.js): iedereen speelt hem tegelijk
   // af; het potje zelf ('start') komt pas zodra de animatie bij de host klaar is
-  mp.actions.intro.onMessage = () => { if (!mp.isHost && mp.phase === 'joining') playStartIntro(() => {}); };
+  // ({ fade: true } = zonder startanimatie: alleen de rustige fade, infaden zodra het potje er is)
+  mp.actions.intro.onMessage = (data) => {
+    if (mp.isHost || mp.phase !== 'joining') return;
+    if (data && data.fade) playStartFade(() => {}, () => mp.phase === 'in-game');
+    else playStartIntro(() => {});
+  };
 
   // room.onPeerJoin vuurt pas zodra de WebRTC-datachannel naar die peer daadwerkelijk klaar is
   // (dat kan een paar seconden na joinRoom() duren, via de signaling-relay) — een 'hello' die je
@@ -980,7 +985,10 @@ function mpHostStartClick(){
     // alleen starten als de kamer er na de animatie nog is (niet intussen afgebroken)
     playStartIntro(() => { if (mp.isHost && mp.phase === 'hosting') mpHostStartGame(); });
   } else {
-    mpHostStartGame();
+    // zonder startanimatie: rustige fade (playStartFade, 96b-intro.js); de gasten faden tegelijk
+    // naar donker en pas weer in als het potje bij hen binnen is
+    if (mp.actions && mp.actions.intro) mp.actions.intro.send({ fade: true });
+    playStartFade(() => { if (mp.isHost && mp.phase === 'hosting') mpHostStartGame(); });
   }
 }
 function mpHostStartGame(){
