@@ -289,7 +289,7 @@
     display:flex; flex-direction:column; align-items:center; justify-content:center; gap:4px;
     width:14px; height:84px; padding:0; margin:0; border:1px solid var(--line); border-left:none;
     border-radius:0 8px 8px 0; background:var(--panel-2); box-shadow:4px 0 14px rgba(0,0,0,.4);
-    transition:transform .2s ease, opacity .2s ease; will-change:transform;
+    transition:transform .3s ease, opacity .35s ease; will-change:transform;
   }
   .play-edge-btn i{display:block; width:4px; height:4px; border-radius:50%; background:var(--quest);}
   .play-edge:hover .play-edge-btn{transform:translateX(2px);}
@@ -300,11 +300,14 @@
     flex-direction:column; align-items:stretch; justify-content:flex-start; gap:8px;
     margin:0; padding:16px; border:none; border-right:1px solid var(--line);
     background:var(--panel); box-shadow:10px 0 34px rgba(0,0,0,.55);
+    /* in- en uitschuiven: 0,45 s met een zachte uitloop (gebruikerswens 2026-11: "langzamer en
+       vloeiender"; was 0,25 s ease) */
     transform:translateX(-105%); visibility:hidden; will-change:transform;
-    transition:transform .25s ease, visibility 0s linear .25s;
+    transition:transform .45s cubic-bezier(.22, 1, .36, 1), visibility 0s linear .45s;
   }
   body.is-playing.play-menu-open header .tab-bar{
-    transform:none; visibility:visible; transition:transform .25s ease, visibility 0s;
+    transform:none; visibility:visible;
+    transition:transform .45s cubic-bezier(.22, 1, .36, 1), visibility 0s;
   }
   /* de knoppen van het potje, onder de tabbladen */
   body.is-playing .play-menu-actions{
@@ -328,10 +331,14 @@
     font-family:var(--font-mono); font-size:11.5px; color:var(--text-dim);
   }
   .play-menu-seed b{color:var(--start);}
-  /* donkere laag over het spel zolang het menu open is; klik erop = dicht */
-  body.is-playing.play-menu-open .play-menu-backdrop{
+  /* donkere laag over het spel zolang het menu open is; klik erop = dicht. Staat tijdens een potje
+     altijd klaar en faadt alleen in opacity in/uit (gelijk met het menu), anders sprong hij er in
+     één keer (gebruikersmelding "erg plotseling"); dicht = onzichtbaar en niet klikbaar */
+  body.is-playing .play-menu-backdrop{
     display:block !important; position:fixed; inset:0; z-index:90; background:rgba(3,6,10,.55);
+    opacity:0; pointer-events:none; will-change:opacity; transition:opacity .45s ease;
   }
+  body.is-playing.play-menu-open .play-menu-backdrop{opacity:1; pointer-events:auto;}
 
   /* ---------- layout ---------- */
   .grid-layout{
