@@ -278,6 +278,9 @@
   body.is-playing .wrap{max-width:none;}
   /* kop weg, maar niet display:none: het menu (position:fixed) zit erin */
   body.is-playing header{display:block; height:0; margin:0; padding:0;}
+  /* de scheidingslijn onder de kop (header::after) bleef bij een kop van hoogte 0 als losse lijn
+     bovenin het speelscherm staan (gebruikersmelding 2026-11) */
+  body.is-playing header::after{display:none;}
   body.is-playing .title-block,
   body.is-playing .header-right{display:none;}
   /* het lipje: de hele linkerrand is de "voelstrook", in het midden een zichtbaar handvat */
