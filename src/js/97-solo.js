@@ -1978,6 +1978,10 @@ document.addEventListener('keydown', (e) => {
   const tag = document.activeElement && document.activeElement.tagName;
   if (tag === 'INPUT' || tag === 'SELECT' || tag === 'TEXTAREA') return;
   e.preventDefault();
+  // Pijltjes zijn tijdens een potje alleen om te lopen. Bleef er na een muisklik een knop
+  // geselecteerd (bv. het tabblad Energie), dan tekende de browser er bij het pijltje een witte
+  // focusrand omheen, vooral als er geen stap kon (gebruikersmelding 2026-11). Dus eerst loslaten.
+  if (tag === 'BUTTON') document.activeElement.blur();
   if (soloPhase !== 'moving' || diceBusyMs() > 0) return;   // stenen rollen nog uit
   const match = soloCurrentLegalMoves.find(l => l.dir === dir);
   if (!match) return;
