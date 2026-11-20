@@ -833,6 +833,18 @@
       </div>
     </div>
   </div>
+  <!-- bevestiging als je tijdens een potje via het menu naar een ander tabblad gaat (2026-11,
+       gebruikerswens: eerst vragen, dan rustig uitfaden). tabAskSwitch in 80-controls.js. -->
+  <div id="walkLeaveConfirm" class="walk-confirm-overlay" hidden>
+    <div class="walk-confirm-panel" role="dialog" aria-modal="true" aria-labelledby="walkLeaveConfirmTitle">
+      <p id="walkLeaveConfirmTitle">Wil je het huidige potje stoppen?</p>
+      <p class="hint">Het lopende potje gaat dan verloren.</p>
+      <div class="walk-confirm-actions">
+        <button type="button" id="btnWalkLeaveConfirmYes" class="primary">Ja, stoppen</button>
+        <button type="button" id="btnWalkLeaveConfirmCancel" class="ghost">Doorspelen</button>
+      </div>
+    </div>
+  </div>
 </div>
 
 <script>

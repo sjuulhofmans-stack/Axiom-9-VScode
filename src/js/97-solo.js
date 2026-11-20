@@ -3688,8 +3688,7 @@ if (btnWalkSoloStart) btnWalkSoloStart.addEventListener('click', () => walkTrySt
 // startscherm, net als "Stoppen" bij Automatisch).
 function walkResetConfirmedReset(){
   if (walkResetConfirmEl) walkResetConfirmEl.hidden = true;
-  soloRebuildSetup();
-  walkFadeToLobby();
+  walkFadeToLobby(soloRebuildSetup);   // opnieuw opbouwen achter het donkere scherm
 }
 // Klikken opent nu eerst een bevestiging i.p.v. meteen te resetten — de knop staat in de
 // tabbladenbalk, vlak boven de rest van de pagina, en een misklik (bv. net naast de dobbelknop

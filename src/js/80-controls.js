@@ -390,7 +390,42 @@ function switchTab(name){
   // mpRenderLobby() wordt vanuit setWalkMode('multi') aangeroepen (hierboven, bij het openen
   // van het tabblad Multiplayer), niet apart hiervandaan.
 }
-tabButtons.forEach(btn => btn.addEventListener('click', () => switchTab(btn.dataset.tab)));
+tabButtons.forEach(btn => btn.addEventListener('click', () => tabAskSwitch(btn.dataset.tab)));
+
+// Tijdens een potje (body.is-playing) naar een ANDER tabblad = eerst vragen of je het potje wilt
+// stoppen (2026-11, gebruikerswens: "switcht zonder pardon en floept erheen"). Ja = het hele scherm
+// faadt rustig naar donker (playStartFade, dezelfde fade als bij het starten), daarachter stopt het
+// potje (setWalkMode zet alles terug naar de lobby) en wisselt het tabblad, en dan faadt het weer
+// in. Is het potje al af (winscherm), dan geen vraag, wel de fade. Multiplayer: de tabbladen staan
+// dan op slot (switchTab weigert), daar verandert niets.
+function tabAskSwitch(name){
+  const cur = document.querySelector('.tab-btn.active');
+  const inGame = document.body.classList.contains('is-playing');
+  if (!inGame || (cur && cur.dataset.tab === name) || window.mpGameActive){ switchTab(name); return; }
+  const leave = () => {
+    const mode = walkModeAutoBtn && walkModeAutoBtn.classList.contains('active') ? 'auto' : 'solo';
+    playStartFade(() => { setWalkMode(mode); switchTab(name); });
+  };
+  const over = document.querySelector('.walk-play-layout.is-game-over');
+  if (over){ leave(); return; }
+  const dlg = document.getElementById('walkLeaveConfirm');
+  dlg.hidden = false;
+  tabLeavePending = leave;
+  document.getElementById('btnWalkLeaveConfirmYes').focus();
+}
+let tabLeavePending = null;
+{
+  const dlg = document.getElementById('walkLeaveConfirm');
+  const close = () => { dlg.hidden = true; tabLeavePending = null; };
+  document.getElementById('btnWalkLeaveConfirmYes').addEventListener('click', () => {
+    const go = tabLeavePending;
+    close();
+    if (go) go();
+  });
+  document.getElementById('btnWalkLeaveConfirmCancel').addEventListener('click', close);
+  dlg.addEventListener('click', (e) => { if (e.target === dlg) close(); });   // klik naast het venster = doorspelen
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !dlg.hidden) close(); });
+}
 
 // ---------- speelmenu: tabbladen als uitschuifmenu tijdens een potje ----------
 // Alleen in de speelweergave (body.is-playing, gezet door walkPauseStopSyncVisibility in

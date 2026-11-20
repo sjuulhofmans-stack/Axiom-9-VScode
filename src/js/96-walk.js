@@ -172,7 +172,19 @@ function walkFadeSwap(hideEl, showEl, ms = WALK_FADE_MS){
   }, ms);
 }
 function walkFadeToPlay(){ walkFadeSwap(walkLobbyEl, walkPlayAreaEl, WALK_FADE_PLAY_MS); }
-function walkFadeToLobby(){ walkFadeSwap(walkPlayAreaEl, walkLobbyEl); }
+// potje → lobby (Stoppen, Nieuw potje, Terug naar lobby): sinds 2026-11 dezelfde rustige fade over
+// het hele scherm als bij het starten (playStartFade, 96b-intro.js) — de kop komt terug en de
+// opbouw van de pagina verandert, dus alleen het vak crossfaden "floepte". `behind` (optioneel)
+// draait achter het donkere scherm, vóór de wissel (bv. de spelers opnieuw opbouwen).
+function walkFadeToLobby(behind){
+  const swap = () => {
+    if (behind){ try { behind(); } catch (e){ console.error(e); } }
+    if (walkPlayAreaEl){ walkPlayAreaEl.hidden = true; walkPlayAreaEl.classList.remove('walk-fade-hidden'); }
+    if (walkLobbyEl){ walkLobbyEl.classList.remove('walk-fade-hidden'); walkLobbyEl.hidden = false; }
+    walkFooterSyncVisibility();
+  };
+  if (!playStartFade(swap)) swap();
+}
 
 // Dezelfde controle als runWalkSimulation()/startSoloGame() zelf al doen, maar dan VOORDAT we
 // naar het speelscherm faden — anders zag je eerst een leeg bord en pas daaronder de

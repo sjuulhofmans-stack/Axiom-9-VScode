@@ -546,10 +546,16 @@ Check minimaal:
 11. **Speelweergave** (alle drie de modi, zolang er een potje in beeld is): `body.is-playing`
     (gezet in `walkPauseStopSyncVisibility`, 96-walk.js; in Multiplayer ook `is-mp-game`).
     De kop is dan HELEMAAL weg (2026-11, gebruikerswens: "de volledige ruimte benutten"). Aan de
-    linkerrand staat een smal lipje (`#playEdge`, 14px = de paginarand): muis tegen de rand (80 ms)
-    = het menu schuift uit over het spel heen, muis het menu uit = na 300 ms dicht; klikken/tikken
+    linkerrand staat een lipje (`#playEdge`, 18×120px, blauwe rand + gloed die rustig "ademt" in
+    opacity): muis tegen de rand (80 ms) = het menu schuift uit over het spel heen (0,65 s, zachte
+    uitloop; donkere laag faadt mee in 0,6 s), muis het menu uit = na 300 ms dicht; klikken/tikken
     op het lipje werkt ook (touchscreen). In het menu de tabbladen en daaronder "Dit potje" met de
-    spelknoppen (Tempo/Pauze/Stoppen, Nieuw potje, Verlaat potje; `#playMenuActions`).
+    spelknoppen (Tempo/Pauze/Stoppen, Nieuw potje, Verlaat potje; `#playMenuActions`), in dezelfde
+    stijl als de tabbladen. Een ANDER tabblad kiezen tijdens een potje = eerst de vraag "Wil je het
+    huidige potje stoppen?" (`#walkLeaveConfirm`, `tabAskSwitch` in 80-controls.js; niet als het
+    potje al af is). Ja = rustige fade over het hele scherm (`playStartFade`, net als bij het
+    starten), daarachter stopt het potje en wisselt het tabblad. Stoppen/Nieuw potje/Terug naar
+    lobby gebruiken dezelfde fade (`walkFadeToLobby(behind)` in 96-walk.js).
     `playMenuSetOpen` in 80-controls.js; dicht ook met ✕, Escape, klik ernaast, een tabblad of een
     spelknop. Op het winscherm staat "Terug naar lobby" naast Statistieken (`soloEndgameToLobby`),
     want na afloop zit die knop anders alleen in het menu. Pagina op volle breedte, bord tot 34px
