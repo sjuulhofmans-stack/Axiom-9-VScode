@@ -4507,6 +4507,91 @@
     .walk-side-stack.has-vault #walkSoloPanel .energy-pick-list.is-actions .energy-pick-text span{display:block;}
   }
 
+  /* ---------- ENERGIEVAK: STAANDE METER + UITLEGVAK (gekozen 2026-11: variant 3 "Staande meter" met
+     het uitlegvak van variant 6, artifact "Axiom-9 Energie en kluis") ----------
+     Alleen met de tabbladen (.has-vault). Links staat het stroomcircuit rechtop (knooppunt 1 onderaan,
+     het getal erboven, het bliksempje eronder), rechts de acties als korte rijen (icoon, naam, prijs)
+     en onderaan het uitlegvak (soloEnergyNoteHtml in 97-solo.js). Het circuit blijft hetzelfde
+     element met dezelfde animaties; alleen de richting is om: leidingstukjes groeien met scaleY van
+     onder naar boven, het lichtpakketje loopt met translateY omhoog (ecPacketUp). --nd = maat van een
+     knooppunt. Gemeten: zie CLAUDE.md. */
+  .walk-side-stack.has-vault > #walkSoloPanel:not([hidden]){
+    display:grid; grid-template-columns:auto minmax(0, 1fr); grid-template-rows:minmax(0, 1fr);
+    column-gap:14px; row-gap:0; padding-top:10px;
+  }
+  .walk-side-stack.has-vault #walkSoloPanel > .walk-energy-overview{
+    --nd:20px;
+    grid-column:1; grid-row:1; width:58px; min-height:0;
+    flex-direction:column-reverse; align-items:center; justify-content:flex-start; gap:10px;
+    padding:2px 0 0; border-bottom:0;
+  }
+  .walk-side-stack.has-vault #walkSoloPanel > .walk-solo-actions{grid-column:2; grid-row:1; min-width:0;}
+  .walk-side-stack.has-vault #walkSoloPanel > .mp-wait-turn{grid-column:2; grid-row:1; align-self:start;}
+  /* getal boven: groot cijfer, "/ 10" klein eronder (zo past ook "10" in de smalle meter) */
+  .walk-side-stack.has-vault #walkSoloPanel .walk-energy-overview .walk-energy-value{
+    width:auto; flex-direction:column; align-items:center; gap:3px; font-size:12px; letter-spacing:.04em;
+  }
+  .walk-side-stack.has-vault #walkSoloPanel .walk-energy-overview .walk-energy-value b{font:700 32px/1 var(--font-display); min-width:0; text-align:center;}
+  .walk-side-stack.has-vault #walkSoloPanel .walk-energy-overview.is-full .walk-energy-value b{color:var(--amber);}
+  .walk-side-stack.has-vault #walkSoloPanel .walk-energy-cells{
+    flex:1 1 auto; width:var(--nd); height:auto; min-height:120px; align-self:center;
+    flex-direction:column-reverse; align-items:center;
+  }
+  .walk-side-stack.has-vault #walkSoloPanel .ec-node{width:var(--nd); height:var(--nd);}
+  .walk-side-stack.has-vault #walkSoloPanel .ec-seg{
+    top:auto; left:calc(var(--nd) / 2 - 1.5px); width:3px;
+    bottom:calc(var(--nd) / 2 + (100% - var(--nd)) * var(--k) / 9); height:calc((100% - var(--nd)) / 9);
+  }
+  .walk-side-stack.has-vault #walkSoloPanel .ec-seg i{transform:scaleY(0); transform-origin:center bottom;}
+  .walk-side-stack.has-vault #walkSoloPanel .ec-seg.is-lit i{transform:none;}
+  .walk-side-stack.has-vault #walkSoloPanel .ec-track{left:0; right:auto; width:var(--nd); top:var(--nd); bottom:0; height:auto;}
+  .walk-side-stack.has-vault #walkSoloPanel .ec-track i{left:1px; top:auto; bottom:1px; width:calc(var(--nd) - 2px); height:calc(var(--nd) - 2px);}
+  .walk-side-stack.has-vault #walkSoloPanel .walk-energy-cells.has-flow .ec-track{animation-name:ecPacketUp;}
+  @keyframes ecPacketUp{
+    0%{transform:translateY(0); opacity:0;} 8%{transform:translateY(0); opacity:1;}
+    55%{transform:translateY(calc(-1 * var(--dist))); opacity:1;} 63%,100%{transform:translateY(calc(-1 * var(--dist))); opacity:0;}
+  }
+  /* de rijen: icoon, naam, prijs (de uitleg staat in het vak eronder) */
+  .walk-side-stack.has-vault #walkSoloPanel .walk-solo-actions:not(:empty){gap:8px;}
+  .walk-side-stack.has-vault #walkSoloPanel .energy-pick-list.is-energy{gap:6px;}
+  .walk-side-stack.has-vault #walkSoloPanel .energy-pick-list.is-energy > .energy-pick{
+    min-height:30px; max-height:62px; gap:12px; padding:4px 12px 4px 5px;
+  }
+  .walk-side-stack.has-vault #walkSoloPanel .energy-pick-list.is-energy .energy-pick-icon{width:38px; height:38px; border-radius:7px;}
+  .walk-side-stack.has-vault #walkSoloPanel .energy-pick-list.is-energy .energy-pick-icon svg{width:22px; height:22px;}
+  .walk-side-stack.has-vault #walkSoloPanel .energy-pick-list.is-energy .energy-pick-text b{font-size:18px; letter-spacing:.03em;}
+  .walk-side-stack.has-vault #walkSoloPanel .energy-pick-list.is-energy .energy-pick-text span{display:none;}
+  .walk-side-stack.has-vault #walkSoloPanel .energy-pick-list.is-energy .energy-pick-price{font-size:23px;}
+  .walk-side-stack.has-vault #walkSoloPanel .energy-pick-list.is-energy .energy-pick.is-noted:not(.is-disabled){box-shadow:inset 3px 0 0 var(--start);}
+  .walk-side-stack.has-vault #walkSoloPanel .energy-pick-list.is-energy .energy-pick.is-noted.is-disabled{box-shadow:inset 3px 0 0 var(--line);}
+  .energy-note{display:none;}
+  .walk-side-stack.has-vault #walkSoloPanel .energy-note{
+    display:flex; flex-direction:column; gap:5px; flex:none; height:var(--note-h, 112px); overflow:hidden;
+    padding:10px 12px; border-radius:9px; background:var(--panel-2);
+  }
+  .energy-note-head{display:flex; justify-content:space-between; align-items:baseline; gap:10px;}
+  .energy-note-head b{font:700 16px/1.1 var(--font-display); letter-spacing:.05em; text-transform:uppercase; color:#fff; white-space:nowrap;}
+  .energy-note-head span{font:400 11px/1.2 var(--font-mono); color:var(--text-dim); text-align:right;}
+  .energy-note-head span.is-no{color:#ff8a8a;}
+  .energy-note p{margin:0; font:400 14px/1.35 var(--font-display); letter-spacing:.01em; color:var(--text);}
+  /* laptop en lagere schermen: kleiner, zelfde opbouw */
+  @media (max-height: 865px), (max-width: 1630px){
+    .walk-side-stack.has-vault #walkSoloPanel > .walk-energy-overview{--nd:16px; width:46px; gap:8px;}
+    .walk-side-stack.has-vault #walkSoloPanel{column-gap:12px;}
+    .walk-side-stack.has-vault #walkSoloPanel .walk-energy-overview .walk-energy-value b{font-size:26px;}
+    .walk-side-stack.has-vault #walkSoloPanel .walk-energy-cells{min-height:90px;}
+    .walk-side-stack.has-vault #walkSoloPanel .walk-solo-actions:not(:empty){gap:6px;}
+    .walk-side-stack.has-vault #walkSoloPanel .energy-pick-list.is-energy{gap:4px;}
+    .walk-side-stack.has-vault #walkSoloPanel .energy-pick-list.is-energy > .energy-pick{min-height:26px; gap:9px; padding:2px 10px 2px 3px;}
+    .walk-side-stack.has-vault #walkSoloPanel .energy-pick-list.is-energy .energy-pick-icon{width:28px; height:28px; border-radius:6px;}
+    .walk-side-stack.has-vault #walkSoloPanel .energy-pick-list.is-energy .energy-pick-icon svg{width:17px; height:17px;}
+    .walk-side-stack.has-vault #walkSoloPanel .energy-pick-list.is-energy .energy-pick-text b{font-size:15px;}
+    .walk-side-stack.has-vault #walkSoloPanel .energy-pick-list.is-energy .energy-pick-price{font-size:19px;}
+    .walk-side-stack.has-vault #walkSoloPanel .energy-note{--note-h:102px; padding:8px 10px; gap:3px;}
+    .walk-side-stack.has-vault #walkSoloPanel .energy-note-head b{font-size:14px;}
+    .walk-side-stack.has-vault #walkSoloPanel .energy-note p{font-size:13px;}
+  }
+
 
   /* ===================== TABBLAD SPELREGELS (98c-rules.js) =====================
      Los bestand, door build.py achter styles.css geplakt. Links een inhoudsopgave die blijft
@@ -15586,8 +15671,14 @@ if (walkSoloActionsEl){
     if (!btn) return;   // gaatje tussen de knoppen: preview laten staan
     const act = ENERGY_ACTIONS[btn.dataset.energy];
     soloPreviewEnergyCost(act && !btn.disabled ? act.cost : null);
+    soloEnergyNoteShow(btn.dataset.energy);   // uitlegvak onder de lijst
   });
-  walkSoloActionsEl.addEventListener('mouseleave', () => soloPreviewEnergyCost(null));
+  walkSoloActionsEl.addEventListener('mouseleave', () => { soloPreviewEnergyCost(null); soloEnergyNoteShow(soloEnergyNoteDefault); });
+  // toetsenbord: de actie met focus staat in het uitlegvak
+  walkSoloActionsEl.addEventListener('focusin', (e) => {
+    const btn = e.target.closest('button.energy-pick[data-energy]');
+    if (btn) soloEnergyNoteShow(btn.dataset.energy);
+  });
 }
 function soloRefreshTarget(){
   const p = solo();
@@ -15739,6 +15830,41 @@ const ENERGY_ACTION_ICONS = {
 // stappen zetten (via het kaartvenster, zie hieronder) — behalve Noodrantsoen/Stuwlading, die
 // mogen ook al hier (zie SOLO_PRE_ROLL_CARDS/soloCardBlockReason), maar die tonen we via de
 // kaartkluis (#walkCardVault) net als anders, niet in dit energiepaneel.
+// ---------- uitlegvak onder de energie-acties ----------
+// Toont de uitleg van de actie waar je muis (of toetsenbordfocus) op staat; anders die van de eerste
+// actie die je nu kunt kiezen. Bovenin: naam + wat het met je energie doet (of waarom het niet kan).
+// De rijen zelf tonen alleen icoon, naam en prijs. `var` (geen let): soloRenderActionPanel kan al
+// tijdens het laden lopen, vóór deze regels.
+var soloEnergyNotes = {};          // id -> { reason, energy } van de laatste keer tekenen
+var soloEnergyNoteDefault = null;  // wat er staat zonder muis erop (null = je kunt niets)
+var soloEnergyNoteShown;           // wat er nu staat (om niets opnieuw te zetten als het gelijk is)
+function soloEnergyNoteHtml(id){
+  if (!id || !ENERGY_ACTIONS[id] || !soloEnergyNotes[id]){
+    return `<div class="energy-note-head"><b>Te weinig energie</b></div>` +
+      `<p>Je kunt deze beurt geen actie betalen. Gooi gewoon: wat de energiesteen geeft, kun je volgende beurt uitgeven.</p>`;
+  }
+  const act = ENERGY_ACTIONS[id], info = soloEnergyNotes[id];
+  const short = act.cost - info.energy;
+  const state = info.reason ? `<span class="is-no">${info.reason}</span>`
+    : short > 0 ? `<span class="is-no">nog ${short} energie nodig</span>`
+    : `<span>${act.cost} energie · houdt ${info.energy - act.cost} over</span>`;
+  const text = (typeof RULES_ENERGY_TEXT !== 'undefined' && RULES_ENERGY_TEXT[id]) || act.note || act.hint;
+  return `<div class="energy-note-head"><b>${act.name}</b>${state}</div><p>${text}</p>`;
+}
+function soloEnergyNoteMark(id){
+  if (!walkSoloActionsEl) return;
+  for (const b of walkSoloActionsEl.querySelectorAll('.is-energy > .energy-pick')){
+    const on = b.dataset.energy === id;
+    if (b.classList.contains('is-noted') !== on) b.classList.toggle('is-noted', on);
+  }
+}
+function soloEnergyNoteShow(id){
+  const box = walkSoloActionsEl && walkSoloActionsEl.querySelector('.energy-note');
+  if (!box || id === soloEnergyNoteShown) return;
+  soloEnergyNoteShown = id;
+  box.innerHTML = soloEnergyNoteHtml(id);
+  soloEnergyNoteMark(id);
+}
 function soloRenderActionPanel(){
   if (!walkSoloActionsEl) return;
   const p = solo();
@@ -15764,16 +15890,19 @@ function soloRenderActionPanel(){
   const locked = (id) => p.energy < ENERGY_ACTIONS[id].cost || !!blockReason(id);
   const energyBtns = ids.map(id => renderEnergySoloButton(id, locked(id), blockReason(id))).join('');
   // Kun je er geen enkele betalen, zeg dat dan met zoveel woorden — uitgegrijsde rijen
-  // zien er anders uit alsof het paneel stuk is. Bewust één korte regel: met 4 acties paste de
-  // oude zin van twee regels niet meer in het vaste vak (.walk-solo-panel) en moest je scrollen
-  // bij 0–3 energie, dus bijna elke beurt aan het begin van een potje (gebruikersmelding).
+  // zien er anders uit alsof het paneel stuk is. Staat sinds 2026-11 in het uitlegvak (als er
+  // geen muis op een actie staat), niet meer als losse regel onder de lijst.
   const allLocked = ids.every(id => locked(id));
-  const note = allLocked
-    ? `<p class="hint energy-pick-none">Te weinig energie voor een actie — gooi gewoon.</p>`
-    : '';
-  // onder elkaar, met de uitleg eronder (gebruikerswens: de 2x2-tegels stonden scheef en de
-  // tekst liep door het vak heen; nu het bord en dus de kolom hoger is, past de lijst weer)
-  walkSoloActionsEl.innerHTML = `<div class="energy-pick-list is-actions">${energyBtns}</div>${note}`;
+  // het uitlegvak (gekozen 2026-11: "staande meter" + "uitlegvak", artifact "Axiom-9 Energie en
+  // kluis"): per actie wat er in het vak komt; standaard de eerste die je nu kunt kiezen
+  soloEnergyNotes = {};
+  for (const id of ids) soloEnergyNotes[id] = { reason: blockReason(id), energy: p.energy };
+  soloEnergyNoteDefault = allLocked ? null : ids.find(id => !locked(id));
+  // onder elkaar (gebruikerswens: de 2x2-tegels stonden scheef), met het uitlegvak eronder
+  walkSoloActionsEl.innerHTML = `<div class="energy-pick-list is-actions is-energy">${energyBtns}</div>` +
+    `<div class="energy-note" aria-live="polite">${soloEnergyNoteHtml(soloEnergyNoteDefault)}</div>`;
+  soloEnergyNoteShown = soloEnergyNoteDefault;
+  soloEnergyNoteMark(soloEnergyNoteDefault);
   // net aangemaakte knoppen beginnen anders allemaal weer bij 0 — zie PULSE_EPOCH hierboven.
   for (const el of walkSoloActionsEl.querySelectorAll('.walk-pulse-affordable')) syncPulse(el);
   // 2e "of": alleen zichtbaar zolang je vóór het dobbelen zit én Noodrantsoen/Stuwlading nu
