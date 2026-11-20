@@ -4309,7 +4309,22 @@
   /* ---------- ROOSTERS: kruipen (walkCrawlFx in 96-walk.js) ----------
      Het rooster dat losdraait is een losse laag met hetzelfde plaatje; eronder een donker gat. Het
      lichtje is koper (de kleur van het rooster). Alleen transform/opacity. */
-  #walkBoard .cell.grate.is-grate-open{background:#05070a; box-shadow:inset 0 0 0 1px #2a1a10;}
+  /* !important: ook als er een spoor (.walk-trail) of pion (.walk-pawn) op ligt, anders zag je het gat
+     niet (het spoor zet het roosterplaatje terug) */
+  #walkBoard .cell.grate.is-grate-open{
+    background:#05070a !important; border-radius:0 !important;
+    box-shadow:inset 0 0 0 1px #2a1a10, inset 0 0 6px #000 !important;
+  }
+  /* de pion tijdens het kruipen: een losse schijf die het gat in zakt en er bij de uitgang uit komt
+     (de echte pion is het vakje zelf en kan niet krimpen). Boven het rooster (z 7) */
+  .walk-crawl-pawn{
+    position:absolute; inset:0; border-radius:50%; pointer-events:none; z-index:8;
+    background:var(--gp, #ff4fd8); box-shadow:0 0 0 2px #fff, 0 0 12px var(--gp, #ff4fd8);
+    will-change:transform, opacity;
+  }
+  /* het vakje waar het lichtje uit vertrekt even bovenop, zodat het lichtje over pionnen, spoor en
+     doelvakjes heen schuift in plaats van eronder */
+  #walkBoard .cell.is-crawl-src{z-index:30 !important;}
   .walk-grate-lid{
     position:absolute; inset:0; pointer-events:none; z-index:7; will-change:transform, opacity;
     background:#161b22 var(--grate-img) center / 100% 100% no-repeat;
