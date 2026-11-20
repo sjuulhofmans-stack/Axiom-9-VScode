@@ -177,21 +177,6 @@ const genLoader = createProgressLoader(genOverlayEl);
 // met het toetsenbord: disabled); ze rekenen allemaal op de kaart die er nog niet is (gebruikerswens
 // 2026-10). Ze staan in index.html al op slot, want bij het openen wordt er meteen gegenereerd.
 const GEN_LOCKED_TABS = ['tabBtnSimulate', 'tabBtnWalk', 'tabBtnMulti'];
-// Kop rechts: de spelknoppen (Pauze/Stoppen/Tempo, Nieuw potje, Verlaat potje) óf de status. Was
-// een CSS-:has(); nu zet een MutationObserver (alleen op het hidden-attribuut van die knoppen) de
-// klasse .has-actions, zie styles.css en Prestatie in CLAUDE.md.
-{
-  const right = document.querySelector('.header-right');
-  const actions = right && right.querySelector('.tab-bar-actions');
-  if (right && actions){
-    const sync = () => {
-      const on = [...actions.children].some(el => !el.hidden);
-      if (right.classList.contains('has-actions') !== on) right.classList.toggle('has-actions', on);
-    };
-    new MutationObserver(sync).observe(actions, { subtree: true, childList: true, attributes: true, attributeFilter: ['hidden'] });
-    sync();
-  }
-}
 function genLockTabs(on){
   for (const id of GEN_LOCKED_TABS){
     const b = document.getElementById(id);
@@ -409,10 +394,14 @@ tabButtons.forEach(btn => btn.addEventListener('click', () => switchTab(btn.data
 
 // ---------- speelmenu: tabbladen als uitschuifmenu tijdens een potje ----------
 // Alleen in de speelweergave (body.is-playing, gezet door walkPauseStopSyncVisibility in
-// 96-walk.js): dan staat er links in de smalle kop een knop "☰ Menu" en schuiven de tabbladen
-// over het spel heen. Het spel loopt eronder gewoon door. Dicht via ✕, Escape, klik ernaast of
-// door een tabblad te kiezen.
+// 96-walk.js). Er is dan geen kop meer (2026-11, gebruikerswens): aan de linkerrand staat een
+// smal lipje (#playEdge). Muis helemaal naar links = het menu schuift uit (tabbladen + de knoppen
+// van het potje), muis het menu uit = weer dicht. Klikken/tikken op het lipje werkt ook
+// (touchscreen); dicht ook via ✕, Escape, klik ernaast, een tabblad of een spelknop kiezen.
+// Het spel loopt eronder gewoon door.
+let playMenuTimer = 0;
 function playMenuSetOpen(open){
+  clearTimeout(playMenuTimer);
   document.body.classList.toggle('play-menu-open', !!open);
   const btn = document.getElementById('btnPlayMenu');
   if (btn) btn.setAttribute('aria-expanded', open ? 'true' : 'false');
@@ -421,10 +410,25 @@ function playMenuSetOpen(open){
 }
 {
   const isOpen = () => document.body.classList.contains('play-menu-open');
+  const menu = document.getElementById('mainTabBar');
+  const edge = document.getElementById('playEdge');
+  const later = (open, ms) => { clearTimeout(playMenuTimer); playMenuTimer = setTimeout(() => playMenuSetOpen(open), ms); };
+  // muis: even op de rand blijven hangen (80 ms) opent, zodat er niets uitschiet als je alleen
+  // langs de linkerkolom beweegt; het menu uit = na 300 ms dicht (terug erin = blijft open)
+  edge.addEventListener('pointerenter', (e) => { if (e.pointerType === 'mouse' && !isOpen()) later(true, 80); });
+  edge.addEventListener('pointerleave', (e) => { if (e.pointerType === 'mouse' && !isOpen()) clearTimeout(playMenuTimer); });
+  menu.addEventListener('pointerenter', (e) => { if (e.pointerType === 'mouse' && isOpen()) clearTimeout(playMenuTimer); });
+  menu.addEventListener('pointerleave', (e) => {
+    if (e.pointerType !== 'mouse' || !isOpen()) return;
+    // terug naar de rand telt niet als weggaan
+    if (e.relatedTarget && edge.contains(e.relatedTarget)) return;
+    later(false, 300);
+  });
   document.getElementById('btnPlayMenu').addEventListener('click', () => playMenuSetOpen(!isOpen()));
   document.getElementById('btnPlayMenuClose').addEventListener('click', () => playMenuSetOpen(false));
   document.getElementById('playMenuBackdrop').addEventListener('click', () => playMenuSetOpen(false));
   tabButtons.forEach(btn => btn.addEventListener('click', () => playMenuSetOpen(false)));
+  document.querySelectorAll('#playMenuActions button').forEach(btn => btn.addEventListener('click', () => playMenuSetOpen(false)));
   document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && isOpen()) playMenuSetOpen(false); });
 }
 

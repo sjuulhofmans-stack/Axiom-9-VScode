@@ -132,7 +132,7 @@ aangeroepen (functiedeclaraties worden gehoist, `const`/`let` niet).
 | de dobbelstenen, de stappenteller of de energiebolletjes | `96d-dice.js` + het dobbelstenen-blok onderaan `styles.css` |
 | de kaders/vlakken ("zwevende kolommen", gekozen variant 5 uit 6, 2026-10; sinds 2026-10 op de HELE pagina, niet alleen tijdens een potje) | blok `"ZWEVENDE KOLOMMEN" OP DE HELE PAGINA` onderaan `styles.css`: `--page-bg` = `#070a0e`, elke `.panel`/pop-up één kaart zonder rand of amber lijntje, het generatorbord zonder stalen kader. Tijdens een potje (`body.is-playing`) ook: spelerskaarten, beide zijkolommen, bord en chat elk één kaart (`--panel`, ronde hoeken, zachte schaduw) op `#070a0e`, alles binnenin plat. Randen houden hun DIKTE (alleen kleur transparent), zodat alle gemeten maten gelijk blijven — gemeten 1920×960 en 1440×780: identiek aan vóór de wijziging |
 | de uitslag van de simulatie ("Stoplicht-kaarten", gekozen variant A uit 4, artifact "Axiom-9 Simulatie-uitslag", 2026-11) | `renderSimResults` + helpers `simCard`/`simRow`/`simDonut`/`simHBars`/`simColumns`/`simStack`/`simDots`/`simRankGrid` in `95-simulate.js`, opmaak blok `uitslag als "stoplicht-kaarten"` in `styles.css`. Oordeelsbalk (4 vakjes) bovenaan, daaronder 7 rijen van 2 even brede kaarten (Eerlijkheid, Tempo en spanning, Geluk, Energie, Acties en portalen, Kristallen, Bord) + de warmtekaart over de volle breedte. Elke kaart: titel + oordeelchip (in orde/let op/probleem/ter info) + pijltje, groot getal, één zin, één SVG-diagram, tabel + uitleg achter "Details". Inklappen per kaart; kaarten in een rij blijven even hoog. Onder 900px één kolom. Gemeten 1920, 1440 en 390 breed: niets loopt over. Nieuwe meting? Een kaart toevoegen in een bestaande rij of een nieuwe rij van twee |
-| de speelweergave (smalle balk, ☰-menu, bordgrootte tijdens een potje) | `body.is-playing` in `styles.css` + `playMenuSetOpen` (80-controls.js) + `walkPauseStopSyncVisibility` (96-walk.js) |
+| de speelweergave (geen kop, lipje + uitschuifmenu aan de linkerrand, bordgrootte tijdens een potje) | `body.is-playing` in `styles.css` + `playMenuSetOpen` (80-controls.js) + `walkPauseStopSyncVisibility` (96-walk.js) |
 
 ## Spelregels die in de code zitten
 
@@ -521,11 +521,16 @@ Check minimaal:
     Nog een keer klikken op een item = weer af. Wordt per browser onthouden (localStorage).
 11. **Speelweergave** (alle drie de modi, zolang er een potje in beeld is): `body.is-playing`
     (gezet in `walkPauseStopSyncVisibility`, 96-walk.js; in Multiplayer ook `is-mp-game`).
-    De grote kop is dan een smalle balk: links "☰ Menu" + klein logo, rechts de spelknoppen
-    (Tempo/Pauze/Stoppen, Nieuw potje, Verlaat potje). De tabbladen schuiven links uit over het
-    spel heen (`playMenuSetOpen` in 80-controls.js; dicht met ✕, Escape, klik ernaast of een
-    tabblad kiezen). Pagina op volle breedte, bord tot 34px per vakje ("altijd zo groot
-    mogelijk"); hoogte boven/onder het bord = `--play-chrome` (224px, gemeten). Kolomminima:
+    De kop is dan HELEMAAL weg (2026-11, gebruikerswens: "de volledige ruimte benutten"). Aan de
+    linkerrand staat een smal lipje (`#playEdge`, 14px = de paginarand): muis tegen de rand (80 ms)
+    = het menu schuift uit over het spel heen, muis het menu uit = na 300 ms dicht; klikken/tikken
+    op het lipje werkt ook (touchscreen). In het menu de tabbladen en daaronder "Dit potje" met de
+    spelknoppen (Tempo/Pauze/Stoppen, Nieuw potje, Verlaat potje; `#playMenuActions`).
+    `playMenuSetOpen` in 80-controls.js; dicht ook met ✕, Escape, klik ernaast, een tabblad of een
+    spelknop. Op het winscherm staat "Terug naar lobby" naast Statistieken (`soloEndgameToLobby`),
+    want na afloop zit die knop anders alleen in het menu. Pagina op volle breedte, bord tot 34px
+    per vakje ("altijd zo groot mogelijk"); hoogte boven/onder het bord = `--play-chrome` (184px,
+    was 224 met de smalle balk; gemeten 1920×889: vakjes 20,8 → 22px, onderaan 4px over, niets scrolt). Kolomminima:
     links 280px, zijkolom 370px (smaller breken opdrachtnaam/energietegels af); Multiplayer
     270 / 370 / chat 230px. Tussen 1361 en 1520 breed staat de chat in Multiplayer als eigen regel
     ONDER het speelscherm (anders viel het bord rechts ±42px af op 1440×780; sinds 2026-11). Gemeten: Full HD ±21px, 1440×780 ±15px, Multiplayer op Full HD even

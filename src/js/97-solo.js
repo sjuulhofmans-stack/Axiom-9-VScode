@@ -2848,8 +2848,20 @@ function soloRenderEndgameResult(){
     `<span class="walk-endgame-title">${v.title}</span>` +
     (v.sub ? `<span class="walk-endgame-sub">${v.sub}</span>` : '') +
     (v.players.length > 1 ? soloEndgameRankingHtml(v.players, v.isMe) : '') +
+    `<div class="walk-endgame-btns">` +
     (v.players.some(p => p.stats)
-      ? `<button type="button" class="ghost walk-endgame-stats-btn" data-endgame-stats>Statistieken</button>` : '');
+      ? `<button type="button" class="ghost walk-endgame-stats-btn" data-endgame-stats>Statistieken</button>` : '') +
+    // sinds de kop tijdens een potje weg is (2026-11) zit "Terug naar lobby" in het uitschuifmenu;
+    // na afloop staat hij ook hier, zodat je hem niet hoeft te zoeken
+    `<button type="button" class="ghost walk-endgame-stats-btn" data-endgame-lobby>Terug naar lobby</button>` +
+    `</div>`;
+}
+// Bots spelen → "Stoppen" (heet dan al Terug naar lobby), Multiplayer → "Verlaat potje",
+// Zelf spelen → zelfde als Nieuw potje (zonder bevestiging: het potje is toch al af)
+function soloEndgameToLobby(){
+  if (window.mpGameActive && btnMpLeaveGame && !btnMpLeaveGame.hidden) btnMpLeaveGame.click();
+  else if (btnWalkStop && !btnWalkStop.hidden) btnWalkStop.click();
+  else walkResetConfirmedReset();
 }
 // ---------- statistieken per speler (pop-up via de knop op het winscherm) ----------
 // De tellers zelf lopen tijdens het spel mee (newPlayerStats in 95-simulate.js); wat af te leiden
@@ -3065,6 +3077,7 @@ function soloCloseStats(){ const el = document.getElementById('walkStatsOverlay'
 if (walkEndgameCardEl){
   walkEndgameCardEl.addEventListener('click', (e) => {
     if (e.target.closest('[data-endgame-stats]')) soloOpenStats();
+    else if (e.target.closest('[data-endgame-lobby]')) soloEndgameToLobby();
   });
 }
 if (walkStatsOverlayEl){

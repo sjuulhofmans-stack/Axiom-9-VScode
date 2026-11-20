@@ -20,10 +20,8 @@
   <header>
     <div class="title-block">
       <!-- Speelweergave (body.is-playing, zie walkPauseStopSyncVisibility in 96-walk.js): tijdens
-           een potje is deze kop alleen een smalle balk (☰ + logo links, spelknoppen rechts) en
-           schuiven de tabbladen links uit als menu over het spel heen (playMenuSetOpen in
-           80-controls.js). Buiten een potje is deze knop onzichtbaar. -->
-      <button type="button" class="ghost play-menu-btn" id="btnPlayMenu" aria-expanded="false" aria-controls="mainTabBar" title="Menu">☰ Menu</button>
+           een potje is deze kop helemaal weg (2026-11, gebruikerswens: alle ruimte voor het spel);
+           de tabbladen + spelknoppen schuiven dan links uit als menu (#playEdge hieronder). -->
       <img class="logo" id="logoReload" src="{{LOGO}}" alt="Axiom-9 logo" title="Pagina vernieuwen" role="button" tabindex="0">
       <h1 class="spaced-title">MAP GENERATOR</h1>
     </div>
@@ -40,39 +38,34 @@
     <button class="tab-btn" id="tabBtnMulti" disabled data-tab="multi" role="tab" aria-selected="false">Multiplayer</button>
     <button class="tab-btn" id="tabBtnCards" data-tab="cards" role="tab" aria-selected="false">Speelkaarten</button>
     <button class="tab-btn" id="tabBtnRules" data-tab="rules" role="tab" aria-selected="false">Spelregels</button>
-    <!-- Het tabblad heette eerst ook "Zelf spelen", net als de modusknop erin — verwarrend, want
-         daar zit ook Automatisch (waar je juist niet zelf speelt). Nu "Spelen".
-         "Nieuw potje": alleen relevant op tabblad "Spelen" tijdens de modus Zelf spelen —
-         stond eerst boven het bord (waar een misklik naast de dobbelknop meteen het potje
-         weggooide, gebruikersmelding) en daarna ernaast in .walk-hud, maar de gebruiker wilde
-         'm liever hier, rechtsboven bij de andere tabbladen, uit de buurt van het dobbelen.
-         Zichtbaarheid (welk tabblad + solo-modus + geen multiplayer) via
-         walkSoloResetSyncVisibility() in 97-solo.js, aangeroepen vanuit switchTab()
-         (80-controls.js) en setWalkMode() (97-solo.js). Klikken opent nu eerst
-         #walkResetConfirm i.p.v. meteen te resetten. -->
-    <!-- Pauze/Stoppen (Automatisch) staan hier om dezelfde reden rechtsboven, niet meer in een
-         eigen rij boven de spelers (gebruikerswens). Zichtbaar alleen tijdens het speelscherm
-         van Automatisch — walkPauseStopSyncVisibility() in 96-walk.js. -->
-    <div class="play-menu-seed">Seed: <b id="playMenuSeed">…</b></div>
-  </div>
-  <div class="play-menu-backdrop" id="playMenuBackdrop"></div>
-    <!-- Rechterkolom van de kop: spelknoppen + status. Niet meer ín .tab-bar, anders zouden ze
-         het centreren van de tabbladen scheef trekken. -->
-    <div class="header-right">
-    <div class="tab-bar-actions">
-      <button type="button" id="btnWalkSoloReset" class="ghost tab-bar-action" disabled hidden>Nieuw potje</button>
-      <!-- "Verlaat potje"/"Terug naar lobby" (Multiplayer, zie mpEnterPlayView/mpExitPlayView in
-           99-multiplayer.js) — stond in het dobbelvak, nu hier rechtsboven zodat de zijkolom
-           ruimte houdt voor de chat ernaast; altijd bereikbaar, ook buiten je eigen beurt -->
-      <button type="button" id="btnMpLeaveGame" class="ghost tab-bar-action" hidden>Verlaat potje</button>
-      <!-- tempo tijdens het lopen (Automatisch) — gekoppeld aan #walkSpeed in de lobby, zie 96-walk.js -->
+    <!-- Spelknoppen van het potje (2026-11, gebruikerswens): tijdens een potje is er geen kop
+         meer, dus staan ze hier in het uitschuifmenu, onder de tabbladen. Ze bestaan alleen
+         tijdens het speelscherm (buiten een potje zijn ze allemaal hidden). Zichtbaarheid:
+         walkPauseStopSyncVisibility() (96-walk.js), walkSoloResetSyncVisibility() (97-solo.js),
+         mpEnterPlayView/mpExitPlayView (99-multiplayer.js). -->
+    <div class="play-menu-actions" id="playMenuActions">
+      <div class="play-menu-sub">Dit potje</div>
+      <!-- tempo tijdens het lopen (Bots spelen) — gekoppeld aan #walkSpeed in de lobby, zie 96-walk.js -->
       <label class="tab-bar-tempo" id="walkSpeedPlayWrap" hidden>Tempo
         <input type="range" id="walkSpeedPlay" min="0" max="4" step="1" value="2" aria-label="Tempo">
       </label>
       <button type="button" id="btnWalkPause" class="ghost tab-bar-action" disabled hidden>Pauze</button>
       <button type="button" id="btnWalkStop" class="ghost tab-bar-action" disabled hidden>Stoppen</button>
+      <!-- "Nieuw potje" (Zelf spelen): klikken opent eerst #walkResetConfirm -->
+      <button type="button" id="btnWalkSoloReset" class="ghost tab-bar-action" disabled hidden>Nieuw potje</button>
+      <!-- "Verlaat potje"/"Terug naar lobby" (Multiplayer) -->
+      <button type="button" id="btnMpLeaveGame" class="ghost tab-bar-action" hidden>Verlaat potje</button>
     </div>
-
+    <div class="play-menu-seed">Seed: <b id="playMenuSeed">…</b></div>
+  </div>
+  <div class="play-menu-backdrop" id="playMenuBackdrop"></div>
+  <!-- Lipje aan de linkerrand (alleen tijdens een potje): muis helemaal naar links = menu schuift
+       uit, muis eruit = dicht. Klikken/tikken werkt ook (touchscreen). playMenuSetOpen e.v. in
+       80-controls.js. -->
+  <div class="play-edge" id="playEdge">
+    <button type="button" class="play-edge-btn" id="btnPlayMenu" aria-expanded="false" aria-controls="mainTabBar" aria-label="Menu" title="Menu"><i></i><i></i><i></i></button>
+  </div>
+    <div class="header-right">
     <div class="status">
       <div><span class="dot"></span>SYSTEEM ACTIEF</div>
       <div>SEED: <b id="statSeed" title="De seed waarmee de huidige indeling is gegenereerd">…</b></div>
