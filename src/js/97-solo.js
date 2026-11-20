@@ -966,7 +966,7 @@ function renderEnergySoloButton(id, disabled, reason){
   const short = Math.max(0, act.cost - solo().energy);
   const sub = reason || (short > 0 ? `nog ${short} energie nodig` : act.hint);
   return `<button type="button" class="energy-pick${disabled ? ' is-disabled' : ''}${pulse ? ' walk-pulse-affordable' : ''}" data-energy="${id}"${disabled ? ' disabled' : ''} title="${title}">
-    <span class="energy-pick-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="${ENERGY_ACTION_ICONS[id] || ''}"></path></svg></span>
+    <span class="energy-pick-icon">${id === 'driver' ? crystalDriverSvg('mono') : `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="${ENERGY_ACTION_ICONS[id] || ''}"></path></svg>`}</span>
     <span class="energy-pick-text">
       <b>${act.name}</b>
       <span>${sub}</span>
@@ -1226,6 +1226,7 @@ function soloRefreshCardVault(){
     reason: soloCardBlockReason,
     canDiscard: mine && soloCanDiscardNow(),
     idle: mine ? null : 'wacht op je beurt',
+    tool: !!owner.screwdriver,
   });
 }
 // Wiens kluis staat er? Wie aan zet is als dat een mens is; anders (bots aan zet) de enige mens
@@ -1572,7 +1573,7 @@ function soloCrawlExits(){
   if (!p || !p.screwdriver || !soloHasGrates() || !soloGraph.grateSet.has(p.pos)) return [];
   return grateExits(soloGraph, p.pos, soloOccupied());
 }
-const SOLO_DRIVER_SVG = `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="${ENERGY_ACTION_ICONS.driver}"></path></svg>`;
+const SOLO_DRIVER_SVG = crystalDriverSvg('mono');   // gekozen icoon (96c-crystals.js), in de tekstkleur
 function soloCrawlOfferHtml(){
   if (soloPhase !== 'moving' || !soloMove || !soloCrawlExits().length) return '';
   const rest = soloMove.stepsLeft;

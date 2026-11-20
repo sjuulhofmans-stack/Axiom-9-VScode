@@ -46,29 +46,54 @@ function crystalShapeSvg(empty){
 const crystalIconSvg = inner =>
   `<svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round">${inner}</svg>`;
 
-// waar een te lange kristalnaam mag afbreken (met streepje); nieuwe lange naam? hier toevoegen
-const CRYSTAL_NAME_BREAKS = {
-  'Stroomonderbreking': 'Stroom&shy;onderbreking',
-};
-// Eén kristal. size 'lg' = alles erop, 'sm' = alleen het icoon (de plekjes in de kluis).
+// Eén kristal (sinds 2026-11, artifact "Axiom-9 Energie en kluis", variant 3+): op het kristal staan
+// alleen nog het icoon en de naam. Soort, moment en uitleg staan in het uitlegvak eronder
+// (crystalInfoHtml). size 'lg' = icoon + naam, 'sm' = alleen het icoon (de plekjes in de kluis).
 // `tag`/`attrs` maken er een knop van; `state` zijn extra klassen (is-locked, is-picked, is-new).
 function renderCrystal(id, { size = 'lg', state = '', tag = 'div', attrs = '' } = {}){
-  const c = ACTION_CARDS[id];
   const cat = ACTION_CARD_TINTS[id];
-  // "Zwaartekracht-laarzen" breekt na het streepje; lange namen zonder streepje krijgen een zacht
-  // afbreekpunt (&shy;), anders stond er "STROOMONDERBR / EKING"
-  const name = (CRYSTAL_NAME_BREAKS[c.name] || c.name).replace('-', '-&#8203;');
-  return `<${tag} class="crystal crystal--${size} crystal--${cat} ${state}" ${attrs}>
-    ${crystalShapeSvg(false)}
-    <span class="crystal-layer">
-      <span class="crystal-when">${CRYSTAL_WHEN[c.when]}</span>
-      <span class="crystal-ico">${crystalIconSvg(ACTION_CARD_ICONS[id])}</span>
-      <span class="crystal-name">${name}</span>
-      <span class="crystal-rule"></span>
-      <span class="crystal-txt">${c.text}</span>
-      <span class="crystal-cat">${CRYSTAL_CATS[cat]}</span>
-    </span>
-  </${tag}>`;
+  const inner = size === 'sm'
+    ? `<span class="crystal-layer"><span class="crystal-ico">${crystalIconSvg(ACTION_CARD_ICONS[id])}</span></span>`
+    : crystalArtSvg(id);
+  return `<${tag} class="crystal crystal--${size} crystal--${cat} ${state}" ${attrs}>${crystalShapeSvg(false)}${inner}</${tag}>`;
+}
+// icoon + lijntje + naam als één SVG in dezelfde 200×290 als de vorm: schaalt in z'n geheel mee, en
+// een lange naam wordt smaller gezet (textLength) in plaats van midden in een woord af te breken
+// (zo stond er vroeger "SCHROEVENDRAAI / ER"). Na een streepje of spatie mag de naam op 2 regels.
+function crystalNameLines(name){
+  const u = name.toUpperCase();
+  const dash = u.indexOf('-');
+  if (dash > 0) return [u.slice(0, dash + 1), u.slice(dash + 1)];
+  if (u.length > 11 && u.indexOf(' ') > 0) return u.split(' ');
+  return [u];
+}
+function crystalArtSvg(id){
+  const lines = crystalNameLines(ACTION_CARDS[id].name);
+  const two = lines.length > 1, fs = two ? 22 : 24, y0 = two ? 194 : 206, maxW = 150;
+  const s = 88 / 48, iy = two ? 112 : 120;
+  const text = lines.map((l, i) => {
+    const fit = l.length * fs * .55 > maxW ? ` textLength="${maxW}" lengthAdjust="spacingAndGlyphs"` : '';
+    return `<text x="100" y="${y0 + i * (fs + 3)}" text-anchor="middle" font-size="${fs}"${fit}>${l}</text>`;
+  }).join('');
+  const ly = two ? 166 : 176;
+  return `<svg class="crystal-art" viewBox="0 0 200 290" aria-hidden="true">
+    <g transform="translate(${100 - 44},${iy - 44}) scale(${s})" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round">${ACTION_CARD_ICONS[id]}</g>
+    <line x1="74" y1="${ly}" x2="126" y2="${ly}" stroke="currentColor" stroke-opacity=".6" stroke-width="1.5"/>${text}</svg>`;
+}
+// De schroevendraaier (gekozen icoon 1 "schuin, twee kleuren", 2026-11): gevuld, koperen handvat
+// met groeven, zilveren schacht. mode 'color' = je hebt hem, 'off' = grijs (je hebt hem niet),
+// 'mono' = in de tekstkleur (energie-actie en kruip-knop). Losstaand (geen andere consts nodig):
+// WALK_DRIVER_SVG in 96-walk.js roept hem al tijdens het laden aan.
+function crystalDriverSvg(mode = 'color'){
+  const h = mode === 'mono' ? 'currentColor' : mode === 'off' ? '#7d8a99' : '#ff9f5c';
+  const m = mode === 'mono' ? 'currentColor' : mode === 'off' ? '#7d8a99' : '#e6edf3';
+  const d = mode === 'mono' ? '#000' : '#1a0f08';
+  return `<svg class="driver-ico" viewBox="0 0 48 48" aria-hidden="true"><g stroke="none" transform="rotate(45 24 24) translate(0 1) scale(.92) translate(2 2)">` +
+    `<rect x="17" y="2" width="14" height="20" rx="6" fill="${h}"/>` +
+    `<rect x="20.6" y="5" width="2" height="14" rx="1" fill="${d}" opacity=".35"/><rect x="25.4" y="5" width="2" height="14" rx="1" fill="${d}" opacity=".35"/>` +
+    `<rect x="19.5" y="21" width="9" height="4" rx="1" fill="${m}"${mode === 'mono' ? ' opacity=".75"' : ''}/>` +
+    `<rect x="22.2" y="24" width="3.6" height="15" fill="${m}"${mode === 'mono' ? ' opacity=".75"' : ''}/>` +
+    `<path d="M21.4 38.5h5.2l-.8 7h-3.6z" fill="${m}"${mode === 'mono' ? ' opacity=".75"' : ''}/></g></svg>`;
 }
 // lege plek (gestippeld); met `hint` het grote lege kristal van een lege kluis
 function renderCrystalEmpty({ size = 'sm', attrs = '', hint = false } = {}){
@@ -98,7 +123,7 @@ function renderCrystalMystery(){
 }
 
 // ---------- de kluis ----------
-let crystalSel = null;            // welke plek (0-2) is gekozen; null = niets
+let crystalSel = null;            // welke plek (0-2) is gekozen; 'tool' = de schroevendraaier; null = niets
 let crystalFocusShown = '';       // wat er nu groot staat — alleen bij een wissel opnieuw tekenen
 const crystalHiddenSlots = new Set();   // plekken waar een kristal nog naartoe vliegt
 const crystalNew = new Map();     // id -> aantal "Nieuw"-labels (tot je erop klikt)
@@ -107,33 +132,66 @@ const crystalVaultRailEl = document.getElementById('crystalRail');
 const crystalVaultListEl = document.getElementById('crystalList');
 const crystalVaultWhyEl = document.getElementById('crystalWhy');
 const crystalVaultCountEl = document.getElementById('walkCardVaultCount');
+const crystalVaultToolEl = document.getElementById('crystalTool');
+const crystalVaultInfoEl = document.getElementById('crystalInfo');
+const crystalVaultCardEl = document.getElementById('crystalCard');
+
+// ---------- het uitlegvak onder het grote kristal ----------
+// Links soort + moment, rechts wat het kristal doet (ACTION_CARDS[id].info). Voor de schroevendraaier
+// en een lege kluis alleen de uitleg. Het vak heeft een VASTE hoogte (styles.css, KLUIS "EEN KAART").
+const CRYSTAL_TOOL_INFO_HAS = 'Sta je op een rooster, ook midden in je zet, dan kruip je erin zonder een stap te gebruiken. Je komt boven bij een ander vrij rooster naar keuze en loopt met de rest van je worp door. Daarna is de schroevendraaier op.';
+const CRYSTAL_TOOL_INFO_NO = 'Je hebt geen schroevendraaier. Je krijgt er een met de energie-actie Schroevendraaier of met het kristal Schroevendraaier. Daarmee kruip je van rooster naar rooster.';
+function crystalInfoHtml(id, tool){
+  const single = t => `<div class="crystal-info-grid is-single"><div class="crystal-info-text"><p>${t}</p></div></div>`;
+  if (id === 'tool') return single(tool ? CRYSTAL_TOOL_INFO_HAS : CRYSTAL_TOOL_INFO_NO);
+  if (!id) return single(`Nog geen kristallen. Loop over een kristalvakje in een gang of voltooi een opdracht. Je kunt er ${ACTION_CARD_HAND_MAX} tegelijk bewaren.`);
+  const c = ACTION_CARDS[id];
+  return `<div class="crystal-info-grid"><div class="crystal-info-meta">` +
+    `<span class="crystal-info-k"><i>Soort</i><b class="is-cat">${CRYSTAL_CATS[ACTION_CARD_TINTS[id]]}</b></span>` +
+    `<span class="crystal-info-k"><i>Wanneer</i><b>${CRYSTAL_WHEN_LONG[c.when]}</b></span></div>` +
+    `<div class="crystal-info-text"><p>${c.info || c.text}</p></div></div>`;
+}
+// de schroevendraaier groot op de plek van het kristal (als je zijn vakje in de rail kiest)
+function crystalToolBigHtml(tool){
+  return `<div class="crystal-toolbig${tool ? '' : ' is-off'}"><span class="crystal-toolbig-box">${crystalDriverSvg(tool ? 'color' : 'off')}</span>` +
+    `<span class="crystal-toolbig-name">Schroevendraaier</span></div>`;
+}
 
 // `cards` = de kristallen van wie deze kluis is. opts:
 //   reason(id)   waarom dit kristal nu niet kan (string) of null — alleen als je aan zet bent
 //   canDiscard   mag je nu afleggen
 //   idle         je bent niet aan zet: alles gedimd, met deze tekst
-function crystalRenderVault(cards, { reason = () => null, canDiscard = false, idle = null } = {}){
+//   tool         heeft deze speler een schroevendraaier (het vakje onderaan de rail)
+function crystalRenderVault(cards, { reason = () => null, canDiscard = false, idle = null, tool = false } = {}){
   if (!crystalVaultRailEl) return;
   const shown = i => cards[i] !== undefined && !crystalHiddenSlots.has(i);
-  if (crystalSel !== null && !shown(crystalSel)) crystalSel = null;
+  if (crystalSel !== null && crystalSel !== 'tool' && !shown(crystalSel)) crystalSel = null;
   if (crystalSel === null){
     for (let i = 0; i < cards.length; i++) if (shown(i)){ crystalSel = i; break; }
   }
+  const isTool = crystalSel === 'tool';
   const why = id => idle || reason(id);
 
-  // "Nieuw"-labels per id verdelen over de plekken met dat id
+  // "Nieuw"-labels per id verdelen over de plekken met dat id. Elk plekje staat in een eigen vakje
+  // (.crystal-slot) van gelijke hoogte; het gekozen kristal krijgt een kader rondom (is-picked)
   const newLeft = new Map(crystalNew);
   let rail = '';
   for (let i = 0; i < ACTION_CARD_HAND_MAX; i++){
-    if (!shown(i)){ rail += renderCrystalEmpty({ attrs: `data-slot="${i}"` }); continue; }
+    if (!shown(i)){ rail += `<span class="crystal-slot">${renderCrystalEmpty({ attrs: `data-slot="${i}"` })}</span>`; continue; }
     const id = cards[i];
     const isNew = (newLeft.get(id) || 0) > 0;
     if (isNew) newLeft.set(id, newLeft.get(id) - 1);
     const st = (why(id) ? ' is-locked' : '') + (i === crystalSel ? ' is-picked' : '') + (isNew ? ' is-new' : '');
-    rail += renderCrystal(id, { size: 'sm', tag: 'button', state: st,
-      attrs: `type="button" data-i="${i}" data-slot="${i}" data-id="${id}" role="option" aria-selected="${i === crystalSel}" title="${ACTION_CARDS[id].name}" aria-label="${ACTION_CARDS[id].name}"` });
+    rail += `<span class="crystal-slot">` + renderCrystal(id, { size: 'sm', tag: 'button', state: st,
+      attrs: `type="button" data-i="${i}" data-slot="${i}" data-id="${id}" role="option" aria-selected="${i === crystalSel}" title="${ACTION_CARDS[id].name}" aria-label="${ACTION_CARDS[id].name}"` }) + `</span>`;
   }
   crystalSetHtml(crystalVaultRailEl, rail);
+  // het schroevendraaier-vakje onderaan de rail: klikbaar, zoals een kristal
+  if (crystalVaultToolEl){
+    crystalSetHtml(crystalVaultToolEl, `<span class="crystal-tool-label${tool ? ' is-on' : ''}">Schroeven-<br>draaier</span>` +
+      `<button type="button" class="crystal-tool-slot${tool ? ' is-on' : ''}${isTool ? ' is-picked' : ''}" data-tool="1" aria-pressed="${isTool}" ` +
+      `title="${tool ? 'Je hebt een schroevendraaier' : 'Geen schroevendraaier'}" aria-label="Schroevendraaier">${crystalDriverSvg(tool ? 'color' : 'off')}</button>`);
+  }
   // compacte kluis: dezelfde plekken als rijtjes met naam, anders weet je vóór het dobbelen niet
   // welk icoontje welk kristal is (gebruikersmelding). Gedimd = nu niet; de reden staat in de tooltip.
   if (crystalVaultListEl){
@@ -158,23 +216,30 @@ function crystalRenderVault(cards, { reason = () => null, canDiscard = false, id
   const canNow = !idle && cards.some((c, i) => shown(i) && !reason(c));
   if (crystalTabVaultEl && crystalTabVaultEl.classList.contains('can') !== canNow) crystalTabVaultEl.classList.toggle('can', canNow);
 
-  const id = crystalSel === null ? null : cards[crystalSel];
+  const id = isTool || crystalSel === null ? null : cards[crystalSel];
   const r = id ? why(id) : null;
-  const focusKey = id ? `${id}|${r ? 1 : 0}` : 'empty';
+  const focusKey = isTool ? `tool|${tool ? 1 : 0}` : id ? `${id}|${r ? 1 : 0}` : 'empty';
   if (focusKey !== crystalFocusShown){
-    const swapped = crystalFocusShown !== '' && (!id || crystalFocusShown.split('|')[0] !== id);
+    const swapped = crystalFocusShown !== '' && crystalFocusShown.split('|')[0] !== focusKey.split('|')[0];
     crystalFocusShown = focusKey;
-    crystalVaultFocusEl.innerHTML = id
-      ? renderCrystal(id, { state: r ? 'is-locked' : '' })
-      : renderCrystalEmpty({ size: 'lg', hint: true });
+    crystalVaultFocusEl.innerHTML = isTool ? crystalToolBigHtml(tool)
+      : id ? renderCrystal(id, { state: r ? 'is-locked' : '' })
+      : renderCrystalEmpty({ size: 'lg' });
     // het kristal is net nieuw in de DOM gezet, dus zijn animatie start vanzelf opnieuw: geen
     // offsetWidth-truc nodig (die dwong midden in een beurt de opmaak opnieuw, zie Prestatie in CLAUDE.md)
     crystalVaultFocusEl.classList.toggle('is-swap', !!swapped);
   }
+  // uitlegvak + de kleur van de kaart (rand en zweem in de kleur van de soort; koper bij de schroevendraaier)
+  if (crystalVaultInfoEl) crystalSetHtml(crystalVaultInfoEl, crystalInfoHtml(isTool ? 'tool' : id, tool));
+  if (crystalVaultCardEl){
+    const cls = 'crystal-card ' + (isTool ? 'crystal--tool' : id ? `crystal--${ACTION_CARD_TINTS[id]}` : 'crystal--empty');
+    if (crystalVaultCardEl.className !== cls) crystalVaultCardEl.className = cls;
+  }
   if (crystalVaultWhyEl.classList.contains('is-no') !== !!r) crystalVaultWhyEl.classList.toggle('is-no', !!r);
   // .crystal-vault-sel (de naam) is alleen te zien in de compacte kluis (vóór het dobbelen, als het
   // energievak de ruimte nodig heeft) — in de gewone kluis staat de naam al op het grote kristal
-  crystalSetHtml(crystalVaultWhyEl, !id ? `Je kunt er <b>${ACTION_CARD_HAND_MAX}</b> tegelijk bewaren.`
+  crystalSetHtml(crystalVaultWhyEl, isTool ? (tool ? 'Op een rooster verschijnt de knop Kruipen vanzelf.' : 'Niet in je bezit.')
+    : !id ? `Je kunt er <b>${ACTION_CARD_HAND_MAX}</b> tegelijk bewaren.`
     : `<span class="crystal-vault-sel">${ACTION_CARDS[id].name}</span>`
       + (r ? `<b>Nu niet.</b> ${r.charAt(0).toUpperCase() + r.slice(1)}.` : `<b>Nu te gebruiken</b>`));
   if (btnCardPlay && btnCardPlay.disabled !== (!id || !!r)) btnCardPlay.disabled = !id || !!r;
@@ -262,6 +327,16 @@ for (const crystalPickEl of [crystalVaultRailEl, crystalVaultListEl]) if (crysta
     if (btn.classList.contains('is-new') && crystalNew.get(cardId)) crystalNew.set(cardId, crystalNew.get(cardId) - 1);
     crystalRefreshVault();
     const again = crystalPickEl.querySelector(`button[data-i="${crystalSel}"]`);
+    if (again) again.focus();
+  });
+}
+// het schroevendraaier-vakje: groot in het midden, met alleen zijn uitleg
+if (crystalVaultToolEl){
+  crystalVaultToolEl.addEventListener('click', (e) => {
+    if (!e.target.closest('button[data-tool]')) return;
+    crystalSel = 'tool';
+    crystalRefreshVault();
+    const again = crystalVaultToolEl.querySelector('button[data-tool]');
     if (again) again.focus();
   });
 }

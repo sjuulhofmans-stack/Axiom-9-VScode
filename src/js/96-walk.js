@@ -1305,7 +1305,8 @@ function walkIsIn(p){ return p.completed >= SIM_QUESTS_TO_WIN; }
 // potje gezet (beide modi loten de volgorde) en op null gezet zodra er geen potje loopt.
 let walkScoreOrder = null;
 // gekozen icoon A uit artifact "Axiom-9 Roosters": koperen handvat, grijze schacht
-const WALK_DRIVER_SVG = '<svg viewBox="0 0 24 24" aria-hidden="true"><g transform="rotate(45 12 12)"><rect x="9.6" y="1" width="4.8" height="9.5" rx="2.2" fill="#e0915c"/><rect x="11.1" y="10.5" width="1.8" height="9" fill="#c5ced6"/><rect x="10.3" y="19" width="3.4" height="3" rx=".6" fill="#c5ced6"/></g></svg>';
+// het gekozen schroevendraaier-icoon (crystalDriverSvg in 96c-crystals.js; functie, dus al beschikbaar)
+const WALK_DRIVER_SVG = crystalDriverSvg('color');
 function renderWalkScore(players, activeIdx){
   if (!walkScoreEl && !walkScoreActiveEl) return;
   const ordered = walkScoreOrder

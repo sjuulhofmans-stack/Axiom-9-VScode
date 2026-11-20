@@ -225,10 +225,16 @@ aangeroepen (functiedeclaraties worden gehoist, `const`/`let` niet).
   Kortsluiting op een mens deed tot 2026-10 niets (alleen bots misten hun steen); nu ook voor de
   mens, in `soloRollEnergyForTurn`. In de code heten ze nog `ACTION_CARDS`, `p.cards`,
   `actionCells` enz. — bewust niet hernoemd. Nieuwe zichtbare tekst dus altijd "kristal".
-  **Ontwerp** (`96c-crystals.js`): een langgerekte zeshoek, rand in de kleur van de soort
-  (`ACTION_CARD_TINTS`), bovenin het moment, icoon, naam, één zin (`text`), onderin de soort.
+  **Ontwerp** (`96c-crystals.js`, sinds 2026-11 variant 3+ uit artifact "Axiom-9 Energie en kluis"):
+  een langgerekte zeshoek, rand in de kleur van de soort (`ACTION_CARD_TINTS`), en daarop ALLEEN het
+  icoon en de naam (`crystalArtSvg`: één SVG, een lange naam wordt smaller gezet i.p.v. midden in een
+  woord af te breken; na een streepje/spatie 2 regels). Klein (`size:'sm'`) alleen het icoon, groter
+  en lichter. Soort, moment en uitleg staan NIET meer op het kristal maar in het uitlegvak van de
+  kluis (`crystalInfoHtml`): links Soort (`CRYSTAL_CATS`) + Wanneer (`CRYSTAL_WHEN_LONG`), rechts
+  `ACTION_CARD_INFO` (95-simulate.js; langer dan `text`, die blijft voor de spelregels/logregels).
+  Vitrine Speelkaarten: bijschrift naam + moment; vergroot ook de uitleg.
   Getekend uit de gegevens, geen plaatjes meer. **`when` is de enige bron** voor wanneer een
-  kristal mag: zowel het label op het kristal (`CRYSTAL_WHEN`) als de regel in
+  kristal mag: zowel het moment in het uitlegvak (`CRYSTAL_WHEN_LONG`) als de regel in
   `soloCardBlockReason` lezen het ('pre' vóór de worp, 'any' vóór of na, 'start' na de worp
   maar vóór je eerste stap, 'post' tijdens je zet, 'auto' vanzelf aangeboden).
   **Kluis = tabblad** (variant C "Tabbladen in de kolom", gekozen uit 6, artifact "Axiom-9
@@ -242,8 +248,24 @@ aangeroepen (functiedeclaraties worden gehoist, `const`/`let` niet).
   keuze in het energievak (alles in #walkSoloActions zonder `.is-actions`: richting, kleur, sprong,
   Herprioritering; ook na de Portaalsleutel) → Energie. Opgeraapt terwijl Energie open staat: het
   kristal vliegt naar het tabblad Kluis (`crystalSlotEl`), gloed/schudden op het tabblad
-  (`crystalVaultShownEl`). In de kluis: groot het gekozen kristal, eronder de 3 plekken, de reden,
-  Gebruik/Afleggen; alleen het gekozen plekje pulst. Nieuw potje = tabblad Energie.
+  (`crystalVaultShownEl`). Nieuw potje = tabblad Energie.
+  **De kluis = "Eén kaart" met zijrail** (gekozen 2026-11, variant 3+; blok `KLUIS "EEN KAART" MET
+  ZIJRAIL` in styles.css, `crystalRenderVault`). Links een rail: 3 vakjes van gelijke hoogte met elk
+  een klein kristal, VAST KADER rondom het gekozen (geen pulserende gloed of lijntje meer); kan het nu
+  niet, dan alleen het kristal gedimd, niet het kader. Onderaan de rail het SCHROEVENDRAAIER-VAKJE met
+  de tekst "Schroeven-draaier" erboven (`#crystalTool`; koper + gloed als je hem hebt
+  (`p.screwdriver`, via opts `tool`), anders gestippeld grijs). Het vakje is klikbaar
+  (`crystalSel = 'tool'`): dan staat de schroevendraaier groot op de plek van het kristal en in het
+  uitlegvak alleen zijn uitleg; Gebruik/Afleggen staan uit. Rechts: groot kristal (houdt zijn kleur,
+  ook als het nu niet kan), dat een stukje in het uitlegvak steekt (rand + zweem in de kleur van de
+  soort, `.crystal-card.crystal--<soort>`), daaronder de reden (2 regels vast) en Gebruik/Afleggen
+  even breed als het vak. Geen kopregel "Kluis x/3" (staat op het tabblad). Icoon van de
+  schroevendraaier overal (`crystalDriverSvg`: gekozen icoon 1 "schuin, twee kleuren"; 'mono' in de
+  energie-actie en de kruip-knop, 'color' op het spelerskaartje). **Gemeten** met alle 16 kristallen
+  (in drietallen), de schroevendraaier gekozen, met/zonder schroevendraaier en 0–3 kristallen:
+  1920×889 en 1440×780 telkens exact dezelfde plek voor rail, kristal, uitlegvak, reden en knoppen;
+  uitleg past (vak 140px Full HD, 150px laptop; langste = Schroevendraaier ±240 tekens); pagina
+  scrolt niet. Langere uitleg in `ACTION_CARD_INFO`? Opnieuw meten.
   De energie-acties staan ONDER ELKAAR (de 2x2-tegels stonden scheef; alleen de
   laarzen-richtingen zijn nog 2x2). Dobbelvak 134px vast; het open tabblad vult de rest, dus de
   kolom houdt zijn vaste hoogte (even hoog als het bord) en niets verschuift bij dobbelen of
@@ -270,7 +292,6 @@ aangeroepen (functiedeclaraties worden gehoist, `const`/`let` niet).
   energie): 1920×889 rijen 62px, vak 112px; 1440×780 rijen 37px, vak 102px (de langste uitleg,
   laarzen en schroevendraaier, heeft 100px nodig); kolom = bord, niets scrolt of wordt afgeknipt.
   Langere tekst in `RULES_ENERGY_TEXT`? Opnieuw meten (`--note-h`).
-  De kluis blijft voorlopig zoals hij is: de maker ontwerpt de kristallen eerst opnieuw.
   **Oprapen** (`crystalEvent`, op elke plek waar iemand een kristal krijgt of een volle kluis
   heeft): eigen kristal groeit uit het vakje en vliegt in een boog naar je kluis ("Nieuw" tot je
   erop klikt); kluis vol = zilver vraagteken-kristal dat uit elkaar knalt (bewust niet het

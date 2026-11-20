@@ -701,11 +701,36 @@ const ACTION_CARDS = {
   // hem ook kunt spelen op het moment dat je op een rooster staat
   driver:    { name: 'Schroevendraaier',      when: 'any',   text: 'Krijg gratis een schroevendraaier',        hint: 'gratis schroevendraaier' },
 };
+// De uitleg in het UITLEGVAK onder het grote kristal in de kluis (en bij het vergroten in de vitrine
+// Speelkaarten). Sinds 2026-11 staat er op het kristal zelf alleen nog het icoon en de naam (artifact
+// "Axiom-9 Energie en kluis", variant 3+). Langer dan `text`, maar het vak heeft een VASTE hoogte:
+// gemeten past ±240 tekens (Schroevendraaier) precies op de laptop. Langer? Eerst meten (zie CLAUDE.md).
+const ACTION_CARD_INFO = {
+  boots:     `Schiet eerst rechtdoor tot een muur of pion, hooguit ${GRAVITY_DASH_STEPS} vakjes. Kom je op je opdracht, dan telt die en stop je daar. Daarna gooi je gewoon. Niet samen met de energie-actie Zwaartekracht-laarzen.`,
+  ration:    `Je krijgt meteen 3 energie erbij, tot het maximum van ${ENERGY_MAX}. Handig vlak voordat je een dure energie-actie wilt kiezen.`,
+  short:     'Kies een tegenstander. Bij zijn volgende worp levert zijn energiesteen niets op.',
+  blind:     'Blokkeert een speler je route, dan mag je door hem heen lopen. Op een speler eindigen mag niet. Je krijgt dit vanzelf aangeboden als het je zet redt.',
+  shove:     `Staat er een speler direct naast je, dan duw je hem ${SHOVE_DISTANCE} vakjes van je af. Zo blokkeert hij je route niet meer, of zet je hem verder van zijn opdracht.`,
+  boostcell: 'Je gooit deze beurt met drie loopstenen in plaats van twee, gratis. Niet samen met de energie-actie Stuwstoot in dezelfde beurt.',
+  condenser: 'Bij je volgende beurt telt je energiesteen dubbel. Gooi je dan een 0, dan blijft hij staan voor de beurt daarna.',
+  reroll:    'Gooi je loopstenen opnieuw, voordat je je eerste stap zet. De nieuwe worp telt, ook als die lager is.',
+  lockdown:  'Kies een tegenstander. In zijn volgende beurt mag hij geen energie-actie en geen kristal inzetten.',
+  outage:    'Kies een tegenstander. Bij zijn volgende worp loopt hij 2 stappen minder.',
+  leak:      `Pak ${ENERGY_LEAK_AMOUNT} energie van een tegenstander naar keuze. Je krijgt ze na je zet, net als de energie van je energiesteen.`,
+  twin:      'Je gooit deze beurt met twee energiestenen en krijgt de energie van allebei.',
+  solar:     `Direct na je worp krijg je energie gelijk aan je laagste loopsteen, tot het maximum van ${ENERGY_MAX}.`,
+  portalkey: 'Verplaats gratis een portaal, net als met het Portaalkanon: kies een richting, het portaal vliegt rechtdoor tot de muur of tot vóór een pion. Daarna gooi je.',
+  pick:      'Geef één van je loopstenen een waarde naar keuze, voordat je je eerste stap zet.',
+  driver:    'Je krijgt meteen een schroevendraaier, zonder energie te betalen. Sta je op een rooster, ook midden in je zet, dan kruip je erin en kom je bij een ander rooster naar keuze weer boven. Je kunt er één tegelijk hebben.',
+};
+for (const id in ACTION_CARD_INFO) if (ACTION_CARDS[id]) ACTION_CARDS[id].info = ACTION_CARD_INFO[id];
 // Hoeveel exemplaren van een kristal er in de stapel zitten; niet genoemd = 2 (zie buildActionDeck).
 const ACTION_CARD_COPIES = { portalkey: 5 };
 function actionCardCopies(id){ return ACTION_CARD_COPIES[id] || 2; }
-// label bovenin het kristal, per `when`
+// kort moment, per `when` (vitrine Speelkaarten, spelregels)
 const CRYSTAL_WHEN = { pre: 'Vóór je gooit', any: 'Vóór of na', start: 'Direct na worp', post: 'Na je worp', auto: 'Vanzelf' };
+// moment in het uitlegvak van de kluis (daar is iets meer ruimte)
+const CRYSTAL_WHEN_LONG = { pre: 'Vóór je gooit', any: 'Vóór of na je worp', start: 'Direct na je worp', post: 'Na je worp', auto: 'Vanzelf, als het kan' };
 // soort onderin het kristal, per ACTION_CARD_TINTS-waarde
 const CRYSTAL_CATS = { amber: 'Beweging', start: 'Energie', quest: 'Nut', danger: 'Verstoring' };
 const ACTION_CARD_IDS = Object.keys(ACTION_CARDS);

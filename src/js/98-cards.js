@@ -52,14 +52,15 @@ const cardsZoomFace   = document.getElementById('cardsZoomFace');
 const cardsZoomCap    = document.getElementById('cardsZoomCap');
 
 // één kaart in de vitrine: de kaart zelf plus een bijschrift, aanklikbaar om te vergroten
-function cardsShelfItem(face, tintClass, tintStyle, name, sub){
+// `zoomSub`: wat er bij het vergroten onder de kaart staat (standaard hetzelfde als `sub`)
+function cardsShelfItem(face, tintClass, tintStyle, name, sub, zoomSub){
   const btn = document.createElement('button');
   btn.type = 'button';
   btn.className = 'card-show' + (tintClass ? ' ' + tintClass : '');
   if (tintStyle) btn.style.setProperty('--card-tint', tintStyle);
   btn.innerHTML = `<span class="card-show-face">${face}</span>
     <span class="card-show-cap"><b>${name}</b><span>${sub}</span></span>`;
-  btn.addEventListener('click', () => openCardsZoom(face, tintClass, tintStyle, name, sub));
+  btn.addEventListener('click', () => openCardsZoom(face, tintClass, tintStyle, name, zoomSub || sub));
   return btn;
 }
 
@@ -117,10 +118,12 @@ function renderCardsTab(){
     const grid = document.createElement('div');
     grid.className = 'cards-shelf crystal-shelf';
     for (const id of ids){
-      // naam en uitleg staan al op het kristal zelf; het bijschrift zegt wannéér hij mag
+      // op het kristal staan alleen icoon en naam (sinds 2026-11); het bijschrift zegt wannéér hij
+      // mag, en vergroot staat ook de uitleg uit het uitlegvak van de kluis eronder
+      const c = ACTION_CARDS[id], when = `${CRYSTAL_WHEN[c.when]} · ${actionCardCopies(id)}×`;
       grid.appendChild(cardsShelfItem(
         renderCrystal(id), 'is-crystal', '',
-        ACTION_CARDS[id].name, `${CRYSTAL_WHEN[ACTION_CARDS[id].when]} · ${actionCardCopies(id)}×`,
+        c.name, when, `${CRYSTAL_CATS[ACTION_CARD_TINTS[id]]} · ${when}<br>${c.info || c.text}`,
       ));
     }
     cardsActionWrap.appendChild(grid);

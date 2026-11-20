@@ -1566,6 +1566,7 @@ function mpRefreshCardVault(){
     reason: soloCardBlockReason,
     canDiscard: mine && soloCanDiscardNow(),
     idle: mine ? null : 'wacht op je beurt',
+    tool: !!me.screwdriver,
   });
 }
 

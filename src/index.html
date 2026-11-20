@@ -667,15 +667,24 @@
                  lopen is geen alternatief vóór het dobbelen, dus geen "of" op dat moment. -->
             <p class="walk-or-sep" id="walkOrSep2" hidden>of</p>
 
-            <!-- kristalkluis: altijd open zolang je meespeelt, ook leeg. Links het gekozen
-                 kristal in z'n geheel, rechts je drie plekken, waarom het nu (niet) kan en
-                 Gebruik/Afleggen (vaste plek, verspringt niet). Gevuld door crystalRenderVault
-                 in 96c-crystals.js. -->
+            <!-- kristalkluis (gekozen 2026-11: variant 3+ "Eén kaart" met zijrail, artifact "Axiom-9
+                 Energie en kluis"): links een rail met je drie kristallen (alleen het icoon, kader om
+                 het gekozen) en onderaan het schroevendraaier-vakje (klikbaar); rechts het gekozen
+                 kristal groot (icoon + naam), het uitlegvak (soort, moment, uitleg), waarom het nu
+                 (niet) kan en Gebruik/Afleggen. Alles vaste maten: niets verspringt. Gevuld door
+                 crystalRenderVault in 96c-crystals.js. -->
             <div class="walk-panel-box crystal-vault" id="walkCardVault" hidden>
-              <div class="crystal-vault-focus" id="crystalFocus"></div>
-              <div class="crystal-vault-side">
-                <div class="crystal-vault-head"><span>Kristallen</span><b id="walkCardVaultCount">0 / 3</b></div>
+              <div class="crystal-vault-rail">
                 <div class="crystal-rail" id="crystalRail" role="listbox" aria-label="Jouw kristallen"></div>
+                <span class="crystal-rail-sep" aria-hidden="true"></span>
+                <div class="crystal-tool" id="crystalTool"></div>
+              </div>
+              <div class="crystal-vault-side">
+                <div class="crystal-card" id="crystalCard">
+                  <div class="crystal-vault-focus" id="crystalFocus"></div>
+                  <div class="crystal-info" id="crystalInfo"></div>
+                </div>
+                <div class="crystal-vault-head"><span>Kristallen</span><b id="walkCardVaultCount">0 / 3</b></div>
                 <!-- dezelfde 3 plekken als rijtjes met naam: alleen in de compacte kluis (vóór het
                      dobbelen), waar geen ruimte is voor het grote kristal -->
                 <div class="crystal-list" id="crystalList" role="listbox" aria-label="Jouw kristallen"></div>
