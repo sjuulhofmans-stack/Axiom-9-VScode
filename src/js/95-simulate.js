@@ -215,8 +215,6 @@ const ENERGY_ACTIONS = {
              note: 'Kies een richting: het portaal vliegt rechtdoor tot de muur of tot vóór een pion. Daarna kies je of je het blauwe of het rode portaal verplaatst. Stapt iemand in een portaal, dan komt hij uit het andere en loopt hij met de rest van zijn worp door. Staat er een pion op een portaal, dan werkt het paar niet.' },
   driver:  { cost: 5,  name: 'Schroevendraaier', hint: 'kruip door een rooster naar een ander rooster',
              note: 'Je krijgt een schroevendraaier (je kunt er één tegelijk hebben, iedereen ziet het). Sta je op een rooster, ook midden in je zet, dan mag je erin kruipen: dat kost geen stap. Je kiest een vrij rooster als uitgang en loopt met de rest van je worp door. Daarna is de schroevendraaier op.' },
-  redie:   { cost: 1,  name: 'Herworp',         hint: 'ná de worp: gooi 1 loopsteen opnieuw',
-             note: 'Na het dobbelen gooi je één loopsteen naar keuze opnieuw; de nieuwe waarde telt, ook als die lager is. Kan alleen als je deze beurt nog geen andere energie-actie hebt gebruikt.' },
   none:    { cost: 0,  name: 'Geen energie',    hint: 'spaart, geeft nooit uit',
              note: 'Doet niets — de handmatige "overslaan"-keuze voor de mens. Zit niet in de bot-strategieën: een speler die een heel potje nooit energie uitgeeft komt in de praktijk niet voor, dus die zou de simulatiecijfers (met name het plafondverlies) alleen maar vertekenen.' },
 };
@@ -1046,52 +1044,11 @@ function botMoveScore(graph, move, targets){
   const d = simDistLookup(simBfsDistances(graph, next), move.key);
   return b * 1000 - (d >= 0 ? d : 999);
 }
-// ---------- Herworp (energie-actie, 1): ná de worp één loopsteen opnieuw gooien ----------
-// Uitzondering op "energie-actie vóór de worp": deze kies je pas als je de stenen ziet, en alleen
-// als je deze beurt nog geen andere energie-actie hebt gebruikt (hij gebruikt dus je ene slot).
-// Meetknoppen (let, voor de console): ENERGY_REDIE_ON zet hem helemaal uit, SIM_SETUP_HOOK mag in
-// de batch-simulatie per potje spelers aanpassen (bv. p.noRedie = true voor een vergelijking).
-let ENERGY_REDIE_ON = true;
+// Meetknop (let, voor de console): SIM_SETUP_HOOK mag in de batch-simulatie per potje spelers
+// aanpassen (bv. een eigenschap op één speler zetten voor een vergelijking).
+// (De energie-actie Herworp, ná de worp één steen opnieuw, is op 2026-11-20 weer weggehaald:
+// gebruikerswens, "verwarrend dat het energievak na het dobbelen telkens wegspringt".)
 let SIM_SETUP_HOOK = null;
-// hoeveel vakjes de verwachte zet minstens beter moet zijn voordat een bot er 1 energie aan geeft
-let REDIE_BOT_MARGIN = 1;
-// "Hoeveel werk is er nog?" na een zet: afstand tot het volgende doel + de afstand van dat doel
-// naar het doel erna (zodat een gehaalde opdracht eerlijk meetelt tegen gewoon dichterbij komen).
-function botRemainingWork(graph, move, targets, legs){
-  const b = move.bankedCount || 0;
-  const next = targets[b];
-  if (next === undefined) return 0;
-  const d = simDistLookup(simBfsDistances(graph, next), move.key);
-  return (d >= 0 ? d : 60) + (b === 0 ? legs : 0);
-}
-// Welke steen opnieuw gooien? Per steen de gemiddelde uitkomst over de 6 mogelijke waarden; de
-// beste steen als die gemiddeld minstens REDIE_BOT_MARGIN vakjes werk scheelt, anders null.
-function botPickRedie(graph, fromKey, dieVals, penalty, occupied, targets, rand, current, crawl){
-  let legs = 0;
-  if (targets[1] !== undefined){
-    const dl = simDistLookup(simBfsDistances(graph, targets[1]), targets[0]);
-    legs = dl >= 0 ? dl : 0;
-  }
-  const now = botRemainingWork(graph, current, targets, legs);
-  if (now === 0) return null;
-  const base = dieVals.reduce((a, b) => a + b, 0);
-  const cache = new Map();
-  const workFor = (roll) => {
-    if (!cache.has(roll)) cache.set(roll, botRemainingWork(graph, resolveMove(graph, fromKey, roll, occupied, targets, rand, undefined, crawl), targets, legs));
-    return cache.get(roll);
-  };
-  let best = null, bestWork = now - REDIE_BOT_MARGIN;
-  const tried = new Set();
-  for (let i = 0; i < dieVals.length; i++){
-    if (tried.has(dieVals[i])) continue;   // twee gelijke stenen = zelfde keuze
-    tried.add(dieVals[i]);
-    let total = 0;
-    for (let v = 1; v <= 6; v++) total += workFor(Math.max(1, base - dieVals[i] + v - (penalty || 0)));
-    const avg = total / 6;
-    if (avg < bestWork){ bestWork = avg; best = { idx: i }; }
-  }
-  return best;
-}
 // Zelf kiezen: probeer elke steen op elke andere waarde en neem de beste zet. Alleen als dat
 // duidelijk beter is dan de huidige zet (een opdracht erbij, of minstens 2 vakjes dichterbij);
 // anders null en houdt de bot het kristal. `penalty` = Stroomonderbreking (geldt ook voor de nieuwe worp).
@@ -1880,23 +1837,6 @@ function botPlanTurn(ctx){
       playCard('reroll', { roll });
       r.dice.push({ vals: dieVals.slice(), roll, why: 'reroll' });
       move = resolveMove(graph, rollFrom, roll, occupied, rollTargets, rand, undefined, sd);
-    }
-    // Herworp (energie, ná de worp): één steen opnieuw, alleen als het energieslot nog vrij is
-    if (ENERGY_REDIE_ON && !player.noRedie && !move.bankedQuest && !energyActionUsed && player.energy >= ENERGY_ACTIONS.redie.cost){
-      const pk = botPickRedie(graph, rollFrom, dieVals, rollPenalty, occupied, rollTargets, rand, move, sd);
-      if (pk){
-        const was = dieVals[pk.idx];
-        dieVals[pk.idx] = simRollD6(rand, player);
-        if (pk.idx < 2) statsRecordRoll(player, dieVals[0] + dieVals[1]);
-        roll = Math.max(1, sum() - rollPenalty);
-        payEnergy('redie');
-        r.redie = { idx: pk.idx, was, value: dieVals[pk.idx], roll };
-        r.dice.push({ vals: dieVals.slice(), roll, why: 'redie' });
-        move = resolveMove(graph, rollFrom, roll, occupied, rollTargets, rand, undefined, sd);
-        // "Wat levert een actie op?": hoeveel hoger de steen gemiddeld werd (kan ook lager zijn)
-        const st = extra && extra.energyStats.redie;
-        if (st) st.steps += dieVals[pk.idx] - was;
-      }
     }
     // Zonnezeil (direct na de worp): energie gelijk aan de laagste steen, als er ruimte is
     if (!cardActionUsed && has('solar') && player.energy + pendingEnergy < ENERGY_MAX){
@@ -2912,10 +2852,9 @@ function renderSimResults({ n, stuckCount, startWins, startTurnsSum, startRanks,
     if (id === 'gravity') return `gem. ${nl(st.steps / st.uses, 1)} vakjes rechtdoor · ${nl(pctOf(st.direct, st.uses), 0)}% pakt meteen de opdracht`;
     if (id === 'jump') return `gem. ${nl(st.steps / st.uses, 1)} vakjes gesprongen · ${nl(pctOf(st.direct, st.uses), 0)}% landt precies op de opdracht`;
     if (id === 'portal') return 'elke bot schiet als het hem ≥' + PORTAL_BOT_MIN_GAIN + ' stappen scheelt';
-    if (id === 'redie') return `ná de worp · de steen wordt gem. ${nl(st.steps / st.uses, 1)} hoger`;
     return '—';
   };
-  const yieldIds = [...ENERGY_STRATEGIES, 'portal', 'redie'].filter(id => extra.energyStats[id]);
+  const yieldIds = [...ENERGY_STRATEGIES, 'portal'].filter(id => extra.energyStats[id]);
   const noActionPct = pctOf(extra.noEnergyBanked, extra.noEnergyTurns);
   const yieldRows = yieldIds.map(id => {
     const st = extra.energyStats[id];
@@ -3191,7 +3130,7 @@ function runSimulationBatch(){
         // opdracht, verplaatste vakjes (sprint/sprong) of extra steen (Stuwstoot), direct op de
         // opdracht geland, en bij Herprioritering: keer gewisseld + vakjes gescheeld
         // ('portal' erbij: geen vaste strategie, maar elke bot mag schieten — zie botPortalWanted)
-        energyStats: Object.fromEntries([...ENERGY_STRATEGIES, 'portal', 'redie'].map(id =>
+        energyStats: Object.fromEntries([...ENERGY_STRATEGIES, 'portal'].map(id =>
           [id, { uses: 0, banked: 0, steps: 0, direct: 0, swaps: 0, saved: 0 }])),
         noEnergyTurns: 0, noEnergyBanked: 0,
         // "Pech-reeksen" en "Kan de achterste nog terugkomen?"
