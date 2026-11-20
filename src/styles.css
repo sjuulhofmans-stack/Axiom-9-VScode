@@ -192,10 +192,10 @@
      lijn staat als de tabtekst; de knop zelf is lager dan een tab en blijft zo los van de
      onderrand (voorheen: ander lettertype, align-self:center, hing over de lijn = "scheef"). */
   .tab-bar{align-items:baseline;}
-  .tab-bar-actions{margin-left:auto; display:flex; gap:6px; align-items:baseline;}
+  /* sinds 2026-11 staan deze knoppen in het uitschuifmenu (#playMenuActions), zie speelweergave */
   .tab-bar-action{
     font-family:var(--font-mono); font-size:12px; letter-spacing:.14em; text-transform:uppercase;
-    padding:4px 12px; border-radius:6px; white-space:nowrap;
+    padding:10px 16px; border-radius:6px; white-space:nowrap; text-align:left;
   }
   /* tempo-schuif tijdens Automatisch (zie #walkSpeedPlay in index.html) */
   .tab-bar-tempo{
@@ -227,11 +227,6 @@
     border-left:1px solid var(--line); border-right:1px solid var(--line);
   }
   .header-right{justify-content:flex-end; gap:18px; padding-left:28px;}
-  .header-right .tab-bar-actions{margin-left:0; align-items:center;}
-  /* .has-actions zet headerActionsSync (80-controls.js) — was :has(), dat ook tijdens een potje
-     (de kop blijft dan als smalle balk staan) bij elke DOM-wijziging werd herberekend */
-  .header-right:not(.has-actions) .tab-bar-actions{display:none;}
-  .header-right.has-actions .status{display:none;}
   /* tabbladen: losse, wat grotere knoppen i.p.v. "tabjes" die aan de lijn eronder hingen */
   header .tab-btn{
     font-size:13px; letter-spacing:.14em; padding:11px 20px; margin:0;
@@ -272,38 +267,36 @@
 
   /* ---------- speelweergave: het potje over het hele scherm (gebruikerswens) ----------
      Zolang er een potje in beeld is (Automatisch, Zelf spelen én Multiplayer) zet
-     walkPauseStopSyncVisibility() (96-walk.js) body.is-playing. De kop wordt dan een smalle balk:
-     links ☰ Menu + klein logo, rechts de spelknoppen (Pauze/Tempo/Stoppen, Nieuw potje, Verlaat
-     potje). De tabbladen schuiven links uit als menu óver het spel heen (body.play-menu-open,
-     playMenuSetOpen in 80-controls.js). Het bord rekent met de vrijgekomen hoogte: zie de
-     body.is-playing-regels bij --wcell verderop. */
-  .play-menu-btn, .play-menu-head, .play-menu-seed, .play-menu-backdrop{display:none !important;}
-  body.is-playing{padding:0 14px 10px;}
+     walkPauseStopSyncVisibility() (96-walk.js) body.is-playing. De kop is dan HELEMAAL weg
+     (2026-11, gebruikerswens: "de volledige ruimte benutten"); alleen het menu bestaat nog. Aan de
+     linkerrand staat een smal lipje (#playEdge, 14px = de paginarand): muis ertegen = het menu
+     schuift uit óver het spel heen (body.play-menu-open, playMenuSetOpen in 80-controls.js), met de
+     tabbladen en daaronder de knoppen van het potje (Tempo/Pauze/Stoppen, Nieuw potje, Verlaat
+     potje). Het bord rekent met de vrijgekomen hoogte: zie --play-chrome bij --wcell verderop. */
+  .play-edge, .play-menu-head, .play-menu-actions, .play-menu-seed, .play-menu-backdrop{display:none !important;}
+  body.is-playing{padding:10px 14px;}
   body.is-playing .wrap{max-width:none;}
-  body.is-playing header{
-    grid-template-columns:minmax(0, 1fr) auto; margin:0 0 8px; padding:6px 0; row-gap:0;
+  /* kop weg, maar niet display:none: het menu (position:fixed) zit erin */
+  body.is-playing header{display:block; height:0; margin:0; padding:0;}
+  body.is-playing .title-block,
+  body.is-playing .header-right{display:none;}
+  /* het lipje: de hele linkerrand is de "voelstrook", in het midden een zichtbaar handvat */
+  body.is-playing .play-edge{
+    display:flex !important; align-items:center; position:fixed; top:0; bottom:0; left:0;
+    width:14px; z-index:92;
   }
-  body.is-playing .title-block{gap:12px; padding-right:0;}
-  body.is-playing .logo{height:30px;}
-  body.is-playing h1.spaced-title{display:none;}
-  body.is-playing .header-right{order:0; padding-left:0;}
-  body.is-playing .header-right .status{display:none;}
-  body.is-playing .play-menu-btn{
-    display:inline-flex !important; align-items:center; gap:6px; padding:5px 12px;
-    font-family:var(--font-mono); font-size:12px; letter-spacing:.14em; text-transform:uppercase;
-    white-space:nowrap;
+  .play-edge-btn{
+    display:flex; flex-direction:column; align-items:center; justify-content:center; gap:4px;
+    width:14px; height:84px; padding:0; margin:0; border:1px solid var(--line); border-left:none;
+    border-radius:0 8px 8px 0; background:var(--panel-2); box-shadow:4px 0 14px rgba(0,0,0,.4);
+    transition:transform .2s ease, opacity .2s ease; will-change:transform;
   }
-  /* telefoon: Tempo + Pauze/Stoppen passen niet naast ☰ Menu + logo (de schuif lag eroverheen en
-     schoof na afloop buiten beeld) — dan op een eigen regel eronder, rechts uitgelijnd */
-  @media (max-width: 640px){
-    body.is-playing header{grid-template-columns:minmax(0, 1fr); row-gap:6px;}
-    body.is-playing .header-right{order:1; justify-content:flex-end; flex-wrap:wrap; gap:8px;}
-    body.is-playing .header-right .tab-bar-actions{flex-wrap:wrap; justify-content:flex-end;}
-    body.is-playing .tab-bar-tempo input[type=range]{width:80px;}
-  }
+  .play-edge-btn i{display:block; width:4px; height:4px; border-radius:50%; background:var(--quest);}
+  .play-edge:hover .play-edge-btn{transform:translateX(2px);}
+  body.play-menu-open .play-edge-btn{opacity:0;}
   /* het menu zelf: de tabbladenbalk, nu als paneel tegen de linkerrand */
   body.is-playing header .tab-bar{
-    position:fixed; top:0; bottom:0; left:0; z-index:91; width:280px; overflow-y:auto;
+    position:fixed; top:0; bottom:0; left:0; z-index:93; width:280px; overflow-y:auto;
     flex-direction:column; align-items:stretch; justify-content:flex-start; gap:8px;
     margin:0; padding:16px; border:none; border-right:1px solid var(--line);
     background:var(--panel); box-shadow:10px 0 34px rgba(0,0,0,.55);
@@ -313,6 +306,18 @@
   body.is-playing.play-menu-open header .tab-bar{
     transform:none; visibility:visible; transition:transform .25s ease, visibility 0s;
   }
+  /* de knoppen van het potje, onder de tabbladen */
+  body.is-playing .play-menu-actions{
+    display:flex !important; flex-direction:column; align-items:stretch; gap:8px;
+    margin-top:10px; padding-top:12px; border-top:1px solid var(--line-dim);
+  }
+  .play-menu-sub{
+    font-family:var(--font-mono); font-size:12px; letter-spacing:.2em; text-transform:uppercase;
+    color:var(--text-dim); margin-bottom:2px;
+  }
+  .play-menu-actions .tab-bar-tempo{margin:0; padding:4px 2px; justify-content:space-between;}
+  .play-menu-actions .tab-bar-tempo input[type=range]{width:140px;}
+  /* het menu zelf: de tabbladenbalk, nu als paneel tegen de linkerrand */
   body.is-playing header .tab-btn{text-align:left; padding:12px 16px;}
   body.is-playing .play-menu-head{
     display:flex !important; align-items:center; justify-content:space-between; margin-bottom:6px;
@@ -1289,6 +1294,8 @@
   }
   /* knop "Statistieken" onderaan de uitslag — opent de pop-up (soloOpenStats in 97-solo.js) */
   .walk-endgame-stats-btn{margin-top:14px; min-width:200px;}
+  /* Statistieken + Terug naar lobby naast elkaar (de kop met die knop is tijdens een potje weg) */
+  .walk-endgame-btns{display:flex; flex-wrap:wrap; justify-content:center; gap:10px;}
 
   /* ---------- statistieken-pop-up (#walkStatsOverlay, zelfde overlay als het kaartvenster) ---------- */
   .card-panel.walk-stats-modal{max-width:none; width:min(1240px, 96vw); gap:16px; padding:20px 22px;}
@@ -1555,7 +1562,7 @@
        min. 280px (smaller: de opdrachtnaam breekt af), zijkolom min. 370px (smaller: "Herprioritering"/"Noodtransport" breken af in de
        energietegels), 2 tussenruimtes, bordrand 79px = ±830px. Verandert er iets boven of
        onder het bord, meet dan opnieuw. */
-    body.is-playing #walkPanel{padding:10px 14px; --play-chrome:224px;}
+    body.is-playing #walkPanel{padding:10px 14px; --play-chrome:184px;}
     body.is-playing .walk-board-row,
     body.is-playing #walkPanel{
       --wcell: clamp(13px, min(calc((100vw - 830px) / 40), calc((100vh - var(--play-chrome)) / 32)), 34px);
@@ -4527,15 +4534,17 @@
   .walk-side-stack.has-vault #walkSoloPanel > .walk-solo-actions{grid-column:2; grid-row:1; min-width:0;}
   .walk-side-stack.has-vault #walkSoloPanel > .mp-wait-turn{grid-column:2; grid-row:1; align-self:start;}
   /* getal boven de meter: groot cijfer en "/ 10" NAAST elkaar op één lijn (gebruikerswens 2026-11: ze
-     stonden onder elkaar). Het cijfer heeft een vaste breedte voor twee tekens, rechts uitgelijnd,
-     zodat niets verschuift bij 9 → 10; de kolom is daarvoor iets breder (76px, laptop 66px). */
+     stonden onder elkaar), en precies gecentreerd boven de lijn van de meter (tweede melding: "niet
+     netjes gecentreerd"). Dus GEEN vaste breedte voor het cijfer: die liet bij 1–9 een leeg stuk links
+     staan en schoof de zichtbare tekst naar rechts. De kolom is iets breder (76px, laptop 66px) zodat
+     "10 / 10" past. */
   .walk-side-stack.has-vault #walkSoloPanel > .walk-energy-overview{width:76px;}
   .walk-side-stack.has-vault #walkSoloPanel .walk-energy-overview .walk-energy-value{
     width:auto; flex-direction:row; align-items:baseline; justify-content:center; gap:3px;
     font-size:12px; letter-spacing:.02em; white-space:nowrap;
   }
   .walk-side-stack.has-vault #walkSoloPanel .walk-energy-overview .walk-energy-value b{
-    font:700 26px/1 var(--font-display); min-width:2ch; text-align:right; letter-spacing:0;
+    font:700 26px/1 var(--font-display); min-width:0; text-align:center; letter-spacing:0;
   }
   .walk-side-stack.has-vault #walkSoloPanel .walk-energy-overview.is-full .walk-energy-value b{color:var(--amber);}
   .walk-side-stack.has-vault #walkSoloPanel .walk-energy-cells{
