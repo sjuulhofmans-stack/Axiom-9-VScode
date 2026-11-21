@@ -1,763 +1,124 @@
 # Axiom-9 Map Generator
 
-Bordspel-tool voor het spel Axiom-9. Het bord bestaat uit **20 tegels van 8×8 vakjes**
-in een raster van 4 rijen × 5 kolommen (posities A t/m T, van links naar rechts, rij voor rij).
+Bordspel-tool voor het spel Axiom-9. Het bord bestaat uit **20 tegels van 8×8 vakjes** in een
+raster van 4 rijen × 5 kolommen (posities A t/m T, van links naar rechts, rij voor rij).
 
-## Belangrijkste regel voor wie hieraan werkt
+Dit bestand is bewust kort: het wordt in elke chat helemaal gelezen. De uitgebreide uitleg,
+metingen en ontwerpkeuzes staan per onderwerp in [docs/](docs/README.md). **Werk je aan een
+onderwerp uit de tabel "Lees eerst", lees dan eerst dat docs-bestand.**
 
-**Bewerk NOOIT `dist/axiom9.html`.** Dat is het gebouwde eindresultaat (±1,5 MB,
-waarvan ±790 KB het logo en ±240 KB de kaartillustraties). Bewerk altijd de
-bronbestanden in `src/` en draai daarna:
+## Werkregels
+
+- **Begin van elke chat: eerst `git pull`.** Er wordt op twee computers gewerkt (pc en laptop).
+- **Bewerk NOOIT `dist/axiom9.html`** (gebouwd, ±3 MB). Bewerk `src/` en draai `python build.py`
+  (op Windows `python`, niet `python3`).
+- **Na elke afgeronde wijziging: committen én pushen** (`git push origin master`), zonder te vragen.
+  Een GitHub Action (`.github/workflows/bouwen.yml`) bouwt het spel bij elke push en zet het op de
+  tak `gh-pages`.
+  **Overgang (2026-11-21):** zolang GitHub Pages nog vanaf `master` publiceert, moet `dist/axiom9.html`
+  nog mee gecommit worden. Staat Pages op `gh-pages` (Settings → Pages → Branch: gh-pages, / (root)),
+  dan `git rm --cached dist/axiom9.html`, `dist/` in `.gitignore`, en deze overgangsregel weghalen.
+- Soms werkt er tegelijk een tweede sessie in dezelfde map: commit alleen je eigen wijzigingen
+  (`git diff --stat` per bestand bekijken vóór je commit).
+- Verander je een spelregel in de code? Pas dan ook de tekst in `98c-rules.js` aan (tabblad Spelregels)
+  en het docs-bestand van dat onderwerp. Nieuwe meting of ontwerpkeuze? Die hoort in `docs/`, niet hier.
+
+## Hoe de code in elkaar zit
+
+`build.py` plakt **alle** `src/js/*.js` op naamvolgorde achter elkaar in één `<script>` en alle
+`src/css/*.css` op naamvolgorde in één `<style>`, en bakt plaatjes/geluid/tegels in
+(`{{CSS}}`, `{{JS}}`, `{{LOGO}}` enz. in `src/index.html`). Er zijn dus geen imports: alles deelt één
+scope. Functiedeclaraties worden gehoist, `const`/`let` niet: iets wat bij het laden al nodig is
+moet in een eerder bestand staan. **Nieuw bestand = alleen het goede nummer geven** (bv. `95l-…`
+komt na `95k-…` en vóór `96-…`); er is geen lijst om bij te werken. Bij CSS telt de volgorde ook
+(latere regels winnen).
 
 ```
-python build.py
+src/index.html          HTML-skelet + alle knoppen/vakken
+src/data/tiles.json     de 20 tegels (vakjes + labels 2.x opdracht, 3.x start, 4.x kristal, 5.x rooster)
+src/assets/             logo, favicon, lettertype, plaatjes en geluiden (chants/) voor de taunts
+src/js/
+  00-data  05-card-art  06-chants  10-rules  20-connectivity  30-random      basis + regels
+  40-board  50-interaction  60-palette                                      tabblad Kaart
+  70-generator                                                              bordbouwer
+  80-controls                                                               knoppen, tabbladen, speelmenu
+  90-editor                                                                 tegel-editor + legenda
+  95a-sim-basis  95b-energie  95c-portalen  95d-roosters  95e-bot-slim      spelregels + bots,
+  95f-kristallen  95g-bot-keuzes  95h-bewegen  95i-beurt-potje              gedeeld door alle modi
+  95j-sim-scherm  95k-sim-uitslag                                           tabblad Simulatie
+  96-walk  96b-intro  96c-crystals  96d-dice                                speelscherm, Automatisch
+  97a-solo-opzet  97b-solo-bord-score  97c-solo-energie  97d-solo-kluis     Zelf spelen
+  97e-solo-acties  97f-solo-beurt  97g-solo-einde  97h-solo-opening
+  98-cards  98b-avatar  98c-rules  99-multiplayer                           overige tabbladen
+src/css/01-basis … 27-spelregels.css   één bestand per onderdeel, naam zegt wat erin staat
+docs/                   uitleg, metingen en ontwerpkeuzes per onderwerp
+ontwerp/                (alleen in OneDrive, niet in git) bronbestanden, originelen, Opdrachtkaarten.pdf
 ```
 
-(Op Mac/Linux heet dit vaak `python3 build.py` — op Windows installeert de officiële
-Python-installer geen apart `python3`-commando, dus daar is het gewoon `python`.)
+Oude namen in commentaar en in docs: `95-simulate.js` = de `95a…95k`-bestanden, `97-solo.js` = de
+`97a…97h`-bestanden, `styles.css`/`rules.css` = `src/css/`. Zoek een functie of blok gewoon met Grep.
 
-Dit is precies waarom het project is opgesplitst: één wijziging in de knopjes hoeft
-niet het hele logo mee te slepen.
+## Lees eerst
 
-**Aan het begin van elke chat: eerst `git pull`**, vóór je iets leest of wijzigt. Er wordt
-gewerkt op twee computers (pc en laptop); zo begin je altijd met de nieuwste versie.
+| Werk je aan… | Code | Lees eerst |
+|---|---|---|
+| tegels, bordbouwer, beweging, wat waar mag liggen | `10-rules`, `20-connectivity`, `70-generator`, `95h-bewegen` | [bord-en-bordbouwer](docs/bord-en-bordbouwer.md) |
+| energie-acties, prijzen, energiebalk | `95b-energie`, `97c-solo-energie`, `96d-dice` | [energie](docs/energie.md) |
+| kristallen, kluis, oprapen, energievak | `95f-kristallen`, `96c-crystals`, `97d-solo-kluis` | [kristallen-kluis-energievak](docs/kristallen-kluis-energievak.md) |
+| portalen | `95c-portalen`, `96-walk` (`walkPaintPortals`), `97e-solo-acties` | [portalen](docs/portalen.md) |
+| roosters / schroevendraaier | `95d-roosters`, `97e-solo-acties`, `96-walk` (`walkCrawlFx`) | [nog-te-doen-en-roosters](docs/nog-te-doen-en-roosters.md) |
+| wat een bot doet | `95e-bot-slim`, `95g-bot-keuzes`, `95i-beurt-potje` (`botPlanTurn`/`botFinishTurn`) | [kristallen…](docs/kristallen-kluis-energievak.md), [energie](docs/energie.md) |
+| begin van een potje (wie begint, startvak kiezen) | `97h-solo-opening`, `96-walk` | [begin-potje](docs/begin-potje.md) |
+| multiplayer | `99-multiplayer` | [multiplayer](docs/multiplayer.md) + punt 10 van de [controlelijst](docs/controlelijst.md) |
+| simulatie en de uitslag | `95i-beurt-potje`, `95j-sim-scherm`, `95k-sim-uitslag` | punt 6–7 van de [controlelijst](docs/controlelijst.md) |
+| knoppen, lobby, legenda, cursor, kaders, speelweergave | `80-controls`, `src/css/` | [waar-zit-wat](docs/waar-zit-wat.md) |
+| iets wat beweegt of animeert | — | [prestatie](docs/prestatie.md) |
 
-**Na elke afgeronde wijziging: altijd committen én pushen** naar GitHub (`git push origin
-master`), zonder het eerst te vragen (gebruikerswens 2026-10). De online versie (GitHub Pages)
-komt uit master, dus pas na de push staat de nieuwe versie online.
+De volledige tabel "Waar moet ik zijn?" staat in [docs/waar-zit-wat.md](docs/waar-zit-wat.md).
 
-## Structuur
+## Spelregels in het kort
 
-```
-src/
-  index.html          HTML-skelet met placeholders {{CSS}} {{JS}} {{LOGO}}
-  styles.css          alle opmaak (~77 KB)
-  rules.css           opmaak van het tabblad Spelregels (+ de iets compactere tabbladen in de kop);
-                      build.py plakt hem achter styles.css
-  assets/logo.b64     logo als base64 — hier zelden iets aan doen
-  assets/favicon.svg  tabbladicoon (kruistegel met opdrachtvakje); build.py bakt hem in als data-URI ({{FAVICON}})
-  assets/orbitron900.b64  lettertype Orbitron 900 voor de startanimatie (ingebakken, werkt offline)
-  assets/bigdaddy.b64, partycar-*.b64, kaboem.b64, chants/  plaatjes en geluiden voor de taunts (06-chants.js)
-  data/tiles.json     de 20 tegels + de vorm van een tegel (pattern)
-  js/
-    00-data.js        laadt tiles.json, bouwt tileLookup, globale state (layout, selectedSlot)
-    05-card-art.js    kleur + icoon per opdrachtkaart
-    06-chants.js      de taunts (playChant): typ een cijfer in de chat; plaatjes/geluiden uit assets/ (de oude Canva-plaatjes van de actiekaarten zijn weg)
-    10-rules.js       plaatsingsregels, rotatie, kamer-/opdrachtnamen, welke tegel mag waar
-    20-connectivity.js naden tussen tegels + bereikbaarheid op vakjesniveau
-    30-random.js      seeded random (mulberry32) — zelfde seed = zelfde bord
-    40-board.js       het bord tekenen, contour, naadmarkeringen, statusregel
-    50-interaction.js slepen om tegels te verwisselen, selecteren. Opzet = "Plaats maken" (gekozen variant 2
-                      uit 4, artifact "Axiom-9 Tegels verschuiven", 2026-11): selectie = één kader om de HELE
-                      tegel (`mapRing` in 40-board.js, zelfde `.walk-room-ring` als de opdrachtkamer in een potje);
-                      oppakken = zwevende kopie (`.tile-float`) die de muis volgt en meekantelt, de tegel waar je
-                      boven hangt schuift alvast naar de vrije plek, loslaten = veertje. Tijdens het slepen wordt
-                      het bord NIET opnieuw getekend (renderBoard was de hapering); pas één keer bij het loslaten
-    60-palette.js     het register onderaan (twee rijen: Kamers / Gangen). Kaartje = "Tekentafel" (gekozen
-                      variant 2 uit 4, artifact "Axiom-9 Kamerkaartjes", 2026-10): grote VASTE naam (geen
-                      naamveld meer: de namen staan vast, gebruikerswens), tegel op ruitjespapier, bij muis-erop
-                      "Bewerken" over de tegel (zonder muis: potloodje in de hoek). Geen nummer/positieletter
-    70-generator.js   bordbouwer: zoekt een geldig bord (elke tegel mag draaien), schuift en draait daarna
-                      tegels en kiest op één weegscore met een voorspelling van het verkeer
-    80-controls.js    knoppen: seed, dobbelsteen, vorige indeling, draaien, legenda; bij het openen
-                      meteen een willekeurige kaart (met "Aan het genereren"-vakje i.p.v. het bord)
-    90-editor.js      tegel-editor (vakjes aan/uit klikken). Opzet = "Werkbank" (gekozen variant 1 uit 6,
-                      artifact "Axiom-9 Tegeleditor", 2026-10): grote naam, tegel met 4 lipjes die oplichten
-                      als die doorgang open is, voorproefje bij muis-erop, rechts gereedschap + controle,
-                      onderaan Herstel | melding | Opslaan. ALLES VASTE MAAT (gebruikerswens): het
-                      nummer-veld blijft staan (.is-off = onzichtbaar), melding heeft vaste hoogte (#editorMsg,
-                      ook de fout bij opslaan staat daar). Gemeten: niets verschuift bij gereedschap
-                      wisselen, klikken, foutmelding of Herstel
-    95-simulate.js    batch-spelsimulatie (2xD6, geen U-turn, bezette vakjes blokkeren)
-    96-walk.js        tabblad "Spelen": modus Automatisch, automatische simulatie van 1-4 spelers
-    96b-intro.js      startanimatie na "Start spel", variant "Titan" (2026-10): traag aftellen met zware dreun,
-                      schudden + opbouw, BAM, hyperjump, het zwarte gat in met een gong (gekozen uit 15
-                      geluiden; ±10,6 s) + vinkje in de lobby. Overgang naar het spel: een zwart gordijn
-                      over het HELE scherm (`.start-intro-curtain`) gaat mee dicht met de duik, daaronder
-                      wisselen kop/achtergrond/bord, pas na 2 getekende beeldjes faadt het in 0,8 s weg.
-                      Startanimatie UIT: `playStartFade` (zelfde file): hele scherm 0,65 s naar donker,
-                      daarachter naar het speelscherm, na 2 beeldjes 0,9 s infaden (was: "floept pats boem";
-                      Multiplayer: host stuurt 'intro' met { fade: true }, gast faadt in zodra het potje er is)
-    96c-crystals.js   kristallen: tekenen (renderCrystal), de kluis, de animaties bij oprapen, zeshoekjes op
-                      de spelerskaartjes. Staat bewust vóór 97-solo.js (zie de kop van het bestand)
-    96d-dice.js       dobbelvak: stenen "Pantser" (afgeschuind, ruitstippen), wachten = puls, gooien =
-                      teleport (lichtstraal + ring in `.sd-cell`); gekozen uit 10+10+10 varianten, artifact
-                      "Axiom-9 Dobbelstenen" (2026-10). Ook "Wie begint?" (zelfde 42px, zelfde puls/teleport).
-                      Puls = 1,9 s met starttijd 0, gelijk met de dobbelknop (axPulseBtn). Elke worp rolt
-                      eerst even (bot: tollen, eigen worp: `DICE_ROLL_MS`) en teleporteert dan.
-                      Energiesteen met bliksems + "+2", teller Gegooid/Nog te zetten + stappenbalk,
-                      energiebolletjes naar de balk
-    97-solo.js        tabblad "Spelen": modus Zelf spelen, eigen speler besturen tussen bots, energiekaarten
-    98-cards.js       tabblad Speelkaarten: vitrine + zoom voor opdrachtkaarten en kristallen
-    98b-avatar.js     avatars in de multiplayer-kamer: 5 karakters, 5 brillen, 5 hoedjes (SVG) + editor
-    98c-rules.js      tabblad Spelregels: 13 hoofdstukken (bord opbouwen t/m einde) + kleine animaties
-    99-multiplayer.js tabblad "Multiplayer": lobby + peer-to-peer spelen met vrienden (WebRTC)
-build.py              plakt alles tot dist/axiom9.html
-dist/axiom9.html      GEBOUWD — niet handmatig bewerken
-```
+- Bewegen alleen horizontaal/verticaal. 2×D6 = precies zoveel stappen lopen, geen U-turn, andere
+  pionnen blokkeren. Wie als eerste 6 opdrachten haalt, wint. Op je opdrachtvakje loop je met de rest
+  van je worp door.
+- Een tegelzijde is een doorgang als beide deurvakjes gevuld zijn: N=(0,3)(0,4), Z=(7,3)(7,4),
+  W=(3,0)(4,0), O=(3,7)(4,7). Op een hoek (A, E, P, T) wijst geen doorgang het bord af.
+- Tegel 8 (Hibernatie) = de vier startvakjes 3.1–3.4, ligt binnenin (G/H/I/L/M/N) en heeft als enige
+  kamer geen opdrachtvakje.
+- Elke gangtegel heeft 1 kristalvakje (4.x, hooguit 1 kristal per beurt, zet stopt niet) en 1
+  roostervakje (5.x). Kluis max. 3 kristallen.
+- Energiesteen 0-1-1-2-2-3, max. 10. Eén energie-actie per beurt, **vóór** je gooit; wat de steen
+  geeft, geef je pas volgende beurt uit (mens én bot, alle modi).
+- Eén portaalpaar (blauw ↔ rood); na een portaal of rooster loop je door met de rest van je worp.
+- Op het scherm heet het **"kristal"**, nooit "actiekaart" (in de code nog `ACTION_CARDS`, `p.cards`:
+  bewust niet hernoemd).
 
-De JS-bestanden worden in bovenstaande volgorde achter elkaar geplakt in één
-`<script>`. Er zijn dus geen imports/exports; alles deelt één scope. Nieuwe
-functies moeten gedefinieerd staan vóór de plek waar ze bij het laden worden
-aangeroepen (functiedeclaraties worden gehoist, `const`/`let` niet).
+## Beslissingen van de maker: niet terugdraaien of opnieuw voorstellen
 
-## Waar moet ik zijn?
+- **Opdrachten zijn af**: op je opdrachtvakje = opdracht gehaald. Geen extra actie, inhoud of doel.
+- **Herworp** (energie-actie) is weggehaald, niet terugzetten.
+- **Weggehaalde kristallen**: Snelroute, Herkalibratie, Kristalruil, Vooruitblik, Prioriteitspas,
+  Noodbarrière, Terugtrekbevel, Signaalstoring.
+- Kamernamen staan vast (alleen in `ROOM_NAMES`, niet in de tool te wijzigen).
+- Afgewezen energie-ideeën (rijkere steen, plafond 15, …) staan bovenin `95b-energie.js`: niet opnieuw
+  voorstellen zonder nieuwe meting.
+- Gekozen ontwerpen (knoppen, cursor, kluis, dobbelstenen, lobby, …) staan per onderdeel in `docs/`.
+  Niet zomaar veranderen; verandert er iets, dan opnieuw meten op 1920×945 en 1440×780.
 
-| Ik wil...                                  | Bestand              |
-|--------------------------------------------|----------------------|
-| een tegel van vorm veranderen               | `src/data/tiles.json` |
-| een kamer hernoemen / kamer↔gang wisselen   | `10-rules.js` (`ROOM_NAMES`) — kan bewust niet meer in de tool zelf |
-| een opdracht hernoemen (2.1–2.9)            | `10-rules.js` (`QUEST_NAMES`) — puur thematisch, geen spelregel |
-| regel wijzigen over waar een tegel mag liggen | `10-rules.js` (`canTileGoInSlot`) |
-| de generator slimmer/anders maken           | `70-generator.js` (`genScore` = de gewichten, `GEN_STUB_BUDGETS` = deuren naar buiten) |
-| kleuren, formaat vakjes, mobiel             | `styles.css`          |
-| de blauwe hoofdknoppen (alle `button.primary`) | `styles.css` (`button.primary`): "glas + hoofdletters", gekozen optie 9 uit 9 (2026-10). Eén stijl én één lettergrootte (13px, ook groot/klein) voor alle 14 + de modusknoppen Automatisch/Zelf spelen (`.walk-mode-btn`); grote knoppen zijn alleen breder/hoger. Geen eigen `font-size` per knop toevoegen (gemeten: overal 13px, niets loopt uit een knop op 1440 en 1920 breed) |
-| een knop toevoegen                          | `index.html` + `80-controls.js` |
-| de muiscursor ("Klassiek blauw", gekozen set 1 uit 20, artifact "Axiom-9 Cursorvarianten", 2026-11) | blok `CURSOR "Klassiek blauw"` bovenin `styles.css`: 8 variabelen `--cur-normal/click/no/grab/grabbing/text/busy/zoomout` (32×32 SVG als data-URL, klikpunt 3,2; bij typen 16,16; met de gewone cursor als reserve). Overal `cursor:var(--cur-…)` gebruiken, nooit meer `cursor:pointer` e.d., anders verschijnt daar weer de Windows-pijl. `--cur-busy` wordt nog nergens gebruikt |
-| de legenda op het tabblad Kaart ("Alles leesbaar" + glijdende markering: gekozen variant 3 met de animatie van 4, artifact "Axiom-9 Legenda ronde 2", 2026-11; vervangt "Uitgelicht") | regels in `index.html` (#legend: icoonvak `.legend-ic` 22×22 met het icoon gecentreerd, naam, aan/uit, uitleg `.legend-desc` eronder), gedrag onderaan `90-editor.js` (`legendSpot`/`legendSpotLeave`), opmaak blok `legenda "Alles leesbaar"` in `styles.css`. De 8 regels sluiten op elkaar aan (flex:1, GEEN gaten: daar viel de muis even "nergens" en flikkerde het bord, gebruikersmelding "hakkelig"); het bord gaat pas terug naar gewoon als de muis de hele lijst verlaat (120 ms). `#legendMarker` is één kader dat naar de aangewezen regel glijdt (transform/opacity). Muis/focus = rest van het bord dimt (`#board.is-spot.spot-<key>`, alleen opacity); klik = aan/uit. Geen apart uitlegvak meer en geen 2.x/3.x/4.x-codes. Gemeten 1920×945, 1440×780 en 1366×768: rechterkolom precies even hoog als het bordvak, regels 34–36px, niets afgeknipt, elk icoon exact in het midden van zijn vak. Regel erbij of langere tekst? Opnieuw meten (er is maar ±2px over per regel) |
-| de **console**-knoppen in de lobby (Spelen + Spel hosten; gekozen variant 3 "Console" uit 6, artifact "Axiom-9 Lobbyvarianten", 2026-10, in de glazen knopstijl van de eerdere schuifrail; de schuifrail zelf viel af) | `segmentSelect` onderaan `80-controls.js` + `.seg-*` in `styles.css`: losse knoppen met ALLEEN tekst, gekozen = glas; `data-rail="vert"` = één lijst onder elkaar (Energie-inzet). Geen lampjes/bolletjes, geen stand naast het label en geen meter (gebruikerswens 2026-10). Modusknoppen Automatisch/Zelf spelen = dezelfde knoppen. De `<select>` (Tempo: `<input type=range>` met `data-labels`) in index.html blijft verborgen de bron; op een optie `data-short` (woord op de knop), `data-note` (regeltje eronder), `data-cost` (prijs, bij Energie-inzet uit ENERGY_ACTIONS in 96-walk.js). Geen glijdend schuifje/animatie meer. Nieuwe keuze = element toevoegen en het id in de lijst onder `segmentSelect` zetten |
-| de opbouw van de lobby's van Spelen én Multiplayer ("Drie kaarten", gekozen variant 6 uit 10, artifact "Axiom-9 Lobby-eenheid", 2026-11) | Vier schermen met exact dezelfde opbouw: balk (Automatisch \| Zelf spelen, of Spel hosten \| Deelnemen = `.mp-host-toggle`, fase 'idle'/'host-setup' resp. 'join-form') en daaronder `.lobby-cards` met drie even brede kaarten **Wie speelt er \| Spelregels \| Vertrek** (`#walkAutoControls`, `#walkSoloControls`, `#mpHostForm`, `#mpJoinForm` in index.html; blok `LOBBY "DRIE KAARTEN"` in styles.css). Vertrek = samenvatting (`lobbyRenderSummary`, 97-solo.js) + onderaan foutregel, vinkje en grote knop (Start spel / Kamer aanmaken / Deelnemen aan spel) op dezelfde plek. Er is één vinkje `#walkIntroToggle` en één foutregel per soort (`#walkLobbyStatus`, `#mpStatus`); `lobbyPlaceFoot` (97-solo.js) zet ze in de `.lobby-intro-slot`/`.lobby-status-slot` van het zichtbare scherm (in de kamer gaat `#mpStatus` terug naar `.mp-room-info`). Lijsten in een kaart hebben rijen van `--lobby-row`. "Wie speelt er" bij Automatisch = exact dezelfde bemanningslijst als Zelf spelen (✕ per bot, "+ Speler" uit, "+ Bot"; `#walkPlayers` is daar de verborgen bron, namen in `walkAutoBotNames` spelen mee; gemeten: rijen/knoppen op dezelfde px). `lobbyPlaceFoot` kijkt alleen naar `hidden` BINNEN #walkLobby: bij het laden is het tabblad zelf nog verborgen, en toen stond het vinkje onder de kaarten (Spelen 38px korter dan Multiplayer tot je een keer wisselde). Gemeten: 1920×945 kolom 1160×774, balk y40, kaarten y105 376×589, knop y630; 1440×780 kolom 614 hoog, knop y510, niets loopt over of scrolt — in alle vier gelijk. Iets toevoegen in een kaart? Opnieuw meten. Gast die de kamer verlaat of wiens host wegvalt komt op Deelnemen terug |
-| een spelregel-tekst of -animatie aanpassen  | `98c-rules.js` (`rulesSections` = teksten, `RULES_SCENES` = animaties) + `rules.css`. Energie-acties, kristallen en getallen (6 opdrachten, max. 10 energie, kluis 3, afstand tussen de portalen bij de start) komen uit de spelgegevens, dus die lopen vanzelf mee; een eigen korte zin voor een energie-actie in `RULES_ENERGY_TEXT`. Verander je een spelregel in de code, pas dan ook de tekst hier aan |
-| iets aan de tegel-editor                    | `90-editor.js`        |
-| de spelsimulatie aanpassen                  | `95-simulate.js`      |
-| een energie-actie of de prijs ervan aanpassen | `95-simulate.js` (`ENERGY_ACTIONS`, `botPreRollMove`) + knoppen in `97-solo.js` (`soloRenderActionPanel`/`soloUseEnergyAction`) |
-| iets aan de portalen (regels, bot-keuze, hoe ze eruitzien) | regels + bot: blok PORTALEN in `95-simulate.js`; bord/animatie: `walkPaintPortals` e.v. in `96-walk.js` + blok PORTALEN onderaan `styles.css`; keuze van de mens: `soloEnterPortalAim` e.v. in `97-solo.js` |
-| iets aan de roosters / schroevendraaier (regels, bot, kruipen, uiterlijk) | regels + bot: blok ROOSTERS in `95-simulate.js`; mens: blok ROOSTERS in `97-solo.js`; animatie `walkCrawlFx` (96-walk.js); vakje + schijnwerper: `.cell.grate` en blok "ROOSTERS: kruipen" in styles.css; plek van een rooster: tegel-editor (labels 5.x) |
-| iets aan "Spelen" → Automatisch (pion, tempo) | `96-walk.js`   |
-| de modus-schakelaar zelf (Automatisch/Zelf spelen) | `97-solo.js` (`setWalkMode`) |
-| het tabblad Multiplayer (deelt #tabWalk met Spelen) | `80-controls.js` (`switchTab`, tab `multi`) |
-| de namen van de bots (alle modi)             | `96-walk.js` (`BOT_NAMES`, `pickBotNames`) |
-| het kristalvakje van een gang verplaatsen | tegel-editor in de tool (of `src/data/tiles.json`, labels `4.1`–`4.10`) |
-| een kristal toevoegen / tekst of moment aanpassen | `95-simulate.js`: `ACTION_CARDS` (name/text/when/hint) + `ACTION_CARD_TINTS` + `ACTION_CARD_ICONS`; hoeveel er in de stapel zitten in `ACTION_CARD_COPIES` (standaard 2). Daarna de bot-keuze op ÉÉN plek: `botPlanTurn` in 95-simulate.js (geldt voor simulatie, Automatisch én Zelf spelen/Multiplayer); een logregel in `botTurnCardLogText` (96-walk.js); de mens in `soloPlayCard`/`soloCardBlockReason` (97-solo.js) |
-| iets aan wat een bot in zijn beurt doet (volgorde, wanneer hij een kristal/energie-actie inzet) | `botPlanTurn` + `botFinishTurn` in 95-simulate.js (2026-11, nr. 35: was drie losse kopieën). De modi doen alleen log/animatie: simulateOneGame (tellers), de lus in `runWalkSimulation` (96-walk.js ; afspelen, `botFinishTurn` pas als de pion is aangekomen) en `soloResolveBotTurn` (97-solo.js, daarna naspelen). Gecontroleerd: 800 batch-potjes gaven exact dezelfde uitkomst als vóór het samenvoegen |
-| hoe een kristal, de kluis of het oprapen eruitziet | `96c-crystals.js` + het kristallen-blok onderaan `styles.css` |
-| de tabbladen Energie \| Kluis in de zijkolom (variant C, 2026-11) | `#walkSideTabs` in index.html, `crystalSyncStack`/`crystalSetTab` in `96c-crystals.js`, blok `ZIJKOLOM: TABBLADEN` onderaan `styles.css` |
-| de dobbelstenen, de stappenteller of de energiebolletjes | `96d-dice.js` + het dobbelstenen-blok onderaan `styles.css` |
-| de kaders/vlakken ("zwevende kolommen", gekozen variant 5 uit 6, 2026-10; sinds 2026-10 op de HELE pagina, niet alleen tijdens een potje) | blok `"ZWEVENDE KOLOMMEN" OP DE HELE PAGINA` onderaan `styles.css`: `--page-bg` = `#070a0e`, elke `.panel`/pop-up één kaart zonder rand of amber lijntje, het generatorbord zonder stalen kader. Tijdens een potje (`body.is-playing`) ook: spelerskaarten, beide zijkolommen, bord en chat elk één kaart (`--panel`, ronde hoeken, zachte schaduw) op `#070a0e`, alles binnenin plat. Randen houden hun DIKTE (alleen kleur transparent), zodat alle gemeten maten gelijk blijven — gemeten 1920×960 en 1440×780: identiek aan vóór de wijziging |
-| de uitslag van de simulatie ("Stoplicht-kaarten", gekozen variant A uit 4, artifact "Axiom-9 Simulatie-uitslag", 2026-11) | `renderSimResults` + helpers `simCard`/`simRow`/`simDonut`/`simHBars`/`simColumns`/`simStack`/`simDots`/`simRankGrid` in `95-simulate.js`, opmaak blok `uitslag als "stoplicht-kaarten"` in `styles.css`. Oordeelsbalk (4 vakjes) bovenaan, daaronder 7 rijen van 2 even brede kaarten (Eerlijkheid, Tempo en spanning, Geluk, Energie, Acties en portalen, Kristallen, Bord) + de warmtekaart over de volle breedte. Elke kaart: titel + oordeelchip (in orde/let op/probleem/ter info) + pijltje, groot getal, één zin, één SVG-diagram, tabel + uitleg achter "Details". Inklappen per kaart; kaarten in een rij blijven even hoog. Onder 900px één kolom. Gemeten 1920, 1440 en 390 breed: niets loopt over. Nieuwe meting? Een kaart toevoegen in een bestaande rij of een nieuwe rij van twee |
-| de speelweergave (geen kop, lipje + uitschuifmenu aan de linkerrand, bordgrootte tijdens een potje) | `body.is-playing` in `styles.css` + `playMenuSetOpen` (80-controls.js) + `walkPauseStopSyncVisibility` (96-walk.js) |
+## Prestatie (speelscherm)
 
-## Spelregels die in de code zitten
-
-- Beweging is **horizontaal/verticaal**, nooit diagonaal.
-- Een zijde van een tegel is een **doorgang** als beide deurvakjes gevuld zijn.
-  Deurvakjes: N=(0,3)(0,4), Z=(7,3)(7,4), W=(3,0)(4,0), O=(3,7)(4,7).
-- Op een **hoekpositie** (A, E, P, T) mag geen doorgang het bord af wijzen. Dat kan
-  alleen een tegel met precies 2 open zijden die aan elkaar grenzen (niet tegenover
-  elkaar) — met de huidige tegelset zijn dat tegel 1, 5, 16 en 20. Via rotatie kan
-  elk van die vier op elke hoek terechtkomen (`isCornerCapable` in `10-rules.js`).
-- **7 tegels hebben alle vier de zijden open** (tegels 7, 8, 9, 10, 11, 13, 17).
-  Alleen tegel **8** (Hibernatie, zie hieronder) ligt gedwongen binnenin op
-  G/H/I/L/M/N — voor de rest is er bewust **geen** regel die 4-weg-tegels
-  naar binnen dwingt, zie de "Niet doen"-paragraaf verderop.
-- Tegel **8** (Hibernatie) bevat de vier startposities 3.1–3.4 en hoort ook binnenin.
-  Als enige kamertegel heeft hij bewust **geen** opdrachtvakje — de tegel-editor
-  staat dat uitzonderlijk toe (zie `tileValidationIssues` in `90-editor.js`).
-- **Bordbouwer** (`70-generator.js`, herschreven 2026-11 na de analyse in artifact "Axiom-9
-  Bordanalyse"). Elke naad klopt (open tegen open, dicht tegen dicht), alle 20 tegels hangen aan
-  elkaar, en **elke tegel mag gedraaid worden** (vroeger alleen de hoeken). Stappen: `genSearch`
-  legt met terugsporen een geldig bord binnen een budget aan **deuren die het bord af wijzen**
-  (om en om 1 of 3; 0 kan niet, de tegels hebben samen 63 deuren en er passen er 62);
-  `genAnneal`-lus in `constrainedShuffleAsync` wisselt daarna tegels met dezelfde deurvorm en draait
-  4-weg-tegels (`genMutate`), 8 pogingen × 700 stappen, het bord met de hoogste **weegscore**
-  (`genScore`) wint. De score komt uit `genEvaluate`: een voorspelling van het verkeer per tegel
-  (kortste routes opdracht→opdracht 5/6 en start→opdracht 1/6, gelijk verdeeld over alle even korte
-  routes) + opdrachten even ver + starts even ver + kamers niet tegen elkaar + opdrachten niet
-  naast elkaar − stompjes. Zelfde seed = zelfde bord (alles op de seeded rand). Rekent gemeten
-  ±3,5 s per kaart (klik tot klaar ±6 s met animatie) (gebruiker: "mag best iets langer duren").
-  **Gemeten (oud: 60 borden, nieuw: 40 borden uit de tool; elk 400 potjes met de echte simulatie),
-  oud → nieuw:** borden met een dode tegel (<0,5% verkeer) 35% → 0%; koudste tegel gemiddeld
-  1,2% → 2,3% (slechtste bord 0,04% → 1,4%); drukste tegel 8,9% → 7,6%; deuren naar buiten
-  7,3 → 2,1; vakjes waar bijna niemand komt 92 → 48 van de 564; verschil makkelijkste/moeilijkste
-  opdracht 0,90 → 0,66 beurten; kamers tegen elkaar 2,4 → 2,4; potjes 75 → 75 beurten;
-  startposities even eerlijk; 0 vastgelopen. Het gewicht "kamers niet tegen elkaar" staat bewust op
-  1,0: bij 0,4 lagen er 3,9 kamerparen tegen elkaar (gebruikerswens: kamers spreiden).
-  **De vier fouten in de oude bouwer (niet opnieuw maken):** (1) de dode-tegel-test telde elk
-  vakje met een label als bron, dus ook de kristalvakjes 4.x — elke gang had er zelf één en was
-  nooit "dood" (60/60 borden goedgekeurd); alleen 2.x en 3.x zijn bron/doel. (2) Tien regels strikt
-  op volgorde: regel 2 was bijna nooit gelijk, dus regel 3–10 deden nooit mee — daarom nu één
-  weegscore. (3) Deuren naar buiten werden niet geteld. (4) Tegels werden niet gedraaid (2.860
-  i.p.v. 57.202 deurpatronen).
-  **Bekende grens:** de twee hoekgangen (tegel 1 en 16) blijven de koudste tegels (±2,5% van het
-  verkeer; eerlijk deel is 5%): een hoek ligt nooit op een kortste route. Alleen een opdracht op
-  die twee tegels verhelpt dat (gemeten: 5,8%, maar dan liggen er vaker kamers tegen elkaar) —
-  keuze van de maker, nog niet gedaan.
-  De voorspelling schat te hoog bij tegels die "één van meerdere even korte routes" zijn. Gewichten
-  in `genScore` veranderen? Opnieuw meten met de simulatie.
-  De oude regel "4-weg-tegels niet verplicht binnenin" gold voor de oude bouwer zonder draaien; bij
-  een volledig open bord (budget 1) liggen er vanzelf zes van de zeven binnenin en dat meet juist
-  het gelijkmatigst.
-- Spelsimulatie (`95-simulate.js`): 2×D6 = exact aantal te lopen stappen, geen
-  U-turn, bezette vakjes (andere spelers) blokkeren. Land je onderweg op je
-  eigen opdrachtvakje, dan loop je met de resterende stappen gewoon door — de
-  beurt stopt er **niet meer** voor (vroeger wel; sinds 2026-08 vervalt de rest
-  van de worp niet meer, want dat voelde als verspilde stappen). Voert de rest
-  toevallig ook door de VOLGENDE opdracht, dan pak je die in dezelfde beurt
-  meteen mee (zeldzaam: ±0,3% van alle opdracht-momenten). Zie `resolveMove`/
-  `pickEnd`: `targets` is de rij nog te halen opdrachtvakjes vanaf het huidige
-  doel, en `bankedCount` in het resultaat zegt hoeveel er deze beurt zijn
-  gehaald. Elke speler heeft een eigen geschud stapeltje opdrachten 1–9
-  (labels `2.1`–`2.9`); wie als eerste 6 opdrachten voltooit wint. Draait altijd
-  op de indeling die op dat moment in de tool staat.
-- **Naam op het scherm: "kristal(len)"**, niet meer "actiekaart" (sinds 2026-10; de speler
-  bewaart ze in zijn "kluis", max 3).
-  **De set (2026-10, gekozen door de maker)**: 15 soorten, van elk 2, Portaalsleutel 5 = 33.
-  Beweging: Zwaartekracht-laarzen, Stuwlading, Koerscorrectie. Energie: Noodrantsoen,
-  Condensator, Energielek (pak 2 van een ander), Dubbele steen (2 energiestenen), Zonnezeil
-  (energie = laagste loopsteen). Nut: Blinde Vlek, Portaalsleutel (gratis Portaalkanon, één
-  portaalschot per beurt), Zelf kiezen (één loopsteen een waarde naar keuze; mens kiest in het
-  kristalvak, fase 'die-pick', multiplayer-intent 'pickDie'). Verstoring: Kortsluiting,
-  Duwstoot, Vergrendeling, Stroomonderbreking. **Weggehaald, niet terugzetten zonder de maker**:
-  Snelroute, Herkalibratie, Kristalruil, Vooruitblik, Prioriteitspas, Noodbarrière,
-  Terugtrekbevel (= dubbel met Duwstoot), Signaalstoring.
-  Kristalvakje bij Noodtransport (spelregel van de maker, 2026-11): alleen het vakje waar je LANDT
-  telt, niet wat je overvliegt — voor mens en bot (`crystalPathOf` in 95-simulate.js).
-  Bot-keuzes voor de nieuwe zitten in
-  gedeelde functies in 95-simulate.js (`pickEnergyLeakTarget`, `botWantsTwinEnergy`,
-  `botPickDieValue`; Portaalsleutel via `botPreRollMove` als kind 'portalCard').
-  Meting: de simulatie toont per kristal "Wint wie hem speelt" (25% = gemiddeld, >31% te sterk,
-  <19% zwak). Eerste meting (2000 potjes): alle 15 tussen 22,7 en 27,7%.
-  Gelijkgetrokken mens/bot (2026-11): een bot krijgt de buit van Energielek pas na zijn zet
-  (`energyLeakTake` → pendingEnergy), een Condensator blijft bij een energieworp van 0 staan (ook bij
-  bots), Kortsluiting blokkeert ook de Dubbele steen van een bot, en bij Dubbele steen rekent de bot
-  met de verwachte worp (`BOT_TWIN_EXPECTED_ROLL`). Gemeten daarna (4000 potjes): kristallen
-  21,3–27,9%, energie-acties 23,5–26,3%.
-  Kortsluiting op een mens deed tot 2026-10 niets (alleen bots misten hun steen); nu ook voor de
-  mens, in `soloRollEnergyForTurn`. In de code heten ze nog `ACTION_CARDS`, `p.cards`,
-  `actionCells` enz. — bewust niet hernoemd. Nieuwe zichtbare tekst dus altijd "kristal".
-  **Ontwerp** (`96c-crystals.js`, sinds 2026-11 variant 3+ uit artifact "Axiom-9 Energie en kluis"):
-  een langgerekte zeshoek, rand in de kleur van de soort (`ACTION_CARD_TINTS`), en daarop ALLEEN het
-  icoon en de naam (`crystalArtSvg`: één SVG, een lange naam wordt smaller gezet i.p.v. midden in een
-  woord af te breken; na een streepje/spatie 2 regels). Klein (`size:'sm'`) alleen het icoon, groter
-  en lichter. Soort, moment en uitleg staan NIET meer op het kristal maar in het uitlegvak van de
-  kluis (`crystalInfoHtml`): links Soort (`CRYSTAL_CATS`) + Wanneer (`CRYSTAL_WHEN_LONG`), rechts
-  `ACTION_CARD_INFO` (95-simulate.js; langer dan `text`, die blijft voor de spelregels/logregels).
-  Vitrine Speelkaarten: bijschrift naam + moment; vergroot ook de uitleg.
-  Getekend uit de gegevens, geen plaatjes meer. **`when` is de enige bron** voor wanneer een
-  kristal mag: zowel het moment in het uitlegvak (`CRYSTAL_WHEN_LONG`) als de regel in
-  `soloCardBlockReason` lezen het ('pre' vóór de worp, 'any' vóór of na, 'start' na de worp
-  maar vóór je eerste stap, 'post' tijdens je zet, 'auto' vanzelf aangeboden).
-  **Kluis = tabblad** (variant C "Tabbladen in de kolom", gekozen uit 6, artifact "Axiom-9
-  Kluisvarianten", 2026-11; vervangt "de kluis staat altijd groot onderaan"). Onder het dobbelvak
-  `#walkSideTabs` met Energie | Kluis (aantal x/3); elk tabblad krijgt de hele rest van de kolom
-  (`.has-vault.tab-energy` / `.tab-vault` op #walkSideStack, gezet in `crystalSyncStack`, blok
-  `ZIJKOLOM: TABBLADEN` onderaan styles.css). De "of"-regels zijn dan weg. Het tabblad Kluis pulst
-  (`.can`, crystalPulse) als je nu een kristal kunt spelen. **Vanzelf wisselen alleen op het moment
-  dat een vervolgkeuze verschijnt** (daarna mag je zelf weer wisselen): een keuze na een kristal
-  (`#walkCardActions`, doelwit/Zelf kiezen/Blinde Vlek, staat als laag ín de kluis) → Kluis; een
-  keuze in het energievak (alles in #walkSoloActions zonder `.is-actions`: richting, kleur, sprong,
-  Herprioritering; ook na de Portaalsleutel) → Energie. Opgeraapt terwijl Energie open staat: het
-  kristal vliegt naar het tabblad Kluis (`crystalSlotEl`), gloed/schudden op het tabblad
-  (`crystalVaultShownEl`). Nieuw potje = tabblad Energie.
-  **De kluis = "Eén kaart" met zijrail** (gekozen 2026-11, variant 3+; blok `KLUIS "EEN KAART" MET
-  ZIJRAIL` in styles.css, `crystalRenderVault`). Links een rail: 3 vakjes van gelijke hoogte met elk
-  een klein kristal, VAST KADER rondom het gekozen (geen pulserende gloed of lijntje meer); kan het nu
-  niet, dan alleen het kristal gedimd, niet het kader. Onderaan de rail het SCHROEVENDRAAIER-VAKJE met
-  de tekst "Schroeven-draaier" erboven (`#crystalTool`; koper + gloed als je hem hebt
-  (`p.screwdriver`, via opts `tool`), anders gestippeld grijs). Het vakje is klikbaar
-  (`crystalSel = 'tool'`): dan staat de schroevendraaier groot op de plek van het kristal en in het
-  uitlegvak alleen zijn uitleg; Gebruik/Afleggen staan uit. Rechts: groot kristal (houdt zijn kleur,
-  ook als het nu niet kan), dat een stukje in het uitlegvak steekt (rand + zweem in de kleur van de
-  soort, `.crystal-card.crystal--<soort>`), daaronder de reden (2 regels vast) en Gebruik/Afleggen
-  even breed als het vak. Geen kopregel "Kluis x/3" (staat op het tabblad). Icoon van de
-  schroevendraaier overal (`crystalDriverSvg`: gekozen icoon 1 "schuin, twee kleuren"; 'mono' in de
-  energie-actie en de kruip-knop, 'color' op het spelerskaartje). **Gemeten** met alle 16 kristallen
-  (in drietallen), de schroevendraaier gekozen, met/zonder schroevendraaier en 0–3 kristallen:
-  1920×889 en 1440×780 telkens exact dezelfde plek voor rail, kristal, uitlegvak, reden en knoppen;
-  uitleg past (vak 140px Full HD, 150px laptop; langste = Schroevendraaier ±240 tekens); pagina
-  scrolt niet. Langere uitleg in `ACTION_CARD_INFO`? Opnieuw meten.
-  De energie-acties staan ONDER ELKAAR (de 2x2-tegels stonden scheef; alleen de
-  laarzen-richtingen zijn nog 2x2). Dobbelvak 134px vast; het open tabblad vult de rest, dus de
-  kolom houdt zijn vaste hoogte (even hoog als het bord) en niets verschuift bij dobbelen of
-  wisselen. Met de tabbladen staat de uitlegregel bij elke actie ook op een laptop weer in beeld.
-  Gemeten (vijf acties, 2026-11): 1920×889 kolom 736 = bord, tabblad 544px, inhoud 542;
-  1440×780 kolom 559 = bord, tabblad 367px, acties mét uitleg tot 124px boven de onderrand (ruimte
-  voor de 6e actie), pagina scrolt niet. Iets toevoegen in de zijkolom? Opnieuw meten.
-  **Energiebalk = stroomcircuit** (gekozen uit 10 ontwerpen): 10 knooppunten (`.ec-node`) aan
-  één leiding (`.ec-seg`), opgebouwd in `soloRenderEnergyOverview`. Opladen: stroom over het
-  leidingstukje, knooppunt ploft aan met een ring; leeglopen: van achteren af, flakkeren +
-  amber ring; puls: lichtpakketje (`.ec-track`) elke 2,4 s over de volle leiding. Eén
-  knooppunt per `ENERGY_STEP_MS`. Het getal staat rechts met een vaste breedte (verspringt niet
-  bij 10). De energiebolletjes landen op de knooppunten (`walkEnergyNodes`). Acties = icoonrijen
-  (`ENERGY_ACTION_ICONS`, `renderEnergySoloButton` in 97-solo.js).
-  **Energievak = staande meter + uitlegvak** (gekozen 2026-11: variant 3 met het uitlegvak van
-  variant 6, artifact "Axiom-9 Energie en kluis"; blok `ENERGIEVAK: STAANDE METER + UITLEGVAK`
-  onderaan styles.css). Met de tabbladen (.has-vault) staat het circuit RECHTOP links in het
-  energievak (knooppunt 1 onderaan, getal erboven, bliksempje eronder; zelfde elementen en
-  animaties, alleen scaleY / `ecPacketUp`). Rechts de acties als korte rijen (icoon, naam, prijs;
-  de uitlegregel per rij is weg) met daaronder een uitlegvak met VASTE hoogte: de actie waar je
-  muis/focus op staat, anders de eerste die je kunt kiezen (`soloEnergyNoteHtml`/`soloEnergyNoteShow`,
-  tekst uit `RULES_ENERGY_TEXT` in 98c-rules.js). Kop van het vak: "5 energie · houdt 2 over", of in
-  rood waarom het niet kan. Kun je niets betalen: "Te weinig energie" in het vak. Gemeten (7
-  energie): 1920×889 rijen 62px, vak 112px; 1440×780 rijen 37px, vak 102px (de langste uitleg,
-  laarzen en schroevendraaier, heeft 100px nodig); kolom = bord, niets scrolt of wordt afgeknipt.
-  Langere tekst in `RULES_ENERGY_TEXT`? Opnieuw meten (`--note-h`).
-  **Oprapen** (`crystalEvent`, op elke plek waar iemand een kristal krijgt of een volle kluis
-  heeft): eigen kristal groeit uit het vakje en vliegt in een boog naar je kluis ("Nieuw" tot je
-  erop klikt); kluis vol = zilver vraagteken-kristal dat uit elkaar knalt (bewust niet het
-  kristal dat je had gekregen: dat blijft op de stapel en zou de volgende trekking verklappen);
-  een ander = anoniem zilver kristalletje naar diens spelerskaartje, nooit kleur of naam.
-  Nagespeelde bot-beurten spelen het af als de pion er langskomt (`replay.crystals`).
-  **Kaart in multiplayer**: de host stuurt bij de start `layout` (welke tegel waar) ÉN `rotation`
-  (tileRotation per tegel) ÉN `tiles` (de vakjes per tegel, voor als de host tegels bewerkte) mee;
-  de gast neemt alle drie over in `mpApplyHostMap` (99-multiplayer.js). Vroeger alleen `layout`,
-  waardoor elke gast zijn eigen draaiing gebruikte (gebruikersmelding 2026-10: "niet iedereen ziet
-  dezelfde map, sommige tegels zitten verkeerd"). Nieuwe kaart-instelling? Ook hier meesturen.
-  **Gast: dobbelvak bij een nieuwe beurt** — `mpApplyState` zet in de fases 'choose-action' en
-  'rolling' het dobbelvak terug naar "?" (`renderSoloDicePending`), net als de host in
-  soloBeginHumanTurn. Anders hield .walk-hud de klasse .has-result van de vorige worp en verborg de
-  opmaak de knoppen Dobbelen/Gooi: de gast kon niet meer dobbelen en het potje liep vast
-  (gebruikersmelding 2026-10). **#mpWaitTurn** ("X is aan zet — even wachten") staat in het
-  energievak (#walkSoloPanel), niet in het dobbelvak: dat heeft een vaste hoogte en de melding viel
-  dan over de energiebalk heen. **Testen zonder twee computers**: een testpagina met twee iframes
-  (host + gast) en een nagebootste Trystero via BroadcastChannel (`mpTrysteroMod` vervangen vóór
-  mpHostCreate/mpJoinConnect) + een automatische speler per venster vond beide fouten; na de
-  oplossing 5 potjes van 48–67 beurten zonder vastlopen of fouten.
-  **Klik van een gast** (`mpHandleIntent`): de host voert hem uit bij dezelfde `stateVersion`, óf als
-  `mpIntentContext()` (fase, plek, stappen, energie, kristallen, openstaande keuze) bij de host nog gelijk
-  is aan wat de gast meestuurde. Zonder dat laatste verdween ±1 op de 300 kliks (2026-11). Nieuwe
-  beurt-toestand die bepaalt of een klik nog klopt? Ook in `mpIntentContext` zetten.
-  **Geheim in multiplayer**: de host stuurt de stand per gast apart (`mpSendPerGuest`); in
-  `mpPublicPlayer` ziet elke gast alleen zijn eigen kristallen, van anderen alleen het aantal.
-  Logregels noemen in multiplayer en bij bots nooit welk kristal er werd opgeraapt.
-- Elke **gangtegel** heeft precies 1 actiekaartvakje (labels `4.1`–`4.10`,
-  analoog aan het opdrachtvakje in een kamer — zie `tileValidationIssues` in
-  `90-editor.js`). Loop je er tijdens je beurt overheen, dan trek je een
-  beloningskaart net als bij een voltooide opdracht, maar anders dan een
-  opdrachtvakje **onderbreekt het de zet niet** en levert het **hooguit 1
-  kaart per beurt** op, ook als je onderweg meerdere van deze vakjes
-  passeert — geen heen-en-weer lopen voor een 2e kaart. Gedeelde logica:
-  `graph.actionCells` (in `buildSimGraph`),
-  `pathHasActionCell` en `drawActionCellReward` in `95-simulate.js`; elke
-  spelmodus (`95-simulate.js`, `96-walk.js`, `97-solo.js`) houdt zelf een
-  per-beurt vlag bij (bv. `actionCellDrawnThisTurn`) omdat animatie/bot-logica
-  per modus verschilt. Max. handgrootte: `ACTION_CARD_HAND_MAX` (nu 3).
-- **Energie** (`ENERGY_ACTIONS` in `95-simulate.js`): energiesteen 0-1-1-2-2-3
-  (gem. 1,5), plafond 10. Een energie-actie kies je **vóór je gooit**, hooguit
-  één per beurt; wat de energiesteen oplevert geef je pas **volgende beurt** uit.
-  Dat geldt voor mens én bot in alle drie de modi (vroeger mochten bots meteen
-  uitgeven en Noodtransport ná de worp doen — dat maakte de simulatie te gunstig).
-  **Herworp is weggehaald (2026-11-20, keuze van de maker, niet terugzetten zonder de maker)**: een
-  energie-actie (1) ná de worp om één loopsteen opnieuw te gooien. Het aanbod verscheen na elke
-  worp in het energievak en de lijst met acties sprong dan telkens weg: "verwarrend, rare functie".
-  (Gemeten toen: worp onder de 7 40 → 32%, potjes 65,0 → 63,4 beurten.) Meetknop die bleef:
-  `SIM_SETUP_HOOK` (95-simulate.js, per potje spelers aanpassen voor een vergelijking).
-  Vier acties: Stuwstoot (4, 3 loopstenen), Herprioritering (4, eerst je volgende
-  opdrachtkaart bekijken en dan kiezen of je wisselt), Zwaartekracht-laarzen (5,
-  eerst tot 8 vakjes rechtdoor tot een muur/pion, dan gooien) en Noodtransport
-  (10, eerst vrij springen tot 11 vakjes, dan gooien). De laarzen **stoppen** op
-  het opdrachtvakje van die beurt als ze er onderweg op komen (spelregel van de
-  maker; bij een gewone worp loop je juist door). De actiekaart
-  Zwaartekracht-laarzen is de gratis versie van de energie-actie (één sprint per
-  beurt). Gemeten in balans over 4 borden × 4000 potjes: 24,8 / 24,6 / 25,5 /
-  25,1% (Noodtransport op 13 was op elk bord te sterk, 26,6–28,3%); de
-  prijs-sweep en de afgewezen alternatieven (rijkere steen, plafond 15, laarzen
-  die de worp vervangen, Bijsturen, Dubbelworp, Sabotage, energie → kaart) staan
-  bovenin `95-simulate.js` — niet opnieuw voorstellen zonder nieuwe meting. De
-  bot-keuze vóór de worp zit in **één** gedeelde functie (`botPreRollMove`),
-  zodat simulatie, Automatisch en Zelf spelen niet uit elkaar lopen.
-  Extra bot-strategie **Slim** (`'smart'`; standaard voor alle bots in Zelf spelen en
-  Multiplayer, in Automatisch te kiezen via Energie-inzet → "iedereen slim"):
-  kiest aan het begin van elke eigen beurt zelf een actie of spaart (`botStrategyNow`/
-  `botSmartPick` in 95-simulate.js); alle strategie-checks lopen via `botStrategyNow`. Zit
-  bewust niet in `ENERGY_STRATEGIES` (de batch-simulatie meet de vaste strategieën).
-- **Portalen / Portaalkanon** (5e energie-actie, prijs 5, 2026-10; blok PORTALEN in
-  `95-simulate.js`). **Sinds de roosters (2026-11, keuze van de maker) weer één paar: blauw ↔ rood**
-  (`PORTAL_NAMES`; het tweede paar terugzetten = twee namen/klassen erbij). Wat hieronder over twee
-  paren staat is de geschiedenis. Er lagen **vier portalen in twee paren** op het bord, blauw ↔ rood en
-  groen ↔ geel, gedeeld door iedereen; bij de start al, de twee van een paar ≥16 stappen uit elkaar
-  en ≥6 van het andere paar (`portalSetup`). **Twee paren + prijs 5 (was één paar, prijs 7) is een
-  keuze van de maker (2026-11): "portalen moeten meer gebruikt worden, het voelt telkens te ver
-  weg".** Gemeten (3 borden × 2.000 potjes), oud → nieuw: schoten per potje 4,8 → 8,8, sprongen
-  10,1 → 16,8, opdrachten in een beurt met een sprong 11,8 → 23,7% (grens in de simulatiekaart
-  daarom 30%), potjes 75,3 → 64,7 beurten (−14%), meeste teleporteerder wint 24%, startposities
-  24,2–25,9%, 0 vastgelopen. Energie-acties Stuwstoot / Herprioritering / laarzen / Noodtransport:
-  21,4 / 28,2 / 24,1 / 26,2 → 19,7 / 27,8 / 23,8 / 28,8 (Stuwstoot zakt, Noodtransport stijgt; bij
-  twee paren op prijs 7: 21,7 / 27,0 / 21,6 / 29,6, op 6: 20,0 / 28,7 / 22,5 / 28,8 — de prijs
-  maakt daar weinig uit, het tweede paar wel). Geen paars portaal: dat is de kleur van de
-  kristalvakjes. In de code: `P.cells`/`P.owner` hebben 4 plekken, de partner van kleur `c` is
-  `c ^ 1`, namen/klassen in `PORTAL_NAMES`/`PORTAL_CLASSES`, `portalColorAt`. De cijfers verderop
-  in dit blok zijn van vóór deze wijziging. Kanon = vóór de worp een
-  richting kiezen, het portaal vliegt rechtdoor tot de muur of vóór een pion en landt op het
-  verste gewone vakje (nooit op opdracht/start/kristal of het andere portaal), daarna kies je
-  welke van de vier kleuren je verplaatst (2×2 knoppen, gemeten 1920×960 en 1440×780: past in het
-  vaste energievak, niets afgekapt); de rest blijft liggen, ook als een ander hem legde (stelen).
-  Stap je in een portaal, dan kom je uit het andere en **loop je met de rest van je worp door**, in
-  elke richting (instappen = 1 stap). Spelregel van de maker sinds 2026-11 ("stoppen voelde als
-  verloren stappen en frustratie"); daarvoor stopte de zet in het portaal. Gemeten bij de wissel
-  (2 borden × 3.000 potjes, stoppen → doorlopen): potjes 77 → 72 en 85 → 78 beurten (−7%),
-  opdrachten in een beurt met een sprong 3,1 → 10,6 / 11,5% (de oude grens van 5% in de
-  simulatiekaart "Portalen" staat daardoor op rood), meeste teleporteerder wint 17/20 → 26%
-  (grens 30%), energie-acties 23,2–27,7 / 21,0–29,6%, startposities nog eerlijk. Pion op een portaal = dat
-  paar werkt niet (het andere wel). Noodtransport, laarzen en duwkaarten
-  negeren portalen. Techniek: `adjKey` blijft het gewone bord; alleen `resolveMove` (in de DP is de
-  uitgang een gewone toestand met richting `SIM_DIR_FREE` = mag alle kanten op; `layersVia` onthoudt
-  de ingang voor het pad), `simBfsDistances` (de twee van een paar tellen als één vakje; `noPortal` voor Noodtransport)
-  en `soloLegalNextCells` (mens) kijken naar `graph.portals = { cells: [blauw, rood, groen, geel], owner }`.
-  Een pad door een portaal bevat ingang én uitgang (twee vakjes die niet naast elkaar liggen =
-  `portalIsJump`); tel die stap niet als gelopen vakje. **Elke bot mag schieten** (ook vaste
-  strategieën, via `botStrategyNow` → `botPortalWanted`) als het ≥6 stappen scheelt
-  (`botPortalShot`); de Slim-bot alleen als het meer oplevert dan een sprint (`botSmartPick`).
-  Bord: `walkPaintPortals`/`walkPortalShotFx`/`walkPortalPawn` (96-walk.js), opmaak blok
-  PORTALEN onderaan styles.css (alleen transform/opacity). Uiterlijk gekozen uit 10 + 10
-  varianten (artifact "Axiom-9 Portaalontwerpen", 2026-10): portaal = **gyroscoop** (tweede
-  ronde, variant 16 uit 20, artifact "Axiom-9 Portaalvormen": twee ringen die samen om een felle
-  kern draaien; de ovale poort uit de eerste ronde viel af), schot = **komeet** (kop + staart van 6 lichtjes, rechte lijn naar de
-  muur, 2 schokgolven, portaal ploft open), bewust LANGZAAM (gebruikerswens: "zodat je echt goed
-  ziet wat er gebeurt"): 130 ms per vakje, 0,7–1,7 s, op de snelste Automatisch-standen ×0,45
-  (`PORTAL_COMET_MS_PER_CELL`). De komeet meet niets op: elk lichtje is een vakje groot en schuift
-  in % van zichzelf + 1px gap per vakje. Zelf spelen: fases `portal-aim`
-  (richting, knop of klik op het bord) en `portal-color`. Multiplayer: `portals` (plek + eigenaar)
-  zit in de start én in elke stand (`mpPortalSnapshot`/`mpApplyPortals`), bot-beurten dragen
-  `replay.portalShot` (voor/na), intents `portalAim`/`portalColor`.
-  **Gekozen na een analyse van 44 varianten × 10.000 potjes** (artifact "Axiom-9 Portalen"):
-  doorlopen na een portaal = te sterk (potjes 6–11% korter, tot 10% van de opdrachten via een
-  portaal); vrij plaatsen binnen 10 = te veel controle; vast of zwervend = puur toeval; "niet bij
-  een opdracht" deed bijna niets. Nagemeten na het inbouwen (4 borden × 10.000, elke bot mag
-  schieten), winst% Stuwstoot / Herprioritering / laarzen / Noodtransport:
-  zonder portaal 24,7 / 23,8 / 25,8 / 25,6 (85,8 beurten) · prijs 6: 22,9 / 25,3 / 23,6 / 28,1
-  (Noodtransport te sterk) · **prijs 7: 23,8 / 25,2 / 24,7 / 26,4** (82,9 beurten, −3,4%) ·
-  prijs 8: 23,7 / 24,9 / 24,9 / 26,5. Bij 7: 2,6 schoten per potje, 27% gestolen, 3,0% van de
-  opdrachten in een beurt met een sprong, meeste teleporteerder wint 16,6%. Slim-bots: 1,1
-  schoten per potje bij 7; een Slim-bot zónder portaal wint 24,7% tegen drie mét (geen merkbaar
-  voordeel); laarzen-gebruik zakt van 8,2 naar 6,3 per potje. Speeltest met mensen nog te doen:
-  wordt er gestolen, voelt 7 te duur (dan eerst 6, niet lager), worden potjes niet te kort.
-- **Begin van een potje** (Zelf spelen, Multiplayer én Automatisch): in de lobby
-  kies je géén startpositie meer, je ziet alleen spelers en namen. Het potje
-  begint met dobbelen (2 stenen, geen energiesteen) wie begint; de hoogste kiest
-  als eerste een startpositie, daarna aflopend, en die volgorde is meteen de
-  beurtvolgorde. Gelijk op welke plek dan ook → alleen die spelers gooien
-  opnieuw (`openingSplitBucket` in `95-simulate.js`). Je eerste opdracht is
-  geheim (`p.questHidden`, ook niet meegestuurd in Multiplayer) tot je mag
-  kiezen; dan staat hij op het bord en gloeien de vrije startvakjes. Bots kiezen
-  de vrije startpositie het dichtst bij hun eerste opdracht (`botPickStartLabel`).
-  Weergave: `renderOpeningPanel` in `96-walk.js` (de hele rechterkolom),
-  logica: `soloBeginOpening` e.v. in `97-solo.js`, Automatisch: `walkRunOpening`.
-  De batch-simulatie houdt bewust vaste startposities: die meet juist de
-  eerlijkheid **per** startpositie.
+Alleen `transform`/`opacity` animeren (nooit `top`, `box-shadow`, `filter`); geen `:has()`; geen
+`getBoundingClientRect`/`getComputedStyle`/`offsetWidth` midden in een beurt; niets opnieuw in de DOM
+zetten als het niet veranderd is. Details en metingen: [docs/prestatie.md](docs/prestatie.md).
 
 ## Controleren of het nog werkt
 
-Na een wijziging altijd `python build.py` en dan `dist/axiom9.html` openen.
-Check minimaal:
-1. "Genereer nieuwe map" → willekeurige nieuwe kaart (geen dobbelsteentje meer; het
-   seed-veld is alleen-lezen en toont de huidige seed), seed ook rechtsboven. De kaart
-   faadt uit, in het bordvak verschijnt het **sterrenbeeld** (gekozen variant 8 uit 8, 2026-10;
-   `genNet` in 80-controls.js, blok `.gen-net` in styles.css): één ster per tegelplek, precies
-   over het bord gelegd (`genNetPlace`). Verbindingen groeien mee met de voortgang, soms een rode
-   lijn die terugtrekt (terugsporen). Geen tekst eronder en geen zoom: het netwerk is van begin tot
-   eind precies even groot als het bord (gebruikerswens 2026-10). Klaar → golf vanaf Hibernatie op
-   de nieuwe kaart, sterren blauw (kamer) / paars (gang), daarna faadt de nieuwe kaart in (0,9 s, GEN_FADE_MS). Alleen transform/opacity
-   (de generator rekent op dezelfde draad). Tijdens het genereren zijn de tabbladen Simulatie, Spelen
-   en Multiplayer uitgefaded en disabled (`genLockTabs`, ook al in index.html). Onder de knoppen
-   staat normaal niets; alleen bij een fout (mislukte indeling, kan niet draaien/wisselen)
-   een korte rode melding. Niets verschuift tijdens het genereren.
-2. Onbereikbare vakjes (bv. na een tegel-bewerking) krijgen een roze/magenta rand
-   direct op het bord — geen apart paneel, dit is de enige indicatie.
-3. Een tegel selecteren → draaiknoppen gaan per **90°** (niet 180).
-4. Een tegel over een andere slepen → hij komt los en volgt de muis, de andere tegel schuift alvast opzij;
-   loslaten = wisselen. Rood kader = niet toegestaan (dan blijft de andere liggen en gaat de tegel terug).
-5. Browserconsole moet leeg zijn.
-6. Paneel Simulatie: het aantal potjes is een **rolteller** (gekozen ontwerp B uit 4, sinds 2026-10):
-   5 rolcijfers (voorloopnullen gedimd; een hoger cijfer komt van BOVEN binnen en 9 → 0 rolt door als
-   een kilometerteller, `simReelMove`: rol = 3x 9..0, beweging is een Web Animation), −100/+100 ernaast (ingedrukt houden = steeds sneller,
-   na 12 stappen per 500) en daarbuiten −1000 links / +1000 rechts (`data-sim-size`, altijd per 1000), pijltjestoetsen op de teller, snelkeuzes 500/1.000/2.000/5.000/10.000
-   en een brede startknop. Bron blijft het verborgen veld #simCount (100–20.000, stap 100);
-   weergave `simCounterRender`/`simCountSet` in 95-simulate.js, opmaak `.sim-*` bovenin styles.css.
-   "Draai simulatie" → 4 startposities laten allemaal winst
-   zien, "vastgelopen potjes" is 0 of bijna 0. Tijdens het rekenen staat er een
-   "Aan het simuleren"-vakje met de **tijdring** (gekozen 2026-10 via Zwaartekracht → variant 2 uit 20;
-   `simStream` in 95-simulate.js, `#simRing`/`.sim-ring`): zwart gat met gloeiende schijf, deeltjes
-   spiraleren erin, 60 streepjes rond het gat gloeien met de klok mee op (= voortgang); géén getal in
-   de kern (eerst seconden, op verzoek weer weg). Alleen Web
-   Animations/transitions op transform/opacity, want de simulatie rekent in brokken van 30 ms op
-   dezelfde draad. Eronder alleen potjesteller en "Stoppen" (`button.primary`, zelfde stijl als de
-   andere knoppen); bij klaar staat de volle ring nog 0,7 s, dan faadt de uitslag in.
-7. Onderaan de simulatie: kaart "Koudste tegels" (tabel achter Details) — geen enkele tegel mag onder
-   0,5% verkeer staan (de hoekgangen zitten rond 2–3%). Gebeurt dat toch, dan klopt de
-   voorspelling in `genEvaluate` (`70-generator.js`) niet meer.
-8. Tabblad "Spelen" → modus "Automatisch" → "Start spel" → de pion loopt
-   zichtbaar, de dobbelstenen rollen, en het potje eindigt met hetzelfde
-   winscherm als Zelf spelen (embleem in winnaarskleur + klassement plaats/naam/opdrachten, "Toon kaart"/"Toon
-   uitslag"); de knop rechtsboven heet dan "Terug naar lobby" en werkt.
-   Na afloop is de zijkolom (dobbelen/energie/kluis) en het opdrachtenoverzicht leeg, en zijn
-   "Toon legenda"/"Toon log" (plus de legenda en het log zelf) weg, ook na
-   "Toon kaart" (`.is-game-over` op .walk-play-layout, `soloSetGameOverView` in 97-solo.js;
-   weer weg via `soloHideEndgame` bij een nieuw potje/stoppen).
-   Tempo moet je tijdens het lopen kunnen wijzigen (schuif
-   rechtsboven naast Pauze/Stoppen); "Stoppen"
-   moet de pion echt stilzetten (geen achtergrondlus die doorloopt).
-9. Elke gangtegel heeft één paars kristalvakje (een zeshoekje binnen het vierkante
-   vakje; legenda "Kristalvakje (4.x)"). Loopt jouw pion er tijdens "Zelf spelen"
-   overheen, dan groeit het kristal uit het vakje en vliegt het naar je kluis, en
-   loopt de pion gewoon door — de beurt stopt er niet voor. Kluis vol: zilver
-   kristal knalt uit elkaar en de kluis schudt rood. Een bot die opraapt: klein
-   zilver kristalletje naar zijn spelerskaartje, en in het log geen naam.
-   De kluis staat altijd in de zijkolom (ook leeg, gestippeld) en mag nooit onder
-   het bord uitsteken; de knoppen Gebruik/Afleggen verspringen niet.
-10. Tabblad "Multiplayer" (eigen tabblad naast Spelen; gebruikt hetzelfde vak
-    #tabWalk in de modus 'multi', Spelen heeft alleen Automatisch/Zelf spelen).
-    Lobby: balk Spel hosten | Deelnemen met drie kaarten eronder, net als Spelen (zie "Drie
-    kaarten" in de tabel bovenaan). Check: "Kamer aanmaken" geeft een kamercode + een
-    spelerskaartje in dezelfde 2-koloms stijl als de Zelf-spelen-opzet, chat
-    staat eronder (niet meer ernaast). Laat een tweede speler meedoen, start
-    een potje (de chat staat dan als eigen 4e kolom rechts, de zijkolom met
-    dobbelen/energie/kaarten blijft volledig zichtbaar; "Verlaat potje" staat
-    rechtsboven in de kop), en klik daarna op "Verlaat potje". **Host**: terug naar déze
-    multiplayer-lobby (kamercode/spelers nog intact), niet naar de modus Automatisch. **Gast**
-    (gekozen 2026-11, "wat het beste is zonder glitches"): gaat helemaal uit de kamer, met code en
-    naam nog ingevuld; de host maakt van zijn plek een bot en haalt hem uit de kamer
-    (`mpOnPeerLeave`). Tijdens een potje laat de host niemand nieuw toe (reden 'bezig'); na het
-    potje kan de gast met Deelnemen terug (zelfde naam mag weer). Speel ook een potje uit: host én
-    gast krijgen het winscherm met klassement, en "Terug naar lobby" (dezelfde
-    knop) brengt beiden terug naar de kamer. Een gast met een naam die al in
-    de kamer zit (ook met andere hoofdletters) wordt geweigerd: terug naar het
-    formulier met rood naamveld (`mpHostOnHello` / `mpJoinRejected`). Speel als
-    gast een hinderkaart (bv. Stroomonderbreking): je krijgt de doelwit-keuze te
-    zien, net als het Blinde-Vlek-aanbod (`ownerUi.cardActionsHtml` in
-    `mpBroadcastState`). Kamer (host én gast, zelfde opbouw): code + Kopieer,
-    één vak per plek (naam in spelerkleur, "Host" rechts, lege plek golvend
-    "Wachten op speler"), knoppen vast onderaan gelijk met de chat. De gast
-    heeft onderaan een statusbalk: na 10 s volle kamer wordt die "Stuur host
-    herinnering" (taunt 14, daarna 5 s afkoelen) — `mpUpdateWaitStatus`.
-    Host-keuze "Beurten van de bots" (Laten zien): de host stuurt per bot-beurt één
-    'botturn'-bericht (`mpOnBotReplay`) en zendt tijdens soloPhase 'bots' géén stand; elke
-    gast speelt de beurt zelf na (`mpClientOnBotTurn` → `soloAnimateBotTurn`). Check: bij de
-    gast loopt de bot-pion vloeiend, en het log is gelijk aan dat van de host (geen dubbele regels).
-    Kamer = **"De brug"** (gekozen ontwerp, 2026-10; `#mpRoomLayout.is-room` in styles.css):
-    links boven de avatar-maker (van boven tot aan de knoppen), links onder in de hoek de knoppen
-    (Spel starten/afbreken of wachtstatus/Verlaten), midden de brug (`mpRenderBridge`: tafel met
-    code + Kopieer + "x / y aan boord" die als sonar pulst, 4 stoelen in de hoeken), rechts de chat
-    over de volle hoogte. Onder 900 breed (telefoon) één kolom: brug (kleinere stoelen/tafel),
-    knoppen, chat, avatar-maker (sinds 2026-11). Komt er iemand binnen: **BAM** (`mpBridgeJoin`) — dikke ring in zijn
-    kleur, tafel flitst, stoel klapt open, naam groot in beeld + chatregel "X is aan boord"; pas
-    bijhouden zodra je zelf aan boord bent (anders kreeg een gast een BAM voor iedereen + zichzelf).
-    Avatar = { c, e, g, h }: 12 karakters (nieuw: Luna, Krak, Pixel, Comet, Rots, Kristal, Baard),
-    8 gezichten (Blij, Lachen, Verbaasd, Stoer, Boos, Tong uit, Grijns, Verdrietig; `AVATAR_FACES`),
-    8 brillen, 8 hoedjes; een karakter is alleen het hoofd, het gezicht tekent wenkbrauwen + mond in
-    de kleuren van het karakter. Oude avatars zonder `e` krijgen gezicht 0. Editor = één raster van
-    4 kolommen (Karakter + Gezicht | Bril + Hoedje), dus elke groep 12 of 8 stuks — nieuwe items
-    altijd per 4 toevoegen, en ACHTERAAN (de index is wat er bewaard/verstuurd wordt). Stoelen op
-    de brug zijn 4 blijvende elementen die elk apart worden bijgewerkt (anders begon "Wachten…"
-    opnieuw te golven zodra iemand iets aan zijn avatar veranderde). Eerst een karakter (tab Accessoires zit tot dan op slot), daarna de rest —
-    staat meteen op je stoel en bij de anderen (gast → 'avatar'-bericht → host zet `seat.avatar`
-    en stuurt de lijst rond).
-    Nog een keer klikken op een item = weer af. Wordt per browser onthouden (localStorage).
-11. **Speelweergave** (alle drie de modi, zolang er een potje in beeld is): `body.is-playing`
-    (gezet in `walkPauseStopSyncVisibility`, 96-walk.js; in Multiplayer ook `is-mp-game`).
-    De kop is dan HELEMAAL weg (2026-11, gebruikerswens: "de volledige ruimte benutten"). Aan de
-    linkerrand staat een lipje (`#playEdge`, 18×120px, blauwe rand + gloed die rustig "ademt" in
-    opacity): muis tegen de rand (80 ms) = het menu schuift uit over het spel heen (0,65 s, zachte
-    uitloop; donkere laag faadt mee in 0,6 s), muis het menu uit = na 300 ms dicht; klikken/tikken
-    op het lipje werkt ook (touchscreen). In het menu de tabbladen en daaronder "Dit potje" met de
-    spelknoppen (Tempo/Pauze/Stoppen, Nieuw potje, Verlaat potje; `#playMenuActions`), in dezelfde
-    stijl als de tabbladen. Een ANDER tabblad kiezen tijdens een potje = eerst de vraag "Wil je het
-    huidige potje stoppen?" (`#walkLeaveConfirm`, `tabAskSwitch` in 80-controls.js; niet als het
-    potje al af is). Ja = rustige fade over het hele scherm (`playStartFade`, net als bij het
-    starten), daarachter stopt het potje en wisselt het tabblad. Stoppen/Nieuw potje/Terug naar
-    lobby gebruiken dezelfde fade (`walkFadeToLobby(behind)` in 96-walk.js).
-    `playMenuSetOpen` in 80-controls.js; dicht ook met ✕, Escape, klik ernaast, een tabblad of een
-    spelknop. Op het winscherm staat "Terug naar lobby" naast Statistieken (`soloEndgameToLobby`),
-    want na afloop zit die knop anders alleen in het menu. Pagina op volle breedte, bord tot 34px
-    per vakje ("altijd zo groot mogelijk"); hoogte boven/onder het bord = `--play-chrome` (184px,
-    was 224 met de smalle balk; gemeten 1920×889: vakjes 20,8 → 22px, onderaan 4px over, niets scrolt). Kolomminima:
-    links 280px, zijkolom 370px (smaller breken opdrachtnaam/energietegels af); Multiplayer
-    270 / 370 / chat 230px. Tussen 1361 en 1520 breed staat de chat in Multiplayer als eigen regel
-    ONDER het speelscherm (anders viel het bord rechts ±42px af op 1440×780; sinds 2026-11). Gemeten: Full HD ±21px, 1440×780 ±15px, Multiplayer op Full HD even
-    groot als de rest. Buiten een potje blijft de gewone kop.
-    Speelscherm op ±1400px breed (laptop/half scherm): alles in beeld, niets
-    afgeknipt — het bord krimpt daar mee (zie `--wcell` in `styles.css`),
-    onder 1360px staat alles onder elkaar. `--wcell` schaalt óók met de
-    schermhoogte: vanaf ±780px zichtbare hoogte (o.a. Full HD met
-    browserbalken, 1440×780) moet het hele speelscherm zonder scrollen passen.
-    "Toon legenda"/"Toon log" zijn VOOR NU VERBORGEN (gebruikerswens 2026-10: staan in de weg,
-    komen later op een andere manier terug): één CSS-regel bij `.walk-extras-toggle` in
-    styles.css verbergt de knoppen + #walkLegend + #walkLog; walkLog() schrijft gewoon door.
-    Het opdrachtenoverzicht
-    is een **afvinklijst met kleurstroken** (gekozen uit 4 ontwerpen; `soloRenderQuestChecklist`):
-    geen 2.x-nummers meer (de opdrachtkaarten krijgen later alleen naam + opdracht), streep +
-    rondje in de opdrachtkleur, groen vinkje = voltooid, kloppende stip + "actief" = huidig doel;
-    hover = spieken (rand in jouw kleur + oogje). Erboven (Zelf spelen + Multiplayer) de
-    **missiestrook** (gekozen ontwerp D uit 4, 2026-10; `soloMissionHtml` in 97-solo.js, `.mission-*`
-    in styles.css): volgorde pillen Beurt / Stand → kopje "Opdrachten voltooid" (geen los x/6-getal
-    meer) → 6 zeshoekjes; overal 14px tussen de regels en alle tekst in pillen + kopje 15px
-    (gemeten: tekst exact gecentreerd in de pillen). De zeshoekjes aan een
-    lijn (groen + vinkje = voltooid; de actieve opdracht ook groen, NIET de kamerkleur, met een
-    sonarpuls: 2 ringen op `.mission-slot.is-next`, `missionSonar`, alleen transform/opacity) en groot
-    "Opdrachten voltooid x / 6". De opdrachtkaart en de 3 tegels zijn daar weg (de kaarten zijn voor
-    de fysieke versie); `.walk-info-panel.is-mission` verbergt #walkQuestCard/#walkMeta/#walkScoreActive.
-    Automatisch toont ze nog wel. Gemeten 1920×960 en 1440×780: kolom = bordhoogte, niets scrollt. Alle rijen even brede
-    rand/streep, zodat rondjes en namen exact onder elkaar staan (gemeten). Onder 865px hoogte of
-    1630px breedte naam + kamer op één regel; nooit scrollen (gemeten 1920×900 en 1440×780). Minimum is
-    13px per vakje; daaronder scrolt het nog. De tabbladen staan in de kop naast
-    logo + titel (op een smal scherm op een eigen regel eronder; tijdens een potje in het ☰-menu). De
-    spelerskaarten boven het bord zijn één regel: naam groot (nooit afgekapt),
-    rechts Voltooid / Energie / Kaarten; "aan zet" en de eindplaats als tabje op
-    de rand. Verandert de hoogte boven/onder het bord, pas dan de 300px in
-    `--wcell` (styles.css) aan.
-12. Zelf spelen → tabblad Energie toont de acties op prijs (Stuwstoot 4,
-    Herprioritering 4, Zwaartekracht-laarzen 5, Portaalkanon 5, Schroevendraaier 5, Noodtransport 10)
-    naast een staande energiemeter, met onderaan het uitlegvak (muis op een actie = zijn uitleg, en
-    de knooppunten die hij kost knipperen bovenaan de meter). De lijst vult de kolom (rijen max.
-    62px); gemeten 1920×889 rijen 62px, 1440×780 rijen 37px, niets scrolt. Boven de meter staat het
-    getal NAAST "/ 10" op één regel (gebruikerswens 2026-11; stond onder elkaar): meterkolom 76px
-    (laptop 66px), cijfer 26px (laptop 22px), GEEN vaste breedte (die schoof "1 / 10" 6px uit het
-    midden). Gemeten 1920×945 en 1440×780: "10 / 10" 54 resp. 48px breed, één regel, midden van de
-    tekst exact boven de lijn van de meter bij 1, 7 en 10, alle actienamen nog volledig leesbaar.
-    Na de worp en tijdens beurten van bots blijven de energie-acties staan, uitgegrijsd met de reden
-    ("kies je vóór het dobbelen" / "niet jouw beurt") + uitlegvak (gebruikerswens 2026-11; was: vak
-    leeg). Eén plek: `soloEnergyRestFill` + MutationObserver in 97-solo.js, herkenbaar aan [data-rest],
-    gaat in Multiplayer niet mee naar de gast. Een echte keuze (kruip-aanbod, laarzen, portaal …) komt
-    ervoor in de plaats. Schroevendraaier → op een rooster staan →
-    knop "Kruip door de luchtschacht" → vrije roosters lichten op (rest gedimd, je doel niet) → klik →
-    rooster schroeft los, koperen lichtje, je loopt met dezelfde stappen door; icoon op je spelerskaartje
-    tot je kruipt. Op het bord liggen een
-    blauwe en een rode portaalring; Portaalkanon → richting (knop of klik) → kleur ("ligt er sinds
-    de start" / "gelegd door X") → lichtspoor + nieuw portaal, daarna gooi je. Loop je in een
-    portaal: pion draait als een kolk weg, lichtje in de portaalkleur naar het andere portaal (zelfde
-    tempo als kruipen), schokgolven, pion draait eruit en loopt met je resterende stappen door
-    (`walkPortalPawn` = `walkCrawlFx` met kind 'portal', 96-walk.js; sinds 2026-11, daarvoor floepte
-    je in één keer over). Simulatie → blok "Portalen" met
-    schoten/gestolen/sprongen en twee oordelen (opdrachten via portaal ≤30%, meeste
-    teleporteerder wint ≤30%).
-    Herprioritering laat je huidige én volgende opdracht zien en vraagt welke
-    eerst; de laarzen tonen de richtingen als knoppen én omrand op het bord, en
-    daarna gooi je gewoon. De kaart Zwaartekracht-laarzen kan alleen vóór het
-    dobbelen en blokkeert de laarzen-actie in dezelfde beurt. Simulatie →
-    "Welke energie-actie wint?" toont alle vier rond de 25%.
-13. Lobby Zelf spelen = **bemanningslijst** (gekozen ontwerp B uit 4, sinds 2026-10; vervangt de
-    keuzelijsten Aantal spelers/Aantal bots): altijd 4 rijen (lege plekken gestippeld), eerst de
-    mensen (plek 1 = "jij"), dan de bots; achter een bot alleen het woordje "bot" (gebruikerswens,
-    geen icoon). "+ Speler"/"+ Bot" (uit bij 4), ✕ haalt precies die plek weg; botnamen en
-    ingevulde namen blijven staan. Elke rij = vijf VASTE vakjes (gebruikerswens, "niets mag
-    verschuiven"): dik nummer 28px | bolletje 12px | naamvak (rest, 38px hoog; bij een bot een
-    gestippeld vak van dezelfde maat) | rolvak jij/speler/bot 96px | verwijdervak 38×38 (bij jou
-    uitgezet maar wel aanwezig). Gemeten: alle rijen exact gelijk, ook met een lange naam. De
-    aparte kolom "In het schip" is op verzoek weer weggehaald (dubbel met de lijst). Code:
-    `soloHumanCount`/`soloBotCount`/`soloBotNames`, `soloRenderSetupUI`, `soloCrewAdd`/`soloCrewRemove`
-    (97-solo.js), opmaak `.crew-*` in styles.css.
-    Begin van een potje (Zelf spelen met bots): lobby toont alleen namen. Na
-    "Start spel" is de rechterkolom één groot paneel tot onderaan het bord;
-    jij gooit via de knop, bots vanzelf; bovenaan staat ieders opdracht als
-    "opdracht nog geheim". Bij gelijke worp gooien alleen die spelers opnieuw.
-    Bij het kiezen staat de opdracht van wie kiest op het bord en lichten de
-    vrije startvakjes op met een **schijnwerper** (gekozen ontwerp C + de ring van D, 2026-10;
-    `walkGlowStarts`/`walkClearStartGlow` in 96-walk.js): rest van het bord gedimd behalve de
-    startkamer (`.walk-spot`) en het doel (`.walk-target`), vrije vakjes in de kleur van wie
-    kiest met een draaiende ring van RONDJES (geen streepjes: leek op een verkeerd symbool) en
-    een dobberend pijltje. Kiezen kan ALLEEN op het bord; de 3.x-knoppen in het paneel zijn weg,
-    en het paneel noemt geen 3.x-labels meer ("gekozen").
-    Wie kiest, ziet in het paneel groot "Jouw eerste opdracht: <naam> in de <kamer>" in de kleur
-    van die opdracht (`walkOpeningGoalHtml`), en op het gedimde bord een draaiende ring om het
-    opdrachtvakje (`#walkBoard.is-start-pick .cell.walk-target::before`) — gebruikersmelding: in
-    Multiplayer zag je je eerste opdracht niet goed, dus ook niet welk startvak het handigst is.
-    Na het kiezen **vliegt de pion als komeet** naar zijn startvak (gekozen variant A, 2026-10;
-    `walkCometToStart` in 96-walk.js): vanaf zijn bolletje in het kiespaneel in een boog met een
-    staart van lichtjes, landing met twee schokgolven. Geen grote naam in beeld (gebruikerswens).
-    Tijdens de vlucht staat de pion niet op het bord (`walkFlyingIdx`, paintWalkPawns slaat hem
-    over) en wacht het spel met de volgende: `soloOpeningDoPick` verhoogt `op.pickPos` pas na de
-    landing. Multiplayer-gasten zien een nieuwe keuze in de stand en spelen dezelfde komeet af
-    (mpApplyState); Automatisch wacht er ook op (walkRunOpening). Vangnet: landing na 950+400 ms. Daarna komt
-    de gewone kolom (dobbelen/energie/kaarten) terug en is de beurtvolgorde
-    gelijk aan de kiesvolgorde. In Multiplayer moet een gast op zijn eigen
-    scherm kunnen gooien en kiezen. Elke speler heeft een groot vak met vaste plekken voor 2
-    stenen + de som (vaag "?" zolang je niet gooide; "gooit"/"gelijk" is een tabje op de rand),
-    dus de stenen verspringen nooit. Wachten = stenen pulseren; bij de klik rollen ze en zodra de
-    worp bekend is teleporteren ze (verdwijnen in een lichtstraal, komen terug met de uitkomst)
-    (`openingDiceSet` in 96d-dice.js, per speler, omdat het paneel bij elke stap opnieuw wordt
-    opgebouwd). Zelfde puls (`DICE_PULSE_FRAMES`) en teleport (`diceTeleport`) als in het
-    dobbelvak, en even groot (42px, `--od`; gebruikerswens 2026-10).
-    Na een dobbelronde schuiven de rijen langs elkaar naar de nieuwe volgorde (`openingShuffle`,
-    1,3 s, pas als de stenen stilliggen); het potje wacht daarop (`openingBusyMs`). Bij het
-    kiezen blijven dezelfde rijen staan, mét de worp; "kiest nu"/"start 3.x" zijn tabjes.
-14. Winscherm → knop "Statistieken" opent een grote pop-up over het scherm
-    (Escape/klik ernaast/Sluiten = dicht): bovenaan elke speler een eigen
-    kolom, daaronder 6 categorieën (Algemeen, Dobbelstenen, Verplaatsing,
-    Energie, Energie-acties, Kristallen) elk als eigen tabel met vakjes,
-    hoogstens 3 naast elkaar. Past zonder scrollen op ±1400px. Tellers:
-    `newPlayerStats` (95-simulate.js), lopen mee via `simRollD6(rand, player)`,
-    `simGainEnergy` en `useActionCard`; afgeleide waarden en de indeling in
-    `SOLO_STATS_GROUPS` (97-solo.js). Knop "Grafieken" in dezelfde pop-up: voortgang
-    en energie per beurt (lijnen), worpen-verdeling 2–12 (staafjes) en per speler
-    energie-acties/kaarten/vakjes (gestapelde balken). Data: `stats.hist`/`rolls`/
-    `energyUse`/`cardUse`, gevuld via `statsTurnSnapshot`, `statsRecordRoll` en
-    `statsUseEnergy` (95-simulate.js) — nieuwe plek waar gedobbeld of energie
-    uitgegeven wordt? Daar ook die aanroep toevoegen.
+Na `python build.py` `dist/axiom9.html` openen en minimaal kijken naar:
+1. Browserconsole leeg.
+2. "Genereer nieuwe map" geeft een nieuwe kaart. Onbereikbare vakjes krijgen een magenta rand.
+3. Simulatie: alle 4 startposities winnen een eerlijk deel, 0 vastgelopen potjes, geen tegel < 0,5%.
+4. Spelen → Automatisch en Zelf spelen: een potje loopt tot het winscherm.
+5. Raakt de wijziging multiplayer: host + gast testen.
+6. Niets op het scherm verschuift of loopt over (1920×945 en 1440×780).
 
-15. Tabblad **Spelregels** (sinds 2026-10, `98c-rules.js`): links de hoofdstukken (blijft staan,
-    het hoofdstuk in beeld licht op), rechts bij 10 van de 13 hoofdstukken een animatie die in een lus
-    loopt, alleen als hij in beeld is. Animaties = Web Animations op transform/opacity met een vaste
-    duur per scène (`rTrack`/`rShow`/`rWalk`); niets opvragen uit de opmaak. De scènes gebruiken de
-    ECHTE spelonderdelen (gebruikersmelding 2026-11: "animaties kloppen niet met het spel"): stenen via
-    `diceDieHtml`/`diceEnergyDieHtml`, portaal = `.walk-portal`, pionkleuren `WALK_PLAYER_COLORS`,
-    vakjes los met 1px ertussen in `--walk`/`--quest`, kristal = langgerekte zeshoek. Verandert zo'n
-    onderdeel in het spel, kijk dan of de scène meeloopt. Een pion loopt alleen over vloervakjes; in
-    de scène Doorgangen liggen de twee tegels tegen elkaar aan (geen lege kolom ertussen). Check: console leeg, alle
-    scènes bewegen, en de kop met 6 tabbladen overlapt de titel niet (gemeten op 1920, 1730, 1600,
-    1505, 1440, 1366 en 1320 breed).
-
-## Prestatie (gemeten, niet opnieuw invoeren)
-
-- Geen geanimeerde of veel gebruikte CSS-`filter` (drop-shadow) en geen `:has()` in het speelscherm:
-  dat liet de browser het dobbelvak/de zijkolom elk beeldje opnieuw tekenen of herberekenen
-  (gemeten: 20–26 i.p.v. 41–44 beeldjes/s, tot 74 haperingen per minuut). Gloed = een halo-
-  cirkeltje of een laagje dat alleen in `opacity` pulst; zichtbaarheid via een klasse die JS zet.
-- Iets wat bewegen moet: `transform`/`opacity` met `will-change`. Tijdens het draaien wisselen de
-  dobbelsteenkanten via `data-face` (valt buiten de MutationObserver van de pulsen).
-- Niets opnieuw in de DOM zetten als het niet veranderd is (`crystalSetHtml`, `data-key` op
-  #walkDice): elke DOM-wijziging in #tabWalk laat `syncAllPulses` draaien (±5 ms).
-- **Geen animatie op iets anders dan `transform`/`opacity`** in het speelscherm, ook niet
-  "even": `top` (de glans in de energiecellen deed dat oneindig → elk beeldje de opmaak opnieuw),
-  `box-shadow` (de pulsen; nu een vaste gloed op `::after` die alleen in opacity pulst) en
-  `filter`. Gemeten in een potje: dat was de oorzaak van haperende dobbelstenen en energie,
-  terwijl "Wie begint?" (waar het energievak verborgen is) wel vloeiend liep. Controle: in de
-  console alle `document.getAnimations()` langslopen en de keyframe-eigenschappen bekijken.
-- **Geen `void el.offsetWidth` / `getComputedStyle` / `getBoundingClientRect` midden in een
-  beurt**: één gedwongen herberekening van de opmaak kost hier ±7 ms. Een animatie opnieuw
-  starten = `el.animate(...)` of `anim.currentTime = 0`; posities vooraf in één keer opmeten.
-- Bewegingen van de dobbelstenen en energiebolletjes zijn **Web Animations** (`el.animate`) met
-  een bekende starttijd (`diceMotion`, `odState` in 96d-dice.js): de hoek wordt uitgerekend, niet
-  opgevraagd, en elke beweging gaat naadloos over in de volgende (wiebelen → rollen, tollen →
-  uitrollen). Niet terug naar CSS-animaties of JS die elk beeldje een positie zet.
-
-## Nog te doen
-
-- **Roosters + schroevendraaier (6e energie-actie) — GEBOUWD 2026-11** (artifact "Axiom-9
-  Roosters", meting 2026-11: 35 varianten × 8.000 potjes, meetscript los van het project). Code: blok
-  ROOSTERS in `95-simulate.js` (`resolveMoveCrawl` = de zet met schroevendraaier als extra toestand,
-  `grateGain`/`botDriverWanted`, kopen in `botPlanTurn` stap 2b, `r.crawled`), labels 5.1–5.10 in
-  tiles.json (`GRATE_LABELS`, `cellType` 'grate'), editor-gereedschap Roostervakje + controle in
-  `tileValidationIssues`, legendaregel (9 regels van 30px, gemeten 1920/1440/1366: niets afgekapt).
-  Mens: blok ROOSTERS in `97-solo.js` (`soloCrawlOfferHtml` in het energievak tijdens de zet, fase
-  'crawl-pick' = schijnwerper `#walkBoard.is-grate-pick`, fase 'crawling', `soloStepsDone`: ook na je
-  laatste stap mag je nog kruipen). Animatie `walkCrawlFx`/`walkCrawlPawn` (96-walk.js; pion even in
-  `walkFlyingIdx`), ook bij bot-replays en bij de gast (`mpPortalJumpFxFromState`). Multiplayer-intents
-  crawlStart/crawlPick/crawlCancel/crawlStop. Spelerskaartje: icoon als `p.screwdriver`. Simulatie-uitslag:
-  kaart "Roosters" naast Portalen ("Wat levert een actie op?" staat daarom over de volle breedte).
-  Spelregels: hoofdstuk 'rooster'. Nagemeten met de echte code (4 borden × 1.500): 66,6 beurten, 5,4×
-  kruipen per potje, startposities 24,8–25,2%, 0 vast. Getest: zes acties passen op 1440×780 (84px
-  over), potjes Zelf spelen en Automatisch uitgespeeld zonder fouten; Multiplayer nog niet met twee
-  vensters getest. Keuzes van
-  de maker (2026-11): terug naar **2 portalen** (één paar blauw ↔ rood), Portaalkanon 5,
-  **schroevendraaier 5 energie**, plus een kristal Schroevendraaier (2 in de stapel). Elke gangtegel
-  één roostervakje, nooit tegen (ook niet schuin naast) het kristalvakje; een portaal ligt nooit op
-  een rooster. Kopen vóór je worp (telt als je energie-actie), max. één tegelijk, iedereen ziet dat je
-  hem hebt. Sta je op een rooster (ook midden in je zet), dan mag je kiezen of je kruipt; kost geen
-  stap; uit bij een vrij rooster naar keuze en **doorlopen** met de rest van je worp; daarna is hij op
-  (opnieuw kopen). Laarzen lopen over een rooster heen; Duwstoot mag iemand op een rooster duwen.
-  Uiterlijk: rooster **D4** (donker vak met koperen kader), icoon schroevendraaier **A**, uitgang kiezen
-  = **schijnwerper**, kruipspoor = **rechte lijn**, openen = **losschroeven**. Gemeten: 66,6 beurten
-  (nu met 4 portalen 64,6), 5,5× kruipen per potje, Stuwstoot zakt naar 17%, Noodtransport 33% —
-  balans: zie hieronder. De ruimte voor de 6e actie is er sinds de kluis een tabblad is (zie
-  **Kluis = tabblad** hierboven). Balansmeting (4 borden × 3.000, winst% Stuwstoot / Herpr. /
-  laarzen / Noodtr.): gekozen opzet 17,1 / 26,9 / 23,5 / 32,5; Noodtransport bereik 9 of 10 of prijs 9
-  helpt nauwelijks (31–33); Stuwstoot 3 → 19,4; Stuwstoot = 2 extra stenen voor 4 → 31,7 (te sterk),
-  voor 5 → 28,5, voor 6 → 27,1, **voor 7 → 26,2 / 24,9 / 20,5 / 28,4** (alle vier binnen 19–31%).
-  Keuze nog aan de maker.
-- De 5e energie-actie is het **Portaalkanon** geworden (zie Portalen hierboven); het
-  portaalkristal is er sinds 2026-10 als **Portaalsleutel**. Andere ideeën die nog niet gemeten konden worden omdat bots ze niet zinnig spelen: een schild
-  tegen de volgende hinderkaart, of een energieversperring op een gang naar keuze.
-
-**Opdrachten zijn af, niet meer voorstellen**: kom je op je opdrachtvakje, dan heb je de opdracht.
-Punt. Er komt bewust geen extra actie, inhoud of doel bij (beslissing van de maker, 2026-11). De
-namen (`QUEST_NAMES` in `10-rules.js`) zijn alleen de titel op de fysieke opdrachtkaart.
+De volledige lijst (15 punten) staat in [docs/controlelijst.md](docs/controlelijst.md).

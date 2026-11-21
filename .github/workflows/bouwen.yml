@@ -1,0 +1,53 @@
+# Bouwt het spel bij elke push naar master en zet het resultaat op de tak `gh-pages`.
+# GitHub Pages publiceert vanaf die tak (instelling: Settings → Pages → Branch: gh-pages, / (root)).
+# Zo hoeft dist/axiom9.html niet meer in master te staan: elke push bouwt hem hier vers.
+# De tak gh-pages bevat altijd maar één commit (wordt elke keer overschreven), dus de repo groeit niet.
+name: Bouwen en online zetten
+
+on:
+  push:
+    branches: [master]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: gh-pages
+  cancel-in-progress: true
+
+jobs:
+  bouwen:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Spel bouwen
+        run: python build.py
+
+      - name: Script controleren op syntaxfouten (gaat het mis, dan komt er niets online)
+        run: |
+          python -c "import re; t=open('dist/axiom9.html',encoding='utf-8').read(); js=max(re.findall(r'<script>(.*?)</script>', t, re.S), key=len); open('app.js','w',encoding='utf-8').write(js)"
+          node --check app.js
+
+      - name: Site samenstellen
+        run: |
+          mkdir -p site/dist
+          cp dist/axiom9.html site/dist/axiom9.html
+          cp index.html site/index.html
+          cp "Axiom-9 map generator.html" site/ || true
+          touch site/.nojekyll
+
+      - name: Naar gh-pages zetten
+        run: |
+          cd site
+          git init -q -b gh-pages
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -q -m "Gebouwd uit ${GITHUB_SHA}"
+          git push -f "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${GITHUB_REPOSITORY}.git" gh-pages
