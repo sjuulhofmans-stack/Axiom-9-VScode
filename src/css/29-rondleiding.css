@@ -1,0 +1,109 @@
+  /* ---------- RONDLEIDING OP HET BORD (98d-tour.js) ---------- */
+  .rules-tour-btn{width:100%; margin:0 0 14px;}
+  body.is-touring{overflow:hidden;}
+  .tour{
+    position:fixed; inset:0; z-index:200; background:var(--page-bg, #070a0e);
+    display:grid; grid-template-columns:auto 380px; justify-content:center; gap:24px; padding:24px;
+    /* bordmaat: past in de ruimte naast het tekstvak en in de hoogte */
+    --cell: clamp(9px, min(calc((100vw - 380px - 24px * 3 - 40px) / 40 - 1px), calc((100vh - 48px - 40px) / 32 - 1px)), 30px);
+  }
+  .tour[hidden]{display:none;}
+  .tour-stage{display:flex; align-items:center; justify-content:center; min-width:0;}
+  .tour-board-wrap{
+    padding:16px; border-radius:12px; background:var(--panel);
+    box-shadow:0 14px 34px -16px #000, inset 0 1px 0 rgba(255,255,255,.04);
+  }
+  .tour-board{
+    display:grid; grid-template-columns:repeat(40, var(--cell)); grid-template-rows:repeat(32, var(--cell));
+    gap:1px; position:relative;
+  }
+  .tour-board .cell{position:relative; transition:opacity .45s ease;}
+  .tour-board .room-label{pointer-events:none;}
+  /* schijnwerper: alles dimt behalve .tour-hi (alleen opacity) */
+  .tour-board.is-spot .cell{opacity:.16;}
+  .tour-board.is-spot .cell.tour-hi{opacity:1;}
+  .tour-board.is-spot .cell.has-badge{opacity:1;}
+  .tour-board.is-spot .cell.has-badge:not(.tour-hi):not(.walk):not(.quest):not(.start):not(.actioncell):not(.grate){opacity:.5;}
+  /* gelopen spoor + gehaalde opdracht */
+  .tour-board .cell.tour-trail::after{
+    content:''; position:absolute; inset:22%; border-radius:50%; background:var(--amber); opacity:.55;
+  }
+  .tour-board .cell.tour-done::after{
+    content:'✓'; position:absolute; inset:0; display:grid; place-items:center; color:#fff;
+    font-weight:700; font-size:calc(var(--cell) * .75); background:var(--start); border-radius:2px; opacity:1;
+  }
+  /* het doel: ring die rustig pulst (alleen opacity/transform) */
+  .tour-board .cell.tour-target::before{
+    content:''; position:absolute; inset:-4px; border-radius:4px; border:2px solid #fff;
+    animation:tourRing 1.4s ease-in-out infinite; will-change:transform, opacity; pointer-events:none;
+  }
+  @keyframes tourRing{0%,100%{opacity:.25; transform:scale(1);} 50%{opacity:1; transform:scale(1.12);}}
+  /* pion: één los element dat over het raster schuift (--c, --r) */
+  .tour-pawn, .tour-fx{
+    position:absolute; left:0; top:0; width:var(--cell); height:var(--cell); z-index:10; pointer-events:none;
+    transform:translate(calc((var(--cell) + 1px) * var(--c)), calc((var(--cell) + 1px) * var(--r)));
+  }
+  .tour-pawn{transition:transform .26s ease-in-out, opacity .3s ease; will-change:transform, opacity;}
+  .tour-pawn.is-dash{transition:transform .55s cubic-bezier(.5,0,.2,1), opacity .3s ease;}
+  .tour-pawn i{
+    position:absolute; inset:6%; border-radius:50%; background:var(--pc);
+    box-shadow:0 0 0 2px #fff, 0 0 10px var(--pc);
+  }
+  .tour-fx > *{position:absolute; inset:0;}
+  .tour-fx.tour-burst::before{
+    content:''; position:absolute; inset:0; border-radius:50%; border:2px solid var(--bc, #fff);
+  }
+  .tour-fx.tour-crystal svg{width:100%; height:100%;}
+  .tour-fx.tour-crystal .rc-body{fill:#7a3fc4; stroke:#e0c2ff; stroke-width:16;}
+  .tour-fx.tour-crystal .rc-shine{fill:#c79bf7; fill-opacity:.55;}
+  .tour-board .walk-portal{z-index:5;}
+
+  /* tekstvak */
+  .tour-card{display:flex; flex-direction:column; gap:14px; margin:0; align-self:center; min-height:0; max-height:100%; overflow:auto;}
+  .tour-top{display:flex; justify-content:space-between; align-items:center;}
+  .tour-count{font-size:12px; letter-spacing:.14em; text-transform:uppercase; color:var(--text-dim);}
+  .tour-close{background:none; border:1px solid var(--line); color:var(--text-dim); border-radius:6px; width:32px; height:32px; padding:0;}
+  .tour-close:hover{color:var(--text); border-color:var(--text-dim);}
+  .tour-title{margin:0; font-family:var(--font-display); font-size:28px; letter-spacing:.03em; color:var(--text);}
+  .tour-body p{margin:0 0 10px; font-size:15px; line-height:1.5; color:var(--text);}
+  .tour-body b{color:var(--amber);}
+  .tour-extra{min-height:64px; display:flex; align-items:center;}
+  .tour-extra:empty{min-height:0;}
+  .tour-dots{display:flex; gap:6px; flex-wrap:wrap;}
+  .tour-dots button{width:22px; height:6px; padding:0; border:0; border-radius:3px; background:var(--line); min-width:0;}
+  .tour-dots button.is-on{background:var(--quest);}
+  .tour-nav{display:grid; grid-template-columns:1fr 1.4fr; gap:10px;}
+  .tour-nav button{width:100%;}
+
+  /* inhoud van het extra vak */
+  .tour-dice, .tour-energy, .tour-win, .tour-tool{display:flex; align-items:center; gap:10px;}
+  .tour-dice .rules-die, .tour-energy .rules-die{width:42px; height:42px;}
+  .tour-dice b, .tour-energy > b, .tour-win b{font-family:var(--font-display); font-size:20px; color:var(--text);}
+  .tour-dice.is-rolled .rules-die{animation:tourPop .35s ease-out;}
+  @keyframes tourPop{from{transform:scale(.6) rotate(-20deg); opacity:.3;} to{transform:none; opacity:1;}}
+  .tour-meter{display:flex; gap:4px;}
+  .tour-meter i{width:14px; height:14px; border-radius:50%; border:2px solid var(--line); box-sizing:border-box;}
+  .tour-meter i.is-on{background:var(--start); border-color:var(--start);}
+  .tour-chips{display:flex; gap:8px;}
+  .tour-chips span{padding:6px 14px; border-radius:99px; border:1px solid var(--line); color:var(--text-dim); font-size:14px; transition:opacity .3s;}
+  .tour-chips span.is-on{border-color:var(--quest); color:var(--text); background:color-mix(in srgb, var(--quest) 18%, transparent);}
+  .tour-quest{display:flex; flex-direction:column; gap:2px; padding:10px 14px; border-radius:8px; width:100%;
+    border:1px solid var(--qtint); background:color-mix(in srgb, var(--qtint) 14%, transparent);}
+  .tour-quest b{color:var(--qtint); font-size:17px;}
+  .tour-quest span{color:var(--text-dim); font-size:13px;}
+  .tour-acts{list-style:none; margin:0; padding:0; width:100%; display:flex; flex-direction:column; gap:4px;}
+  .tour-acts li{display:flex; justify-content:space-between; padding:5px 10px; border-radius:6px; font-size:14px; color:var(--text-dim);}
+  .tour-acts li b{color:var(--amber);}
+  .tour-acts li.is-on{background:color-mix(in srgb, var(--quest) 16%, transparent); color:var(--text);}
+  .tour-tool svg{width:40px; height:40px;}
+  .tour-tool span{font-size:15px; color:var(--text);}
+  .tour-win span{width:30px; height:30px; display:block;}
+  .tour-win svg{width:100%; height:100%; fill:none; stroke:var(--line); stroke-width:3;}
+  .tour-win span.is-on svg{fill:var(--start); stroke:var(--start);}
+
+  /* smal scherm: bord boven, tekstvak eronder */
+  @media (max-width: 900px){
+    .tour{grid-template-columns:1fr; grid-template-rows:auto 1fr; overflow:auto; padding:12px;
+      --cell: clamp(5px, calc((100vw - 24px - 32px) / 40 - 1px), 20px);}
+    .tour-card{align-self:start;}
+  }

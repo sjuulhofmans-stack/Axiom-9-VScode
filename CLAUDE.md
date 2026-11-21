@@ -20,8 +20,8 @@ onderwerp uit de tabel "Lees eerst", lees dan eerst dat docs-bestand.**
   dan `git rm --cached dist/axiom9.html`, `dist/` in `.gitignore`, en deze overgangsregel weghalen.
 - Soms werkt er tegelijk een tweede sessie in dezelfde map: commit alleen je eigen wijzigingen
   (`git diff --stat` per bestand bekijken vóór je commit).
-- Verander je een spelregel in de code? Pas dan ook de tekst in `98c-rules.js` aan (tabblad Spelregels)
-  en het docs-bestand van dat onderwerp. Nieuwe meting of ontwerpkeuze? Die hoort in `docs/`, niet hier.
+- Verander je een spelregel in de code? Pas dan ook de tekst in `98c-rules.js` aan (tabblad Spelregels),
+  de stap in de rondleiding (`98d-tour.js`) en het docs-bestand van dat onderwerp. Nieuwe meting of ontwerpkeuze? Die hoort in `docs/`, niet hier.
 
 ## Hoe de code in elkaar zit
 
@@ -50,8 +50,8 @@ src/js/
   96-walk  96b-intro  96c-crystals  96d-dice                                speelscherm, Automatisch
   97a-solo-opzet  97b-solo-bord-score  97c-solo-energie  97d-solo-kluis     Zelf spelen
   97e-solo-acties  97f-solo-beurt  97g-solo-einde  97h-solo-opening
-  98-cards  98b-avatar  98c-rules  99-multiplayer                           overige tabbladen
-src/css/01-basis … 28-printen.css      één bestand per onderdeel, naam zegt wat erin staat
+  98-cards  98b-avatar  98c-rules  98d-tour  99-multiplayer                 overige tabbladen (98d = rondleiding)
+src/css/01-basis … 29-rondleiding.css  één bestand per onderdeel, naam zegt wat erin staat
 docs/                   uitleg, metingen en ontwerpkeuzes per onderwerp
 ontwerp/                (alleen in OneDrive, niet in git) bronbestanden, originelen, Opdrachtkaarten.pdf
 ```
@@ -73,6 +73,7 @@ Oude namen in commentaar en in docs: `95-simulate.js` = de `95a…95k`-bestanden
 | multiplayer | `99-multiplayer` | [multiplayer](docs/multiplayer.md) + punt 10 van de [controlelijst](docs/controlelijst.md) |
 | simulatie en de uitslag | `95i-beurt-potje`, `95j-sim-scherm`, `95k-sim-uitslag` | punt 6–7 van de [controlelijst](docs/controlelijst.md) |
 | knoppen, lobby, legenda, cursor, kaders, speelweergave | `80-controls`, `src/css/` | [waar-zit-wat](docs/waar-zit-wat.md) |
+| de rondleiding op het bord | `98d-tour`, `src/css/29-rondleiding.css` | [rondleiding](docs/rondleiding.md) |
 | het bord printen (6 A4'tjes) | `85-print`, `src/css/28-printen.css` | [printen](docs/printen.md) |
 | iets wat beweegt of animeert | — | [prestatie](docs/prestatie.md) |
 
