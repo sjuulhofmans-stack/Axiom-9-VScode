@@ -2426,6 +2426,16 @@
        blijft, i.p.v. 'm te laten uitbleeden tot over het bord. */
     margin-bottom:15px;
   }
+  /* Elk vak altijd een kwart van de balk, ook met 1, 2 of 3 spelers, en dan in het midden
+     (gebruikerswens 2026-11: met 1 speler was het ene vak zo breed als de hele balk). Eén vak per
+     kolom naast elkaar (grid-auto-flow:column), dus 4 vakken = precies de volle breedte. Op een
+     smal scherm blijft het oude raster hierboven (vakken onder elkaar als het niet past). */
+  @media (min-width: 1000px){
+    #walkScore{
+      grid-template-columns:none; grid-auto-flow:column;
+      grid-auto-columns:calc((100% - 3 * 8px) / 4); justify-content:center;
+    }
+  }
   /* #walkScore (boven het bord) en #walkScoreActive (in het paneel rechts) krijgen allebei
      dezelfde volledige spelerslijst van renderWalkScore() — welke rijen zichtbaar zijn hangt
      puur van CSS af: boven het bord alleen de ANDERE spelers, rechts alleen wie aan zet is
