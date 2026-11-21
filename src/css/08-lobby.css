@@ -1,0 +1,208 @@
+  /* ---------- stap voor stap ---------- */
+  .walk-mode-toggle{display:flex; gap:6px; margin-bottom:14px;}
+  /* groter (gebruikerswens): was 11,5px / 9px padding */
+  /* Zelfde letter en vorm als de blauwe knoppen (button.primary, "glas + hoofdletters"):
+     gekozen modus = die glasstijl, de andere = zelfde letter/maat maar donker (gebruikersmelding:
+     de modusknoppen hadden nog de oude typemachineletter en zagen er anders uit).
+     Vaste hoogte 45px = die van "Spel hosten" (#btnMpHost) op dezelfde plek in het tabblad
+     Multiplayer: met 13px padding waren ze 43px, en na "Spel hosten" neemt deze (onzichtbare)
+     balk de plek over, waardoor het formulier 2px omhoog floepte (gebruikersmelding). */
+  .walk-mode-btn{
+    flex:1; font-family:var(--font-display); font-weight:700; font-size:13px; letter-spacing:.1em;
+    text-transform:uppercase; height:45px; padding:0 12px; background:var(--hull);
+    border:1px solid var(--line-dim); border-radius:6px; color:var(--text-dim);
+    transition:border-color .15s, color .15s, background .15s, box-shadow .15s;
+  }
+  .walk-mode-btn:hover:not(.active){
+    color:var(--text); border-color:rgba(79,184,224,.45); background:rgba(79,184,224,.06);
+  }
+  .walk-mode-btn.active{
+    color:#eafcff; border-color:rgba(79,184,224,.45); background:rgba(79,184,224,.14);
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.08);
+  }
+  .walk-mode-btn.active:hover{
+    color:#fff; border-color:var(--quest); background:rgba(79,184,224,.24);
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.12), 0 0 14px rgba(79,184,224,.22);
+  }
+  .walk-mode-btn:focus-visible{outline:2px solid var(--quest-glow); outline-offset:2px;}
+  .walk-controls{display:flex; gap:18px; align-items:flex-end; flex-wrap:wrap;}
+  .walk-controls[hidden]{display:none;}
+  .walk-controls .field{margin:0; min-width:170px;}
+  .walk-controls .btn-row{margin-bottom:1px;}
+
+  /* ---------- lobby: nieuw startscherm vóór "Stap voor stap" (gebruikerswens) ----------
+     Eén gecentreerde kolom i.p.v. de rij dropdowns hierboven — alle instellingen komen onder
+     elkaar te staan, met onderaan "Start spel". Overschrijft .walk-controls' rij-opstelling
+     met een kolom, alleen binnen de lobby (elders, bv. in een eventuele toekomstige
+     hergebruik van .walk-controls, blijft de rij-opstelling gewoon staan). */
+  /* max-width: was 560px, en daarvoor 400px, telkens afgestemd op de bredere inhoud (eerst de
+     spelerskaartjes, zie hieronder). Nu vast op 1160px in ALLE 3 de modi — dat is de breedte
+     die Multiplayer met een kamer + chat nodig heeft (zie .mp-room-layout hieronder). Eerder
+     was dit alleen breed tijdens het hosten/deelnemen (via :has()) en smal daarbuiten, maar
+     dat liet de modusknoppen (.walk-mode-toggle) van grootte veranderen per modus/moment —
+     de gebruiker wilde juist dat Automatisch/Zelf spelen/Multiplayer altijd dezelfde knopgrootte
+     hebben, dus is er nu maar één (brede) maat, punt. */
+  /* height (niet min-height!): Automatisch/Zelf spelen/Multiplayer hebben alle drie een andere
+     hoeveelheid inhoud, waardoor #walkPanel per modus een andere hoogte had — hinderlijk omdat
+     je bij het wisselen van modus de pagina zag springen (gebruikersmelding: "alle drie een
+     andere grootte"). 274px = de vaste ruimte erboven en eronder die nooit meegroeit, gemeten
+     (niet berekend — te veel losse regels tellen op om met de hand kloppend te houden): 184px
+     vanaf de bovenkant van de pagina tot deze kolom (body-padding + header + tabbalk +
+     #walkPanel's eigen padding-top + de "Zelf spelen"-titel erboven) + 90px erna tot de
+     onderkant van de pagina (#walkPanel's padding-bottom + <footer> met zijn margin-top +
+     body-padding-bottom).
+     overflow-y:hidden (niet auto!) — de kolom zelf mag GEEN scrollbalk krijgen, ook niet een
+     eigen interne (gebruikerswens: "alles vast, alleen de chat mag scrollen"). Enige plek die
+     wél mag scrollen is het berichtenvak van de chat, #mpChatLog/#mpChatLogGame via
+     .mp-chat-log{overflow-y:auto} — die zit met flex:1 binnen deze vaste hoogte en vangt te
+     veel berichten dus altijd zelf op, zonder dat de kolom eromheen ooit hoeft te bewegen. */
+  .walk-lobby-col{
+    max-width:1160px; margin:0 auto; display:flex; flex-direction:column; --lobby-gap:16px; gap:var(--lobby-gap);
+    height:calc(100vh - 274px); overflow-y:hidden;
+    /* expliciet: met alleen overflow-y:hidden maakt de browser overflow-x vanzelf "auto", en
+       dan kan de kolom bij de kleinste uitsteker een paar px zijwaarts scrollen. */
+    overflow-x:hidden;
+  }
+  /* zodra er een kamer + chat is, verdwijnt de uitleg-tekst erboven (#walkMultiHint, "Speel
+     hetzelfde spel als...") — die is alleen nuttig VOORDAT je host/deelneemt, en met de kolom
+     nu op een vaste hoogte (overflow-y:hidden hierboven) heeft de informatiekolom die 2 regels
+     tekst + marge er hard nodig om zelf niet af te snijden (gebruikersmelding: "Spel starten"-
+     knop viel weg). */
+  .walk-lobby-col:has(.mp-chat-panel:not([hidden])) #walkMultiHint{display:none;}
+  /* Middenstuk van de lobby: 20px onder de balk (12px kolom-gap + 8px) beginnen de drie kaarten
+     en ze lopen door tot 2× --lobby-space boven de onderrand (daar stond vroeger "Start spel"). */
+  .walk-lobby-body{
+    flex:1 1 auto; min-height:0; display:flex; flex-direction:column; justify-content:flex-start;
+    gap:12px; padding-top:8px; padding-bottom:calc(var(--lobby-space, 36px) * 2);
+  }
+  .walk-lobby-body > .reach-status:empty, .mp-room-info > .reach-status:empty{display:none;}
+  /* tekstvelden even hoog als de knoppen (44px), zodat alle rijen in de kaarten gelijk lopen */
+  .walk-lobby-body .field input[type=text]{width:100%; height:44px;}
+
+  /* ---------- LOBBY "DRIE KAARTEN" (gekozen variant 6 uit 10, artifact "Axiom-9 Lobby-eenheid",
+     2026-11) ----------
+     Elk scherm (Automatisch, Zelf spelen, Spel hosten, Deelnemen) = .lobby-cards met drie even
+     brede kaarten: Wie speelt er | Spelregels | Vertrek. Vertrek heeft onderaan (margin-top:auto)
+     de foutregel, het vinkje en de grote knop, dus die knop staat in alle vier op dezelfde plek.
+     Lijsten onder elkaar (Energie-inzet, Tempo, Beurten van de bots) hebben rijen van --lobby-row
+     (36px op Full HD, kleiner op een laptop, zie de media-query bij .walk-lobby-col). Iets
+     toevoegen in een kaart? Meet opnieuw op 1920×945 en 1440×780: niets mag onder de kaart uit. */
+  .lobby-cards{flex:1 1 auto; min-height:0; display:grid; grid-template-columns:repeat(3, minmax(0, 1fr)); gap:16px;}
+  .lobby-cards[hidden]{display:none;}
+  .lobby-card{
+    display:flex; flex-direction:column; gap:14px; min-width:0; min-height:0; padding:18px; box-sizing:border-box;
+    background:#0d131a; border:1px solid var(--line-dim); border-radius:10px;
+  }
+  .lobby-card-title{
+    margin:0; font-family:var(--font-display); font-weight:700; font-size:14px; line-height:18px;
+    letter-spacing:.16em; text-transform:uppercase; color:var(--text);
+  }
+  .lobby-card .field{margin:0; min-width:0; width:100%;}
+  .lobby-card .field-label{
+    display:block; font-family:var(--font-mono); font-size:10.5px; letter-spacing:.14em;
+    text-transform:uppercase; color:var(--text-dim); margin-bottom:6px;
+  }
+  .lobby-card .seg-group.is-vert .seg-btn{height:var(--lobby-row, 36px);}
+  /* de uitleg onder Energie-inzet past niet in de kaart (de knop zegt het al) */
+  .lobby-card #walkEnergyMode ~ .seg-cap{display:none;}
+  /* bemanningslijst in een smalle kaart: rolvak 64px i.p.v. 96px */
+  .lobby-card .walk-solo-setup{margin:0;}
+  .lobby-card .crew-row{grid-template-columns:22px 10px minmax(0, 1fr) 64px 38px; column-gap:8px;}
+  /* samenvatting in de Vertrek-kaart */
+  .lobby-sum{margin:0; display:flex; flex-direction:column;}
+  .lobby-sum > div{display:flex; justify-content:space-between; align-items:baseline; gap:12px; padding:10px 0; border-bottom:1px solid var(--line-dim);}
+  .lobby-sum dt{font-family:var(--font-mono); font-size:10.5px; letter-spacing:.14em; text-transform:uppercase; color:var(--text-dim); white-space:nowrap;}
+  .lobby-sum dd{
+    margin:0; min-width:0; font-family:var(--font-display); font-weight:700; font-size:15px; letter-spacing:.06em;
+    text-transform:uppercase; color:var(--text); text-align:right; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+  }
+  .lobby-sum-text{
+    margin:0; padding:14px; border:1px dashed var(--line); border-radius:9px;
+    font-family:var(--font-mono); font-size:12px; line-height:1.6; color:var(--text-dim);
+  }
+  .lobby-depart-foot{margin-top:auto; display:flex; flex-direction:column; gap:12px;}
+  .lobby-intro-slot{display:flex; justify-content:center; min-height:18px;}
+  .lobby-intro-slot .walk-intro-toggle{margin:0;}
+  .walk-intro-toggle.is-text{cursor:var(--cur-normal);}
+  .lobby-status-slot .reach-status{margin:0; text-align:center;}
+  .lobby-status-slot .reach-status:empty, .lobby-status-slot:empty{display:none;}
+  /* Multiplayer: de kaarten (hosten/deelnemen) of de kamer vullen de hele hoogte */
+  #walkMultiControls{display:flex; flex-direction:column; min-height:0;}
+  #walkMultiControls[hidden], .mp-room-layout[hidden]{display:none;}
+  /* smal scherm: kaarten onder elkaar */
+  @media (max-width: 900px){
+    .lobby-cards{grid-template-columns:minmax(0, 1fr);}
+    .lobby-depart-foot{margin-top:6px;}
+  }
+  /* host-kamer en deelnameformulier beginnen op dezelfde hoogte als het eerste veld in de
+     andere modi en als de chat ernaast (de 14px bovenmarge van .mp-setup zette ze lager) */
+  .walk-lobby-body .mp-setup{margin-top:0;}
+  .walk-lobby-body #mpHostRoom > .hint:first-child{margin-top:0;}
+  /* uitgezet keuzeveld (bv. "Beurten van de bots" zonder bots): blijft staan, maar gedimd */
+  .walk-lobby-body .field.is-disabled{opacity:.4;}
+  .walk-lobby-body .field.is-disabled select{cursor:var(--cur-no);}
+  /* CONSOLE i.p.v. keuzelijsten (gekozen variant 3 uit 6, 2026-10, artifact "Axiom-9
+     Lobbyvarianten", in de glazen knopstijl van de eerdere schuifrail; segmentSelect in
+     80-controls.js): de <select>/<input type=range> blijft verborgen de bron. Elke keuze = losse
+     knoppen met alleen tekst (geen lampjes, gebruikerswens), de gekozen knop is glas (zelfde blauw
+     als button.primary). Energie-inzet = één lijst onder elkaar (.is-vert). */
+  .seg-source{display:none !important;}
+  .seg-group{display:grid; grid-template-columns:repeat(var(--n), minmax(0, 1fr)); gap:6px;}
+  .seg-btn{
+    min-width:0; height:44px; padding:0 8px; display:flex; align-items:center; justify-content:center; gap:9px;
+    border-radius:7px; background:var(--hull); border:1px solid var(--line-dim); color:var(--text-dim);
+    white-space:nowrap; font-family:var(--font-display); font-weight:700; font-size:13px; letter-spacing:.09em;
+    text-transform:uppercase; transition:color .15s, border-color .15s, background .15s, box-shadow .15s;
+  }
+  .seg-btn:hover:not(:disabled):not(.is-on){color:var(--text); border-color:rgba(79,184,224,.45); background:rgba(79,184,224,.06);}
+  .seg-btn.is-on{
+    color:#eafcff; background:rgba(79,184,224,.18); border-color:rgba(79,184,224,.6);
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.12), 0 0 14px rgba(79,184,224,.25);
+  }
+  .seg-btn:focus-visible{outline:2px solid var(--quest-glow); outline-offset:2px;}
+  .seg-btn:disabled{cursor:var(--cur-no);}
+  .seg-group.is-num .seg-btn{font-size:19px; letter-spacing:0;}
+  /* uitgezet: het veld eromheen dimt al (.field.is-disabled); alleen buiten zo'n veld zelf dimmen */
+  :not(.is-disabled) > .seg-group.is-disabled{opacity:.6;}
+  /* onder elkaar: één lijst, rijen van 36px, naam | prijs */
+  .seg-group.is-vert{grid-template-columns:none; gap:0; padding:3px; border-radius:9px; background:var(--hull); border:1px solid var(--line-dim);}
+  .seg-group.is-vert .seg-btn{height:36px; justify-content:flex-start; gap:11px; padding:0 12px; text-align:left; background:none; border-color:transparent;}
+  .seg-group.is-vert .seg-btn.is-on{background:rgba(79,184,224,.18); border-color:rgba(79,184,224,.6);}
+  .seg-group.is-vert .seg-btn > span{flex:1;}
+  .seg-btn > span{overflow:hidden; text-overflow:ellipsis;}
+  /* telefoon: vijf knoppen naast elkaar (Tempo) werden "HEE…", "NOR…" — kleiner en mag over 2 regels */
+  @media (max-width: 640px){
+    .seg-group:not(.is-vert):not(.is-num) .seg-btn{padding:0 3px; font-size:10.5px; letter-spacing:0; white-space:normal; line-height:1.1; text-align:center;}
+    .seg-group:not(.is-vert):not(.is-num) .seg-btn > span{overflow:visible; text-overflow:clip;}
+  }
+  .seg-bolt{display:inline-flex; align-items:center; gap:2px; flex:none; font-style:normal; color:var(--amber); font-variant-numeric:tabular-nums; letter-spacing:0;}
+  .seg-bolt svg{width:11px; height:11px; fill:currentColor;}
+  /* regeltje onder de rail: wat je gekozen hebt in één zin */
+  .seg-cap{margin-top:7px; font-family:var(--font-mono); font-size:11.5px; line-height:1.45; color:var(--text-dim);}
+  /* modusbalk: Automatisch | Zelf spelen (tabblad Spelen) en Spel hosten | Deelnemen (tabblad
+     Multiplayer, .mp-host-toggle) — zelfde knoppen, 45px, gekozen = glas zoals .seg-btn.is-on */
+  .walk-mode-toggle .walk-mode-btn{border-radius:7px;}
+  .walk-mode-toggle .walk-mode-btn.active,
+  .walk-mode-toggle .walk-mode-btn.active:hover{
+    color:#eafcff; background:rgba(79,184,224,.18); border-color:rgba(79,184,224,.6);
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.12), 0 0 14px rgba(79,184,224,.25);
+  }
+  .walk-lobby-body #mpJoinWaiting .btn-row, .walk-lobby-body #mpHostRoom .btn-row{justify-content:center;}
+  /* Spelen heeft alleen Automatisch en Zelf spelen (Multiplayer is een eigen tabblad); op het
+     tabblad Multiplayer staat op dezelfde plek de balk Spel hosten | Deelnemen, behalve in de kamer */
+  #walkModeMulti{display:none;}
+  .mp-host-toggle{display:none;}
+  #tabWalk.is-multi-tab .walk-mode-toggle:not(.mp-host-toggle){display:none;}
+  #tabWalk.is-multi-tab .mp-host-toggle{display:flex;}
+  #tabWalk.is-multi-tab #walkLobby.is-mp-room .mp-host-toggle{display:none;}
+  #walkSoloStartRow{display:flex; flex-direction:column;}
+  #walkSoloStartRow[hidden]{display:none;}
+  .walk-lobby-start{width:100%; height:45px; padding:0 13px; white-space:nowrap;}
+  /* vinkje "Startanimatie tonen" (96b-intro.js) in de Vertrek-kaart, zie lobbyPlaceFoot */
+  .walk-intro-toggle{
+    display:flex; align-items:center; justify-content:center; gap:8px; margin:0 0 10px;
+    font-family:var(--font-mono); font-size:11px; letter-spacing:.12em; text-transform:uppercase;
+    color:var(--text-dim); cursor:var(--cur-click); user-select:none;
+  }
+  .walk-intro-toggle input{width:16px; height:16px; margin:0; accent-color:var(--start); cursor:var(--cur-click);}
+

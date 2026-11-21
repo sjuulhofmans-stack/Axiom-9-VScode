@@ -1,0 +1,361 @@
+  /* ---------- tabblad "Speelkaarten": de vitrine ---------- */
+  .cards-shelf{
+    display:grid; gap:16px; padding:4px 0 2px;
+    /* clamp i.p.v. een vaste ondergrens: op een telefoon (375px) zakt de minimumbreedte naar
+       140px zodat er twee kaarten naast elkaar passen in plaats van één hele lange kolom,
+       op een groot scherm blijft hij op 192px staan */
+    grid-template-columns:repeat(auto-fill, minmax(clamp(140px, 20vw, 192px), 1fr));
+    /* elke rij even hoog, ook tussen rijen onderling: anders bepaalt het langste bijschrift
+       de hoogte van zijn eigen rij en staat het raster scheef */
+    grid-auto-rows:1fr;
+  }
+  /* De 9 opdrachtkaarten: netjes verdeeld en gecentreerd (gebruikerswens) — 5 bovenin, 4
+     eronder, beide rijen in het midden. Het vak is net zo hoog als de vakken van
+     Spelen/Simulatie (zie #walkPanel bij de --wcell-regels); de kaarten staan verticaal in het
+     midden van wat er onder de uitleg overblijft. */
+  #tabCards > .panel:first-child{display:flex; flex-direction:column; container-type:inline-size;}
+  /* ruimte tussen de vakken, net als op "Speelbord genereren" (22px, de gap van .grid-layout) —
+     ze zaten hier tegen elkaar aan */
+  #tabCards > .panel + .panel{margin-top:22px;}
+  #cardsQuestGrid{
+    display:flex; flex-wrap:wrap; justify-content:center; align-items:stretch;
+    margin:auto 0;
+  }
+  /* 5 + 4, op een telefoon 3 × 3 — nooit een losse kaart op een rij */
+  /* Altijd 5 bovenin en 4 eronder (gebruikerswens). max-width op de rij zelf zorgt dat er nooit
+     een 6e kaart bij past. De kaartbreedte schaalt ook mee met de hoogte van het vak (--wcell,
+     zie #walkPanel), zodat beide rijen erin passen: per rij (vakhoogte − kop/uitleg) / 2, minus
+     het bijschrift (±112px), × 63/88 voor de kaartverhouding. Zonder --wcell (smal scherm, vak
+     groeit gewoon mee) valt die grens weg. */
+  /* --qw = kaartbreedte; de rij is precies 5 kaarten breed, dus er past nooit een 6e bij */
+  #cardsQuestGrid{
+    --qw: min(192px, calc(((var(--wcell, 40px) * 32 + 60px) / 2 - 100px) * 0.716));
+    max-width:calc(5 * var(--qw) + 4 * 16px); margin-inline:auto; width:100%;
+  }
+  #cardsQuestGrid > *{flex:0 0 min(calc((100% - 4 * 16px) / 5), var(--qw)); min-width:0;}
+  /* lager bijschrift dan elders (was 104px), zodat de kaarten zelf groter kunnen */
+  #cardsQuestGrid .card-show-cap{min-height:84px;}
+  /* op een laptop worden de kaarten smal (±110px): titel dan meeschalen met de kaartbreedte,
+     anders brak bv. "VOEDSELTEKOR-T" middenin het woord af */
+  #cardsQuestGrid .card-show{container-type:inline-size;}
+  #cardsQuestGrid .card-show-cap{padding:9px 9px;}
+  #cardsQuestGrid .card-show-cap b{font-size:clamp(9.5px, 8.2cqw, 14px); letter-spacing:0;}
+  @container (max-width: 700px){
+    #cardsQuestGrid{gap:10px; max-width:calc(3 * 192px + 2 * 10px);}
+    #cardsQuestGrid > *{flex-basis:calc((100% - 2 * 10px) / 3);}
+  }
+  .cards-subhead{
+    font-family:var(--font-mono); font-size:10.5px; letter-spacing:.2em; text-transform:uppercase;
+    color:var(--card-tint, var(--text-dim)); margin:22px 0 10px;
+    display:flex; align-items:baseline; gap:10px; flex-wrap:wrap;
+    border-bottom:1px solid var(--line-dim); padding-bottom:7px;
+  }
+  .cards-subhead:first-child{margin-top:6px;}
+  .cards-subhead span{font-size:9.5px; letter-spacing:.1em; color:var(--text-dim); text-transform:none;}
+  .card-show{
+    padding:0; background:none; border:none; cursor:var(--cur-click); text-align:left;
+    display:flex; flex-direction:column; gap:8px;
+    height:100%;                         /* alle kaarten in een rij even hoog */
+    transition:transform .13s;
+  }
+  /* De kaart binnenin rekent al zijn maten in cqw uit; de container moet daarom de
+     OMHULLING zijn en niet de kaart zelf, anders verwijst de padding van de kaart naar
+     een breedte die ze zelf beïnvloedt en klopt er niets meer van. */
+  .card-show-face{display:block; border-radius:10px; container-type:inline-size;}
+  .card-show-face img{
+    width:100%; aspect-ratio:63/88; object-fit:cover; border-radius:10px; display:block;
+    box-shadow:0 4px 14px rgba(0,0,0,.55);
+    transition:box-shadow .13s;
+  }
+  .card-show:hover{transform:translateY(-4px);}
+  .card-show:hover .card-show-face img, .card-show:hover .card-show-face > .quest-card{
+    box-shadow:0 0 0 2px var(--card-tint), 0 0 26px var(--card-glow, transparent), 0 10px 22px rgba(0,0,0,.5);
+  }
+  /* Het bijschrift is omrand en ziet er daarmee uit als de knop die het ook is — op een
+     telefoon was anders niet te zien dat je erop kunt tikken. De vaste minimumhoogte houdt
+     bovendien de rijen recht: zonder dat liepen de bijschriften van 31 tot 64px uiteen en
+     stonden de kaarten in een rij op ongelijke hoogte. */
+  .card-show-cap{
+    display:flex; flex-direction:column; justify-content:flex-start; gap:3px; min-width:0;
+    /* Vaste hoogte. Zonder dit bepaalt elke kaart zijn eigen knophoogte en dat liep van 74
+       tot 103px uiteen — meteen zichtbaar in het raster. De waarde is de hoogste natuurlijke
+       knop, gemeten over elke schermbreedte van 300 tot 1600px in stappen van 20px: 87px
+       t/m 640px en 103px daarboven (daar is de kolom smal terwijl het lettertype al groot
+       is). Meet opnieuw als je een kaartnaam of hint langer maakt. */
+    margin-top:auto; min-height:104px; padding:9px 11px; position:relative; flex:none;
+    background:var(--hull); border:1px solid var(--line); border-radius:6px;
+    transition:border-color .13s, background .13s;
+  }
+  /* Pijltje als extra zetje dat zegt "hier kun je op tikken". Het staat rechtsONDER en niet
+     verticaal gecentreerd: dan hoeft alleen de korte onderregel er ruimte voor te maken en
+     mag de titel de volle breedte gebruiken — precies wat hij op een telefoon nodig heeft. */
+  .card-show-cap::after{
+    content:''; position:absolute; right:10px; bottom:11px;
+    width:0; height:0; border-left:5px solid var(--text-dim);
+    border-top:4px solid transparent; border-bottom:4px solid transparent;
+    transition:border-left-color .13s;
+  }
+  .card-show:hover .card-show-cap,
+  .card-show:focus-visible .card-show-cap{
+    border-color:var(--card-tint); background:var(--panel-2);
+  }
+  .card-show:hover .card-show-cap::after{border-left-color:var(--card-tint);}
+  /* een touchscreen kent geen hover, dus geef de tik zelf een reactie */
+  .card-show:active{transform:scale(.98);}
+  .card-show:active .card-show-cap{border-color:var(--card-tint); background:var(--panel-2);}
+  .card-show-cap b{
+    /* De kolombreedte volgt clamp(140px, 20vw, 192px); de titel schaalt met dezelfde vw mee,
+       anders staat er tussen 641px en 900px een titel van 14px in een kolom van 150px en
+       breken tien namen middenin een woord af. Gemeten met de terugvalfont (Arial Narrow) —
+       de tool laadt geen webfonts, dus Barlow Condensed telt hier niet mee. */
+    font-family:var(--font-display); font-size:clamp(11px, 1.45vw, 14px); font-weight:700; color:#eef3f8;
+    text-transform:uppercase; letter-spacing:.02em; line-height:1.15;
+    /* Op 375px is een kolom 147px breed; "Stroomonderbreking" stak er 35px buiten. `anywhere`
+       loste dat op maar brak "STROOMSTORI NG" af — met `hyphens:auto` (het document staat op
+       lang="nl") komt er tenminste een afbreekstreepje te staan waar dat nodig is. */
+    overflow-wrap:break-word; -webkit-hyphens:auto; hyphens:auto;
+  }
+  .card-show-cap span{font-family:var(--font-mono); font-size:9.5px; color:var(--text-dim); line-height:1.4; padding-right:16px;}
+
+  /* Nagetekende opdrachtkaart — zelfde opbouw als het Canva-ontwerp: badge met het nummer
+     linksboven, titel rechts, groot icoon in het midden, kamer onderaan. De accentkleur komt
+     per opdracht mee als --q-tint (zie QUEST_CARD_ART in 98-cards.js). */
+  .quest-card{
+    position:relative; display:flex; flex-direction:column;
+    width:100%; aspect-ratio:63/88; border-radius:10px; padding:6.8cqw 6.2cqw 6cqw;
+    background:
+      radial-gradient(ellipse at 18% -6%, color-mix(in srgb, var(--q-tint) 16%, transparent) 0%, transparent 58%),
+      linear-gradient(168deg, #121820 0%, #0a0e13 78%);
+    box-shadow:0 4px 14px rgba(0,0,0,.55), inset 0 0 0 1px color-mix(in srgb, var(--q-tint) 34%, transparent);
+    color:var(--q-tint); overflow:hidden;
+    /* alles hierbinnen is in cqw uitgedrukt (container = .card-show-face / .cards-zoom-face),
+       zodat dezelfde kaart klopt in de vitrine (~190px breed) én in het vergrootvenster
+       (~360px) — anders blijven icoon en tekst op hun vaste pixelmaat staan en zwemt de
+       vergrote kaart in de leegte */
+  }
+  .quest-card::before{                       /* accentstreepje bovenaan, als op het ontwerp */
+    content:''; position:absolute; top:0; left:38%; width:24cqw; height:1.6cqw; background:var(--q-tint);
+  }
+  .quest-card-top{display:flex; align-items:center; justify-content:space-between; gap:4cqw;}
+  .quest-card-badge{
+    flex:none; width:19.8cqw; height:19.8cqw; border-radius:50%;
+    border:.8cqw solid var(--q-tint); display:flex; align-items:center; justify-content:center;
+    font-family:var(--font-display); font-weight:700; font-size:7.8cqw; color:var(--q-tint);
+  }
+  .quest-card-kicker{
+    font-family:var(--font-mono); font-size:3.9cqw; letter-spacing:.32em; color:var(--q-tint);
+  }
+  /* eigen regel over de volle breedte, anders botst een lange titel als
+     BEVEILIGINGSRONDE tegen de nummerbadge aan */
+  .quest-card-title{
+    font-family:var(--font-display); font-weight:700; text-transform:uppercase;
+    font-size:7.5cqw; line-height:1.05; color:#eef3f8;
+    text-align:right; margin-top:4cqw; overflow-wrap:anywhere;
+  }
+  .quest-card-icon{width:34cqw; height:34cqw; margin:auto; display:block;}
+  .quest-card-rule{height:1px; background:var(--q-tint); opacity:.3; margin:0 0 4.5cqw;}
+  .quest-card-foot{display:flex; flex-direction:column; gap:1.5cqw;}
+  .quest-card-foot .quest-card-kicker{color:var(--text-dim); letter-spacing:.28em;}
+  .quest-card-room{
+    font-family:var(--font-display); font-weight:700; text-transform:uppercase;
+    font-size:7.3cqw; line-height:1; color:var(--q-tint);
+  }
+
+  /* vergroten: kaart in het midden, klik waar dan ook om te sluiten */
+  .cards-zoom{
+    position:fixed; inset:0; background:rgba(4,7,10,.88); backdrop-filter:blur(3px);
+    display:flex; align-items:center; justify-content:center; padding:24px; z-index:120;
+    cursor:var(--cur-zoomout);
+  }
+  .cards-zoom[hidden]{display:none;}
+  .cards-zoom-inner{display:flex; flex-direction:column; align-items:center; gap:12px; max-width:100%;}
+  .cards-zoom-face{width:min(360px, 74vw, calc((100vh - 190px) * 63 / 88)); container-type:inline-size;}
+  .cards-zoom-face img{width:100%; aspect-ratio:63/88; object-fit:cover; border-radius:12px; display:block;}
+  .cards-zoom-cap{
+    margin:0; display:flex; flex-direction:column; align-items:center; gap:3px; text-align:center;
+  }
+  .cards-zoom-cap b{
+    font-family:var(--font-display); font-size:19px; font-weight:700; color:#eef3f8;
+    text-transform:uppercase; letter-spacing:.05em;
+  }
+  .cards-zoom-cap span{font-family:var(--font-mono); font-size:11px; color:var(--text-dim);}
+  .cards-zoom .hint{margin:0;}
+
+  .card-overlay{
+    position:fixed; inset:0; background:rgba(4,7,10,.86); backdrop-filter:blur(3px);
+    display:flex; align-items:center; justify-content:center; padding:18px; z-index:110;
+  }
+  .card-overlay[hidden]{display:none;}
+  .card-panel{
+    background:linear-gradient(180deg, var(--panel), var(--panel-2));
+    border:1px solid var(--line); border-radius:8px; padding:18px;
+    max-width:860px; width:100%; max-height:92vh; overflow:auto;
+    display:flex; flex-direction:column; gap:12px;
+  }
+  .card-panel-head{display:flex; align-items:center; justify-content:space-between; gap:12px;}
+  .card-panel-head h2{
+    font-family:var(--font-mono); font-size:11px; letter-spacing:.2em; text-transform:uppercase;
+    color:var(--text-dim); margin:0;
+  }
+  /* elke kaart draagt zijn eigen accentkleur via --card-tint (zie de action-card--*-klassen
+     die de kaarten hergebruiken), zodat gloed en selectierand vanzelf bij het ontwerp passen */
+  /* De knop is de kaart PLUS een strook eronder voor de reden waarom hij niet speelbaar is.
+     Die strook staat bewust ONDER de kaart en niet eroverheen: de kaart vertelt zelf wat hij
+     doet, en dat wil je juist kunnen lezen op het moment dat je 'm nog niet mag spelen. */
+  /* Niet speelbaar: licht gedempt, zodat je nog goed kunt lezen wat de kaart doet. Wél gewoon
+     aanklikbaar — afleggen kan met elke kaart in je hand, ook met eentje die je nu niet mag
+     spelen. */
+
+  /* Kaart zonder fotokaart: dezelfde indeling nagetekend met het inline SVG-icoon, zodat het
+     venster ook werkt voor kaarten waarvoor nog geen Canva-ontwerp bestaat. */
+  /* miniatuur in de kluis voor een kaart zonder fotokaart */
+  /* duidelijk vinkje op de gekozen kaart, zodat selectie niet te verwarren is met hover */
+
+  .editor-overlay{
+    position:fixed; inset:0; background:rgba(4,7,10,.82); backdrop-filter:blur(3px);
+    display:flex; align-items:center; justify-content:center; padding:18px; z-index:100;
+  }
+  .editor-overlay[hidden]{display:none;}
+
+  /* bevestiging vóór "Nieuw potje" (Zelf spelen) — zelfde overlay-opzet als .editor-overlay/
+     .card-overlay hierboven, maar dan een klein blokje met alleen een vraag en twee knoppen.
+     z-index hoger dan de andere overlays: kan in theorie boven het kaartvenster verschijnen
+     (je kunt "Nieuw potje" ook met kaarten op zak indrukken) en moet dan wél zichtbaar zijn. */
+  .walk-confirm-overlay{
+    position:fixed; inset:0; background:rgba(4,7,10,.82); backdrop-filter:blur(3px);
+    display:flex; align-items:center; justify-content:center; padding:18px; z-index:130;
+  }
+  .walk-confirm-overlay[hidden]{display:none;}
+  .walk-confirm-panel{
+    background:linear-gradient(180deg, var(--panel), var(--panel-2));
+    border:1px solid var(--line); border-radius:8px; padding:24px 28px;
+    max-width:380px; width:100%; text-align:center;
+    display:flex; flex-direction:column; gap:14px;
+  }
+  .walk-confirm-panel > p:first-child{
+    margin:0; font-family:var(--font-display); font-size:16px; font-weight:700; color:var(--text);
+  }
+  .walk-confirm-panel .hint{margin:0;}
+  .walk-confirm-actions{display:flex; gap:10px; justify-content:center; flex-wrap:wrap;}
+  /* TEGELEDITOR "Werkbank" (gekozen variant 1 uit 6, 2026-10; 90-editor.js). Alles heeft een vaste
+     maat (gebruikerswens: "de kolom moet altijd even groot blijven en niet verschuiven als je
+     binnenin klikt"): vaste paneelbreedte, vaste zijkolom, het nummer-veld houdt zijn plek
+     (.is-off = onzichtbaar), de melding onderaan heeft een vaste hoogte, de knoppen een vaste breedte. */
+  .editor-panel{
+    display:flex; flex-direction:column; gap:16px;
+    background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:20px;
+    width:min(720px, 100%); max-height:92vh; overflow:auto; box-shadow:0 20px 60px rgba(0,0,0,.7);
+  }
+  .editor-head{display:flex; align-items:flex-start; justify-content:space-between; gap:12px;}
+  .editor-title{min-width:0;}
+  .editor-title small{display:block; font-family:var(--font-mono); font-size:10.5px; letter-spacing:.16em; text-transform:uppercase; color:var(--text-dim);}
+  .editor-head h2{
+    margin:2px 0 0; font-family:var(--font-display); font-weight:700; font-size:28px; letter-spacing:.04em;
+    line-height:1.05; color:#fff; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+  }
+  button.editor-x{
+    flex:none; width:34px; height:34px; min-height:0; padding:0; border-radius:8px; font-size:15px;
+    background:var(--panel-2); border:1px solid var(--line); color:var(--text-dim);
+  }
+  button.editor-x:hover{color:#fff; border-color:var(--text-dim);}
+  .editor-body{display:grid; grid-template-columns:minmax(0,1fr) 230px; gap:18px; align-items:start;}
+  @media (max-width:700px){ .editor-body{grid-template-columns:1fr;} }
+  /* de tegel met 4 lipjes aan de rand: oplichten = die doorgang is open */
+  .editor-grid-wrap{position:relative; width:100%; max-width:372px; margin:0 auto; padding:16px;}
+  .ed-nub{
+    position:absolute; display:flex; align-items:center; justify-content:center; border-radius:3px;
+    font-family:var(--font-mono); font-size:9px; letter-spacing:.08em; text-transform:uppercase;
+    color:var(--text-dim); border:1px dashed var(--line);
+  }
+  .ed-nub.open{border:1px solid var(--amber); background:rgba(255,181,69,.15); color:var(--amber);}
+  .ed-nub.n, .ed-nub.s{left:50%; width:70px; height:12px; transform:translateX(-50%);}
+  .ed-nub.n{top:1px;} .ed-nub.s{bottom:1px;}
+  .ed-nub.w, .ed-nub.e{top:50%; width:12px; height:70px; transform:translateY(-50%); writing-mode:vertical-rl;}
+  .ed-nub.w{left:1px;} .ed-nub.e{right:1px;}
+  .editor-grid{display:grid; grid-template-columns:repeat(8, 1fr); gap:3px; width:100%; aspect-ratio:1;}
+  .ed-cell{
+    border-radius:3px; background:var(--slot-empty); border:1px solid #2c3845; cursor:var(--cur-click);
+    position:relative;
+  }
+  /* voorproefje: wat er gebeurt als je klikt (outline verschuift niets) */
+  .editor-grid[data-tool="walk"] .ed-cell:not(.outside-pattern):not(.quest):not(.actioncell):not(.grate):hover{outline:2px solid var(--walk); outline-offset:1px;}
+  .editor-grid[data-tool="quest"] .ed-cell.walk:not(.door):hover{outline:2px solid var(--quest); outline-offset:1px;}
+  .editor-grid[data-tool="card"] .ed-cell.walk:not(.door):hover{outline:2px solid var(--actioncell); outline-offset:1px;}
+  .editor-grid[data-tool="grate"] .ed-cell.walk:not(.door):hover{outline:2px solid #e0915c; outline-offset:1px;}
+  .editor-grid[data-tool="erase"] .ed-cell:not(.outside-pattern):hover{outline:2px dashed var(--danger); outline-offset:1px;}
+  .ed-cell.walk{background:var(--walk); border-color:#5f6b77;}
+  .ed-cell.walk.room-tile{background:var(--walk-room); border-color:#a89d8e;}
+  .ed-cell.quest{background:var(--quest); border-color:#7fd4f5;}
+  .ed-cell.actioncell{background:var(--actioncell); border-color:#d9b3ff;}
+  .ed-cell.grate{background:#161b22 var(--grate-img) center / 100% 100% no-repeat; border-color:#e0915c;}
+  .ed-cell.start{background:var(--start); border-color:#9bffc6;}
+  .ed-cell.door{box-shadow:inset 0 0 0 2px rgba(255,181,69,.85);}
+  .ed-cell.outside-pattern{background:none; border-color:transparent; box-shadow:none; cursor:var(--cur-normal);}
+  .ed-cell.err{background:var(--danger) !important; border-color:#ffb0b0 !important; box-shadow:0 0 0 2px rgba(255,93,93,.85) !important;}
+  .err-mark{
+    position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
+    font-family:var(--font-mono); font-weight:700; font-size:13px; color:#fff; pointer-events:none;
+  }
+  .ed-cell .lab{
+    position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
+    font-family:var(--font-mono); font-size:9px; font-weight:700; color:#04150b; pointer-events:none;
+  }
+  .editor-side{display:flex; flex-direction:column; gap:10px;}
+  .editor-lbl{font-family:var(--font-mono); font-size:10.5px; letter-spacing:.14em; text-transform:uppercase; color:var(--text-dim);}
+  .editor-side .field{margin:0;}
+  .editor-label-field.is-off{visibility:hidden;}
+  .checklist{list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:7px;}
+  .checklist li{
+    display:flex; align-items:center; gap:9px; font-size:12px; color:var(--text-dim);
+    font-family:var(--font-mono);
+  }
+  .checklist .check{
+    flex:none; width:18px; height:18px; border-radius:50%; display:flex; align-items:center;
+    justify-content:center; font-size:11px; font-weight:700; border:1px solid var(--danger); color:var(--danger);
+  }
+  .checklist li.ok{color:var(--text);}
+  .checklist li.ok .check{background:var(--start); border-color:var(--start); color:#04150b;}
+  /* gereedschap: elke knop even hoog (naam + één regel uitleg), gekozen = glas zoals button.primary */
+  .tool-list{display:flex; flex-direction:column; gap:6px;}
+  button.tool{
+    display:grid; grid-template-columns:16px minmax(0,1fr); column-gap:10px; row-gap:2px; align-items:center;
+    height:auto; min-height:0; padding:9px 11px; text-align:left; text-transform:none; letter-spacing:0;
+    border-radius:7px; background:var(--hull); border:1px solid var(--line-dim); color:var(--text-dim);
+  }
+  button.tool .swatch{width:16px; height:16px;}
+  button.tool .swatch-erase{background:var(--slot-empty); border:1px dashed var(--danger);}
+  button.tool b{font-family:var(--font-display); font-weight:700; font-size:15px; letter-spacing:.03em; color:var(--text);}
+  button.tool .tool-how{grid-column:2; font-family:var(--font-mono); font-size:10.5px; line-height:1.35; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+  button.tool:hover:not(.active){border-color:var(--line); color:var(--text);}
+  button.tool.active{background:rgba(79,184,224,.14); border-color:rgba(79,184,224,.6); color:var(--text);}
+  button.tool.active b{color:#fff;}
+  .tool[hidden]{display:none;}
+  /* vaste balk onderaan: Herstel | melding (vaste hoogte, 2 regels) | Opslaan/Sluiten (vaste breedte) */
+  .editor-foot{display:flex; align-items:center; gap:12px; padding-top:14px; border-top:1px solid var(--line-dim);}
+  .editor-foot button{flex:none; width:120px; height:38px; min-height:0; padding:0 10px;}
+  .editor-msg{
+    flex:1; min-width:0; height:2.9em; overflow:hidden; display:flex; align-items:center;
+    font-family:var(--font-mono); font-size:11.5px; line-height:1.45; color:var(--danger);
+  }
+  /* telefoon: tussen Herstel en Opslaan bleef maar 48px over voor de melding — dan de melding op
+     een eigen regel boven de knoppen, met een vaste hoogte (4 regels), zodat er niets verschuift */
+  @media (max-width: 640px){
+    .editor-foot{flex-wrap:wrap; justify-content:space-between; row-gap:8px;}
+    .editor-msg{order:-1; flex:1 1 100%; height:5.8em;}
+  }
+  select{
+    width:100%; background:var(--hull); border:1px solid var(--line); color:var(--amber);
+    font-family:var(--font-mono); font-size:14px; padding:9px 10px; border-radius:4px;
+  }
+  /* Na het kiezen (ook van dezelfde waarde) houdt de dropdown de focus, en dan tekende de
+     browser zijn eigen witte focusrand eromheen (gebruikersmelding: "knop wordt ineens een wit
+     kader"). Zelfde subtiele amberrand als de tekstvelden (input[type=text]:focus) i.p.v. wit. */
+  select:focus, select:focus-visible{
+    outline:none; border-color:var(--amber-dim); box-shadow:0 0 0 2px rgba(255,181,69,.12);
+  }
+  .tile-thumb{position:relative;}
+
+  .cell.seam-open{box-shadow:0 0 0 1px var(--amber), 0 0 7px rgba(255,181,69,.65) !important; z-index:2; position:relative;}
+  .cell.seam-broken{box-shadow:0 0 0 1px var(--danger), 0 0 7px rgba(255,93,93,.7) !important; z-index:2; position:relative;}
+
+  .slot-hit{position:relative; cursor:var(--cur-grab); touch-action:none;}

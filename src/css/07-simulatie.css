@@ -1,0 +1,202 @@
+  /* ---------- simulatie ---------- */
+  /* korter (gecentreerd, max. 520px) zodat de tekst links en rechts eronder dichter bij elkaar
+     staat, en een dikkere balk (gebruikerswens) */
+  /* "Aan het simuleren"-vakje (runSimulationBatch in 95-simulate.js): de tijdring (hieronder) met
+     eronder teller en Stoppen. Het ligt óver de uitslag (#simResults), zodat bij klaar het vakje kan
+     uitfaden terwijl de uitslag op dezelfde plek infaadt (0,9 s = GEN_FADE_MS). Tijdens het
+     rekenen houdt .sim-stage ruimte vrij voor het vakje. */
+  .sim-stage{position:relative;}
+  .sim-stage.is-running, .sim-stage.is-holding{min-height:380px;}
+  .sim-loader{
+    position:absolute; inset:0;
+    z-index:3; opacity:0; pointer-events:none; will-change:opacity;
+    /* na het uitfaden ook echt weg (visibility), anders zat de onzichtbare tekst ("Aan het
+       simuleren…", "Stoppen") nog op de pagina en kwam die mee bij selecteren/kopiëren */
+    visibility:hidden; transition:opacity .9s ease, visibility 0s linear .9s;
+  }
+  .sim-stage.is-running > .sim-loader{opacity:1; pointer-events:auto; visibility:visible; transition:opacity .9s ease, visibility 0s;}
+  .sim-stage > #simResults, .sim-stage > #simStatus{transition:opacity .9s ease;}
+  .sim-stage.is-running > #simResults, .sim-stage.is-running > #simStatus{opacity:0;}
+  .sim-stage > #simStatus:not(:empty){margin-bottom:10px;}
+  /* Tijdring (gekozen 2026-10; simStream in 95-simulate.js): zwart gat, 60 streepjes die met de klok
+     mee opgloeien; geen getal in de kern. Alles staat absoluut en beweegt via transform/opacity
+     (Web Animations + transitions): de simulatie rekent in brokken van 30 ms op dezelfde draad, en
+     alleen zulke animaties blijven daar vloeiend bij. */
+  .sim-ring{position:absolute; left:0; right:0; top:0; bottom:96px; overflow:hidden;}
+  .sim-cap{
+    position:absolute; left:0; right:0; bottom:0; height:96px; padding-bottom:10px;
+    display:flex; flex-direction:column; align-items:center; justify-content:flex-end; gap:8px;
+  }
+  .sim-loader-count{font-size:11.5px; font-variant-numeric:tabular-nums; opacity:.75;}
+  .sim-stop{margin-top:4px; min-width:140px;}
+  /* melding na "Stoppen": gecentreerd onder de knop, net als de rest erboven */
+  .sim-stopped{display:block; text-align:center;}
+
+  .sim-table{width:100%; border-collapse:collapse; font-family:var(--font-mono); font-size:12px; margin:10px 0;}
+  /* Op een telefoon zijn de tabellen met 5-6 kolommen breder dan het scherm. Omdat `body`
+     horizontaal scrollen blokkeert werden die kolommen gewoon AFGEKAPT — de rechterkant was
+     onbereikbaar. Als `display:block` met eigen overflow schuift de tabel binnen zijn eigen
+     kader, zonder de pagina mee te trekken. */
+  @media (max-width: 880px){
+    .sim-table{display:block; overflow-x:auto; white-space:nowrap; scrollbar-gutter:auto;}
+  }
+  .sim-table th, .sim-table td{padding:6px 8px; text-align:left; border-bottom:1px solid var(--line-dim);}
+  .sim-table th{color:var(--text-dim); font-weight:600; text-transform:uppercase; font-size:10px; letter-spacing:.08em;}
+  .sim-table td.num, .sim-table th:not(:first-child){text-align:right;}
+  .sim-table td.num{font-variant-numeric:tabular-nums; color:var(--amber);}
+  /* De opdrachtentabel heeft geen getalkolommen, dus alles links. Deze regel stond er al,
+     maar verloor het van `.sim-table th:not(:first-child)` hierboven (die is specifieker),
+     waardoor "Naam" en "Ligt in" rechts stonden en de waarden eronder links. */
+  .sim-table.quest-table th{text-align:left;}
+  /* op 375px is de tabel 2px breder dan zijn kader; laat hem daar liever scrollen dan uitsteken */
+  #questRegister{overflow-x:auto;}
+
+  /* korte conclusie bovenaan de uitslag: de twaalf secties eronder zijn het bewijsmateriaal,
+     maar de vraag "is dit bord goed?" moet je zonder scrollen kunnen beantwoorden */
+  .sim-verdict{
+    display:grid; grid-template-columns:repeat(auto-fit, minmax(150px, 1fr)); gap:10px;
+    margin:14px 0 6px;
+  }
+  .sim-verdict-item{
+    background:var(--hull); border:1px solid var(--line-dim); border-left:3px solid var(--vc, var(--line));
+    border-radius:5px; padding:9px 11px; display:flex; flex-direction:column; gap:3px;
+  }
+  .sim-verdict-item .lbl{
+    font-family:var(--font-mono); font-size:9px; letter-spacing:.16em; text-transform:uppercase;
+    color:var(--text-dim);
+  }
+  .sim-verdict-item .val{
+    font-family:var(--font-display); font-size:15px; font-weight:700; color:var(--vc, var(--text));
+    letter-spacing:.02em; line-height:1.15;
+  }
+  .sim-verdict-item .sub{font-family:var(--font-mono); font-size:9.5px; color:var(--text-dim); line-height:1.35;}
+  .sim-verdict-item.ok{--vc:var(--start);}
+  .sim-verdict-item.warn{--vc:var(--amber);}
+  .sim-verdict-item.bad{--vc:var(--danger);}
+
+  .sim-subhead{
+    font-family:var(--font-mono); font-size:11px; letter-spacing:.14em; text-transform:uppercase;
+    color:var(--text-dim); margin:20px 0 4px; padding-top:16px; border-top:1px solid var(--line-dim);
+  }
+  .sim-subhead:first-of-type{margin-top:8px; padding-top:0; border-top:none;}
+
+  /* ---------- uitslag als "stoplicht-kaarten" (gekozen variant A uit 4, artifact "Axiom-9
+     Simulatie-uitslag", 2026-11; opbouw in renderSimResults / simCard, 95-simulate.js) ----------
+     Per onderwerp een rij van twee EVEN BREDE kaarten; kaarten in een rij zijn even hoog (stretch),
+     ook als je er een inklapt. Onder 900px één kolom. Elke kaart: titel + oordeelchip + pijltje,
+     groot getal, één zin, diagram, tabel + uitleg achter "Details". */
+  .sim-expand-row{display:flex; justify-content:flex-end; margin:2px 0 4px;}
+  .sim-rows{display:grid; gap:14px; margin-top:4px;}
+  .sim-row{display:grid; grid-template-columns:repeat(2, minmax(0, 1fr)); gap:14px; align-items:stretch;}
+  @media (max-width: 900px){ .sim-row{grid-template-columns:minmax(0, 1fr);} }
+  .sim-card{
+    --vc:var(--quest);
+    background:var(--hull); border:1px solid var(--line-dim); border-radius:8px;
+    padding:14px 16px; display:flex; flex-direction:column; gap:10px; min-width:0;
+  }
+  .sim-card.is-wide{grid-column:1 / -1;}
+  .sim-card.is-ok{--vc:var(--start);}
+  .sim-card.is-warn{--vc:var(--amber);}
+  .sim-card.is-bad{--vc:var(--danger);}
+  .sim-card.is-info{--vc:var(--quest);}
+  .sim-card-head{display:flex; align-items:center; gap:10px;}
+  .sim-card-head h3{
+    flex:1; min-width:0; margin:0;
+    font-family:var(--font-display); font-size:16px; font-weight:700; letter-spacing:.05em;
+    text-transform:uppercase; color:var(--text); line-height:1.1;
+  }
+  .sim-chip{
+    font-family:var(--font-mono); font-size:10px; font-weight:700; letter-spacing:.1em; text-transform:uppercase;
+    padding:5px 7px; border-radius:4px; white-space:nowrap;
+    color:var(--vc); background:color-mix(in srgb, var(--vc) 14%, transparent);
+  }
+  .sim-card-toggle{
+    flex:none; background:none; border:0; padding:4px; border-radius:4px; color:var(--text-dim);
+    display:grid; place-items:center; cursor:var(--cur-click);
+  }
+  .sim-card-toggle:hover{color:var(--quest);}
+  .sim-card-toggle svg{width:16px; height:16px; transition:transform .2s ease;}
+  .sim-card.is-collapsed .sim-card-toggle svg{transform:rotate(-90deg);}
+  .sim-card.is-collapsed .sim-card-body{display:none;}
+  .sim-card-headline{display:flex; align-items:baseline; gap:10px; flex-wrap:wrap;}
+  .sim-card-headline .big{
+    font-family:var(--font-display); font-size:32px; font-weight:700; line-height:1;
+    color:#eef4fa; font-variant-numeric:tabular-nums; white-space:nowrap;
+  }
+  .sim-card-headline .bl{font-size:13px; color:var(--text-dim); line-height:1.35;}
+  .sim-card-body{display:flex; flex-direction:column; gap:10px; flex:1;}
+  .sim-card-line{margin:0; font-size:14px; color:var(--text);}
+  .sim-chart{display:flex; justify-content:center; min-width:0;}
+  .sim-card svg{max-width:100%; height:auto; display:block;}
+  .sim-card svg text{font-family:var(--font-mono); font-size:11px; fill:var(--text-dim);}
+  .sim-card svg text.sim-svg-tv{fill:var(--text);}
+  .sim-card svg text.sim-svg-big{font-family:var(--font-display); font-weight:700; fill:#eef4fa;}
+  .sim-split{display:grid; grid-template-columns:auto minmax(0, 1fr); gap:14px; align-items:center;}
+  .sim-split-side{min-width:0; display:flex; flex-direction:column; gap:8px;}
+  @media (max-width: 480px){ .sim-split{grid-template-columns:minmax(0, 1fr); justify-items:center;} }
+  .sim-minis{display:grid; grid-template-columns:repeat(3, minmax(0, 1fr)); gap:8px;}
+  .sim-mini{background:var(--panel); border-radius:7px; padding:8px 10px; display:grid; gap:2px; min-width:0;}
+  .sim-mini b{font-family:var(--font-display); font-size:19px; font-weight:700; line-height:1; color:#eef4fa; font-variant-numeric:tabular-nums;}
+  .sim-mini span{font-size:11.5px; color:var(--text-dim); line-height:1.25;}
+  .sim-legend{display:flex; flex-wrap:wrap; gap:6px 12px; font-family:var(--font-mono); font-size:11.5px; line-height:1.3; color:var(--text-dim);}
+  .sim-legend i{display:inline-block; width:9px; height:9px; border-radius:2px; margin-right:5px; vertical-align:-1px;}
+  .sim-more{margin-top:auto;}
+  .sim-more > summary{
+    cursor:var(--cur-click); list-style:none; padding-top:4px;
+    font-family:var(--font-mono); font-size:11px; font-weight:700; letter-spacing:.1em; text-transform:uppercase;
+    color:var(--text-dim);
+  }
+  .sim-more > summary::-webkit-details-marker{display:none;}
+  .sim-more > summary::before{content:'+ ';}
+  .sim-more[open] > summary::before{content:'− ';}
+  .sim-more > summary:hover{color:var(--quest);}
+  .sim-more .hint{font-size:12px; line-height:1.5;}
+  .sim-card .sim-table{margin:8px 0 10px;}
+  .sim-card .sim-table th{vertical-align:bottom; line-height:1.3;}
+  .sim-card .sim-table td .sub{display:block; color:var(--text-dim); font-size:10.5px; margin-top:1px;}
+  .sim-card .sim-hist{margin:4px 0 22px;}
+  .sim-card .sim-heat-legend{flex-wrap:wrap; justify-content:center;}
+  /* de warmtekaart staat nu over de volle breedte: daar mogen de vakjes groter */
+  @media (min-width: 901px){ .sim-card.is-wide .sim-heat-grid{--hcell:13px;} }
+  /* percentage met een balkje erachter (barCell in renderSimResults); --w is een kaal getal
+     0–100, want een percentage maal een percentage kan calc() niet */
+  .sim-bar-cell{position:relative; min-width:110px;}
+  .sim-bar{
+    position:absolute; left:8px; top:50%; height:6px; transform:translateY(-50%);
+    width:calc((100% - 70px) * var(--w) / 100); border-radius:3px;
+    background:color-mix(in srgb, var(--amber) 45%, transparent);
+  }
+
+  .sim-hist{
+    display:flex; align-items:flex-end; gap:2px; height:110px; margin:10px 0 22px;
+    border-bottom:1px solid var(--line-dim); padding-bottom:2px;
+  }
+  .sim-hist-bar-wrap{
+    flex:1; max-width:24px; height:100%; display:flex; flex-direction:column;
+    justify-content:flex-end; align-items:center; position:relative;
+  }
+  .sim-hist-bar{width:100%; background:var(--quest); border-radius:4px 4px 0 0; min-height:2px;}
+  .sim-hist-bar.energy{background:var(--start);}
+  .sim-hist-tick{
+    position:absolute; bottom:-16px; font-family:var(--font-mono); font-size:9.5px; color:var(--text-dim);
+  }
+
+  .sim-heat-outer{overflow:auto; padding-bottom:6px; -webkit-overflow-scrolling:touch;}
+  .sim-heat-grid{--hcell: 9px; display:grid; gap:1px; margin:0 auto; width:max-content;}
+  .sim-heat-cell{width:var(--hcell); height:var(--hcell); border-radius:1px;}
+  .sim-heat-cell.off{background:var(--slot-empty);}
+  .sim-heat-cell.quest{box-shadow:inset 0 0 0 1px var(--quest);}
+  .sim-heat-cell.start{box-shadow:inset 0 0 0 1px var(--start);}
+  .sim-heat-legend{
+    display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-top:10px;
+    font-family:var(--font-mono); font-size:10.5px; color:var(--text-dim);
+  }
+  .sim-heat-scale{
+    display:inline-block; width:120px; height:9px; border-radius:2px;
+    background:linear-gradient(90deg, rgb(26,33,42), rgb(255,181,69));
+  }
+  .sim-heat-key{display:flex; align-items:center; gap:5px;}
+  .sim-heat-swatch{width:10px; height:10px; border-radius:2px; display:inline-block;}
+  .sim-heat-swatch.quest{box-shadow:inset 0 0 0 1px var(--quest);}
+  .sim-heat-swatch.start{box-shadow:inset 0 0 0 1px var(--start);}
+

@@ -1,0 +1,193 @@
+  /* ---------- startanimatie (96b-intro.js): zwart scherm, sterren, aftellen, hyperjump ---------- */
+  /* alleen binnen het lobbyvak (#walkPanel), niet over het hele scherm (gebruikerswens);
+     container-type zodat de cijfers meeschalen met het vak (cqmin) i.p.v. met het scherm */
+  #walkPanel{position:relative;}
+  .start-intro{
+    position:absolute; inset:0; z-index:20; background:#000; opacity:0; cursor:var(--cur-click);
+    border-radius:inherit; overflow:hidden; container-type:size;
+    transition:opacity .32s ease;
+  }
+  .start-intro.is-in{opacity:1;}
+  /* Gordijn over het hele scherm voor de overgang naar het spel (96b-intro.js): zwart in 0,8 s
+     (= INTRO_T.inside - INTRO_T.dive, mee met de duik), weg in 0,8 s (= INTRO_T.fadeOut) zodra het
+     speelscherm eronder getekend is. Kop + achtergrond wisselen dus onzichtbaar. */
+  .start-intro-curtain{
+    position:fixed; inset:0; z-index:1000; background:#000; opacity:0; pointer-events:none;
+    will-change:opacity; transition:opacity .8s cubic-bezier(.55,0,.75,.4);
+  }
+  .start-intro-curtain.is-on{opacity:1;}
+  .start-intro-curtain.is-quick{transition-duration:.25s;}
+  .start-intro-curtain.is-leaving{opacity:0; transition:opacity .8s cubic-bezier(.25,.1,.25,1);}
+  /* zonder startanimatie: zachte fade over het hele scherm (playStartFade in 96b-intro.js). Vangt
+     klikken op zolang hij er is (geen dubbele start). Opacity via een Web Animation. */
+  .start-fade-curtain{position:fixed; inset:0; z-index:1000; background:#05070a; opacity:0; will-change:opacity;}
+  .start-intro canvas{position:absolute; inset:0; width:100%; height:100%; display:block;}
+  /* Titan (gekozen uit 4 plasmavarianten, 2026-10): blauwe plasmaletters in Orbitron 900, ingebakken
+     als 'Axiom Orbitron' (src/assets/orbitron900.b64, zodat het offline werkt). Gloed = text-shadow
+     op een laag die alleen in transform/opacity beweegt (geen filter, zie Prestatie in CLAUDE.md). */
+  .start-intro-layer{position:absolute; inset:0; pointer-events:none; will-change:transform;}
+  .start-intro-vig{position:absolute; inset:0; pointer-events:none; opacity:.55; will-change:opacity;
+    background:radial-gradient(ellipse at center, transparent 35%, rgba(0,0,0,.92) 100%);}
+  .start-intro-flash{position:absolute; inset:0; pointer-events:none; opacity:0; will-change:opacity;
+    background:radial-gradient(circle at center, #ffffff 0%, #fff4e4 45%, #d6ecff 100%);}
+  .start-intro-count{
+    position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center;
+    line-height:1; will-change:transform, opacity;
+  }
+  .start-intro-count.is-digit{animation:introCount 1.15s cubic-bezier(.2,.8,.3,1) both;}
+  @keyframes introCount{
+    0%{opacity:0; transform:scale(1.9);} 9%{opacity:1; transform:scale(.95);} 15%{transform:scale(1);}
+    78%{opacity:1; transform:scale(1.07);} 100%{opacity:0; transform:scale(1.16);}
+  }
+  .start-intro-count.is-go{animation:introGoIn .45s cubic-bezier(.2,.9,.25,1) both;}
+  @keyframes introGoIn{0%{opacity:0; transform:scale(2.6);} 60%{opacity:1; transform:scale(.95);} 100%{opacity:1; transform:scale(1);}}
+  /* tijdens het opbouwen groeit het woord langzaam (1,85 s = INTRO_T.bam - INTRO_T.go) */
+  .start-intro-count.is-go .start-intro-word{animation:introGoGrow 1.85s cubic-bezier(.55,0,1,1) both;}
+  @keyframes introGoGrow{from{transform:scale(1);} to{transform:scale(1.25);}}
+  .start-intro-word{
+    position:relative; display:block; will-change:transform;
+    font-family:'Axiom Orbitron', 'Orbitron', var(--font-display); font-weight:900;
+    font-size:min(52cqmin, 330px); color:#f2fbff;
+    text-shadow:0 0 4px #fff, 0 0 14px #a6e3ff, 0 0 34px #35acff, 0 0 70px #0a6aff, 0 0 140px #0036d6, 0 0 230px rgba(0,40,210,.65);
+  }
+  .start-intro-count.is-go .start-intro-word{font-size:min(12.5cqw, 25cqh, 190px); letter-spacing:.1em; padding-left:.1em;}
+  /* lensflare bij elke tel */
+  .start-intro-count.is-digit .start-intro-word::after{
+    content:''; position:absolute; left:50%; top:52%; width:170cqw; height:3px; margin-left:-85cqw;
+    background:linear-gradient(90deg, transparent, rgba(120,200,255,0) 18%, rgba(190,235,255,.95) 50%, rgba(120,200,255,0) 82%, transparent);
+    animation:introFlare 1.15s ease-out both;
+  }
+  @keyframes introFlare{0%{transform:scaleX(0); opacity:1;} 22%{transform:scaleX(1); opacity:1;} 100%{transform:scaleX(1.15); opacity:0;}}
+  .start-intro-sub{
+    font-family:var(--font-mono); font-weight:700; letter-spacing:.42em; padding-left:.42em; text-transform:uppercase;
+    font-size:min(2.6cqmin, 16px); color:#9ad8ff; margin-top:4.5cqmin; text-shadow:0 0 12px rgba(60,160,255,.9);
+  }
+  .start-intro-skip{
+    position:absolute; bottom:18px; left:0; right:0; text-align:center; pointer-events:none;
+    font-family:var(--font-mono); font-size:10.5px; letter-spacing:.16em; text-transform:uppercase;
+    color:rgba(150,170,200,.35);
+  }
+
+  /* #walkLobby en #walkPlayArea liggen als grid-cel bovenop elkaar (i.p.v. onder elkaar) zodat
+     ze tijdens walkFadeSwap() (96-walk.js) tegelijk zichtbaar kunnen zijn en dus echt kunnen
+     crossfaden — met gewone block-layout zou de een pas verschijnen zodra de ander verdwijnt
+     (`hidden`, geen ruimte in de flow), en dat gaf eerder ofwel een leeg tussenmoment (fade na
+     elkaar) of een kale instant-wissel (helemaal geen fade). Zolang er maar één van de twee
+     zichtbaar is (het normale geval, buiten de ~350ms overgang) gedraagt dit zich gewoon als een
+     kolom van één blok, want de andere heeft `hidden` (display:none) en telt niet mee voor de
+     grid-afmeting. */
+  /* padding was 18px (.panel's standaardwaarde) — iets krapper geeft "Stap voor stap" net
+     genoeg extra lucht om ook in Automatisch zonder scrollen te passen in fullscreen (gebruikersmelding). Alleen
+     dit paneel: #walkPanel wint van .panel dankzij de ID, andere panelen blijven op 18px. */
+  #walkPanel{display:grid; padding:12px 18px;}
+  #walkLobby, #walkPlayArea{grid-area:1/1; transition:opacity .35s ease;}
+  #walkLobby.walk-fade-hidden, #walkPlayArea.walk-fade-hidden{opacity:0; pointer-events:none;}
+
+  /* standenrij boven, dan bord + één vaste zijkolom ernaast. De standenrij staat hier
+     bewust weer BOVEN het bord (gebruikerswens, na eerdere versie ernaast) — dat kan alleen
+     zonder het bord te laten springen omdat #walkScore/.walk-player elders al een bewezen
+     vaste hoogte hebben (zie .walk-player{min-height:84px}) én de rij nu de volle breedte
+     krijgt, dus alle 1-4 spelers altijd op precies één regel passen: de rijhoogte kan dus
+     nooit meer veranderen, ongeacht wat erin staat. De zijkolom ernaast blijft `align-items:
+     start` gebruiken zodat hij onafhankelijk van het bord in hoogte kan groeien/krimpen. */
+  /* gap:0 — niet per ongeluk weggelaten: #walkScore hieronder heeft al een eigen
+     margin-bottom:15px, exact gelijk aan de 15px kloof tussen bord en zijkolom. Een gap hier
+     zou daar zomaar bovenop komen (stond hier ooit per ongeluk óók op 15px, dus 41px totaal
+     i.p.v. 15px — gebruikersmelding "kolommen boven staan verder van de map dan links/
+     rechts"). */
+  /* Geen eigen margin-top meer: die stond hier vast voor de kloof met de topbar erboven
+     (Pauze/Stoppen), maar .controls (de gezamenlijke ouder, zie index.html) heeft al een eigen
+     gap:16px tussen zijn kinderen — die twee stapelden op tot een dubbele kloof. Nu de topbar in
+     Zelf spelen helemaal verdwijnt (#walkPlayTopbar[hidden], geen ruimte in de flow) bleef deze
+     margin desondanks staan en gaf dat een wees-kloof bovenaan het bord, zonder dat daar nog een
+     knoppenrij boven stond (gebruikersmelding: "ruimte aan de bovenzijde... moet netjes tegen de
+     kolom zitten, met net zoveel ruimte als de rest"). Met alleen .controls' gap:16px sluit het
+     bord in Zelf spelen nu direct aan op de paneel-padding, precies zoals de andere panelen. */
+  .walk-play-layout{
+    display:flex; flex-direction:column; gap:0;
+  }
+  /* de volle breedte hier (bord + zijkolom samen) betekent dat alle 1-4 spelers altijd op één
+     regel passen (zie .walk-players-row hierboven), dus is er ruimte om elk vak wat compacter
+     te maken dan de 84px-variant hierboven — belangrijk nu deze rij BOVEN het bord meetelt in
+     de "alles op 1 pagina"-eis, in plaats van in een kolom ernaast waar hoogte minder opviel. */
+  .walk-players-row{min-height:48px;}
+  /* drie kolommen: links de statushub (huidige opdracht bovenin, opdrachtenoverzicht eronder
+     — zie .walk-status-col hieronder), in het midden het bord op vaste breedte, rechts
+     Dobbelstenen/Energieactie/Actiekaarten. */
+  .walk-board-row{
+    display:grid; grid-template-columns: minmax(280px,1fr) 879px minmax(300px,1.4fr);
+    gap:15px; align-items:start;
+  }
+  /* de statushub en de zijkolom mogen samen nooit hoger worden dan het omkaderde bord
+     (gebruikerseis) — #walkBoard zelf is 671px hoog (32 rijen × 20px + 31px tussenruimte),
+     plus de rand eromheen (zie .walk-board-col .board-outer hieronder: 10px padding + 10px
+     rand rondom = 40px erbij) is dat 711px, dus dat is het harde plafond voor allebei. */
+  .walk-status-col{
+    grid-column:1;
+    display:flex; flex-direction:column; gap:10px; min-width:0;
+    max-height:711px;
+  }
+  .walk-board-col{grid-column:2; min-width:0; max-width:879px;}
+  /* zichtbare rand rondom het bord (gebruikerswens: iets duidelijker dat het speelveld het
+     midden van de pagina is, later: dikker + donkerder, en nu: robuuster, als een stalen kader
+     met contouren) — op Spelen én op "Speelbord genereren" (gebruikerswens: dezelfde rand).
+     10px padding + 10px rand = 40px extra t.o.v. het kale bord (839px -> 879px breed, 671px ->
+     711px hoog), zie de grid-template-columns/max-height hierboven en hieronder — alles wat
+     hieronder extra is (contourlijnen, groef, schaduw) is box-shadow/outline en neemt dus GEEN
+     ruimte in.
+       - rand: verloop van licht naar donker staal (border-box-achtergrond onder een
+         doorzichtige border), binnenvlak blijft var(--hull)
+       - outline 5px naar binnen = een dun groefje midden in de rand
+       - box-shadow: lichte contour + donkere rand + schaduw buiten, lichte contour binnen */
+  .walk-board-col .board-outer,
+  .map-board-panel .board-outer{
+    padding:10px; border:10px solid transparent; border-radius:9px;
+    background:
+      linear-gradient(var(--hull), var(--hull)) padding-box,
+      linear-gradient(160deg, #56677d 0%, #2b3747 28%, #1a222d 55%, #2f3c4d 80%, #4a5a6f 100%) border-box;
+    outline:1px solid rgba(8,12,18,.85); outline-offset:-5px;
+    box-shadow:
+      0 0 0 1px rgba(140,185,230,.45),
+      0 0 0 3px #05080d,
+      0 8px 22px rgba(0,0,0,.55),
+      inset 0 0 0 1px rgba(150,200,240,.35),
+      inset 0 0 0 2px rgba(5,8,13,.9),
+      inset 0 0 14px rgba(0,0,0,.45);
+  }
+  /* nodig als ankerpunt voor .walk-endgame hieronder, die het bord exact moet overlappen. */
+  .board-zoom-wrap{position:relative;}
+  /* eindscherm ná afloop van een potje: exact even groot als het bord met dezelfde rand/
+     padding/achtergrond als .board-outer hierboven, zodat het als een gelijkwaardig "venster"
+     aanvoelt i.p.v. iets kleins onderin een hoekje (gebruikerswens: "saai klein overzichtje").
+     `overflow:hidden` houdt de confetti binnen deze rand i.p.v. erbuiten te "morsen". */
+  .walk-endgame{
+    position:absolute; inset:0; z-index:10;
+    display:flex; align-items:center; justify-content:center;
+    padding:10px; border:1px solid var(--line); border-radius:8px; background:var(--hull);
+    overflow:hidden;
+  }
+  .walk-endgame[hidden]{display:none;}
+  /* vult het hele venster, maar zit ONDER de kaart hieronder in z-index — daardoor komt de
+     confetti daar nooit overheen, zonder dat er iets uitgeknipt hoeft te worden
+     (gebruikerswens: "het kader in het midden moet geen confetti overheen komen"). */
+  .walk-endgame-confetti{
+    position:absolute; inset:0; width:100%; height:100%;
+    z-index:1; pointer-events:none;
+  }
+  .walk-endgame-showmap{position:absolute; top:14px; right:14px; z-index:3;}
+  .walk-endgame-card{
+    position:relative; z-index:2;
+    display:flex; flex-direction:column; align-items:center; gap:6px; text-align:center;
+    max-width:80%;
+    background:var(--panel-2); border:1px solid var(--line); border-radius:10px;
+    padding:28px 36px; box-shadow:0 8px 30px rgba(0,0,0,.5);
+  }
+  .walk-endgame-trophy{
+    display:block; line-height:0; margin-bottom:4px; color:var(--pc);
+    filter:drop-shadow(0 0 10px color-mix(in srgb, var(--pc) 55%, transparent));
+  }
+  /* knop "Statistieken" onderaan de uitslag — opent de pop-up (soloOpenStats in 97-solo.js) */
+  .walk-endgame-stats-btn{margin-top:14px; min-width:200px;}
+  /* Statistieken + Terug naar lobby naast elkaar (de kop met die knop is tijdens een potje weg) */
+  .walk-endgame-btns{display:flex; flex-wrap:wrap; justify-content:center; gap:10px;}
+

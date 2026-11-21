@@ -1,0 +1,271 @@
+  /* begin van het potje (dobbelen wie begint, startposities kiezen — renderOpeningPanel in
+     96-walk.js): de hele rechterkolom is dan één groot paneel tot onderaan. Alleen de
+     multiplayer-chat blijft eronder staan. */
+  .walk-side-stack.is-opening > :not(#walkOpeningPanel):not(#mpChatPanelGame){display:none !important;}
+  /* even hoog als het omkaderde bord (de rij staat op align-items:start, dus zonder dit is de
+     kolom maar zo hoog als zijn inhoud); de laptopmaat en het onder-elkaar-scherm staan bij
+     hun eigen media queries hieronder */
+  .walk-side-stack.is-opening{height:711px;}
+  /* potje afgelopen (soloSetGameOverView in 97-solo.js, alle modi): naast het winscherm geen
+     dobbelstenen, energie, kluis of opdrachtenoverzicht meer (gebruikersmelding). De kolom zelf
+     blijft staan, zodat het bord/winscherm niet van breedte verandert. */
+  .walk-play-layout.is-game-over .walk-side-stack > *,
+  .walk-play-layout.is-game-over .walk-quest-checklist,
+  /* ook "Toon legenda"/"Toon log" (gebruikerswens), en de legenda/het log zelf als die nog open
+     stonden — anders staan ze er zonder knop om ze dicht te doen */
+  .walk-play-layout.is-game-over .walk-extras-toggle,
+  .walk-play-layout.is-game-over #walkLegend,
+  .walk-play-layout.is-game-over #walkLog{display:none !important;}
+  /* .walk-panel-box erbij: de algemene `.walk-panel-box{flex:none}` verderop moet hier verliezen */
+  .walk-panel-box.walk-opening-panel{
+    display:flex; flex-direction:column; gap:12px; flex:1 1 auto; min-height:0;
+    border:1px solid var(--line-dim); border-radius:6px; padding:14px; overflow:hidden;
+  }
+  .walk-opening-panel[hidden]{display:none;}
+  .walk-opening-title{margin:0; font-size:15px; letter-spacing:.08em; text-transform:uppercase; color:var(--text);}
+  .walk-opening-sub{margin:0; font-size:12px; line-height:1.45; color:var(--text-dim);}
+  /* Eén vak per speler, groot nu het bord meer ruimte geeft (gebruikerswens). Vaste kolommen:
+     plaats | stip | naam | stenen + som. De stenen en de som staan er altijd (vaag "?" als je nog
+     niet gegooid hebt), en het label "gooit"/"gelijk"/"kiest nu" is een tabje op de rand — zo
+     verspringen de stenen niet meer als de tekst verandert (gebruikersmelding). --od = maat van
+     een steen: even groot als in het dobbelvak tijdens het potje (gebruikerswens 2026-10). */
+  .walk-opening-panel{--od:42px;}
+  .walk-opening-list{list-style:none; margin:4px 0 0; padding:0; display:flex; flex-direction:column; gap:14px;}
+  .walk-opening-row{
+    position:relative; display:grid; grid-template-columns:26px 12px minmax(0,1fr) auto;
+    align-items:center; column-gap:10px; min-height:calc(var(--od) + 20px); padding:8px 12px;
+    border:1px solid var(--line); border-left:4px solid var(--pc); border-radius:8px; background:var(--panel);
+  }
+  .walk-opening-row.is-up{border-color:var(--pc); box-shadow:0 0 0 1px var(--pc);}
+  .walk-opening-place{font-family:var(--font-mono); font-size:14px; font-weight:700; color:var(--text-dim);}
+  .walk-opening-dot{width:12px; height:12px; border-radius:50%; background:var(--pc);}
+  .walk-opening-name{min-width:0; font-size:17px; font-weight:600; color:var(--text); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+  .walk-opening-dice{display:flex; align-items:center; gap:calc(var(--od) * .18);}
+  .walk-opening-die{display:flex; will-change:transform;}
+  .sd-die.is-op{width:var(--od); height:var(--od);}
+  .sd-die.is-op .sd-q{font-size:calc(var(--od) * .46);}
+  /* het bewegen doet openingDiceSet (96d-dice.js) op het omhulsel */
+  .sd-die.is-op.is-idle{opacity:.28;}
+  .walk-opening-sum{
+    width:calc(var(--od) * .8); text-align:right; font-family:var(--font-display); font-size:calc(var(--od) * .62);
+    font-weight:700; line-height:1; color:var(--text); transition:opacity .25s;
+  }
+  .walk-opening-sum.is-hidden{opacity:0; transition:none;}
+  .walk-opening-chip{
+    position:absolute; top:-9px; right:12px; padding:2px 8px; border-radius:4px; border:1px solid var(--line);
+    background:var(--panel); font-family:var(--font-mono); font-size:10px; letter-spacing:.08em; line-height:1.3;
+    text-transform:uppercase; color:var(--text-dim);
+  }
+  .walk-opening-chip.up{color:var(--pc); border-color:var(--pc);}
+  .walk-opening-chip.tie{color:var(--amber); border-color:var(--amber);}
+  .walk-opening-chip.start{color:var(--start); border-color:var(--start);}
+  .walk-opening-note{margin:0; font-size:12.5px; line-height:1.45; color:var(--text);}
+  .walk-opening-turn{margin:0; font-size:13px; line-height:1.45; color:var(--text);}
+  .walk-opening-turn b, .walk-opening-note b{color:var(--text);}
+  /* knoppen onderaan het paneel, zodat ze altijd op dezelfde plek staan */
+  .walk-opening-action{margin-top:auto; display:flex; flex-direction:column; gap:10px;}
+  .walk-opening-btn{width:100%; padding:13px;}
+  /* de vrije startvakjes naast elkaar op één regel: het paneel houdt dezelfde rijen als bij het dobbelen */
+  #tabWalk.walk-is-paused .cell.walk-start-glow::before,
+  #tabWalk.walk-is-paused .cell.walk-start-glow::after{animation-play-state:paused;}
+  /* Tussengebied (laptop / half scherm): de drie kolommen op volle maat (280 + 879 + 300px +
+     tussenruimte) zijn samen ±1525px breed, en tot de omschakeling naar één kolom hieronder
+     viel de rechterkolom (dobbelstenen, laatste spelerskaart) daardoor buiten beeld, zonder
+     scrollbalk (gebruikersmelding). Hier krimpen de bordvakjes mee met de schermbreedte (min.
+     14px) zodat alles precies past; de kolommen ernaast houden hun maat. --wcell staat op de
+     rij zodat ook het hoogteplafond van de zijkolommen (= bordhoogte) mee kan schalen.
+     Sinds kort óók op de schermhoogte (en dus op elk scherm vanaf 1361px breed, niet alleen
+     tot 1620px): het speelscherm moet zonder scrollen in beeld passen (gebruikersmelding: op
+     een Full-HD-scherm met browserbalken was de pagina 70px te hoog). Alles boven en onder het
+     bord samen (paginarand, kop mét tabbladen, spelersbalk) is gemeten ±225px — de tabbladen
+     staan sinds kort naast het logo en de spelersbalk is één regel, de legenda/log-knoppen
+     staan links in .walk-status-col — plus de bordrand 71px: vakje = (schermhoogte − 296px) / 32,
+     met 4px speling. Verandert er iets aan de hoogte boven/onder het bord, meet dan opnieuw. */
+  @media (min-width: 1361px){
+    .walk-board-row{
+      --wcell: clamp(13px, min(calc((100vw - 800px) / 40), calc((100vh - 300px) / 32)), 20px);
+      grid-template-columns: minmax(280px,1fr) auto minmax(300px,1.4fr);
+    }
+    /* linkerkolom even hoog als het bord, zodat de legenda/log-knoppen onderaan gelijk liggen
+       met de onderrand van het bord */
+    .walk-status-col{height:calc(var(--wcell) * 32 + 71px);}
+    .walk-status-col .walk-extras-toggle{margin-top:auto;}
+    /* .walk-board-row ervoor: moet winnen van de algemene #walkBoard{--cell:20px} verderop */
+    .walk-board-row #walkBoard{ --cell: var(--wcell); }
+    /* lobbykolom precies zo hoog als de binnenkant van het vak (#walkPanel min-height hieronder
+       min 24px padding en 2px rand), zodat "Start spel" onderaan gelijk ligt met de onderrand
+       i.p.v. ergens halverwege (de oude 100vh − 274px stamde nog uit de tijd van de footer) */
+    /* --lobby-space: ruimte boven de tabs en tussen de tabs en de inhoud; schaalt mee met de
+       vakhoogte (40px op een groot scherm, ±16px op een laptop), zodat Zelf spelen ook daar past */
+    .walk-lobby-col{
+      height:calc(var(--wcell) * 32 + 160px - 26px); --lobby-gap:12px;
+      --lobby-space: clamp(10px, calc(var(--wcell) * 4 - 40px), 40px);
+      /* rijhoogte van de lijsten in de lobbykaarten: 36px op Full HD, ±27px op 1440×780 */
+      --lobby-row: clamp(26px, calc(var(--wcell) * 1.8), 36px);
+    }
+    .walk-lobby-col .walk-mode-toggle{margin:var(--lobby-space) 0 0;}
+    .walk-board-col{max-width:none;}
+    .walk-status-col, .walk-side-stack{max-height:calc(var(--wcell) * 32 + 71px);}
+    /* met de kristalkluis erin: de kolom precies zo hoog als het bord, zodat de kluis onderaan
+       gelijk staat met de onderrand van het bord en daar blijft staan */
+    .walk-side-stack.has-vault{height:calc(var(--wcell) * 32 + 71px);}
+    /* Speelweergave (body.is-playing, zie de kop bovenin): geen grote kop meer, dus het bord mag
+       veel groter (plafond 34px i.p.v. 20px; "het spel moet altijd zo groot mogelijk"). Hoogte:
+       alles boven/onder het bord samen = --play-chrome (smalle balk, spelersbalk, paneelrand,
+       bordrand 71px), gemeten. Breedte: paginarand + paneel (±60px), linkerkolom
+       min. 280px (smaller: de opdrachtnaam breekt af), zijkolom min. 370px (smaller: "Herprioritering"/"Noodtransport" breken af in de
+       energietegels), 2 tussenruimtes, bordrand 79px = ±830px. Verandert er iets boven of
+       onder het bord, meet dan opnieuw. */
+    body.is-playing #walkPanel{padding:10px 14px; --play-chrome:184px;}
+    body.is-playing .walk-board-row,
+    body.is-playing #walkPanel{
+      --wcell: clamp(13px, min(calc((100vw - 830px) / 40), calc((100vh - var(--play-chrome)) / 32)), 34px);
+    }
+    body.is-playing .walk-board-row{grid-template-columns: minmax(280px,1fr) auto minmax(370px,1.4fr);}
+    /* Multiplayer: de chat als vaste 4e kolom rechts (zie #mpChatPanelGame in index.html). Het bord
+       krimpt daarvoor wat mee in de breedte. body.is-mp-game komt uit dezelfde
+       walkPauseStopSyncVisibility() (was eerst :has(), maar dat kost in het speelscherm te veel). */
+    body.is-mp-game .walk-board-row,
+    body.is-mp-game #walkPanel{
+      --wcell: clamp(11px, min(calc((100vw - 1065px) / 40), calc((100vh - var(--play-chrome)) / 32)), 34px);
+    }
+    /* zijkolom min. 370px: bij 336px braken "Herprioritering" en "Noodtransport" in de
+       energietegels al af; linkerkolom min. 270px, anders brak de naam op de opdrachtkaart
+       ("Stroomsto-ring"). Gemeten op Full HD. Breedteformule hierboven = deze minima + bordrand,
+       tussenruimtes en paginarand (±1065px). */
+    body.is-mp-game .walk-board-row{
+      grid-template-columns: minmax(270px,.9fr) auto minmax(370px,1.3fr) minmax(230px,.8fr);
+    }
+    /* op een laptop is het (kleinere) bord lager dan dobbelen + energie samen: dan liever een
+       paar px scrollen dan dat de knoppen onderaan wegvallen */
+    body.is-mp-game .walk-board-row > .walk-side-stack{max-height:none;}
+    body.is-mp-game .walk-board-row > .walk-side-stack.has-vault{height:auto; min-height:calc(var(--wcell) * 32 + 71px);}
+    .walk-chat-col{height:calc(var(--wcell) * 32 + 71px);}
+    .walk-side-stack.is-opening{height:calc(var(--wcell) * 32 + 71px);}
+    /* Lobby even hoog als het speelscherm (gebruikersmelding: "de kolom van de lobby is niet zo
+       groot als die van het potje"). Speelscherm = bordrij (--wcell × 32 + 71px) + spelersbalk,
+       tussenruimte en paneelrand = 89px, gemeten. Zelfde --wcell als .walk-board-row hierboven,
+       hier op #walkPanel zodat ook de lobby ermee kan rekenen. */
+    /* het simulatievak net zo groot (gebruikerswens: "allebei anders"); met uitslag erin mag
+       het gewoon langer worden */
+    /* en het bordvak (eerste kolom) van "Speelbord genereren" ook (gebruikerswens) */
+    #walkPanel, #tabSimulate > .panel, #tabMap > .grid-layout > .panel:first-child,
+    #tabCards > .panel:first-child{
+      --wcell: clamp(13px, min(calc((100vw - 800px) / 40), calc((100vh - 300px) / 32)), 20px);
+      min-height:calc(var(--wcell) * 32 + 160px);
+    }
+  }
+  /* Multiplayer op een laptop (1361–1520 breed): met de chat als 4e kolom paste het bord niet meer
+     (op 1440×780 viel er rechts ±42px af, terwijl er onder het bord 230px leeg bleef). Hier staat
+     de chat daarom als eigen regel ONDER het speelscherm en rekent het bord als bij Zelf spelen. */
+  @media (min-width: 1361px) and (max-width: 1520px){
+    body.is-mp-game .walk-board-row,
+    body.is-mp-game #walkPanel{
+      --wcell: clamp(13px, min(calc((100vw - 830px) / 40), calc((100vh - var(--play-chrome)) / 32)), 34px);
+    }
+    body.is-mp-game .walk-board-row{grid-template-columns: minmax(270px,1fr) auto minmax(370px,1.4fr);}
+    body.is-mp-game .walk-board-row > .walk-chat-col{grid-column:1 / -1; grid-row:auto; height:300px;}
+  }
+  /* was 1150px — onder de 1360px zou het bord hierboven kleiner dan 14px per vakje worden,
+     dan liever alles onder elkaar met een bord op volle maat */
+  @media (max-width: 1360px){
+    .walk-board-row{grid-template-columns:1fr;}
+    .walk-status-col, .walk-board-col, .walk-side-stack{grid-column:1;}
+    /* zelfde volgorde als vóór de statushub-verhuizing: bord eerst, dan dobbelen/energie/
+       kaarten, en de statushub (huidige opdracht + opdrachtenoverzicht) als laatste onderaan. */
+    .walk-board-col{order:1; max-width:none;}
+    .walk-side-stack{order:2; max-height:none;}
+    .walk-side-stack.has-vault{height:auto;}
+    .walk-side-stack.is-opening{height:auto;}
+    .walk-status-col{order:3; max-height:none;}
+    .walk-chat-col{grid-column:1; grid-row:auto; order:4; height:420px;}
+    /* hier staat het speelscherm onder elkaar en mag de pagina scrollen: de lobbykolom krijgt
+       een vaste minimale hoogte waar Zelf spelen (de meeste inhoud) in past, zodat "Start spel"
+       ook hier in elke modus op dezelfde plek staat */
+    .walk-lobby-col{height:auto; min-height:max(calc(100vh - 274px), 660px);}
+  }
+  /* de 3 vakken in de zijkolom mogen niet krimpen (Dobbelstenen/Energieactie/Actiekaarten) —
+     in de statuskolom hiernaast geldt dat NIET: .walk-info-panel en .walk-quest-checklist
+     verdelen die kolom onderling (zie hun eigen regels verderop).
+     Achtergrond hier gecentraliseerd i.p.v. los per vakje: die stonden op een mix van --hull
+     en --panel-2, waardoor de linker- en rechterkolom niet dezelfde tint hadden
+     (gebruikersmelding "kolommen hebben andere kleuren"). Alle losse background-regels
+     verderop op deze klassen zijn er daarom uitgehaald. --hull i.p.v. --panel-2: erg donker
+     grijs i.p.v. het blauwiger --panel-2 (gebruikerswens). */
+  .walk-panel-box{flex:none; background:var(--hull);}
+  /* "of" tussen twee vakken: je kunt dobbelen ÓF een energie-actie inzetten, en verderop
+     ÓF (als dat nu kan) een actiekaart spelen vóór het dobbelen — zie 97-solo.js. */
+  .walk-or-sep{
+    margin:0; text-align:center; font-family:var(--font-mono); font-size:10px;
+    letter-spacing:.14em; text-transform:uppercase; color:var(--text-dim);
+  }
+  .walk-or-sep[hidden]{display:none;}
+  /* het "of" boven de kluis neemt geen hoogte in: het zweeft in de tussenruimte (gap 10px) tussen
+     energievak en kluis. Anders duwde het de kluis op 1440×780 19px onder het bord. */
+  #walkOrSep2{height:0; margin-top:-10px; line-height:0; overflow:visible; transform:translateY(5px); position:relative; z-index:2; pointer-events:none;}
+
+  /* puls in de kleur van wie aan zet is (--pc, gezet op #walkSideStack — zie
+     soloBeginHumanTurn in 97-solo.js) — geeft aan dat een actie NU mogelijk is: de
+     dobbelknop (puur CSS, zodra hij zichtbaar is is het altijd ook echt jouw beurt om te
+     gooien), de kaartkluis (via een klasse vanuit JS, zie soloRefreshCardVault) en losjes
+     per knop de energieacties die je nu ECHT kunt kiezen (renderEnergySoloButton) — niet de
+     hele Energieactie-kolom, want dan pulste ook een dichtgeklapt of onbetaalbaar vak mee
+     (gebruikerswens). Doordat het op de knoppen zelf staat, verdwijnt de puls vanzelf zodra
+     die knoppen na het dobbelen uit de DOM verdwijnen, i.p.v. te blijven hangen op een dan
+     lege kolom. Tempo gelijk aan .walk-paused-flag (1.6s) — bewust trager dan de 1.3s-puls
+     van het opdrachtvakje op het bord, anders concurreren de twee knipperingen zichtbaar
+     met elkaar. */
+  /* ÉÉN puls voor alles wat nu aandacht vraagt (gebruikerswens: "allemaal dezelfde stijl,
+     dezelfde kracht en dezelfde gloed, en alles tegelijk"): dobbelknop, energieacties,
+     actiekaarten, de knoppen en vrije startvakjes bij het kiezen van een startpositie, het
+     actieve opdrachtvakje en het kader om de opdrachtkamer (.walk-room-ring). Voorbeeld was
+     dat kader: een vaste rand van 2px met een rustige gloed van 14px op 60%, die in 1,9s
+     zachtjes half wegzakt en weer terugkomt. Een eerdere versie (gloed 18px + 6px spreiding,
+     1,2s) was "too much" en liep over de knoppen ernaast heen.
+     --glow is de kleur; standaard de kleur van wie aan zet is (--pc). Duur gelijk houden aan
+     DICE_PULSE_MS in 96d-dice.js — syncAllPulses() daar zet alle lopende pulsen op
+     hetzelfde ritme, ook elementen die later worden aangemaakt. */
+  /* Prestatie (gemeten, zie CLAUDE.md): de gloed staat VAST op een eigen laagje en alleen de
+     doorzichtigheid daarvan pulst. Eerst pulste de box-shadow zelf, en dan moest de browser die
+     gloed elk beeldje opnieuw tekenen — samen met de andere pulsen haperden daardoor de
+     dobbelstenen en de energiebolletjes tijdens een potje (gebruikersmelding). 50% doorzichtig =
+     precies de oude 50%-stand (rand 50%, gloed 30% i.p.v. 60%). */
+  @keyframes axPulse{0%,100%{opacity:1;} 50%{opacity:.5;}}
+  .cell.walk-target::after{
+    box-shadow:0 0 0 2px var(--glow, var(--pc, var(--amber))),
+               0 0 14px color-mix(in srgb, var(--glow, var(--pc, var(--amber))) 60%, transparent);
+    will-change:opacity;
+  }
+  /* #btnWalkSoloSkip ("Dobbelen") pulst hier ook mee: het is zelf ook gewoon een keuze naast
+     de energieacties (net zo geldig als "geen actie"), dus verdient dezelfde nadruk i.p.v.
+     er statisch naast te staan (gebruikerswens).
+     De knoppen (dobbelen, energie, actiekaarten) krijgen een sterkere variant: van bijna niets
+     naar de volle axPulse-sterkte, zodat duidelijker is dat je hier iets MOET doen
+     (gebruikerswens). Zelfde duur en kromme, en net als axPulse op 0% op z'n sterkst, dus ze
+     zijn tegelijk met de rest op hun helderst. */
+  /* --pulse-ring / --pulse-glow / --pulse-glow-a: hoe fel het felste punt is; per element te
+     temperen (zie .energy-pick hieronder) zonder dat het ritme verandert */
+  /* zelfde aanpak: vaste gloed op ::after (inset −1px = over de rand van de knop, waar de oude
+     box-shadow ook begon), alleen de doorzichtigheid pulst van vol naar bijna niets */
+  @keyframes axPulseBtn{0%,100%{opacity:1;} 50%{opacity:.1;}}
+  .walk-pulse-affordable, #btnWalkSoloRoll:not([hidden]), #btnWalkSoloSkip:not([hidden]){position:relative;}
+  .walk-pulse-affordable::after, #btnWalkSoloRoll:not([hidden])::after, #btnWalkSoloSkip:not([hidden])::after{
+    content:''; position:absolute; inset:-1px; border-radius:inherit; pointer-events:none;
+    box-shadow:0 0 0 2px color-mix(in srgb, var(--glow, var(--pc, var(--amber))) var(--pulse-ring, 100%), transparent),
+               0 0 var(--pulse-glow, 14px) color-mix(in srgb, var(--glow, var(--pc, var(--amber))) var(--pulse-glow-a, 60%), transparent);
+    animation:axPulseBtn 1.9s ease-in-out infinite; will-change:opacity;
+  }
+  /* de energie-acties staan met z'n vieren onder elkaar, dus hun gloed telt op — op het felste
+     punt zachter dan bij de andere knoppen (gebruikerswens: "eindglow behoorlijk fel") */
+  .energy-pick.walk-pulse-affordable{--pulse-ring:65%; --pulse-glow:9px; --pulse-glow-a:32%;}
+  #tabWalk.walk-is-paused .walk-pulse-affordable::after,
+  #tabWalk.walk-is-paused #btnWalkSoloRoll::after,
+  #tabWalk.walk-is-paused #btnWalkSoloSkip::after{animation-play-state:paused;}
+
+  /* dobbelstenen bewegen heel langzaam op en neer zolang je nog niet hebt gegooid (zie
+     renderSoloDicePending in 97-solo.js) — stopt vanzelf zodra renderWalkDice() de echte
+     worp tekent, want die schrijft #walkDice's HTML dan zonder deze klasse opnieuw. Los van
+     de bestaande .walk-die.rolling/walkShake-animatie hieronder, die is voor Automatisch-
+     modus se snelle "de dobbelstenen rollen nu"-effect en blijft in solo ongebruikt. */
+  @keyframes walkDiceBob{0%,100%{transform:translateY(0);} 50%{transform:translateY(-4px);}}
+

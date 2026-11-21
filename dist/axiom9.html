@@ -121,6 +121,7 @@
   .wrap{max-width:1600px;margin:0 auto;}
   /* tijdens een potje de hele schermbreedte: zie body.is-playing bij de kop hieronder */
 
+
   /* ---------- header ---------- */
   header{
     display:flex; flex-wrap:wrap; align-items:flex-end; justify-content:space-between;
@@ -274,6 +275,7 @@
   }
   .tab-bar-tempo input[type=range]{width:110px;}
 
+
   /* ---------- speelweergave: het potje over het hele scherm (gebruikerswens) ----------
      Zolang er een potje in beeld is (Automatisch, Zelf spelen én Multiplayer) zet
      walkPauseStopSyncVisibility() (96-walk.js) body.is-playing. De kop is dan HELEMAAL weg
@@ -378,6 +380,7 @@
     opacity:0; pointer-events:none; will-change:opacity; transition:opacity .6s ease;
   }
   body.is-playing.play-menu-open .play-menu-backdrop{opacity:1; pointer-events:auto;}
+
 
   /* ---------- layout ---------- */
   .grid-layout{
@@ -494,6 +497,7 @@
     color:var(--text-dim); margin:0 0 14px; display:flex; align-items:center; gap:8px;
   }
   .panel h2::after{content:'';flex:1;height:1px;background:var(--line);}
+
 
   /* ---------- controls ---------- */
   .controls{display:flex; flex-direction:column; gap:16px;}
@@ -687,6 +691,7 @@
   #board.spot-letters .cell.has-badge{opacity:1;}
   @media (prefers-reduced-motion:reduce){ #board .cell, .legend-marker{transition:none;} }
 
+
   /* ---------- board ---------- */
   .board-outer{
     overflow:auto; padding-bottom:10px; -webkit-overflow-scrolling:touch;
@@ -742,6 +747,7 @@
   .ok{color:var(--start);}
   .bad{color:var(--danger);}
   .reach-status .sub{color:var(--text-dim); font-size:11.5px;}
+
 
   /* ---------- simulatie ---------- */
   /* korter (gecentreerd, max. 520px) zodat de tekst links en rechts eronder dichter bij elkaar
@@ -944,6 +950,7 @@
   .sim-heat-swatch{width:10px; height:10px; border-radius:2px; display:inline-block;}
   .sim-heat-swatch.quest{box-shadow:inset 0 0 0 1px var(--quest);}
   .sim-heat-swatch.start{box-shadow:inset 0 0 0 1px var(--start);}
+
 
   /* ---------- stap voor stap ---------- */
   .walk-mode-toggle{display:flex; gap:6px; margin-bottom:14px;}
@@ -1153,6 +1160,7 @@
   }
   .walk-intro-toggle input{width:16px; height:16px; margin:0; accent-color:var(--start); cursor:var(--cur-click);}
 
+
   /* ---------- startanimatie (96b-intro.js): zwart scherm, sterren, aftellen, hyperjump ---------- */
   /* alleen binnen het lobbyvak (#walkPanel), niet over het hele scherm (gebruikerswens);
      container-type zodat de cijfers meeschalen met het vak (cqmin) i.p.v. met het scherm */
@@ -1346,6 +1354,7 @@
   /* Statistieken + Terug naar lobby naast elkaar (de kop met die knop is tijdens een potje weg) */
   .walk-endgame-btns{display:flex; flex-wrap:wrap; justify-content:center; gap:10px;}
 
+
   /* ---------- statistieken-pop-up (#walkStatsOverlay, zelfde overlay als het kaartvenster) ---------- */
   .card-panel.walk-stats-modal{max-width:none; width:min(1240px, 96vw); gap:16px; padding:20px 22px;}
   .walk-stats-modal .card-panel-head h2{font-size:13px; color:var(--text);}
@@ -1493,6 +1502,7 @@
     display:flex; flex-direction:column; gap:10px; min-width:0;
     max-height:711px;
   }
+
   /* begin van het potje (dobbelen wie begint, startposities kiezen — renderOpeningPanel in
      96-walk.js): de hele rechterkolom is dan één groot paneel tot onderaan. Alleen de
      multiplayer-chat blijft eronder staan. */
@@ -1764,6 +1774,7 @@
      modus se snelle "de dobbelstenen rollen nu"-effect en blijft in solo ongebruikt. */
   @keyframes walkDiceBob{0%,100%{transform:translateY(0);} 50%{transform:translateY(-4px);}}
 
+
   /* Missiestrook bovenin de linkerkolom (gekozen ontwerp D uit 4, soloMissionHtml in 97-solo.js):
      Beurt + Stand als twee pillen (inhoud precies in het midden), 6 zeshoekjes aan een lijn en
      "Opdrachten voltooid x / 6" (groot, gebruikerswens). Vervangt de 3 tegels en de opdrachtkaart.
@@ -1926,6 +1937,7 @@
     #walkSoloPanel .energy-pick-list.is-actions .energy-pick-text span{display:none;}
     #walkSoloPanel .energy-pick-none{margin:0;}
   }
+
 
   /* opzetscherm bij "zelf spelen" met meerdere spelers: per menselijke speler een
      startpositie-keuze + voorproefje van de eerste opdracht, zodat je een weloverwogen
@@ -2207,6 +2219,7 @@
     .cell.walk-start-glow::before, .cell.walk-start-glow::after{animation:none;}
   }
 
+
   /* "Spelerstatus" — de statushub bovenin .walk-status-col (zie .walk-board-row hierboven),
      met het opdrachtenoverzicht (.walk-quest-checklist hieronder) eronder in dezelfde kolom.
      `flex:none` (i.p.v. eerder flex:1 1 auto): dit vakje neemt nu zijn natuurlijke
@@ -2479,6 +2492,7 @@
     width:10px; height:10px; border-radius:50%; background:var(--pc); flex:none;
     box-shadow:0 0 6px var(--pc);
   }
+
 
   /* ---------- kaart-illustraties ---------- */
   /* tint-kleur per kaarttype: amber=beweging, groen=energie, blauw=nut, rood=verstoring */
@@ -2792,6 +2806,7 @@
     border:1px solid var(--line-dim); border-radius:6px; padding:12px;
   }
   .walk-card-actions:empty{display:none;}
+
 
   /* ---------- tabblad "Speelkaarten": de vitrine ---------- */
   .cards-shelf{
@@ -3154,6 +3169,7 @@
   .cell.seam-broken{box-shadow:0 0 0 1px var(--danger), 0 0 7px rgba(255,93,93,.7) !important; z-index:2; position:relative;}
 
   .slot-hit{position:relative; cursor:var(--cur-grab); touch-action:none;}
+
   /* ---------- tegels selecteren en verslepen: "Plaats maken" (variant 2 uit 4, artifact "Axiom-9
      Tegels verschuiven", 2026-11; code in 50-interaction.js) ----------
      Kaders = .walk-room-ring (het kader om de opdrachtkamer tijdens een potje) boven het raster.
@@ -3322,6 +3338,7 @@
   .thumb-cell.start{background:var(--start);}
   .thumb-cell.empty-slot{background:var(--slot-empty);}
 
+
   /* ---------- mobiel: grotere tekst, ruimere tikgebieden ---------- */
   @media (max-width: 640px){
     body{padding:16px 10px 40px;}
@@ -3425,6 +3442,7 @@
     .board-zoom-wrap.is-zoomed #walkBoard{ --cell: 20px; }
     .board-zoom-wrap.is-zoomed .scroll-hint{display:block;}
   }
+
 
   /* ---------- multiplayer ---------- */
   /* max-width was 360px — de multiplayer-lobby zat op een eigen losse tab met een brede
@@ -3624,6 +3642,7 @@
   }
   .mp-egg{color:var(--amber); font-weight:700; letter-spacing:.02em;}
 
+
   /* ---------- easter egg: "bigdaddy" in de chat (gebruikerswens) ----------
      Auto rijdt over het HELE scherm, dus `position:fixed` op <body> i.p.v. ergens binnen een
      paneel — zichtbaar ongeacht welk tabblad open staat. `pointer-events:none` zodat hij nooit
@@ -3724,6 +3743,7 @@
     animation:kaboemPulse .5s ease-in-out infinite;
   }
   .kaboem-canvas{ position:fixed; inset:0; z-index:9999; pointer-events:none; }
+
 
   /* ================= kristallen (de vroegere actiekaarten) — zie 96c-crystals.js ================= */
   /* Eén vorm voor alles: een langgerekte zeshoek (200×290) met de rand in de kleur van de soort.
@@ -3971,6 +3991,7 @@
     .crystal-vault-focus.is-swap .crystal, .crystal-vault.is-full, .crystal-pip.is-landing{animation:none;}
   }
 
+
   /* ================= dobbelstenen (ruimte-stenen) — zie 96d-dice.js ================= */
   /* Het dobbelvak: één rij stenen (loopstenen links, energiesteen met "+2" rechts) en ná de worp
      de teller (Gegooid / Nog te zetten) met een stappenbalk. Die teller staat op de plek van de
@@ -4121,6 +4142,7 @@
   .walk-solo-panel .energy-pick-list:not(.is-grid) .energy-pick{padding:3px 10px;}
   .walk-solo-panel .energy-pick-head{margin:0;}
 
+
   /* ================= "ZWEVENDE KOLOMMEN" OP DE HELE PAGINA (gekozen variant 5 uit 6, 2026-10) =================
      Eerst alleen tijdens een potje, sinds 2026-10 voor ALLES (gebruikerswens: overal dezelfde stijl
      als het spel). Donkere egale ondergrond (#070a0e, via --page-bg, dus ook de kop); elk vak
@@ -4195,6 +4217,7 @@
      dus het bord verschuift niet. */
   body.is-playing .walk-status-col.is-opening,
   body.is-playing .walk-play-layout.is-game-over .walk-status-col{background:none; box-shadow:none;}
+
 
   /* ================= MULTIPLAYER-KAMER "DE BRUG" (gekozen ontwerp, 2026-10) =================
      Links boven de avatar-maker (#mpAvatarEditor, van boven tot aan de knoppen), links onder in
@@ -4335,6 +4358,7 @@
   @media (prefers-reduced-motion: reduce){
     .mp-sonar{animation:none;} .mp-boom{animation-duration:.01s;} .mp-chair.is-pop .mp-chair-pic{animation:none;}
   }
+
 
   /* ---------- komeet naar het startvak (walkCometToStart in 96-walk.js, gekozen variant A) ----------
      Eén laag over het hele scherm (position:fixed, de posities zijn schermcoördinaten), alleen
@@ -4490,6 +4514,7 @@
     #walkSoloPanel .energy-pick-list.is-actions .energy-pick-icon{width:20px; height:20px;}
     #walkSoloPanel .energy-pick-list.is-actions .energy-pick-icon svg{width:13px; height:13px;}
   }
+
 
   /* ---------- ZIJKOLOM: TABBLADEN ENERGIE | KLUIS (gekozen variant C, artifact "Axiom-9
      Kluisvarianten", 2026-11) ----------
@@ -8419,7 +8444,7 @@ if (legendEl) legendEl.addEventListener('pointerleave', legendSpotLeave);
 renderBoard();
 
 
-// ===== 95-simulate.js =====
+// ===== 95a-sim-basis.js =====
 // ---------- spelsimulatie ----------
 // Duizenden potjes doorrekenen op de HUIDIGE indeling (layout + tileRotation) om
 // speelduur en eerlijkheid per startpositie te meten. Regels: 2xD6 = exact aantal
@@ -8531,6 +8556,9 @@ function rankOverlapFraction(startRank, groupSize, threshold){
 const SIM_QUEST_LABELS = ['2.1','2.2','2.3','2.4','2.5','2.6','2.7','2.8','2.9'];
 const SIM_HISTOGRAM_BINS = 12;
 
+
+
+// ===== 95b-energie.js =====
 // ---------- energie ----------
 // Naast de twee loopstenen rolt elke beurt een derde, zeszijdige steen mee: één kant niks,
 // twee kanten 1, twee kanten 2 en één kant 3 — gemiddeld 1,5 energie per beurt. Wat je hebt
@@ -8726,6 +8754,9 @@ function botWantsReorderPeek(graph, player, fromKey){
   return dCur > REORDER_PEEK_THRESHOLD;
 }
 
+
+
+// ===== 95c-portalen.js =====
 // ---------- PORTALEN: de 5e energie-actie "Portaalkanon" (2026-10) ----------
 // Er liggen altijd vier portalen op het bord, in twee paren: blauw (0) ↔ rood (1) en groen (2) ↔
 // geel (3), gedeeld door alle
@@ -8930,6 +8961,9 @@ function botPortalWanted(graph, player){
   return player._portalWant;
 }
 
+
+
+// ===== 95d-roosters.js =====
 // ---------- ROOSTERS: de 6e energie-actie "Schroevendraaier" (2026-11) ----------
 // Gekozen door de maker na de meting in artifact "Axiom-9 Roosters" (35 varianten × 8.000 potjes):
 //   - Elke gangtegel heeft één roostervakje (labels 5.1–5.10 in tiles.json, verplaatsbaar in de
@@ -8985,6 +9019,9 @@ function botDriverWanted(graph, player){
   return player._driverGain >= GRATE_BOT_MIN_GAIN;
 }
 
+
+
+// ===== 95e-bot-slim.js =====
 // ---------- strategie "Slim": de bot kiest elke beurt zelf ----------
 // Gebruikerswens: niet één vaste energie-actie per bot, maar een bot die nadenkt of hij nu iets
 // uitgeeft of spaart. Aan het begin van elke eigen beurt kiest hij één actie (of geen) en speelt
@@ -9062,6 +9099,9 @@ function energyStrategyName(id){
   return ENERGY_ACTIONS[id] ? ENERGY_ACTIONS[id].name : '—';
 }
 
+
+
+// ===== 95f-kristallen.js =====
 // ---------- beloningskaarten ----------
 // Wie een opdracht bereikt trekt een kaart van een gedeelde, gesloten stapel (2 exemplaren
 // van elk type in ACTION_CARDS, Portaalsleutel 5 — nu 15 typen, dus 33 kaarten; zie
@@ -9311,6 +9351,9 @@ function walkStraightLine(graph, fromKey, dir, maxSteps, occupied, targetKey){
   }
   return { path, wasBlocked, bankedAt };
 }
+
+
+// ===== 95g-bot-keuzes.js =====
 // ---------- Zwaartekracht-laarzen (energie-actie én kaart): eerst rechtdoor, dan gooien ----------
 // Eén richting uitlopen: rechtdoor tot een muur, een bezet vakje of GRAVITY_DASH_STEPS vakjes.
 // Kom je onderweg op je opdracht (`targets[0]` — `targets` is de rij nog te halen
@@ -9570,6 +9613,9 @@ function simGainEnergy(player, roll){
   return { gained, wasted: roll - gained };
 }
 
+
+
+// ===== 95h-bewegen.js =====
 // Bordgrootte ligt vast (4x8 rijen, 5x8 kolommen); de dedup-buffer hieronder wordt
 // EENMALIG aangemaakt en over duizenden potjes heen hergebruikt via een oplopend
 // "stempel"-getal in plaats van steeds nieuwe typed arrays te alloceren — dat
@@ -9976,6 +10022,9 @@ function simRollD6(rand, player){
   return v;
 }
 
+
+
+// ===== 95i-beurt-potje.js =====
 // ---------- statistieken per speler (knop "Statistieken" op het winscherm) ----------
 // Alleen Zelf spelen, Multiplayer en Automatisch geven spelers een `stats`-object; de batch-
 // simulatie niet, dus de tellers in simRollD6/simGainEnergy/useActionCard kosten daar niets.
@@ -10513,6 +10562,9 @@ function simulateOneGame(graph, rand, heatmap, questStats, extra){
   return { stuck: true, turns: turnCount, players };
 }
 
+
+
+// ===== 95j-sim-scherm.js =====
 // ---------- UI ----------
 const simCountEl = document.getElementById('simCount');
 const simStatusEl = document.getElementById('simStatus');
@@ -10869,6 +10921,9 @@ function computeQuestDistances(graph){
   return dist;
 }
 
+
+
+// ===== 95k-sim-uitslag.js =====
 // ---------- uitslag als "stoplicht-kaarten" (gekozen variant A uit 4, artifact "Axiom-9 Simulatie-uitslag", 2026-11) ----------
 // Onder de oordeelsbalk staan per onderwerp twee even brede kaarten naast elkaar (.sim-row, 1 kolom op
 // een smal scherm). Elke kaart heeft dezelfde opbouw: titel + oordeel (in orde / let op / probleem /
@@ -15266,7 +15321,7 @@ function diceReset(){
 }
 
 
-// ===== 97-solo.js =====
+// ===== 97a-solo-opzet.js =====
 // ---------- stap voor stap: zelf spelen (1 t/m 4 spelers, mix van mens/bot) ----------
 // Jij dobbelt zelf, kiest zelf elke stap een aangrenzend vakje, en zet zelf een energie-actie
 // of handkaart in. Hergebruikt dezelfde spelregels als de batch/auto-modus (resolveMove,
@@ -15806,6 +15861,9 @@ function setWalkMode(mode){
   lobbyPlaceFoot();
 }
 
+
+
+// ===== 97b-solo-bord-score.js =====
 // ---------- bord: welke vakjes zijn nu aanklikbaar ----------
 let soloClickableTimer = null;
 function soloClearClickable(){
@@ -16215,6 +16273,9 @@ if (walkQuestChecklistEl){
   });
 }
 
+
+
+// ===== 97c-solo-energie.js =====
 // ---------- actiepaneel (begin van de beurt) ----------
 function renderEnergySoloButton(id, disabled, reason){
   const act = ENERGY_ACTIONS[id];
@@ -16445,6 +16506,9 @@ function soloDiscardCard(id){
   walkLog(`Je legt <b>${ACTION_CARDS[id].name}</b> af.`, null, p);
   soloAfterCardAction();
 }
+
+
+// ===== 97d-solo-kluis.js =====
 // ---------- tijdens het lopen: altijd-zichtbare kaartenrij (spelen óf afleggen) ----------
 // Alleen Blinde Vlek blijft puur reactief (zie soloOfferBlindSpot): die bied je pas aan op het
 // moment dat je route daadwerkelijk geblokkeerd raakt. Al het andere staat gewoon in deze rij —
@@ -16882,6 +16946,9 @@ function soloUseEnergyAction(id){
   }
 }
 
+
+
+// ===== 97e-solo-acties.js =====
 // ---------- ROOSTERS: kruipen met een schroevendraaier (zie ROOSTERS in 95-simulate.js) ----------
 // Sta je tijdens je zet (ook bij de eerste stap) met een schroevendraaier op een rooster, dan staat
 // in het energievak de knop "Kruip door de luchtschacht" — je mag ook gewoon verder lopen. Klik je
@@ -17306,6 +17373,9 @@ function soloHandleJumpClick(key){
   }
 }
 
+
+
+// ===== 97f-solo-beurt.js =====
 // ---------- dobbelen + lopen ----------
 function renderSoloDicePending(){
   diceRenderPending(soloPendingBoost ? 3 : 2, soloEnergyRoll);
@@ -18121,6 +18191,9 @@ function soloFinishRound(){
   soloRoundPos = 0;
   soloAdvanceLoop();
 }
+
+
+// ===== 97g-solo-einde.js =====
 // ---------- eindscherm (na afloop, gebruikerswens: groot venster i.p.v. het kleine
 // #walkStatus-regeltje alleen) ----------
 // Zelfde grootte/rand als het bord (.walk-endgame in styles.css) en vervangt het zichtbaar
@@ -18663,6 +18736,9 @@ function soloEndGame(stuck){
   for (const sel of walkSoloSetupEl ? walkSoloSetupEl.querySelectorAll('select') : []) sel.disabled = false;
 }
 
+
+
+// ===== 97h-solo-opening.js =====
 // ---------- begin van het potje: dobbelen wie begint, dan startposities kiezen ----------
 // Zelf spelen én Multiplayer (dat dezelfde motor gebruikt; alleen de host voert dit uit, gasten
 // tekenen het na uit de gedeelde stand, zie mpApplyState). Iedereen gooit met 2 dobbelstenen;

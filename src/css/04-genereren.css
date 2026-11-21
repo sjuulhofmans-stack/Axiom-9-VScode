@@ -1,0 +1,116 @@
+  /* ---------- layout ---------- */
+  .grid-layout{
+    display:grid; grid-template-columns: minmax(0,1fr) 290px; gap:22px;
+    min-width:0;
+  }
+  .right-col{display:flex; flex-direction:column; gap:22px; min-width:0;}
+  /* "Speelbord genereren": het bord in het midden van zijn vak (horizontaal én verticaal), en
+     het onderste vak rechts rekt mee tot de onderrand van het bordvak, zodat beide kolommen
+     gelijk eindigen (gebruikerswens) */
+  #tabMap > .grid-layout > .panel:first-child{display:flex; align-items:center; justify-content:center;}
+  #tabMap > .grid-layout > .panel:first-child > .board-zoom-wrap{max-width:100%;}
+  /* ---------- "Aan het genereren" (showGenOverlay in 80-controls.js) ----------
+     Tijdens het genereren én bij het openen: geen bord (visibility, dus het vak houdt zijn maat),
+     alleen een vakje in ruimtestijl: een planeet met een draaiende baan en een maantje. */
+  .map-board-panel{position:relative;}
+  /* Rustig in- en uitfaden (0,9 s, = GEN_FADE_MS in 80-controls.js): tijdens het genereren (en
+     bij "Vorige indeling", .is-swapping) faadt de kaart uit; het genereer-vakje faadt in. */
+  .map-board-panel > .board-zoom-wrap{transition:opacity .9s ease; will-change:opacity;}
+  .map-board-panel.is-generating > .board-zoom-wrap,
+  .map-board-panel.is-swapping > .board-zoom-wrap{opacity:0; pointer-events:none;}
+  .gen-overlay{
+    position:absolute; inset:0; display:flex; align-items:center; justify-content:center; z-index:3;
+    pointer-events:none; opacity:0; will-change:opacity;
+    visibility:hidden; transition:opacity .9s ease, visibility 0s linear .9s;   /* zie .sim-loader */
+  }
+  .map-board-panel.is-generating > .gen-overlay{opacity:1; visibility:visible; transition:opacity .9s ease, visibility 0s;}
+
+  /* ---------- "Sterrenbeeld" in het genereer-vakje (genNet in 80-controls.js) ----------
+     Gekozen variant 8 uit 8 (2026-10). .gen-net ligt precies over #board (JS zet left/top/width/
+     height); zonder meting staat hij gecentreerd. .gen-net-vis is het netwerk zelf: van begin tot eind
+     precies even groot als het bord (geen tekst eronder, geen zoom; gebruikerswens 2026-10), daarna
+     faadt de echte kaart erover in. ALLES alleen transform/opacity: de generator rekent in brokken
+     op dezelfde draad, alleen die animaties blijven dan vloeiend. Lijnen = een div die schaalt
+     (scaleX/scaleY), kleuren = lagen die in opacity wisselen. */
+  .gen-net{position:absolute; left:50%; top:50%; width:min(90%, 860px); aspect-ratio:5/4; translate:-50% -50%;}
+  .gen-net.is-placed{translate:none;}
+  .gen-net-vis{position:absolute; inset:0;}
+  .gen-net-tile{position:absolute; width:20%; height:25%;}
+  .gen-net-tile::before{content:''; position:absolute; inset:5%; border:1px solid rgba(79,184,224,.1); border-radius:3px;}
+  /* naad tussen twee sterren: .is-h van links naar rechts, .is-v van boven naar onder; .is-rev groeit
+     vanaf de andere kant. Lagen: .ok (blauw), .bad (rood: de solver spoort terug), .hot (wit: klaar) */
+  .gen-edge{position:absolute; will-change:transform; transition:transform .35s ease-out;}
+  .gen-edge.is-h{width:20%; height:3px; margin-top:-1.5px; transform:scaleX(0); transform-origin:0 50%;}
+  .gen-edge.is-v{height:25%; width:3px; margin-left:-1.5px; transform:scaleY(0); transform-origin:50% 0;}
+  .gen-edge.is-h.is-rev{transform-origin:100% 50%;}
+  .gen-edge.is-v.is-rev{transform-origin:50% 100%;}
+  .gen-edge.is-on{transform:none;}
+  .gen-edge.is-ghost{transform:none; transition:none; opacity:.14;}
+  .gen-edge > i{position:absolute; inset:0; border-radius:2px; background:#8fe0ff; opacity:.85;}
+  .gen-edge.is-ghost > i{background:var(--quest); opacity:1;}
+  .gen-edge > i.bad{background:var(--danger); opacity:0;}
+  .gen-edge > i.hot{background:#fff; opacity:0; transition:opacity .4s;}
+  .gen-edge.is-bad > i.bad{opacity:1;}
+  .gen-net.is-done .gen-edge > i.hot{opacity:1;}
+  /* ster: dof rondje; .is-on = blauw met een sonarping; bij klaar een golf vanaf Hibernatie
+     (--d = afstand) en per ster de kleur van de nieuwe kaart (.is-gang = paars) */
+  .gen-node{
+    position:absolute; width:2.8%; aspect-ratio:1; translate:-50% -50%; border-radius:50%;
+    background:#1d2a37; border:2px solid rgba(79,184,224,.35); will-change:transform;
+  }
+  .gen-node > i{position:absolute; inset:-2px; border-radius:50%; opacity:0;}
+  .gen-node > i.n-on{background:#8fe0ff; transition:opacity .3s; box-shadow:0 0 0 2px #fff, 0 0 12px #4fb8e0;}
+  .gen-node > i.n-gang{background:var(--actioncell-glow); transition:opacity .4s; transition-delay:var(--d, 0s); box-shadow:0 0 0 2px #fff, 0 0 12px var(--actioncell);}
+  .gen-node > i.n-ping{inset:-180%; border:2px solid #8fe0ff;}
+  .gen-node.is-on > i.n-on{opacity:1;}
+  .gen-node.is-on > i.n-ping{animation:genPing 1s ease-out;}
+  .gen-node.is-gang > i.n-gang{opacity:1;}
+  .gen-net.is-done .gen-node{animation:genWave .6s ease-out both; animation-delay:var(--d, 0s);}
+  @keyframes genPing{0%{transform:scale(.2); opacity:1;} 100%{transform:scale(1); opacity:0;}}
+  @keyframes genWave{0%{transform:scale(1);} 40%{transform:scale(2.3);} 100%{transform:scale(1);}}
+  /* terugzetten zonder dat je lijnen ziet terugschieten (genNet.start) */
+  .gen-net.is-reset, .gen-net.is-reset *{transition:none !important; animation:none !important;}
+  @media (prefers-reduced-motion: reduce){
+    .gen-net *{animation:none !important;}
+  }
+  @keyframes genDot{0%,100%{opacity:.15;} 40%{opacity:1;}}
+  .gen-sub{font-family:var(--font-mono); font-size:13px; letter-spacing:.12em; color:var(--text-dim);}
+  #tabMap .right-col > .panel:last-child{flex:1 1 auto;}
+  /* vaste hoogte voor "Geselecteerde tegel": een hoektegel heeft een extra regel ("Hoektegel —
+     vast") en duwde alles eronder dan omlaag (gebruikersmelding) */
+  #selectedBox{min-height:68px; box-sizing:border-box;}
+  /* rechterkolom een stuk breder (was vast 290px), groeit mee met het scherm */
+  @media (min-width: 881px){
+    #tabMap > .grid-layout{grid-template-columns:minmax(0,1fr) clamp(300px, 22vw, 420px);}
+  }
+  .gen-slot{display:grid; height:54px; overflow:hidden;}
+  /* "Genereer nieuwe map" en "Vorige indeling" even breed, samen precies zo breed als het
+     seed-veld erboven (gebruikerswens) */
+  #tabMap .btn-row.map-gen-row{display:grid; grid-template-columns:1fr 1fr; gap:8px;}
+  #tabMap .btn-row.map-gen-row > button{width:100%; min-width:0; white-space:nowrap; flex:none;}
+  @media (max-width: 1500px){
+    #tabMap .btn-row.map-gen-row > button{padding-left:6px; padding-right:6px;}
+    #tabMap .btn-row.map-gen-row > button:not(.primary){font-size:12.5px;}   /* blauw = altijd 13px */
+  }
+  /* "Genereer nieuwe map" in hoofdletters (blauwe knop) is langer dan "Vorige indeling": die krijgt
+     3/5 van de breedte en iets minder letterruimte, anders liep de tekst uit de knop (gemeten 1440×900) */
+  #tabMap .btn-row.map-gen-row{grid-template-columns:3fr 2fr;}
+  #tabMap .btn-row.map-gen-row > button.primary{letter-spacing:.04em;}
+  .gen-slot > *{grid-area:1 / 1; align-self:start; margin:0;}
+  @media (max-width: 880px){ .grid-layout{grid-template-columns:1fr;} }
+
+  .panel{
+    background:linear-gradient(180deg, var(--panel), var(--panel-2));
+    border:1px solid var(--line); border-radius:6px; padding:18px;
+    position:relative; min-width:0;
+  }
+  .panel::before{
+    content:''; position:absolute; top:0; left:14px; right:14px; height:1px;
+    background:linear-gradient(90deg,transparent,var(--amber-dim),transparent); opacity:.6;
+  }
+  .panel h2{
+    font-family:var(--font-mono); font-size:11px; letter-spacing:.2em; text-transform:uppercase;
+    color:var(--text-dim); margin:0 0 14px; display:flex; align-items:center; gap:8px;
+  }
+  .panel h2::after{content:'';flex:1;height:1px;background:var(--line);}
+

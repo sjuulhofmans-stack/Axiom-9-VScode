@@ -1,0 +1,105 @@
+  /* ---------- speelweergave: het potje over het hele scherm (gebruikerswens) ----------
+     Zolang er een potje in beeld is (Automatisch, Zelf spelen én Multiplayer) zet
+     walkPauseStopSyncVisibility() (96-walk.js) body.is-playing. De kop is dan HELEMAAL weg
+     (2026-11, gebruikerswens: "de volledige ruimte benutten"); alleen het menu bestaat nog. Aan de
+     linkerrand staat een smal lipje (#playEdge, 14px = de paginarand): muis ertegen = het menu
+     schuift uit óver het spel heen (body.play-menu-open, playMenuSetOpen in 80-controls.js), met de
+     tabbladen en daaronder de knoppen van het potje (Tempo/Pauze/Stoppen, Nieuw potje, Verlaat
+     potje). Het bord rekent met de vrijgekomen hoogte: zie --play-chrome bij --wcell verderop. */
+  .play-edge, .play-menu-head, .play-menu-actions, .play-menu-seed, .play-menu-backdrop{display:none !important;}
+  body.is-playing{padding:10px 14px;}
+  body.is-playing .wrap{max-width:none;}
+  /* kop weg, maar niet display:none: het menu (position:fixed) zit erin */
+  body.is-playing header{display:block; height:0; margin:0; padding:0;}
+  /* de scheidingslijn onder de kop (header::after) bleef bij een kop van hoogte 0 als losse lijn
+     bovenin het speelscherm staan (gebruikersmelding 2026-11) */
+  body.is-playing header::after{display:none;}
+  body.is-playing .title-block,
+  body.is-playing .header-right{display:none;}
+  /* het lipje: de hele linkerrand is de "voelstrook", in het midden een zichtbaar handvat */
+  body.is-playing .play-edge{
+    display:flex !important; align-items:center; position:fixed; top:0; bottom:0; left:0;
+    width:18px; z-index:92;
+  }
+  /* opvallender (gebruikerswens 2026-11): breder en hoger, blauwe rand + gloed, en een gloed die
+     rustig "ademt" (::after, alleen opacity — Prestatie in CLAUDE.md) */
+  .play-edge-btn{
+    position:relative;
+    display:flex; flex-direction:column; align-items:center; justify-content:center; gap:6px;
+    width:18px; height:120px; padding:0; margin:0;
+    border:1px solid color-mix(in srgb, var(--quest) 70%, transparent); border-left:none;
+    border-radius:0 10px 10px 0;
+    background:linear-gradient(90deg, color-mix(in srgb, var(--quest) 22%, var(--panel-2)), var(--panel-2));
+    box-shadow:4px 0 16px rgba(0,0,0,.45), 0 0 10px color-mix(in srgb, var(--quest) 35%, transparent);
+    transition:transform .35s ease, opacity .45s ease; will-change:transform;
+  }
+  .play-edge-btn::after{
+    content:''; position:absolute; inset:-1px -1px -1px 0; border-radius:inherit; pointer-events:none;
+    box-shadow:0 0 18px 2px color-mix(in srgb, var(--quest) 55%, transparent);
+    opacity:0; will-change:opacity; animation:playEdgeBreath 3.2s ease-in-out infinite;
+  }
+  @keyframes playEdgeBreath{ 0%,100%{opacity:0;} 50%{opacity:1;} }
+  .play-edge-btn i{
+    display:block; width:5px; height:5px; border-radius:50%; background:var(--quest);
+    box-shadow:0 0 6px var(--quest);
+  }
+  .play-edge:hover .play-edge-btn{transform:translateX(3px);}
+  body.play-menu-open .play-edge-btn{opacity:0;}
+  @media (prefers-reduced-motion: reduce){ .play-edge-btn::after{animation:none; opacity:.5;} }
+  /* het menu zelf: de tabbladenbalk, nu als paneel tegen de linkerrand */
+  body.is-playing header .tab-bar{
+    position:fixed; top:0; bottom:0; left:0; z-index:93; width:280px; overflow-y:auto;
+    flex-direction:column; align-items:stretch; justify-content:flex-start; gap:8px;
+    margin:0; padding:16px; border:none; border-right:1px solid var(--line);
+    background:var(--panel); box-shadow:10px 0 34px rgba(0,0,0,.55);
+    /* in- en uitschuiven: 0,65 s met een zachte uitloop (gebruikerswens 2026-11: "langzamer en
+       vloeiender"; was 0,25 en daarna 0,45 s) */
+    transform:translateX(-105%); visibility:hidden; will-change:transform;
+    transition:transform .65s cubic-bezier(.22, 1, .36, 1), visibility 0s linear .65s;
+  }
+  body.is-playing.play-menu-open header .tab-bar{
+    transform:none; visibility:visible;
+    transition:transform .65s cubic-bezier(.22, 1, .36, 1), visibility 0s;
+  }
+  /* de knoppen van het potje, onder de tabbladen */
+  body.is-playing .play-menu-actions{
+    display:flex !important; flex-direction:column; align-items:stretch; gap:8px;
+    margin-top:10px; padding-top:12px; border-top:1px solid var(--line-dim);
+  }
+  .play-menu-sub{
+    font-family:var(--font-mono); font-size:12px; letter-spacing:.2em; text-transform:uppercase;
+    color:var(--text-dim); margin-bottom:2px;
+  }
+  .play-menu-actions .tab-bar-tempo{margin:0; padding:4px 2px; justify-content:space-between;}
+  .play-menu-actions .tab-bar-tempo input[type=range]{width:140px;}
+  /* de knoppen van het potje (Nieuw potje, Pauze, ...) in precies dezelfde stijl als de tabbladen
+     erboven (gebruikerswens 2026-11) — zelfde regels als header .tab-btn + de speelweergave */
+  body.is-playing .play-menu-actions .tab-bar-action{
+    font-family:var(--font-mono); font-size:13px; letter-spacing:.14em; text-transform:uppercase;
+    text-align:left; padding:12px 16px; margin:0; color:var(--text-dim);
+    border:1px solid var(--line-dim); border-radius:6px; background:var(--panel-2);
+  }
+  body.is-playing .play-menu-actions .tab-bar-action:hover{color:var(--text); border-color:var(--line);}
+  @media (max-width: 1500px){
+    body.is-playing .play-menu-actions .tab-bar-action{font-size:12px; letter-spacing:.12em;}
+  }
+  /* het menu zelf: de tabbladenbalk, nu als paneel tegen de linkerrand */
+  body.is-playing header .tab-btn{text-align:left; padding:12px 16px;}
+  body.is-playing .play-menu-head{
+    display:flex !important; align-items:center; justify-content:space-between; margin-bottom:6px;
+    font-family:var(--font-mono); font-size:12px; letter-spacing:.2em; text-transform:uppercase; color:var(--text-dim);
+  }
+  body.is-playing .play-menu-seed{
+    display:block !important; margin-top:auto; padding-top:12px; border-top:1px solid var(--line-dim);
+    font-family:var(--font-mono); font-size:11.5px; color:var(--text-dim);
+  }
+  .play-menu-seed b{color:var(--start);}
+  /* donkere laag over het spel zolang het menu open is; klik erop = dicht. Staat tijdens een potje
+     altijd klaar en faadt alleen in opacity in/uit (gelijk met het menu), anders sprong hij er in
+     één keer (gebruikersmelding "erg plotseling"); dicht = onzichtbaar en niet klikbaar */
+  body.is-playing .play-menu-backdrop{
+    display:block !important; position:fixed; inset:0; z-index:90; background:rgba(3,6,10,.55);
+    opacity:0; pointer-events:none; will-change:opacity; transition:opacity .6s ease;
+  }
+  body.is-playing.play-menu-open .play-menu-backdrop{opacity:1; pointer-events:auto;}
+

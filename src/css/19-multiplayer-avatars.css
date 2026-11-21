@@ -1,0 +1,198 @@
+  /* ---------- multiplayer ---------- */
+  /* max-width was 360px — de multiplayer-lobby zat op een eigen losse tab met een brede
+     2-koloms indeling; nu leeft dit in dezelfde .walk-lobby-col als Automatisch/Zelf spelen
+     (gebruikerswens), dus geen eigen cap meer nodig — .walk-lobby-fields/.mp-room-info regelen
+     de breedte al. (.walk-lobby-col verbreedt zelf van 560px naar 920px zodra er een kamer +
+     chat is, zie .mp-room-layout hieronder en .walk-lobby-col:has(...) hierboven.) */
+  .mp-setup{display:flex; flex-direction:column; gap:14px; margin-top:14px;}
+  .mp-setup[hidden]{display:none;}
+  /* #mpHostForm: eigen wrapper om het instelformulier (naam/spelersaantal/bots + Aanmaken/
+     Terug) los van #mpHostRoom te kunnen verbergen zodra er eenmaal gehost wordt (zie
+     mpRenderLobby/mpHostCreateRoom in 99-multiplayer.js) — dezelfde kolom-opmaak als .mp-setup
+     hierboven, want dat leverden voorheen de fields/knoppenrij hun 14px-tussenruimte via de
+     ouder (#mpHostSetup zelf, .mp-setup); nu #mpHostForm daartussen zit moet die het zelf
+     overnemen. De [hidden]-regel is hier WEL nodig (eerder abusievelijk weggelaten, zie
+     .btn-row[hidden]/#walkSoloStartRow[hidden] verderop in dit bestand voor dezelfde categorie
+     bug): `display:flex` hierboven wint anders altijd van de standaard [hidden]-opmaak van de
+     browser (auteurs-CSS gaat vóór user-agent-CSS, ongeacht specificiteit) — zonder deze regel
+     bleef #mpHostForm dus gewoon zichtbaar met `hidden`, en duwde het "Spel starten"/"Spel
+     afbreken" verderop bleef weg (gebruikersmelding: "niet te zien en te lezen"). */
+  /* (#mpHostForm is sinds 2026-11 een .lobby-cards met drie kaarten, zie "DRIE KAARTEN") */
+  #mpHostForm[hidden]{display:none;}
+  #mpJoinWaiting[hidden]{display:none;}
+  .mp-room-code{
+    display:flex; align-items:center; gap:10px; margin:8px 0 16px;
+    background:var(--hull); border:1px solid var(--line-dim); border-radius:6px; padding:12px 16px;
+  }
+  .mp-room-code b{
+    font-family:var(--font-mono); font-size:22px; letter-spacing:.16em; color:var(--quest);
+  }
+  /* max-width was 360px, zelfde reden als .mp-setup hierboven — nu op volle kolombreedte,
+     zodat deze spelerskaartjes er via de gedeelde .walk-solo-setup-klasse identiek uitzien
+     als die van de solo-lobby (gebruikerswens: "net zo netjes als nu"). */
+  /* ---------- kamer (host én gast, .mp-room): deelcode, een vak per plek, knoppen onderaan ----------
+     De kamer vult de hele hoogte van de infokolom, zodat de knoppen onderaan (.mp-room-bottom)
+     precies gelijk liggen met de onderkant van de chat ernaast. */
+  #mpHostSetup:has(> #mpHostRoom:not([hidden])){flex:1 1 auto; min-height:0;}
+  .mp-room{display:flex; flex-direction:column; gap:12px; flex:1 1 auto; min-height:0;}
+  .mp-room[hidden]{display:none;}
+  .mp-room > .hint{margin:0;}
+  .mp-room .mp-room-code{margin:0; height:56px; box-sizing:border-box;}
+  .mp-seats{display:flex; flex-direction:column; gap:10px;}
+  .mp-seats:empty{display:none;}
+  /* plekken rekken mee in de vrije ruimte tot de knoppen (hele kolom gebruiken), tot 84px hoog
+     (was 120px; gebruikerswens: dunner) */
+  .mp-room .mp-seats{flex:1 1 auto; min-height:0;}
+  .mp-room .mp-seats > .mp-seat{flex:1 1 0; height:auto !important; min-height:46px; max-height:84px;}
+  .mp-room .mp-seats > .mp-seat .mp-seat-name{font-size:19px;}
+  .mp-room .mp-seats > .mp-seat.is-empty .mp-seat-name{font-size:16px;}
+  /* even groot en dik als het vak met de deelcode */
+  .mp-seat{
+    display:flex; align-items:center; gap:12px; height:56px; padding:0 16px; box-sizing:border-box;
+    background:var(--hull); border:1px solid var(--line-dim); border-left:3px solid var(--pc); border-radius:6px;
+  }
+  .mp-seat-dot{flex:none; width:11px; height:11px; border-radius:50%; background:var(--pc);}
+  .mp-seat-name{min-width:0; font-size:17px; font-weight:700; color:var(--pc); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+  .mp-seat-name i{font-style:normal; font-weight:400; color:var(--text-dim); font-size:14px;}
+  .mp-seat-tag{
+    margin-left:auto; flex:none; padding:3px 9px; border-radius:4px; border:1px solid var(--amber);
+    font-family:var(--font-mono); font-size:11px; letter-spacing:.12em; text-transform:uppercase; color:var(--amber);
+  }
+  .mp-seat.is-empty{border-left-color:var(--line); border-style:dashed; border-left-style:solid;}
+  .mp-seat.is-empty .mp-seat-dot{background:transparent; box-shadow:inset 0 0 0 1.5px var(--line);}
+  .mp-seat.is-empty .mp-seat-name{font-weight:400; font-size:15px; color:var(--text-dim);}
+  /* "Wachten op speler": letters faden één voor één van links naar rechts uit en weer in */
+  .mp-wave i{font-style:normal; display:inline-block; animation:mpWave 2.2s ease-in-out infinite; animation-delay:calc(var(--k) * 70ms);}
+  @keyframes mpWave{0%, 60%, 100%{opacity:1;} 30%{opacity:.12;}}
+  .mp-room-bottom{margin-top:auto; display:flex; flex-direction:column; gap:10px;}
+  .mp-room-bottom .walk-intro-toggle{margin:0;}
+  .mp-room-bottom .btn-row.mp-host-start-row{display:flex; flex-direction:column; gap:10px; margin:0;}
+  .mp-room-bottom .mp-host-start-row > button{width:100%; min-width:0; height:45px; padding:0 16px;}
+  /* lage schermen (laptop): alles iets compacter, anders vallen de knoppen onder de rand */
+  @media (max-height: 820px){
+    .mp-room{gap:8px;}
+    .mp-seats{gap:6px;}
+    .mp-room .mp-room-code, .mp-seat{height:46px;}
+    .mp-room .mp-room-code b{font-size:19px;}
+    .mp-seat-name{font-size:16px;}
+    .mp-room-bottom{gap:6px;}
+    .mp-room-bottom .mp-host-start-row{gap:6px !important;}
+    .mp-room-bottom .mp-host-start-row > button{height:40px;}
+  }
+  /* statusbalk van de gast: rustig zolang je wacht, oplichtend zodra je een herinnering kunt sturen */
+  .mp-wait-status{background:var(--hull); border:1px solid var(--line); color:var(--text-dim); cursor:var(--cur-normal);}
+  .mp-wait-status:disabled{opacity:1;}
+  .mp-wait-status.is-ready{cursor:var(--cur-click); color:#eafcff; border-color:var(--amber); background:rgba(255,181,69,.12);
+    box-shadow:0 0 10px rgba(255,181,69,.25);}
+  .mp-wait-status.is-ready:hover{background:rgba(255,181,69,.2);}
+
+  /* .mp-room-layout: 1 kolom zolang er geen kamer is (chat staat dan uit); met :has() (mag hier:
+     dit is de lobby, niet het speelscherm) vanzelf 2 kolommen zodra de chat
+     verschijnt — links alle host/deelnemen-informatie, rechts de chat (gebruikerswens: "geef
+     me terug de 2 kolommen, maar dan binnen de kolom die vast staat"). De informatiekolom staat
+     op een VASTE breedte (i.p.v. flexibel/1fr) — precies genoeg voor de spelerskaartjes, niet
+     breder — en blijft daardoor links staan i.p.v. zelf op te rekken; chat krijgt met 1fr al
+     het overige van de (nu 1160px brede, zie .walk-lobby-col hierboven) kolom, wat 'm van een
+     smal benard vakje naar écht breed brengt (gebruikersmelding). align-items:stretch is grid's
+     eigen standaard en laat de chatkolom daardoor automatisch even hoog worden als de
+     informatiekolom ernaast, zodat #mpChatPanel's berichtenvak (flex:1 hieronder) precies de
+     resterende ruimte vult i.p.v. zelf een hoogte te verzinnen. */
+  /* #walkMultiControls (de flex-kolom eromheen) en .mp-room-layout zelf moeten óók flex:1 +
+     min-height:0 krijgen, anders werkt geen enkele min-height/flex:1 verderop in de keten
+     (.mp-chat-log hieronder): zonder een DEFINITIEVE hoogte op elke tussenliggende schakel
+     valt een grid-rij met de standaard auto-hoogte terug op de natuurlijke (onbegrensde)
+     inhoud van zijn items — dus juist de chat, die als enige onbegrensd kan groeien — in
+     plaats van die inhoud netjes te begrenzen tot wat er past. Zonder deze regels werd de
+     hele kolom bij veel chatberichten alsnog groter dan de vaste hoogte hierboven en sneed
+     overflow-y:hidden het chat-typvak gewoon af (gebruikersmelding). */
+  /* alleen de volle hoogte innemen als er een kamer + chat is; daarvoor (alleen de twee
+     keuzeknoppen) gewoon zijn eigen hoogte, zodat hij in het midden van de lobby staat */
+  #walkMultiControls{flex:1 1 auto; min-height:0;}
+  .mp-room-layout{
+    display:grid; grid-template-columns:1fr; grid-template-rows:minmax(0,1fr); gap:16px;
+    flex:1; min-height:0;
+  }
+  /* kamer = 3 kolommen (gebruikerswens): links de plekken (smaller dan eerst), midden de 4
+     avatars + chat (gecentreerd), rechts de avatar-editor. De lobbykolom wordt daarvoor breder
+     dan de vaste 1160px (de modusknoppen staan in de kamer toch niet in beeld). */
+  /* in de kamer de hele kolom gebruiken (gebruikerswens): volle breedte, en de (onzichtbare)
+     ruimte van de modusknoppen, de bovenmarge en de lege startknop-rij weg, zodat alles
+     bovenaan begint en tot onderaan doorloopt */
+  .walk-lobby-col:has(#mpChatPanel:not([hidden])){max-width:none;}
+  #tabWalk.is-multi-tab .walk-lobby-col:has(#mpChatPanel:not([hidden])) .walk-mode-toggle,
+  .walk-lobby-col:has(#mpChatPanel:not([hidden])) > .walk-lobby-start-row{display:none;}
+  .walk-lobby-col:has(#mpChatPanel:not([hidden])) .walk-lobby-body{padding-top:0; padding-bottom:0;}
+  /* (de kolommen van de kamer staan nu bij #mpRoomLayout.is-room, blok "DE BRUG" onderaan) */
+  .mp-mid-col{display:flex; flex-direction:column; gap:14px; min-height:0; min-width:0;}
+  .mp-mid-col[hidden]{display:none;}
+  .mp-mid-col > .mp-chat-panel{flex:1 1 auto;}
+
+  /* ---------- avatars (98b-avatar.js) ---------- */
+  .mp-avatar-editor{display:flex; flex-direction:column; gap:14px; min-height:0; min-width:0; overflow:hidden;}
+  .mp-avatar-editor[hidden]{display:none;}
+  .av-tabs{display:grid; grid-template-columns:1fr 1fr; gap:8px;}
+  .av-tab{height:38px; background:var(--hull); border:1px solid var(--line); color:var(--text-dim);
+    font-weight:700; letter-spacing:.04em; cursor:var(--cur-click);}
+  .av-tab:hover{color:var(--text);}
+  .av-tab.active{color:#eafcff; border-color:var(--quest); background:rgba(79,184,224,.12);
+    box-shadow:0 0 10px rgba(79,184,224,.18);}
+  .av-tab.is-locked{opacity:.45; cursor:var(--cur-no);}
+  .av-tab.is-locked::before{content:'🔒 '; font-size:11px;}
+  /* de keuzevakjes rekken mee tot onderaan de editor (gebruikerswens: hele kolom gebruiken) —
+     karakters 2 per rij, brillen en hoedjes elk een blok van 3 per rij */
+  .av-grid{display:grid; gap:10px; flex:1 1 auto; min-height:0;}
+  .av-pick{
+    min-height:0; padding:8%; border-radius:8px; cursor:var(--cur-click);
+    background:var(--hull); border:1px solid var(--line-dim);
+    display:flex; align-items:center; justify-content:center;
+    transition:border-color .15s, background .15s, transform .15s;
+  }
+  .av-pick .av-svg{width:100%; height:100%;}
+  .av-pick:hover{border-color:var(--line); background:#111a24; transform:translateY(-1px);}
+  .av-pick.is-on{border-color:var(--start); background:rgba(85,214,138,.1);
+    box-shadow:0 0 0 1px var(--start), 0 0 12px rgba(85,214,138,.25);}
+  /* "Accessoires" aangeklikt zonder karakter: de karakters lichten even op */
+  .av-grid.av-nudge .av-pick{animation:avNudge .7s ease;}
+  @keyframes avNudge{0%,100%{border-color:var(--line-dim);} 35%{border-color:var(--amber); box-shadow:0 0 12px rgba(255,181,69,.4);}}
+  /* overflow-y:hidden, niet auto — ook de informatiekolom mag geen eigen scrollbalk krijgen
+     (gebruikerswens: alleen de chat mag scrollen). Bij normaal gebruik (max. 4 spelers) past
+     dit ruim binnen de vaste hoogte; mocht dat ooit toch niet zo zijn, dan verdwijnt het
+     teveel stil i.p.v. dat er een scrollbalk verschijnt. */
+  .mp-room-info{display:flex; flex-direction:column; gap:14px; min-width:0; min-height:0; overflow-y:hidden;}
+  .mp-chat-panel{display:flex; flex-direction:column; gap:10px; min-height:0;}
+  .mp-chat-panel[hidden]{display:none;}
+  .mp-chat-log{
+    /* flex:1 + min-height:0 laat 'm in de lobby (gestretchte kolom, zie .mp-layout hierboven)
+       precies de resterende ruimte vullen; max-height is de HARDE bovengrens die ook geldt in
+       het speelscherm (#mpChatPanelGame, in .walk-side-stack — daar is de kolom NIET gestretcht,
+       dus zonder deze cap zou het vak gewoon oneindig meegroeien met het aantal berichten
+       i.p.v. een scrollbalk te tonen). */
+    flex:1; min-height:0; max-height:520px; overflow-y:auto;
+    /* Als een tabel (gebruikerswens): kolom 1 = namen (zo breed als de langste naam, hoogstens
+       40%), kolom 2 = tekst. Een tweede regel tekst loopt zo netjes onder de tekst door i.p.v.
+       onder de naam. Alles op hele pixels (regelhoogte 20px i.p.v. 1.5 × 13 = 19,5px): halve
+       pixels lieten de regels bij het scrollen een fractie op en neer verspringen. */
+    display:grid; grid-template-columns:fit-content(40%) minmax(0, 1fr);
+    column-gap:10px; row-gap:6px; align-content:start;
+    background:var(--hull); border:1px solid var(--line-dim); border-radius:6px; padding:10px 12px;
+    font-family:var(--font-mono); font-size:13px; line-height:20px;
+  }
+  .mp-chat-log:empty::before{content:'Nog geen berichten.'; color:var(--text-dim); grid-column:1 / -1;}
+  /* thema-scrollbalk: nu overal in het document geregeld, zie de `*::-webkit-scrollbar-*`-
+     regels vlak na `html{scrollbar-gutter: stable;}` bovenaan dit bestand. */
+  .mp-chat-msg{display:contents;}
+  .mp-chat-msg > b{text-align:right; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+  .mp-chat-msg > span{overflow-wrap:anywhere; min-width:0;}
+  .mp-chat-msg.mp-chat-me > *{opacity:.82;}   /* display:contents: opacity op de rij zelf werkt niet */
+  .mp-chant{color:var(--quest); font-weight:700; letter-spacing:.02em;}
+  .mp-chat-form{display:flex; gap:8px;}
+  .mp-chat-form input[type=text]{
+    flex:1; min-width:0; background:var(--hull); border:1px solid var(--line);
+    color:var(--text); font-family:var(--font-mono); font-size:12.5px;
+    padding:8px 10px; border-radius:4px;
+  }
+  .mp-chat-form input[type=text]:focus{
+    border-color:var(--quest); box-shadow:0 0 0 2px color-mix(in srgb, var(--quest) 22%, transparent);
+  }
+  .mp-egg{color:var(--amber); font-weight:700; letter-spacing:.02em;}
+

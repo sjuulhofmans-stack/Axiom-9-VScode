@@ -1,0 +1,153 @@
+  /* ---------- header ---------- */
+  header{
+    display:flex; flex-wrap:wrap; align-items:flex-end; justify-content:space-between;
+    /* padding-bottom was 16px, margin-bottom 22px — zelfde reden als body hierboven. */
+    gap:16px; padding-bottom:10px; margin-bottom:14px;
+    /* Blijft altijd bovenin staan als je naar beneden scrolt (gebruikerswens; vooral bij
+       "Speelbord genereren" en "Speelkaarten"). De 14px bovenrand van <body> zit erin
+       (padding-top + negatieve margin), anders schoof de inhoud zichtbaar door dat randje
+       boven de kop heen. Dichte achtergrond zodat er niets doorheen schemert; z-index boven
+       het bord (max. 11) maar onder de pop-ups (100+). */
+    position:sticky; top:0; z-index:50;
+    margin-top:-14px; padding-top:14px;
+    background:var(--page-bg);
+    background-attachment:fixed;
+  }
+  /* de lijn onder de kop loopt over de hele schermbreedte, niet alleen over .wrap (max. 1600px)
+     (gebruikerswens 2026-10); html/body knippen horizontaal af, dus 100vw geeft geen schuifbalk */
+  header::after{
+    content:''; position:absolute; bottom:0; left:calc(50% - 50vw); width:100vw; height:1px;
+    background:var(--line); pointer-events:none;
+  }
+  .title-block{display:flex; align-items:center; gap:18px;}
+  /* was 84px — samen met de rest van de kop hierboven de grootste losse bijdrage aan de hoogte
+     vóór de tabbladen (gebruikersmelding "alles boven de tabbladen staat ver naar beneden");
+     60px is nog ruim leesbaar naast de titel. */
+  .logo{height:60px; width:auto; border-radius:3px; display:block;}
+  /* klik op het logo = pagina vernieuwen (80-controls.js) */
+  #logoReload{cursor:var(--cur-click); transition:filter .2s;}
+  #logoReload:hover{filter:brightness(1.15) drop-shadow(0 0 6px rgba(120,200,255,.35));}
+  #logoReload:focus-visible{outline:2px solid var(--line); outline-offset:3px;}
+  h1.spaced-title{
+    margin:0; font-family:var(--font-display); font-weight:700;
+    font-size:clamp(20px,3vw,30px); letter-spacing:.34em; line-height:1;
+    color:#eef3f8; text-transform:uppercase;
+  }
+  .status{
+    font-family:var(--font-mono); font-size:11.5px; color:var(--text-dim);
+    text-align:right; line-height:1.8;
+  }
+  .status b{color:var(--start);}
+  .dot{display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--start);
+       box-shadow:0 0 8px var(--start); margin-right:6px; animation:pulse 2.2s ease-in-out infinite;}
+  @keyframes pulse{0%,100%{opacity:1;} 50%{opacity:.35;}}
+
+  /* ---------- tabbladen ---------- */
+  /* margin-bottom was 22px — zelfde inkorting als body/header hierboven, voor meer ruimte op
+     "Stap voor stap" (gebruikersmelding). */
+  .tab-bar{display:flex; gap:4px; margin-bottom:14px; border-bottom:1px solid var(--line);}
+  /* Zonder nowrap brak "Stap voor stap" op een telefoon over drie regels en werd de hele balk
+     62px hoog met ongelijke knoppen. Passen ze niet, dan schuift de balk — het gebruikelijke
+     patroon voor tabbladen op mobiel — in plaats van de labels te verminken. */
+  .tab-btn{white-space:nowrap;}
+  .tab-btn{
+    font-family:var(--font-mono); font-size:12px; letter-spacing:.14em; text-transform:uppercase;
+    /* verticale padding was 11px, zelfde inkorting als hierboven. */
+    padding:8px 20px; background:transparent; border:1px solid transparent; border-bottom:none;
+    border-radius:6px 6px 0 0; color:var(--text-dim); margin-bottom:-1px;
+  }
+  .tab-btn:hover{color:var(--text); border-color:transparent;}
+  .tab-btn.active{
+    color:#eafcff; background:linear-gradient(180deg, var(--panel), var(--panel-2));
+    border-color:var(--line); box-shadow:0 -2px 0 0 var(--quest) inset;
+  }
+  .tab-panel[hidden]{display:none;}
+  /* zolang een multiplayer-potje loopt (zie switchTab-guard in 80-controls.js) zijn de andere
+     tabbladen niet aanklikbaar — visueel gedimd zodat dat ook zonder klikken duidelijk is */
+  .tab-bar.mp-locked .tab-btn:not([data-tab="multi"]){opacity:.35; pointer-events:none;}
+  /* tijdens het genereren van een kaart (genLockTabs in 80-controls.js): Simulatie/Spelen/Multiplayer
+     disabled; rustig uit- en weer infaden (0,9 s = GEN_FADE_MS) */
+  .tab-btn{transition:opacity .9s ease;}
+  .tab-btn:disabled{opacity:.3; pointer-events:none; cursor:var(--cur-normal);}
+  /* "Nieuw potje" (#btnWalkSoloReset) — margin-left:auto duwt 'm helemaal naar rechts in
+     dezelfde balk als de tabbladen, los van hoeveel tabbladen ervoor staan. align-self:center
+     + eigen margin i.p.v. .tab-btn's padding/margin-bottom: dit is geen tabblad en moet niet
+     de onderrand-illusie van de tabs meedoen (gebruikerswens: rechtsboven, niet nog een tab). */
+  /* Pauze/Stoppen (Automatisch) zitten sinds kort in dezelfde groep. Letterstijl = die van
+     .tab-btn, en .tab-bar staat op align-items:baseline zodat de knoptekst op exact dezelfde
+     lijn staat als de tabtekst; de knop zelf is lager dan een tab en blijft zo los van de
+     onderrand (voorheen: ander lettertype, align-self:center, hing over de lijn = "scheef"). */
+  .tab-bar{align-items:baseline;}
+  /* sinds 2026-11 staan deze knoppen in het uitschuifmenu (#playMenuActions), zie speelweergave */
+  .tab-bar-action{
+    font-family:var(--font-mono); font-size:12px; letter-spacing:.14em; text-transform:uppercase;
+    padding:10px 16px; border-radius:6px; white-space:nowrap; text-align:left;
+  }
+  /* tempo-schuif tijdens Automatisch (zie #walkSpeedPlay in index.html) */
+  .tab-bar-tempo{
+    display:flex; align-items:center; gap:8px; margin-right:6px;
+    font-family:var(--font-mono); font-size:12px; letter-spacing:.14em; text-transform:uppercase;
+    color:var(--text-dim); white-space:nowrap;
+  }
+  .tab-bar-tempo[hidden]{display:none;}
+
+  /* Kop = drie duidelijke kolommen, gescheiden door een verticale lijn (gebruikerswens):
+     links logo + "MAP GENERATOR", midden de tabbladen, rechts spelknoppen + status. Links en
+     rechts zijn ALTIJD even breed (beide minmax(0,1fr)), dus de middelste kolom staat precies in
+     het midden van de pagina en verschuift niet meer als er tijdens een potje knoppen rechts bij
+     komen (gebruikersmelding). Alles staat verticaal gecentreerd, dus de tabbladen op dezelfde
+     hoogte als de titel en de Pauze/Tempo-knoppen. Tijdens een potje maakt de status ("systeem
+     actief / seed") plaats voor de spelknoppen, zodat die rechterkolom niet te breed wordt. */
+  header{
+    display:grid; grid-template-columns:minmax(0, 1fr) auto minmax(0, 1fr); align-items:stretch;
+    gap:0; padding-bottom:12px;
+  }
+  header > *{display:flex; align-items:center; min-width:0;}
+  .title-block{flex-direction:row; gap:18px; padding-right:28px; justify-content:flex-start;}
+  .logo{height:64px;}
+  h1.spaced-title{font-size:18px; letter-spacing:.3em; white-space:nowrap;}
+  header .tab-bar{
+    /* align-items:center expliciet: de algemene .tab-bar staat op baseline, en dan hingen de
+       tabbladen bovenin de kop i.p.v. op één lijn met het midden van het logo */
+    justify-content:center; align-items:center; margin:0; padding:0 28px; border-bottom:none; gap:6px;
+    border-left:1px solid var(--line); border-right:1px solid var(--line);
+  }
+  .header-right{justify-content:flex-end; gap:18px; padding-left:28px;}
+  /* tabbladen: losse, wat grotere knoppen i.p.v. "tabjes" die aan de lijn eronder hingen */
+  header .tab-btn{
+    font-size:13px; letter-spacing:.14em; padding:11px 20px; margin:0;
+    border:1px solid var(--line-dim); border-radius:6px; background:var(--panel-2);
+  }
+  header .tab-btn:hover{color:var(--text); border-color:var(--line);}
+  header .tab-btn.active{
+    color:#eafcff; border-color:var(--quest);
+    background:linear-gradient(180deg, color-mix(in srgb, var(--quest) 18%, var(--panel)), var(--panel-2));
+    box-shadow:0 0 12px color-mix(in srgb, var(--quest) 30%, transparent);
+  }
+  /* laptopbreedte: alles in de kop iets compacter, anders liep "MAP GENERATOR" in de
+     tabbladenkolom (zichtbaar op 1366px) */
+  @media (max-width: 1500px){
+    .logo{height:52px;}
+    h1.spaced-title{font-size:15px; letter-spacing:.22em;}
+    .title-block{gap:14px; padding-right:20px;}
+    header .tab-bar{padding:0 20px; gap:5px;}
+    header .tab-btn{padding:10px 14px; font-size:12px; letter-spacing:.12em;}
+    .header-right{padding-left:20px;}
+  }
+  /* smal scherm: logo/titel en status op de eerste regel, tabbladen eronder over de hele breedte */
+  /* 1300 (was 1200): met vijf tabbladen raakte de titel ze daaronder net */
+  @media (max-width: 1300px){
+    header{grid-template-columns:minmax(0, 1fr) auto; row-gap:12px;}
+    header .tab-bar{grid-column:1 / -1; order:3; border:none; padding:0; justify-content:safe center;}
+    .header-right{order:2;}
+  }
+  /* telefoon: geen ruimte voor de (puur decoratieve) status naast logo + titel */
+  @media (max-width: 600px){
+    .header-right .status{display:none;}
+    .header-right{padding-left:10px;}
+    .title-block{padding-right:0; gap:10px;}
+    .logo{height:44px;}
+    h1.spaced-title{font-size:13px; letter-spacing:.16em; white-space:normal;}
+  }
+  .tab-bar-tempo input[type=range]{width:110px;}
+

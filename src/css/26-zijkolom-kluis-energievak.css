@@ -1,0 +1,277 @@
+  /* ---------- ZIJKOLOM: TABBLADEN ENERGIE | KLUIS (gekozen variant C, artifact "Axiom-9
+     Kluisvarianten", 2026-11) ----------
+     Zodra de kluis er staat (.has-vault, crystalSyncStack in 96c-crystals.js) staan onder het
+     dobbelvak twee tabbladen. Elk tabblad krijgt de hele rest van de kolom: het energievak heeft
+     daardoor ook op een laptop weer ruimte voor de uitlegregel, en de kluis staat groot en rechtop.
+     De kolom zelf houdt zijn vaste hoogte (even hoog als het bord), dus niets verschuift bij het
+     wisselen. Pulsen alleen in opacity (prestatieregels). */
+  .walk-side-tabs{display:none;}
+  .walk-side-stack.has-vault > .walk-side-tabs{
+    display:grid; grid-template-columns:1fr 1fr; gap:4px; flex:none;
+    padding:4px; border-radius:10px; background:var(--panel-2);
+  }
+  .walk-side-tab{
+    position:relative; display:flex; align-items:center; justify-content:center; gap:8px;
+    margin:0; padding:7px 8px; border:0; border-radius:7px; background:none; color:var(--text-dim);
+    font:700 13px/1.2 var(--font-display); letter-spacing:.1em; text-transform:uppercase;
+    cursor:var(--cur-click); -webkit-user-select:none; user-select:none;
+  }
+  .walk-side-tab b{font:500 12px/1 var(--font-mono); letter-spacing:.02em; color:var(--actioncell); font-variant-numeric:tabular-nums;}
+  .walk-side-tab:hover{color:var(--text);}
+  .walk-side-tab[aria-selected="true"]{background:var(--panel-3, #1d2733); color:#fff; box-shadow:inset 0 0 0 1px var(--line);}
+  .walk-side-tab:focus-visible{outline:2px solid #fff; outline-offset:2px;}
+  /* "je kunt nu een kristal spelen": een vaste paarse rand die alleen in opacity pulst, zelfde ritme
+     als de kluis (crystalPulse); alleen als het tabblad Energie open staat */
+  .walk-side-tab-glow{
+    position:absolute; inset:0; border-radius:inherit; pointer-events:none; opacity:0; will-change:opacity;
+    box-shadow:inset 0 0 0 1.5px var(--actioncell), 0 0 14px color-mix(in srgb, var(--actioncell) 35%, transparent);
+  }
+  .walk-side-stack.tab-energy #walkTabVault.can .walk-side-tab-glow{animation:crystalPulse 1.9s ease-in-out infinite;}
+  #tabWalk.walk-is-paused #walkTabVault .walk-side-tab-glow{animation-play-state:paused;}
+  /* oprapen terwijl Energie open staat: het kristal vliegt naar het tabblad, dat kort oplicht; kluis
+     vol = rode rand (het schudden is de Web Animation in crystalFxFull) */
+  #walkTabVault::after{
+    content:""; position:absolute; inset:0; border-radius:inherit; pointer-events:none; opacity:0;
+    transition:opacity 1.2s; will-change:opacity; box-shadow:inset 0 0 0 1.5px var(--actioncell);
+  }
+  #walkTabVault.is-glow::after{opacity:1; transition-duration:.3s;}
+  #walkTabVault.is-full::after{opacity:1; transition-duration:.2s; box-shadow:inset 0 0 0 1.5px var(--danger);}
+  /* de tabbalk vervangt de "of"-regels */
+  .walk-side-stack.has-vault > .walk-or-sep{display:none !important;}
+  .walk-side-stack.tab-energy > #walkCardVault,
+  .walk-side-stack.tab-vault > #walkSoloPanel{display:none !important;}
+  /* het open tabblad vult de kolom (basis = inhoud, dus onder 1360px breed, waar de kolom geen vaste
+     hoogte heeft, is hij gewoon zo hoog als zijn inhoud) */
+  .walk-side-stack.has-vault > #walkSoloPanel{height:auto; flex:1 1 auto; min-height:0;}
+  /* ---------- KLUIS "EEN KAART" MET ZIJRAIL (gekozen 2026-11: variant 3+, artifact "Axiom-9 Energie en
+     kluis") ----------
+     Links de rail: drie vakjes van gelijke hoogte met elk een klein kristal (alleen het icoon), kader
+     rondom het gekozen; daaronder het schroevendraaier-vakje met de tekst erboven (klikbaar).
+     Rechts: het gekozen kristal groot (icoon + naam), dat een stukje in het uitlegvak steekt; het vak
+     heeft een rand en zweem in de kleur van de soort (--tint van .crystal-card). Daaronder de reden
+     en Gebruik/Afleggen, even breed als het vak. ALLES VASTE MATEN (gebruikerswens): uitlegvak, reden
+     en knoppen hebben een vaste hoogte, het kristal krijgt de rest; wisselen van kristal, de
+     schroevendraaier kiezen of een kristal erbij krijgen verschuift niets. Gemeten: zie CLAUDE.md. */
+  .walk-side-stack.has-vault > #walkCardVault{
+    flex:1 1 auto; min-height:0; margin-top:0;
+    display:flex; flex-direction:row; align-items:stretch; justify-content:flex-start; gap:12px;
+    padding:8px 12px 12px;
+  }
+  .walk-side-stack.has-vault #walkCardVault .crystal-vault-rail{
+    flex:none; width:76px; display:flex; flex-direction:column; align-items:center; gap:8px;
+    padding:8px 0; border-radius:10px; background:var(--panel-2);
+  }
+  .walk-side-stack.has-vault #walkCardVault .crystal-rail{flex:1 1 auto; min-height:0; width:100%; display:flex; flex-direction:column; gap:8px; padding:0;}
+  .crystal-slot{flex:1 1 0; min-height:0; display:grid; place-items:center;}
+  .walk-side-stack.has-vault #walkCardVault .crystal-rail .crystal{--w:50px;}
+  .crystal-rail-sep{flex:none; width:60%; height:1px; background:var(--line);}
+  .crystal-tool{flex:none; display:flex; flex-direction:column; align-items:center; gap:4px;}
+  .crystal-tool-label{font:700 10.5px/1.05 var(--font-display); letter-spacing:.04em; text-transform:uppercase; text-align:center; color:var(--text-dim);}
+  .crystal-tool-label.is-on{color:#ffb27a;}
+  #walkCardVault .crystal-tool-slot{
+    width:58px; height:58px; padding:0; margin:0; display:grid; place-items:center; border-radius:12px;
+    background:none; border:2px dashed #3a4858; box-shadow:none; cursor:var(--cur-click); transition:none;
+  }
+  #walkCardVault .crystal-tool-slot svg{width:44px; height:44px; display:block;}
+  #walkCardVault .crystal-tool-slot:not(.is-on) svg{opacity:.55;}
+  #walkCardVault .crystal-tool-slot.is-on{
+    border:2px solid #ffb27a; box-shadow:0 0 14px rgba(224,145,92,.45);
+    background:radial-gradient(circle at 50% 45%, rgba(255,178,122,.28), rgba(224,145,92,.10) 70%);
+  }
+  #walkCardVault .crystal-tool-slot.is-picked{box-shadow:0 0 0 2px var(--panel-2), 0 0 0 4px #ffb27a, 0 0 16px rgba(224,145,92,.5);}
+  #walkCardVault .crystal-tool-slot:not(.is-on).is-picked{box-shadow:0 0 0 2px var(--panel-2), 0 0 0 4px var(--text-dim);}
+  #walkCardVault .crystal-tool-slot:focus-visible{outline:2px solid #fff; outline-offset:5px;}
+  .walk-side-stack.has-vault #walkCardVault .crystal-vault-side{flex:1 1 auto; min-width:0; align-self:stretch; display:flex; flex-direction:column; gap:8px; justify-content:flex-start;}
+  .crystal-card{flex:1 1 auto; min-height:0; display:flex; flex-direction:column; --tint:#34414f;}
+  /* .crystal-card ervoor: moet winnen van de grijze standaard hierboven */
+  .crystal-card.crystal--amber{--tint:var(--crystal-amber);}
+  .crystal-card.crystal--start{--tint:var(--crystal-start);}
+  .crystal-card.crystal--quest{--tint:var(--crystal-quest);}
+  .crystal-card.crystal--danger{--tint:var(--crystal-danger);}
+  .crystal-card.crystal--tool{--tint:#e0915c;}
+  .crystal-card.crystal--empty{--tint:#34414f;}
+  /* kan nu niet: groot gewoon in kleur (de reden staat eronder); in de rail alleen het kristal zelf
+     gedimd, niet het kader eromheen */
+  #walkCardVault .crystal-vault-focus .crystal.is-locked{opacity:1; filter:none;}
+  #walkCardVault .crystal-rail .crystal.is-locked{opacity:1; filter:none;}
+  #walkCardVault .crystal-rail .crystal.is-locked > .crystal-shape,
+  #walkCardVault .crystal-rail .crystal.is-locked > .crystal-layer{opacity:.55;}
+  #walkCardVault .crystal-vault-focus{
+    flex:1 1 auto; min-height:120px; display:flex; justify-content:center; align-items:stretch;
+    position:relative; z-index:1; margin-bottom:-22px; padding-top:4px;
+  }
+  #walkCardVault .crystal-vault-focus .crystal{--w:auto; width:auto; height:100%; max-width:100%; container-type:normal;}
+  .crystal-info{
+    flex:none; height:140px; border-radius:9px; overflow:hidden; padding-top:18px;
+    background:linear-gradient(180deg, color-mix(in srgb, var(--tint) 12%, var(--panel-2)), var(--panel-2) 60%);
+    box-shadow:inset 0 2px 0 var(--tint);
+  }
+  .crystal-info-grid{display:grid; grid-template-columns:112px minmax(0,1fr); height:100%;}
+  .crystal-info-grid.is-single{grid-template-columns:minmax(0,1fr);}
+  .crystal-info-meta{display:flex; flex-direction:column; gap:10px; padding:10px 12px; overflow:hidden; border-right:1px solid color-mix(in srgb, var(--tint) 30%, var(--line));}
+  .crystal-info-k{display:flex; flex-direction:column; gap:3px;}
+  .crystal-info-k i{font:400 10px/1.2 var(--font-mono); font-style:normal; letter-spacing:.12em; text-transform:uppercase; color:var(--text-dim);}
+  .crystal-info-k b{font:700 14px/1.15 var(--font-display); letter-spacing:.03em; color:#fff;}
+  .crystal-info-k b.is-cat{color:var(--tint); text-transform:uppercase; letter-spacing:.1em;}
+  .crystal-info-text{padding:10px 12px; overflow:hidden;}
+  .crystal-info-grid.is-single .crystal-info-text{display:flex; align-items:center;}
+  .crystal-info-text p{margin:0; font:400 14.5px/1.38 var(--font-display); letter-spacing:.01em; color:var(--text);}
+  /* de schroevendraaier groot op de plek van het kristal */
+  /* padding-bottom = het stuk dat onder het uitlegvak valt (margin-bottom van .crystal-vault-focus) */
+  .crystal-toolbig{height:100%; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:10px; padding-bottom:26px; box-sizing:border-box;}
+  .crystal-toolbig-box{
+    height:68%; aspect-ratio:1; max-width:100%; border-radius:22%; display:grid; place-items:center;
+    background:radial-gradient(circle at 50% 45%, rgba(255,178,122,.26), rgba(224,145,92,.08) 72%);
+    border:3px solid #ffb27a; box-shadow:0 0 26px rgba(224,145,92,.35);
+  }
+  .crystal-toolbig-box svg{width:72%; height:72%; display:block;}
+  .crystal-toolbig-name{font:700 24px/1 var(--font-display); letter-spacing:.06em; text-transform:uppercase; color:#ffb27a;}
+  .crystal-toolbig.is-off .crystal-toolbig-box{background:none; border:3px dashed #3a4858; box-shadow:none;}
+  .crystal-toolbig.is-off svg{opacity:.55;}
+  .crystal-toolbig.is-off .crystal-toolbig-name{color:var(--text-dim);}
+  .walk-side-stack.has-vault #walkCardVault .crystal-vault-why{
+    flex:none; height:36px; margin:0; font:600 14px/18px var(--font-display); letter-spacing:.02em;
+    text-align:center; -webkit-line-clamp:2; line-clamp:2;
+  }
+  .walk-side-stack.has-vault #walkCardVault .crystal-vault-btns{flex:none; display:grid; grid-template-columns:1fr 1fr; gap:10px;}
+  .walk-side-stack.has-vault #walkCardVault .crystal-vault-btns button{width:100%; height:36px; min-width:0; margin:0; padding-inline:4px;}
+  /* laptop en lagere schermen: kleiner, zelfde opbouw (reden op 2 regels: daar is hij smaller) */
+  @media (max-height: 865px), (max-width: 1630px){
+    .walk-side-stack.has-vault > #walkCardVault{gap:10px;}
+    .walk-side-stack.has-vault #walkCardVault .crystal-vault-rail{width:60px; gap:6px; padding:6px 0;}
+    .walk-side-stack.has-vault #walkCardVault .crystal-rail{gap:6px;}
+    .walk-side-stack.has-vault #walkCardVault .crystal-rail .crystal{--w:38px;}
+    .crystal-tool-label{font-size:9.5px; letter-spacing:.02em;}
+    #walkCardVault .crystal-tool-slot{width:46px; height:46px; border-radius:10px;}
+    #walkCardVault .crystal-tool-slot svg{width:35px; height:35px;}
+    .walk-side-stack.has-vault #walkCardVault .crystal-vault-side{gap:6px;}
+    #walkCardVault .crystal-vault-focus{margin-bottom:-16px;}
+    .crystal-info{height:150px; padding-top:12px;}
+    .crystal-info-grid{grid-template-columns:84px minmax(0,1fr);}
+    .crystal-info-meta{padding:8px 9px; gap:7px;}
+    .crystal-info-k i{font-size:9px; letter-spacing:.08em;}
+    .crystal-info-k b{font-size:12.5px;}
+    .crystal-info-k b.is-cat{letter-spacing:.03em;}
+    .crystal-info-text{padding:8px 10px;}
+    .crystal-info-text p{font-size:13px; line-height:1.32;}
+    .crystal-toolbig{gap:6px; padding-bottom:20px;}
+    .crystal-toolbig-box{height:62%;}
+    .crystal-toolbig-name{font-size:18px;}
+    .walk-side-stack.has-vault #walkCardVault .crystal-vault-why{height:32px; font-size:12.5px; line-height:16px;}
+    .walk-side-stack.has-vault #walkCardVault .crystal-vault-btns button{height:32px;}
+  }
+  /* "Kristallen 3 / 3" staat al op het tabblad */
+  .walk-side-stack.has-vault #walkCardVault .crystal-vault-head{display:none;}
+  /* ENERGIEVAK UITGEREKT (gebruikerswens 2026-11): sinds de kluis een eigen tabblad is, vult de lijst
+     met energie-acties de hele rest van de kolom. Elke rij groeit even hard mee (flex:1), met een
+     plafond zodat een paar rijen geen enorme knoppen worden. Alleen
+     opmaak, geen animatie (prestatieregels). */
+  .walk-side-stack.has-vault #walkSoloPanel > .walk-solo-actions:not(:empty){
+    flex:1 1 auto; min-height:0; display:flex; flex-direction:column; flex-wrap:nowrap; gap:8px;
+  }
+  .walk-side-stack.has-vault #walkSoloPanel > .walk-solo-actions > .energy-pick-list.is-actions{flex:1 1 auto; min-height:0;}
+  .walk-side-stack.has-vault #walkSoloPanel > .walk-solo-actions > .energy-pick-list.is-actions > .energy-pick{flex:1 1 0; max-height:76px;}
+  .walk-side-stack.has-vault #walkSoloPanel > .walk-solo-actions > .energy-pick-list.is-actions > .energy-pick .energy-pick-text span{white-space:normal;}
+  /* laptop: met een eigen tabblad is er weer ruimte voor de uitlegregel bij elke energie-actie */
+  @media (max-height: 865px), (max-width: 1630px){
+    .walk-side-stack.has-vault #walkSoloPanel{gap:8px;}
+    .walk-side-stack.has-vault #walkSoloPanel .energy-pick-list.is-actions{gap:4px;}
+    .walk-side-stack.has-vault #walkSoloPanel .energy-pick-list.is-actions .energy-pick{min-height:36px; padding:2px 10px 2px 4px;}
+    .walk-side-stack.has-vault #walkSoloPanel .energy-pick-list.is-actions .energy-pick-icon{width:26px; height:26px;}
+    .walk-side-stack.has-vault #walkSoloPanel .energy-pick-list.is-actions .energy-pick-icon svg{width:16px; height:16px;}
+    .walk-side-stack.has-vault #walkSoloPanel .energy-pick-list.is-actions .energy-pick-text span{display:block;}
+  }
+
+  /* ---------- ENERGIEVAK: STAANDE METER + UITLEGVAK (gekozen 2026-11: variant 3 "Staande meter" met
+     het uitlegvak van variant 6, artifact "Axiom-9 Energie en kluis") ----------
+     Alleen met de tabbladen (.has-vault). Links staat het stroomcircuit rechtop (knooppunt 1 onderaan,
+     het getal erboven, het bliksempje eronder), rechts de acties als korte rijen (icoon, naam, prijs)
+     en onderaan het uitlegvak (soloEnergyNoteHtml in 97-solo.js). Het circuit blijft hetzelfde
+     element met dezelfde animaties; alleen de richting is om: leidingstukjes groeien met scaleY van
+     onder naar boven, het lichtpakketje loopt met translateY omhoog (ecPacketUp). --nd = maat van een
+     knooppunt. Gemeten: zie CLAUDE.md. */
+  .walk-side-stack.has-vault > #walkSoloPanel:not([hidden]){
+    display:grid; grid-template-columns:auto minmax(0, 1fr); grid-template-rows:minmax(0, 1fr);
+    column-gap:14px; row-gap:0; padding-top:10px;
+  }
+  .walk-side-stack.has-vault #walkSoloPanel > .walk-energy-overview{
+    --nd:20px;
+    grid-column:1; grid-row:1; width:58px; min-height:0;
+    flex-direction:column-reverse; align-items:center; justify-content:flex-start; gap:10px;
+    padding:2px 0 0; border-bottom:0;
+  }
+  .walk-side-stack.has-vault #walkSoloPanel > .walk-solo-actions{grid-column:2; grid-row:1; min-width:0;}
+  .walk-side-stack.has-vault #walkSoloPanel > .mp-wait-turn{grid-column:2; grid-row:1; align-self:start;}
+  /* getal boven de meter: groot cijfer en "/ 10" NAAST elkaar op één lijn (gebruikerswens 2026-11: ze
+     stonden onder elkaar), en precies gecentreerd boven de lijn van de meter (tweede melding: "niet
+     netjes gecentreerd"). Dus GEEN vaste breedte voor het cijfer: die liet bij 1–9 een leeg stuk links
+     staan en schoof de zichtbare tekst naar rechts. De kolom is iets breder (76px, laptop 66px) zodat
+     "10 / 10" past. */
+  .walk-side-stack.has-vault #walkSoloPanel > .walk-energy-overview{width:76px;}
+  .walk-side-stack.has-vault #walkSoloPanel .walk-energy-overview .walk-energy-value{
+    width:auto; flex-direction:row; align-items:baseline; justify-content:center; gap:3px;
+    font-size:12px; letter-spacing:.02em; white-space:nowrap;
+  }
+  .walk-side-stack.has-vault #walkSoloPanel .walk-energy-overview .walk-energy-value b{
+    font:700 26px/1 var(--font-display); min-width:0; text-align:center; letter-spacing:0;
+  }
+  .walk-side-stack.has-vault #walkSoloPanel .walk-energy-overview.is-full .walk-energy-value b{color:var(--amber);}
+  .walk-side-stack.has-vault #walkSoloPanel .walk-energy-cells{
+    flex:1 1 auto; width:var(--nd); height:auto; min-height:120px; align-self:center;
+    flex-direction:column-reverse; align-items:center;
+  }
+  .walk-side-stack.has-vault #walkSoloPanel .ec-node{width:var(--nd); height:var(--nd);}
+  .walk-side-stack.has-vault #walkSoloPanel .ec-seg{
+    top:auto; left:calc(var(--nd) / 2 - 1.5px); width:3px;
+    bottom:calc(var(--nd) / 2 + (100% - var(--nd)) * var(--k) / 9); height:calc((100% - var(--nd)) / 9);
+  }
+  .walk-side-stack.has-vault #walkSoloPanel .ec-seg i{transform:scaleY(0); transform-origin:center bottom;}
+  .walk-side-stack.has-vault #walkSoloPanel .ec-seg.is-lit i{transform:none;}
+  .walk-side-stack.has-vault #walkSoloPanel .ec-track{left:0; right:auto; width:var(--nd); top:var(--nd); bottom:0; height:auto;}
+  .walk-side-stack.has-vault #walkSoloPanel .ec-track i{left:1px; top:auto; bottom:1px; width:calc(var(--nd) - 2px); height:calc(var(--nd) - 2px);}
+  .walk-side-stack.has-vault #walkSoloPanel .walk-energy-cells.has-flow .ec-track{animation-name:ecPacketUp;}
+  @keyframes ecPacketUp{
+    0%{transform:translateY(0); opacity:0;} 8%{transform:translateY(0); opacity:1;}
+    55%{transform:translateY(calc(-1 * var(--dist))); opacity:1;} 63%,100%{transform:translateY(calc(-1 * var(--dist))); opacity:0;}
+  }
+  /* de rijen: icoon, naam, prijs (de uitleg staat in het vak eronder) */
+  .walk-side-stack.has-vault #walkSoloPanel .walk-solo-actions:not(:empty){gap:8px;}
+  .walk-side-stack.has-vault #walkSoloPanel .energy-pick-list.is-energy{gap:6px;}
+  .walk-side-stack.has-vault #walkSoloPanel .energy-pick-list.is-energy > .energy-pick{
+    min-height:30px; max-height:62px; gap:12px; padding:4px 12px 4px 5px;
+  }
+  .walk-side-stack.has-vault #walkSoloPanel .energy-pick-list.is-energy .energy-pick-icon{width:38px; height:38px; border-radius:7px;}
+  .walk-side-stack.has-vault #walkSoloPanel .energy-pick-list.is-energy .energy-pick-icon svg{width:22px; height:22px;}
+  .walk-side-stack.has-vault #walkSoloPanel .energy-pick-list.is-energy .energy-pick-text b{font-size:18px; letter-spacing:.03em;}
+  .walk-side-stack.has-vault #walkSoloPanel .energy-pick-list.is-energy .energy-pick-text span{display:none;}
+  .walk-side-stack.has-vault #walkSoloPanel .energy-pick-list.is-energy .energy-pick-price{font-size:23px;}
+  .walk-side-stack.has-vault #walkSoloPanel .energy-pick-list.is-energy .energy-pick.is-noted:not(.is-disabled){box-shadow:inset 3px 0 0 var(--start);}
+  .walk-side-stack.has-vault #walkSoloPanel .energy-pick-list.is-energy .energy-pick.is-noted.is-disabled{box-shadow:inset 3px 0 0 var(--line);}
+  .energy-note{display:none;}
+  .walk-side-stack.has-vault #walkSoloPanel .energy-note{
+    display:flex; flex-direction:column; gap:5px; flex:none; height:var(--note-h, 112px); overflow:hidden;
+    padding:10px 12px; border-radius:9px; background:var(--panel-2);
+  }
+  .energy-note-head{display:flex; justify-content:space-between; align-items:baseline; gap:10px;}
+  .energy-note-head b{font:700 16px/1.1 var(--font-display); letter-spacing:.05em; text-transform:uppercase; color:#fff; white-space:nowrap;}
+  .energy-note-head span{font:400 11px/1.2 var(--font-mono); color:var(--text-dim); text-align:right;}
+  .energy-note-head span.is-no{color:#ff8a8a;}
+  .energy-note p{margin:0; font:400 14px/1.35 var(--font-display); letter-spacing:.01em; color:var(--text);}
+  /* laptop en lagere schermen: kleiner, zelfde opbouw */
+  @media (max-height: 865px), (max-width: 1630px){
+    .walk-side-stack.has-vault #walkSoloPanel > .walk-energy-overview{--nd:16px; width:66px; gap:8px;}
+    .walk-side-stack.has-vault #walkSoloPanel{column-gap:12px;}
+    .walk-side-stack.has-vault #walkSoloPanel .walk-energy-overview .walk-energy-value b{font-size:22px;}
+    .walk-side-stack.has-vault #walkSoloPanel .walk-energy-overview .walk-energy-value{font-size:11px;}
+    .walk-side-stack.has-vault #walkSoloPanel .walk-energy-cells{min-height:90px;}
+    .walk-side-stack.has-vault #walkSoloPanel .walk-solo-actions:not(:empty){gap:6px;}
+    .walk-side-stack.has-vault #walkSoloPanel .energy-pick-list.is-energy{gap:4px;}
+    .walk-side-stack.has-vault #walkSoloPanel .energy-pick-list.is-energy > .energy-pick{min-height:26px; gap:9px; padding:2px 10px 2px 3px;}
+    .walk-side-stack.has-vault #walkSoloPanel .energy-pick-list.is-energy .energy-pick-icon{width:28px; height:28px; border-radius:6px;}
+    .walk-side-stack.has-vault #walkSoloPanel .energy-pick-list.is-energy .energy-pick-icon svg{width:17px; height:17px;}
+    .walk-side-stack.has-vault #walkSoloPanel .energy-pick-list.is-energy .energy-pick-text b{font-size:15px;}
+    .walk-side-stack.has-vault #walkSoloPanel .energy-pick-list.is-energy .energy-pick-price{font-size:19px;}
+    .walk-side-stack.has-vault #walkSoloPanel .energy-note{--note-h:102px; padding:8px 10px; gap:3px;}
+    .walk-side-stack.has-vault #walkSoloPanel .energy-note-head b{font-size:14px;}
+    .walk-side-stack.has-vault #walkSoloPanel .energy-note p{font-size:13px;}
+  }

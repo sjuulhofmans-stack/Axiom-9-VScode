@@ -1,0 +1,280 @@
+  /* opzetscherm bij "zelf spelen" met meerdere spelers: per menselijke speler een
+     startpositie-keuze + voorproefje van de eerste opdracht, zodat je een weloverwogen
+     keuze kunt maken vóórdat het potje echt begint.
+     Twee kolommen i.p.v. alles onder elkaar (gebruikerswens: "nieuwe spelers moeten naast
+     elkaar komen te staan i.p.v. onder elkaar") — met max. 4 spelers (WALK_MAX_PLAYERS) is dat
+     hooguit 2×2. `grid-template-rows` met een MINMAX (i.p.v. `auto`) reserveert de 2e rij
+     altijd, ook als er nog maar 1-2 spelers zijn: dat is precies wat de lobby-kolom een vaste
+     grootte geeft, ongeacht het aantal spelers (eerdere versie liet 'm nog meegroeien —
+     gebruikersmelding "kolom verschuift nog steeds"). De rijhoogte (52px) is 1 regel per kaart:
+     alleen de naam. Startpositie en eerste opdracht stonden hier vroeger op een 2e regel, maar
+     die kies je nu pas aan het begin van het potje (renderOpeningPanel, 96-walk.js). */
+  /* Sinds 2026-10: bemanningslijst (gekozen ontwerp "B" uit 4, soloRenderSetupUI in 97-solo.js).
+     Vervangt de keuzelijsten Aantal spelers/Aantal bots. Altijd 4 rijen (lege plekken gestippeld),
+     dus de lobby verspringt niet bij toevoegen/weghalen.
+     Elke rij = vijf VASTE vakjes naast elkaar (gebruikerswens: "alles even groot, niets mag
+     verschuiven"): nummer (28px) | bolletje (12px) | naamvak (rest) | rolvak jij/speler/bot
+     (96px) | verwijdervak (38px). Alles 38px hoog; bij jou staat het verwijdervak er wel, maar
+     uitgezet. Lengte van een naam verandert niets aan de rest (ellipsis in het vak). */
+  .walk-solo-setup{display:flex; flex-direction:column; gap:10px; margin:0 0 14px;}
+  .walk-solo-setup[hidden], .walk-solo-setup:empty{display:none;}
+  .crew-list{display:flex; flex-direction:column; gap:6px;}
+  .crew-row{
+    display:grid; grid-template-columns:28px 12px minmax(0, 1fr) 96px 38px; align-items:center;
+    column-gap:10px; height:52px; padding:0 7px 0 4px; box-sizing:border-box;
+    background:var(--hull); border:1px solid var(--line-dim); border-radius:6px;
+  }
+  .crew-row.is-free{
+    display:flex; justify-content:center; background:none; border-style:dashed;
+    color:var(--text-dim); font-size:12px; font-family:var(--font-mono);
+  }
+  .crew-row.is-blank{visibility:hidden;}
+  .crew-num{
+    font-family:var(--font-display); font-weight:700; font-size:26px; line-height:1;
+    text-align:center; color:var(--pc); font-variant-numeric:tabular-nums;
+  }
+  .crew-dot{
+    width:12px; height:12px; border-radius:50%; background:var(--pc);
+    box-shadow:0 0 6px var(--pc);
+  }
+  /* zelfde maat en rand als het naamvak, maar zonder invulachtergrond: niet te wijzigen */
+  .crew-bot-name{
+    display:flex; align-items:center; height:38px; min-width:0; box-sizing:border-box;
+    padding:0 11px; border:1px dashed var(--line); border-radius:5px;
+    font-family:var(--font-mono); font-size:13px; color:var(--text);
+    white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+  }
+  .crew-role{
+    display:flex; align-items:center; justify-content:center; height:38px; box-sizing:border-box;
+    border:1px solid var(--line); border-radius:5px; background:var(--panel-2);
+    font-family:var(--font-mono); font-size:11px; letter-spacing:.1em; text-transform:uppercase;
+    color:var(--text-dim); white-space:nowrap;
+  }
+  .crew-role.is-jij{border-color:var(--pc); color:var(--pc);}
+  .crew-role.is-speler{color:var(--text);}
+  .crew-del{
+    width:38px; height:38px; box-sizing:border-box; padding:0; margin:0; min-width:0;
+    display:grid; place-items:center; cursor:var(--cur-click);
+    background:var(--panel-2); border:1px solid var(--line); border-radius:5px;
+    color:var(--text-dim); font-size:15px; line-height:1;
+  }
+  .crew-del:hover:not(:disabled), .crew-del:focus-visible{color:var(--danger); border-color:var(--danger);}
+  .crew-del:disabled{opacity:.3; cursor:var(--cur-normal);}
+  .crew-add{display:grid; grid-template-columns:1fr 1fr; gap:8px;}
+  .crew-add button:disabled{opacity:.4; cursor:var(--cur-normal);}
+  /* Eigen naam invullen; leeg laten geeft "Speler N" (de placeholder laat dat ook zien).
+     `input[type=text]` hierboven is al op volle breedte gezet; die regel is specifieker dan een
+     losse klasse, vandaar het element ervoor. `flex:1` (i.p.v. een vaste breedte zoals voorheen)
+     omdat de kaart nu maar half zo breed is — de kolombreedte bepaalt de invulbreedte.
+     In de bemanningslijst een duidelijk, dik invulvak (gebruikerswens: "wat dikker"), 38px hoog
+     met altijd een zichtbare rand. */
+  input[type=text].walk-solo-setup-input{
+    flex:1; min-width:0; height:38px; box-sizing:border-box;
+    background:var(--panel-2); border:1px solid var(--line);
+    color:var(--text); font-family:var(--font-mono); font-size:13px;
+    padding:0 11px; border-radius:5px;
+  }
+  input[type=text].walk-solo-setup-input:hover{border-color:var(--text-dim);}
+  input[type=text].walk-solo-setup-input:focus{
+    border-color:var(--pc); box-shadow:0 0 0 2px color-mix(in srgb, var(--pc) 22%, transparent);
+  }
+  .walk-solo-setup-input::placeholder{color:var(--text-dim);}
+
+  /* doelwit kiezen voor Kortsluiting/Duwstoot/Energielek e.d.: dezelfde kaart-knoppenrij als
+     de richtingskeuze bij Zwaartekracht-laarzen, maar dan met tegenstanders als opties */
+  .walk-target-picker{display:flex; flex-direction:column; gap:8px; margin:10px 0 0;}
+  /* Zelf kiezen (soloEnterDiePick): per steen een rij met de waarden 1-6, de huidige uitgegrijsd */
+  .die-pick-row{display:flex; align-items:center; gap:5px; margin-top:8px;}
+  .die-pick-label{flex:0 0 84px; font-size:14px; color:var(--text-dim);}
+  .die-pick-label b{color:#fff;}
+  .die-pick-btn{flex:1 1 0; min-width:0; height:34px; border-radius:6px; border:1px solid var(--line);
+    background:var(--panel-2); color:var(--text); font-family:var(--font-mono); font-size:15px; cursor:var(--cur-click);}
+  .die-pick-btn:hover:not(:disabled){border-color:var(--quest); color:#fff;}
+  .die-pick-btn.is-current{opacity:.35; cursor:var(--cur-normal);}
+  .walk-target-picker-hint{font-family:var(--font-mono); font-size:11.5px; color:var(--text-dim);}
+
+  /* stappenteller tijdens het lopen in de solo-modus, naast de dobbelstenen in .walk-hud —
+     bewegen zelf gaat via bordklik of pijltjestoetsen (zie SOLO_ARROW_DIR in 97-solo.js),
+     dit is puur een teller zodat je niet naar de worp bovenaan hoeft terug te scrollen.
+     `margin-left:auto` duwt 'm vast tegen de rechterkant van .walk-hud, ongeacht hoe breed de
+     dobbelstenen ernaast zijn (vóór een worp klein "? ?", erna "3 5 = 8 stappen" — zonder dit
+     schoof de teller mee met die breedte i.p.v. op een vaste plek te blijven staan).
+     `soloRenderStepCounter`/`soloHideStepCounter` in 97-solo.js zetten hier nu ook `hidden` op
+     i.p.v. alleen de cijfers op "–" te zetten, dus de `[hidden]`-regel eronder is nodig: zonder
+     die override wint deze `display:flex`-regel gewoon van het standaard `[hidden]` (zelfde
+     patroon als .walk-or-sep[hidden] en .walk-controls[hidden] hierboven). */
+  .walk-step-counter{display:flex; gap:8px; margin-left:auto;}
+  .walk-step-counter[hidden]{display:none;}
+  .walk-step-box{
+    display:flex; flex-direction:column; align-items:center; justify-content:center;
+    min-width:40px; padding:5px 7px; background:var(--hull); border:1px solid var(--line-dim);
+    border-radius:7px;
+  }
+  .walk-step-num{
+    font-family:var(--font-mono); font-weight:700; font-size:16px; color:var(--amber);
+    line-height:1.1; font-variant-numeric:tabular-nums;
+  }
+  .walk-step-lbl{
+    font-family:var(--font-mono); font-size:8px; letter-spacing:.08em; text-transform:uppercase;
+    color:var(--text-dim);
+  }
+  /* duidelijk overzicht van je energie t.o.v. het plafond (ENERGY_MAX) — losse aanvulling op
+     het kleine ⚡-badge in de spelersrij, dat ging onder de rest van die rij verloren.
+     Kleurlogica gelijk aan .walk-player-energy.full: amber zodra je vol zit. Zit nu bovenin
+     de Energieactie-kolom (.walk-solo-panel) — geen eigen kader meer, alleen een streepje
+     eronder om 'm van de knoppen te scheiden. */
+  .walk-energy-overview{
+    display:flex; align-items:center; gap:10px;
+    padding-bottom:9px; border-bottom:1px solid var(--line-dim);
+  }
+  .walk-energy-overview[hidden]{display:none;}
+  .walk-energy-label{
+    font-family:var(--font-mono); font-size:10px; letter-spacing:.08em; text-transform:uppercase;
+    color:var(--text-dim);
+  }
+  .walk-energy-value{
+    font-family:var(--font-mono); font-size:15px; color:var(--text-dim); white-space:nowrap;
+  }
+  .walk-energy-value b{font-size:19px; color:var(--start); font-variant-numeric:tabular-nums;}
+  .walk-energy-overview .walk-energy-label{flex:none; display:flex; line-height:1;}
+  /* vaste breedte voor "7 / 10" én "10 / 10" (getal rechts uitgelijnd in 2 tekens), zodat de
+     blokjes ernaast niet opschuiven zodra je 10 haalt; line-height 1 zodat tekst en blokjes op
+     dezelfde middenlijn staan (gebruikersmelding) */
+  .walk-energy-overview .walk-energy-value{
+    flex:none; display:inline-flex; align-items:baseline; justify-content:flex-end; gap:4px;
+    line-height:1; width:68px;
+  }
+  .walk-energy-overview .walk-energy-value b{display:inline-block; min-width:2ch; text-align:right; line-height:1;}
+
+  /* Energiebalk als STROOMCIRCUIT (gebruikerswens, gekozen uit 10 ontwerpen): ENERGY_MAX
+     knooppunten aan één leiding. Opgebouwd door soloRenderEnergyOverview (97-solo.js):
+       .ec-seg   leidingstukje tussen twee knooppunten; .is-lit = stroom loopt erdoor (scaleX)
+       .ec-track het lichtpakketje dat elke 2,4 s over de volle leiding loopt (de "puls")
+       .ec-node  een knooppunt: .is-on (vol), .is-charging (ploft aan met een lichte ring),
+                 .is-draining (flakkert, krimpt weg met een amber ring), .will-spend (hover over
+                 een energie-actie: dit gaat hij kosten)
+     Opladen en leeglopen gaan strikt één voor één (ENERGY_STEP_MS in 97-solo.js; per knooppunt
+     een animation-delay die de onderdelen erven). Alles alleen transform/opacity (zie Prestatie
+     in CLAUDE.md); de pulsen (ecHalo, ecPacket, ecSpend) lopen via syncAllPulses gelijk.
+     Posities in procenten: de balk vult de ruimte tussen het bliksempje en het getal, hoe breed
+     de zijkolom ook is (16px = één knooppunt). */
+  .walk-energy-cells{
+    position:relative; flex:1 1 auto; min-width:0; height:16px; align-self:center;
+    display:flex; align-items:center; justify-content:space-between;
+  }
+  .ec-seg{
+    position:absolute; top:7px; height:2px; background:var(--line);
+    left:calc(8px + (100% - 16px) * var(--k) / 9); width:calc((100% - 16px) / 9);
+  }
+  .ec-seg i{
+    position:absolute; inset:0; background:var(--start); box-shadow:0 0 6px rgba(85,214,138,.8);
+    transform:scaleX(0); transform-origin:left center; transition:transform .26s ease-out; will-change:transform;
+  }
+  .ec-seg.is-lit i{transform:none;}
+  .ec-node{position:relative; flex:none; width:16px; height:16px;}
+  .ec-node i{position:absolute; border-radius:50%; pointer-events:none;}
+  .ec-core{inset:0; background:var(--hull); box-shadow:inset 0 0 0 2px #33424f;}
+  .ec-node.is-on .ec-core{background:var(--start-glow); box-shadow:0 0 0 3px rgba(85,214,138,.25), 0 0 10px rgba(85,214,138,.8);}
+  .ec-halo{inset:-6px; opacity:0; background:radial-gradient(circle, rgba(184,255,214,.75), rgba(85,214,138,.25) 45%, transparent 70%);}
+  /* --halo: wanneer het pakketje langs dit knooppunt komt (gezet in soloRenderEnergyOverview) */
+  .ec-node.is-on .ec-halo{animation:ecHalo 2.4s linear infinite; animation-delay:var(--halo, 0ms); will-change:opacity;}
+  .ec-flash{inset:-6px; border:2px solid #b8ffd6; opacity:0;}
+  .ec-ghost{inset:0; opacity:0; background:var(--start-glow); box-shadow:0 0 10px rgba(85,214,138,.8);}
+  .ec-spend{inset:0; opacity:0; background:var(--amber); box-shadow:0 0 10px rgba(255,181,69,.8);}
+  .ec-node.is-charging .ec-core{animation:ecIgnite .5s cubic-bezier(.2,1.6,.4,1) both; animation-delay:inherit; will-change:transform, opacity;}
+  .ec-node.is-charging .ec-flash,
+  .ec-node.is-draining .ec-flash{animation:ecRing .65s ease-out both; animation-delay:inherit;}
+  .ec-node.is-draining .ec-flash{border-color:var(--amber);}
+  .ec-node.is-draining .ec-ghost{animation:ecDrain .55s ease-in both; animation-delay:inherit;}
+  .ec-node.will-spend .ec-spend{animation:ecSpend .55s ease-in-out infinite alternate;}
+  .ec-track{position:absolute; left:0; right:16px; top:0; height:16px; opacity:0; pointer-events:none;}
+  .walk-energy-cells.has-flow .ec-track{animation:ecPacket 2.4s ease-in-out infinite; will-change:transform, opacity;}
+  .ec-track i{
+    position:absolute; left:1px; top:1px; width:14px; height:14px; border-radius:50%;
+    background:radial-gradient(circle, #fff 0 18%, #b8ffd6 32%, rgba(85,214,138,.35) 52%, transparent 72%);
+  }
+  @keyframes ecIgnite{0%{transform:scale(0); opacity:0;} 55%{transform:scale(1.4); opacity:1;} 100%{transform:scale(1); opacity:1;}}
+  @keyframes ecRing{0%{transform:scale(.4); opacity:1;} 100%{transform:scale(1.9); opacity:0;}}
+  @keyframes ecDrain{0%{transform:scale(1); opacity:1;} 25%{opacity:.25;} 45%{opacity:1;} 100%{transform:scale(.25); opacity:0;}}
+  @keyframes ecHalo{0%{opacity:1;} 25%,100%{opacity:0;}}
+  @keyframes ecSpend{from{opacity:.9;} to{opacity:.15;}}
+  /* --dist (op .walk-energy-cells): hoe ver het laatste volle knooppunt ligt, in % van de leiding */
+  @keyframes ecPacket{
+    0%{transform:translateX(0); opacity:0;} 8%{transform:translateX(0); opacity:1;}
+    55%{transform:translateX(var(--dist)); opacity:1;} 63%,100%{transform:translateX(var(--dist)); opacity:0;}
+  }
+  #tabWalk.walk-is-paused .ec-node.is-on .ec-halo,
+  #tabWalk.walk-is-paused .walk-energy-cells.has-flow .ec-track{animation-play-state:paused;}
+  @media (prefers-reduced-motion: reduce){
+    .ec-node i, .ec-track, .ec-seg i{animation:none !important; transition:none !important;}
+  }
+  .walk-solo-actions{display:flex; gap:8px; flex-wrap:wrap;}
+  .walk-solo-actions:empty{display:none;}
+  /* de "gewoon dobbelen"-optie is zelf ook een keuzekaart, maar zonder illustratie */
+  .action-card--plain{
+    justify-content:center; color:var(--text-dim); border-style:dashed;
+  }
+  .action-card--plain .action-card-name{font-size:11px; color:var(--text);}
+  button.action-card--plain:not(:disabled):hover{border-color:var(--text-dim); transform:none; box-shadow:none;}
+
+  /* aanklikbare vakjes tijdens jouw zet in de solo-modus */
+  .cell.walk-clickable{
+    cursor:var(--cur-click); box-shadow:0 0 0 2px var(--start), 0 0 8px rgba(85,214,138,.6) !important;
+    z-index:5; position:relative;
+  }
+  .cell.walk-clickable:hover{box-shadow:0 0 0 2px #fff, 0 0 10px rgba(85,214,138,.9) !important;}
+  /* vrije startvakjes tijdens het kiezen aan het begin van het potje (walkGlowStarts, 96-walk.js),
+     kloppend in de kleur van wie er nu kiest — met dezelfde axPulse als de knoppen. Op een los
+     laagje (::after) i.p.v. de box-shadow van het vakje zelf: die heeft bij een aanklikbaar
+     vakje al een !important-rand (.walk-clickable), en een animatie kan daar niet overheen. */
+  /* Startvak kiezen = SCHIJNWERPER (gekozen ontwerp C + de ring van D, 2026-10; walkGlowStarts in
+     96-walk.js): #walkBoard.is-start-pick dimt alle vakjes behalve de tegel met de startvakjes
+     (.walk-spot) en het doel van wie kiest (.walk-target). Een vrij startvak wordt een vakje in de
+     kleur van wie kiest, met een draaiende ring van RONDJES (::before, dotted rand — geen streepjes,
+     die leken in een vierkant op een verkeerd symbool) en een dobberend pijltje erboven (::after).
+     Alleen transform/opacity bewegen (zie Prestatie in CLAUDE.md). */
+  #walkBoard .cell{transition:opacity .45s ease;}
+  #walkBoard.is-start-pick .cell:not(.walk-spot):not(.walk-target){opacity:.28;}
+  .cell.walk-start-glow{
+    z-index:6; position:relative; cursor:var(--cur-click);
+    background:var(--pc) !important; box-shadow:inset 0 0 0 2px rgba(255,255,255,.85) !important;
+  }
+  .cell.walk-start-glow::before{
+    content:''; position:absolute; inset:-6px; border-radius:50%; pointer-events:none;
+    border:2.5px dotted var(--pc); box-sizing:border-box;
+    animation:startRingSpin 4s linear infinite; will-change:transform;
+  }
+  @keyframes startRingSpin{to{transform:rotate(360deg);}}
+  .cell.walk-start-glow::after{
+    content:''; position:absolute; left:50%; bottom:calc(100% + 7px); width:0; height:0; margin-left:-6px;
+    border:6px solid transparent; border-bottom:0; border-top:8px solid var(--pc); pointer-events:none;
+    animation:startArrowBob 1.1s ease-in-out infinite; will-change:transform;
+  }
+  @keyframes startArrowBob{50%{transform:translateY(-5px);}}
+  /* je eerste opdracht tijdens het kiezen: in de schijnwerper net zo opvallend als de startvakjes
+     (draaiende ring + pijltje), maar in de kleur van de opdracht (gebruikersmelding: in Multiplayer
+     zag je je eerste opdracht niet goed) */
+  #walkBoard.is-start-pick .cell.walk-target{z-index:6;}
+  #walkBoard.is-start-pick .cell.walk-target::before{
+    content:''; position:absolute; inset:-7px; border-radius:50%; pointer-events:none;
+    border:2.5px dotted var(--qtint, var(--quest)); box-sizing:border-box;
+    animation:startRingSpin 4s linear infinite reverse; will-change:transform;
+  }
+  /* Pauze (Automatisch): ook de ring om je eerste opdracht en de portalen staan stil */
+  #tabWalk.walk-is-paused #walkBoard.is-start-pick .cell.walk-target::before,
+  #tabWalk.walk-is-paused .walk-portal::before,
+  #tabWalk.walk-is-paused .walk-portal b{animation-play-state:paused;}
+  /* blok "Jouw eerste opdracht" in het kiespaneel */
+  .walk-opening-goal{
+    display:flex; flex-direction:column; gap:3px; padding:12px 14px; border-radius:8px;
+    border:1px solid var(--qtint, var(--quest)); background:color-mix(in srgb, var(--qtint, var(--quest)) 14%, transparent);
+    box-shadow:inset 4px 0 0 var(--qtint, var(--quest));
+  }
+  .walk-opening-goal-lbl{font-family:var(--font-mono); font-size:10px; letter-spacing:.16em; text-transform:uppercase; color:var(--text-dim);}
+  .walk-opening-goal b{font-family:var(--font-display); font-size:22px; font-weight:700; line-height:1.1; color:#eef3f8;}
+  .walk-opening-goal-room{font-family:var(--font-mono); font-size:12px; color:var(--qtint, var(--quest));}
+  .cell.walk-start-glow:hover{transform:scale(1.15);}
+  @media (prefers-reduced-motion: reduce){
+    .cell.walk-start-glow::before, .cell.walk-start-glow::after{animation:none;}
+  }
+

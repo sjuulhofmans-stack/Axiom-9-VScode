@@ -1,0 +1,163 @@
+  /* Missiestrook bovenin de linkerkolom (gekozen ontwerp D uit 4, soloMissionHtml in 97-solo.js):
+     Beurt + Stand als twee pillen (inhoud precies in het midden), 6 zeshoekjes aan een lijn en
+     "Opdrachten voltooid x / 6" (groot, gebruikerswens). Vervangt de 3 tegels en de opdrachtkaart.
+     flex:none — anders krimpt dit bij ruimtegebrek naar 0 hoogte i.p.v. naar zijn eigen inhoud. */
+  .walk-stat-tiles{display:flex; flex-direction:column; gap:14px; flex:none;}   /* overal dezelfde ruimte tussen de regels */
+  .walk-stat-tiles:empty{display:none;}
+  /* dobbelen wie begint / startposities kiezen (walkSetOpeningMode, 96-walk.js): geen infovak links,
+     wie er aan zet is staat al in de spelersbalk boven het bord (gebruikersmelding) */
+  .walk-info-panel.is-opening{display:none !important;}
+  .walk-info-panel.is-mission #walkQuestCard,
+  .walk-info-panel.is-mission #walkMeta,
+  .walk-info-panel.is-mission #walkScoreActive{display:none;}
+  .mission-pills{display:grid; grid-template-columns:1fr 1fr; gap:6px;}
+  /* alle tekst in de pillen even groot en in één letter (gebruikerswens): label gedimd, waarde
+     helder; line-height:1 + flex-centrering = precies in het midden van het vakje */
+  .mission-pill{
+    display:flex; align-items:center; justify-content:center; gap:7px; height:38px; box-sizing:border-box;
+    border:1px solid var(--line); border-radius:99px; background:var(--hull); padding:0 10px;
+    font-family:var(--font-display); font-weight:700; font-size:15px; line-height:1;
+    letter-spacing:.1em; text-transform:uppercase; white-space:nowrap;
+  }
+  .mission-pill > *{display:block; line-height:1;}
+  /* text-transform:none: anders wordt de stand "1E" i.p.v. "1e" */
+  .mission-pill b{font-weight:700; color:#eef3f8; font-variant-numeric:tabular-nums; letter-spacing:.04em; text-transform:none;}
+  .mission-pill.is-me{border-color:var(--pc);}
+  .mission-pill.is-me b{color:var(--pc);}
+  .mission-lbl{font-weight:600; color:var(--text-dim);}
+  .mission-strip{
+    position:relative; display:grid; grid-template-columns:repeat(6, 1fr); align-items:center;
+  }
+  /* de lijn: grijs van het 1e tot het 6e zeshoekje, groen tot het laatst voltooide (--done-w) */
+  .mission-strip::before, .mission-strip::after{
+    content:""; position:absolute; left:calc(100% / 12); top:50%; height:2px; margin-top:-1px;
+  }
+  .mission-strip::before{right:calc(100% / 12); background:var(--line-dim);}
+  .mission-strip::after{width:var(--done-w, 0%); background:var(--start); box-shadow:0 0 6px rgba(85,214,138,.6);}
+  .mission-slot{position:relative; z-index:1; justify-self:center; width:34px; height:38px;}
+  .mission-hex{
+    position:relative; width:34px; height:38px;
+    clip-path:polygon(50% 0, 100% 25%, 100% 75%, 50% 100%, 0 75%, 0 25%);
+    background:var(--line); display:grid; place-items:center;
+  }
+  .mission-hex::before{content:""; position:absolute; inset:2px; clip-path:inherit; background:var(--hull);}
+  .mission-hex b{position:relative; font-family:var(--font-display); font-size:14px; color:var(--text-dim);}
+  .mission-hex svg{
+    position:relative; width:15px; height:15px; fill:none; stroke:var(--start-glow);
+    stroke-width:3.2; stroke-linecap:round; stroke-linejoin:round;
+  }
+  .mission-slot.is-on .mission-hex{background:var(--start);}
+  .mission-slot.is-on .mission-hex::before{background:#1b4a33;}
+  /* actieve opdracht: zelfde groen als voltooid (gebruikerswens, niet de kamerkleur), donkerder
+     binnenin, met een sonarpuls: twee ringen die om de beurt vanuit het vakje uitdijen en vervagen.
+     Alleen transform/opacity (zie Prestatie in CLAUDE.md). */
+  .mission-slot.is-next .mission-hex{background:var(--start);}
+  .mission-slot.is-next .mission-hex::before{background:#123323;}
+  .mission-slot.is-next .mission-hex b{color:var(--start-glow); font-weight:700;}
+  .mission-slot.is-next::before, .mission-slot.is-next::after{
+    content:""; position:absolute; left:50%; top:50%; width:34px; height:34px; margin:-17px 0 0 -17px;
+    border-radius:50%; border:2px solid var(--start); box-sizing:border-box; pointer-events:none;
+    opacity:0; animation:missionSonar 4.8s cubic-bezier(.25,.6,.35,1) infinite; will-change:transform, opacity;
+  }
+  /* trager en minder vaak (gebruikerswens): één puls per 4,8 s, die in ±3,1 s uitdijt, met een
+     zachte echo 0,9 s erachteraan; daarna rust tot de volgende */
+  .mission-slot.is-next::after{animation-delay:.9s;}
+  @keyframes missionSonar{
+    0%{transform:scale(.85); opacity:.7;}
+    65%{transform:scale(1.8); opacity:0;}
+    100%{transform:scale(1.8); opacity:0;}
+  }
+  #tabWalk.walk-is-paused .mission-slot.is-next::before,
+  #tabWalk.walk-is-paused .mission-slot.is-next::after{animation-play-state:paused;}
+  @media (prefers-reduced-motion: reduce){
+    .mission-slot.is-next::before{animation:none; opacity:.5; transform:scale(1.35);}
+    .mission-slot.is-next::after{display:none;}
+  }
+  /* "Opdrachten voltooid" boven de zeshoekjes, in dezelfde letter en maat als de pillen */
+  /* nowrap + iets minder letterruimte: "Bezig met opdracht 1 van 6" past zo ook in de smallere
+     kolom van Multiplayer op één regel (viel daar eerst op twee regels) */
+  .mission-caption{
+    text-align:center; font-family:var(--font-display); font-weight:700; font-size:15px; line-height:1;
+    letter-spacing:.06em; text-transform:uppercase; color:var(--text); white-space:nowrap;
+  }
+  /* het nummer van de opdracht waar je mee bezig bent: zelfde groen als het oplichtende vakje */
+  .mission-caption b{font-weight:700; color:var(--start-glow);}
+  /* margin-inline:0 — de browser geeft een schuifbalk standaard 2px marge links/rechts, wat
+     bij width:100% 4px te breed werd; in .walk-lobby-col (Tempo-schuif) gaf dat een klein beetje
+     zijwaarts scrollen (gebruikersmelding). */
+  input[type=range]{width:100%; margin-left:0; margin-right:0; accent-color:var(--quest); cursor:var(--cur-click);}
+
+  /* jouw beurt in de solo-modus: kies hooguit één actie, of gooi meteen. Dit vakje wisselt van
+     inhoud tussen 5 heel verschillende deelschermen (energiekeuze, doelwit-kiezer, laarzen-
+     richting, noodtransport-doel, blinde-vlek-aanbod) — zonder hoogtegrens zou elk van die
+     wissels de kolom ernaast kunnen laten springen, exact het probleem dat deze hele kolom nu
+     juist niet meer mag hebben. `flex:none` houdt 'm bovendien uit de knijp-verdeling van
+     .walk-side-stack (zie hieronder) — alleen .walk-info-panel mag krimpen.
+     Vaste `height` (i.p.v. de eerdere min/max-range): met een range kon dit vakje na het
+     dobbelen alsnog inkrimpen (230px -> 150px zodra er minder acties te kiezen zijn), en dat
+     schoof #walkInfoPanel eronder direct 80px omhoog — precies het "springen bij het dobbelen"
+     dat hier juist voorkomen moest worden. Een vaste hoogte laat lege ruimte over i.p.v. te
+     krimpen. 280px (i.p.v. 230px): met alle 3 acties + de energiebalk + de "te weinig
+     energie"-hint (allemaal tegelijk, gemeten met Playwright) is de natuurlijke inhoud 272px
+     hoog — bij 230px moest je dus alsnog scrollen om de onderste actie of de hint te zien,
+     precies wat "vast, niet scrollend" juist tegenging (gebruikerswens). Met 4 acties (sinds de
+     laarzen) was het bij 0–3 energie wéér 325px en moest je scrollen — opgelost met krappere
+     rijen + een hint van één regel (zie .energy-pick hieronder), opnieuw gemeten voor alle
+     energiestanden en deelschermen. NOOIT scrollen (gebruikerswens): `overflow:visible`, dus
+     past er op een scherm met een groter lettertype toch iets niet in, dan loopt het een paar
+     pixels in de ruimte eronder i.p.v. dat er een scrollbalk verschijnt. */
+  .walk-solo-panel{
+    display:flex; flex-direction:column; gap:8px; flex:none;
+    border:1px solid var(--line-dim); border-radius:6px; padding:12px;
+    height:286px; overflow:visible;
+  }
+  .walk-solo-panel[hidden]{display:none;}
+  /* Sinds de kristalkluis: staan er geen knoppen in (na het dobbelen, tijdens andermans beurt),
+     dan krimpt het vak tot alleen de energiebalk. Dat "springt" niet meer: de kluis eronder staat
+     vast onderaan de kolom (#walkCardVault margin-top:auto) en groeit juist in die vrije ruimte. */
+  /* VASTE hoogte, ook na het dobbelen als er alleen nog de energiebalk in staat: zo verschuift er
+     niets (gebruikersmelding). 300px = de 4 icoonrijen mét uitleg + de "te weinig
+     energie"-regel (gemeten 298px op Full HD, het krapste geval: 0 energie). De 2x2-tegels van eerst zijn terug naar een lijst
+     (gebruikerswens: ze stonden scheef en de tekst liep door het vak). Laptop: zie hieronder. */
+  .walk-solo-panel{height:300px; padding:10px 12px;}
+  /* Energie-acties als ICOONRIJEN (gebruikerswens, ontwerp C): links een symbool per actie,
+     naam + uitleg in het midden, de prijs groot rechts. Kun je hem niet betalen, dan grijs met
+     "nog X energie nodig". renderEnergySoloButton (97-solo.js), ENERGY_ACTION_ICONS daar.
+     #walkSoloPanel …: moet winnen van de algemene .energy-pick-regels onderaan dit bestand. */
+  #walkSoloPanel .energy-pick-list.is-actions{gap:6px;}
+  #walkSoloPanel .energy-pick-list.is-actions .energy-pick{gap:10px; min-height:48px; padding:5px 12px 5px 6px; border-color:#2f7a52; border-radius:8px;}
+  #walkSoloPanel .energy-pick-list.is-actions .energy-pick.is-disabled{opacity:1; border-color:#222d39; background:#0d1319;}
+  #walkSoloPanel .energy-pick-list.is-actions .energy-pick-text{flex:1;}
+  #walkSoloPanel .energy-pick-list.is-actions .energy-pick-text b{font-size:15px;}
+  #walkSoloPanel .energy-pick-list.is-actions .energy-pick.is-disabled .energy-pick-text b{color:#8a9bad;}
+  .energy-pick-icon{
+    flex:none; width:36px; height:36px; border-radius:7px; display:flex; align-items:center; justify-content:center;
+    background:rgba(85,214,138,.14); box-shadow:inset 0 0 0 1px rgba(85,214,138,.5); color:var(--start-glow);
+  }
+  .energy-pick-icon svg{width:20px; height:20px; fill:none; stroke:currentColor; stroke-width:2; stroke-linecap:round; stroke-linejoin:round;}
+  .energy-pick.is-disabled .energy-pick-icon{background:#121a23; box-shadow:inset 0 0 0 1px var(--line); color:var(--text-dim);}
+  .energy-pick-price{
+    flex:none; margin-left:auto; display:flex; align-items:center; gap:3px;
+    font-family:var(--font-display); font-size:24px; font-weight:700; line-height:1; color:var(--start);
+    font-variant-numeric:tabular-nums;
+  }
+  .energy-pick-price svg{width:9px; height:15px; fill:currentColor;}
+  .energy-pick.is-disabled .energy-pick-price{color:var(--text-dim);}
+  /* Laptop (1440×780 e.d.): het bord en dus de kolom is daar maar ±560px hoog. Dan de acties
+     compacter (zonder uitlegregel, die staat in de tooltip; kleiner icoon) in 196px, anders past
+     de kluis er niet meer onder. Grens: daaronder is --wcell kleiner dan ±18,6px (hoogte 830px of
+     breedte 1630px; sinds de icoonrijen 300px i.p.v. 270px, dus iets eerder). */
+  @media (max-height: 865px), (max-width: 1630px){
+    .walk-solo-panel{height:196px; padding:8px 12px; gap:5px;}
+    /* alleen de lijst met energie-acties (.is-actions), niet de Herprioritering-keuze */
+    #walkSoloPanel .energy-pick-list.is-actions{gap:3px;}
+    #walkSoloPanel .energy-pick-list.is-actions .energy-pick{min-height:28px; padding:2px 10px 2px 3px; gap:8px;}
+    #walkSoloPanel .energy-pick-list.is-actions .energy-pick-icon{width:22px; height:22px; border-radius:5px;}
+    #walkSoloPanel .energy-pick-list.is-actions .energy-pick-icon svg{width:14px; height:14px;}
+    #walkSoloPanel .energy-pick-list.is-actions .energy-pick-price{font-size:18px;}
+    #walkSoloPanel .energy-pick-list.is-actions .energy-pick-price svg{width:7px; height:12px;}
+    #walkSoloPanel .energy-pick-list.is-actions .energy-pick-text b{font-size:13px;}
+    #walkSoloPanel .energy-pick-list.is-actions .energy-pick-text span{display:none;}
+    #walkSoloPanel .energy-pick-none{margin:0;}
+  }
+

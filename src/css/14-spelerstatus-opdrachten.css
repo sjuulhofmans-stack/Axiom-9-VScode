@@ -1,0 +1,273 @@
+  /* "Spelerstatus" — de statushub bovenin .walk-status-col (zie .walk-board-row hierboven),
+     met het opdrachtenoverzicht (.walk-quest-checklist hieronder) eronder in dezelfde kolom.
+     `flex:none` (i.p.v. eerder flex:1 1 auto): dit vakje neemt nu zijn natuurlijke
+     inhoudshoogte, en het overzicht eronder vult de rest — precies de volgorde die de
+     gebruiker vroeg ("huidige opdracht erboven, overzicht eronder"). `overflow-y:auto` blijft
+     staan voor het zeldzame geval dat de inhoud toch niet past. */
+  .walk-info-panel{
+    display:flex; flex-direction:column; gap:10px; flex:none;
+    border:1px solid var(--line-dim); border-radius:6px; padding:14px;
+    overflow-y:auto; scrollbar-gutter: stable;
+  }
+  @media (max-width: 1360px){ .walk-info-panel{min-height:280px; max-height:none;} }
+  /* Voordat er een potje loopt is alles hierbinnen leeg, en dan stond er alleen een omkaderd
+     blok van ~160px (de min-height van .walk-meta) zonder inhoud. Zodra er ook maar iets in
+     staat — een beurtregel, een stand of een statusmelding — komt het paneel vanzelf weer
+     terug. (Het solo-actiepaneel staat sinds de herstructurering los van dit paneel, dus
+     telt hier niet meer mee.) */
+  /* .is-empty zet walkInfoPanelSync (96-walk.js) — was een vijfvoudige :has(), die in het
+     speelscherm bij elke stap de stijl liet herberekenen (zie Prestatie in CLAUDE.md) */
+  .walk-info-panel.is-empty{display:none;}
+
+  /* Opdrachtenoverzicht als AFVINKLIJST met kleurstroken (gebruikerswens, gekozen uit 4
+     ontwerpen): alle 9 opdrachten in een vaste volgorde (de geheime volgorde van je stapel blijft
+     geheim, zie soloRenderQuestChecklist in 97-solo.js), zonder 2.x-nummer: alleen naam + kamer.
+       streep links  de kleur van de opdracht (--qtint), als inset-schaduw: neemt geen ruimte in
+       rondje        leeg in de opdrachtkleur = nog te doen; groen met vinkje = voltooid;
+                     kloppende stip = actief doel (+ label "actief" en gekleurde achtergrond)
+       bovenin       zes lampjes (zoals de energiebalk) = hoeveel van de 6 je al hebt
+     ALLE rijen hebben dezelfde rand (1px, bij voltooid onzichtbaar) en dezelfde streepbreedte,
+     zodat de rondjes en teksten in elke toestand precies onder elkaar staan (gebruikerswens).
+     Hoveren over een open opdracht = spieken op het bord (soloPeekQuest): rand in jouw kleur
+     (--pc op de lijst) met een oogje. Vult de ruimte die .walk-info-panel overlaat; leeg (en dus
+     onzichtbaar) vóór er een potje loopt of tijdens Automatisch-modus. */
+  .walk-quest-checklist{
+    display:flex; flex-direction:column; gap:4px; flex:1 1 auto; min-height:0;
+    border:1px solid var(--line-dim); border-radius:6px; padding:10px;
+    overflow-y:auto;
+  }
+  .walk-quest-checklist:empty{display:none;}
+  @media (max-width: 1360px){ .walk-quest-checklist{flex:none; max-height:none;} }
+  .quest-check-head{
+    flex:none; display:flex; align-items:center; justify-content:space-between; gap:8px;
+    padding:2px 4px 8px; margin-bottom:2px; border-bottom:1px solid var(--line-dim);
+  }
+  .quest-check-title{font-family:var(--font-mono); font-size:11px; letter-spacing:.16em; text-transform:uppercase; color:var(--text-dim);}
+  .quest-check-row{
+    flex:1 1 auto; min-height:40px; max-height:52px; box-sizing:border-box;
+    display:flex; align-items:center; gap:10px; padding:0 10px 0 14px; border-radius:7px;
+    background:#0d1319; border:1px solid var(--line-dim);
+    box-shadow:inset 4px 0 0 var(--qtint, var(--quest));
+    transition:background-color .12s, border-color .12s;
+  }
+  .quest-check-dot{
+    position:relative; flex:none; width:20px; height:20px; border-radius:50%;
+    box-shadow:inset 0 0 0 2px var(--qtint, var(--quest));
+    display:flex; align-items:center; justify-content:center;
+  }
+  .quest-check-dot svg{width:12px; height:12px; fill:none; stroke:#b8ffd6; stroke-width:3; stroke-linecap:round; stroke-linejoin:round;}
+  .quest-check-text{display:flex; flex-direction:column; flex:1 1 auto; min-width:0;}
+  .quest-check-name{font-family:var(--font-display); font-size:15px; line-height:1.2; color:var(--text); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+  .quest-check-room{font-family:var(--font-mono); font-size:10.5px; line-height:1.3; color:var(--text-dim); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+  .quest-check-eye{flex:none; width:18px; height:18px; display:none; fill:none; stroke:var(--pc, #e85ad8); stroke-width:2;}
+  .quest-check-eye circle{fill:var(--pc, #e85ad8); stroke:none;}
+  /* nog te doen: hover = spieken */
+  .quest-check-row:not(.is-done){cursor:var(--cur-click);}
+  .quest-check-row:not(.is-done):not(.is-current):hover{
+    border-color:var(--pc, #e85ad8); background:color-mix(in srgb, var(--pc, #e85ad8) 12%, #0d1319);
+  }
+  .quest-check-row:not(.is-done):not(.is-current):hover .quest-check-eye{display:block;}
+  /* actief doel: zelfde maten als de rest, alleen kleur en een kloppende stip */
+  .quest-check-row.is-current{
+    border-color:var(--qtint, var(--quest));
+    background:color-mix(in srgb, var(--qtint, var(--quest)) 15%, #0d1319);
+  }
+  .quest-check-row.is-current .quest-check-name{font-weight:700; color:#eef3f8;}
+  .quest-check-row.is-current .quest-check-room{color:var(--text);}
+  .quest-check-dot i{position:absolute; inset:5px; border-radius:50%; background:var(--qtint, var(--quest)); animation:walkRoomPulse 1.9s ease-in-out infinite; will-change:opacity;}
+  #tabWalk.walk-is-paused .quest-check-dot i{animation-play-state:paused;}
+  .quest-check-active{
+    flex:none; padding:2px 6px; border-radius:4px; border:1px solid var(--qtint, var(--quest));
+    font-family:var(--font-mono); font-size:9.5px; letter-spacing:.08em; text-transform:uppercase;
+    color:var(--qtint, var(--quest));
+  }
+  /* voltooid: groen vinkje, doorgestreept en vager; rand onzichtbaar (maar even breed) */
+  .quest-check-row.is-done{
+    background:transparent; border-color:transparent;
+    box-shadow:inset 4px 0 0 color-mix(in srgb, var(--qtint, var(--quest)) 45%, transparent);
+  }
+  .quest-check-row.is-done .quest-check-dot{background:#2f7a52; box-shadow:none;}
+  .quest-check-row.is-done .quest-check-text{opacity:.55;}
+  .quest-check-row.is-done .quest-check-name{color:var(--text-dim); text-decoration:line-through;}
+  /* Weinig hoogte (laptop: het bord en dus deze kolom is dan maar ±560px hoog): naam en kamer op
+     één regel, kleinere rondjes; de rijen verdelen de hoogte, zodat alle 9 zonder scrollen
+     passen. Zelfde grens als het compacte energievak. */
+  @media (min-width: 1361px) and (max-height: 865px), (min-width: 1361px) and (max-width: 1630px){
+    .walk-quest-checklist{gap:3px; padding:8px;}
+    .quest-check-head{padding:0 4px 6px;}
+    .quest-check-row{min-height:0; max-height:40px; gap:8px; padding:0 8px 0 11px; box-shadow:inset 3px 0 0 var(--qtint, var(--quest));}
+    .quest-check-row.is-done{box-shadow:inset 3px 0 0 color-mix(in srgb, var(--qtint, var(--quest)) 45%, transparent);}
+    .quest-check-dot{width:15px; height:15px;}
+    .quest-check-dot i{inset:4px;}
+    .quest-check-dot svg{width:9px; height:9px; stroke-width:3.5;}
+    .quest-check-text{flex-direction:row; align-items:baseline; gap:6px;}
+    .quest-check-name{font-size:14px; flex:1 1 auto; min-width:0;}
+    .quest-check-room{font-size:9.5px; flex:none; max-width:45%;}
+    .quest-check-active{padding:1px 5px; font-size:8.5px;}
+    .quest-check-eye{width:15px; height:15px;}
+  }
+  /* de nieuwe stat-tegels + altijd-zichtbare spelersrij boven het bord vervangen wat #walkMeta
+     en #walkScoreActive lieten zien (beurt/voltooid resp. de eigen rij) — die blijven in de DOM
+     voor Automatisch-modus (die schrijft er nog steeds in via renderWalkMeta/renderWalkScore),
+     maar zodra de tegels gevuld zijn (dus tijdens solo/multiplayer) verbergt CSS ze hier. */
+  /* (zie .walk-info-panel.is-mission bij de missiestrook: daar worden ze nu verborgen, via een
+     klasse i.p.v. :has() — zie Prestatie in CLAUDE.md) */
+  /* in de smalle zijkolom staat elke speler onder elkaar i.p.v. naast elkaar; zonder expliciete
+     breedte hier valt `.walk-player` terug op zijn intrinsieke inhoudsbreedte. De naam krijgt
+     daar de hele regel, de drie blokjes (Opdrachten/Energie/Kaarten) komen eronder. */
+  .walk-info-panel .walk-score{flex-direction:column;}
+  .walk-info-panel .walk-player{flex:none; width:100%; min-width:0;}
+  .walk-info-panel .walk-player-who{flex-basis:100%;}
+  .walk-info-panel .walk-player-stats{margin-left:0;}
+
+  /* "het dobbelen" als eigen vast blokje (gebruikersverzoek): dezelfde box als voorheen,
+     nu met de dobbel-/sla-actie-over-knop er meteen in — die kreeg met flex-basis:100% altijd
+     een eigen volle regel onder de dobbelstenen, in plaats van te concurreren om ruimte met
+     de pauze-vlag ernaast. */
+  .walk-hud{
+    display:flex; align-items:center; gap:16px; flex-wrap:wrap;
+    border:1px solid var(--line-dim); border-radius:5px; padding:11px 13px;
+  }
+  /* min-height: zonder dit klapt de rij helemaal in tijdens fases waarin BEIDE knoppen
+     verborgen zijn (bv. 'moving', of het kiezen van een doelwit) — en dat liet .walk-info-panel
+     eronder alsnog 36px op en neer springen, exact het probleem dat deze hele sectie oplost. */
+  .walk-hud .btn-row{flex-basis:100%; min-height:40px;}
+  /* dobbel-/sla-over-knop zo breed als de kolom i.p.v. hun eigen (smalle) tekstbreedte
+     (gebruikerswens) — ze wisselen elkaar toch af in dezelfde rij, dus allebei even breed
+     voorkomt ook dat de knop van breedte verspringt tussen beurten. */
+  #btnWalkSoloRoll, #btnWalkSoloSkip{width:100%;}
+  /* Twee vaste regels: loopstenen boven, energiesteen eronder. De vaste min-height dekt
+     allebei de regels, zodat het blok niet van hoogte verandert als de Stuwstoot een derde
+     loopsteen toevoegt. */
+  .walk-dice{display:flex; flex-direction:column; align-items:flex-start; gap:6px; min-height:82px;}
+  @keyframes walkShake{
+    0%,100%{transform:translateY(0) rotate(0deg);}
+    25%{transform:translateY(-3px) rotate(-7deg);}
+    75%{transform:translateY(-3px) rotate(7deg);}
+  }
+  /* Stroomonderbreking-straf achter de som (renderWalkDice in 96-walk.js) */
+  /* energiesteen: zelfde vorm, andere kleur én een bliksemschichtje naast het cijfer, zodat
+     je 'm niet voor een loopsteen aanziet */
+  /* de viewBox is 14x24 (staand), dus dezelfde verhouding aanhouden — anders schaalt de
+     schicht naar de smalste kant en staat er een postzegeltje in een hoge steen */
+  /* derde loopsteen van de Stuwstoot: zelfde witte steen, amberen rand als "die is gekocht" */
+  .walk-meta{
+    font-family:var(--font-mono); font-size:12px; color:var(--text-dim);
+    display:flex; flex-direction:column; gap:3px; line-height:1.5;
+  }
+  /* Sinds de "Doel:"- en "Volgende:"-regels zijn geschrapt (die info staat al op de
+     opdrachtkaart) blijven er nog 2 regels over: "Beurt … aan zet …" en "Voltooid: X/6 · nog
+     Y stap(pen)" — die laatste is tijdens het lopen langer en kan in de smalle 300px-kolom
+     naar een extra regel wrappen. Vaste min-height dekt dat 3-regel-geval (plus een kleine
+     marge voor de zeldzame "binnen/verloren"-regel bij een net voltooid potje), zodat het
+     paneel niet meer op- en neer springt terwijl je speelt. */
+  .walk-info-panel .walk-meta{min-height:80px;}
+  .walk-meta b{color:var(--text);}
+  .walk-active-name{color:var(--pc) !important;}
+
+  .walk-paused-flag{
+    margin-left:auto; font-family:var(--font-mono); font-size:11px; letter-spacing:.12em;
+    text-transform:uppercase; color:var(--amber);
+    border:1px solid var(--amber-dim); border-radius:3px; padding:5px 9px;
+    animation:walkPulse 1.6s ease-in-out infinite;
+  }
+  .walk-paused-flag[hidden]{display:none;}
+  /* tijdens een pauze horen de lopende CSS-animaties ook stil te staan, anders lijkt het
+     bord door te draaien terwijl er niets meer gebeurt */
+  #tabWalk.walk-is-paused .cell.walk-target::after{animation-play-state:paused;}
+  #tabWalk.walk-is-paused .walk-paused-flag{animation-play-state:running;}
+
+  /* stand van alle spelers; --pc is per rij de spelerskleur */
+  .walk-score{
+    display:flex; gap:8px; flex-wrap:wrap;
+  }
+  .walk-score:empty{display:none;}
+  /* De balk boven het bord: gelijke vakken naast elkaar in plaats van vakken die met hun
+     inhoud meegroeien. Als flexrij werd elk vak even breed als zijn tekst en sprong de
+     hele rij bij elke beurt van breedte; en zodra er één hoger werd (kaartbadge) schoof
+     het bord eronder omlaag. */
+  #walkScore{
+    /* 320px is de breedte waarbij de onderregel ("2.8 — Navigatiekaarten" + strategiebadge +
+       twee kaartplekken) er nog helemaal op past; smaller en de doeltekst wordt afgekapt,
+       en juist die vertelt waar een tegenstander heen gaat. */
+    /* 240px is de smalste kolom waarin alle drie de regels nog helemaal passen (gemeten:
+       doelregel 153px, onderregel 208px). Vier spelers passen daarmee naast elkaar. */
+    display:grid; grid-template-columns:repeat(auto-fit, minmax(240px, 1fr));
+    gap:8px; align-items:stretch;
+    /* echt 15px, gelijk aan de kloof tussen bord en zijkolom (gebruikerswens: kolommen boven
+       even dicht bij het bord als links/rechts) — kan nu weer omdat de gloed van de
+       "aan zet"-kaart hieronder is ingekort (18px -> 10px blur) tot ruim binnen deze marge
+       blijft, i.p.v. 'm te laten uitbleeden tot over het bord. */
+    margin-bottom:15px;
+  }
+  /* #walkScore (boven het bord) en #walkScoreActive (in het paneel rechts) krijgen allebei
+     dezelfde volledige spelerslijst van renderWalkScore() — welke rijen zichtbaar zijn hangt
+     puur van CSS af: boven het bord alleen de ANDERE spelers, rechts alleen wie aan zet is
+     (gebruikersverzoek). Bij 1 speler blijft #walkScore dus leeg (geen "andere" spelers) en
+     collapt vanzelf via het lege-flexcontainer-gedrag hierboven. */
+  /* Alle spelers blijven staan, in dezelfde volgorde. Eerder werd wie aan zet is hier
+     verborgen — dan viel er elke beurt een ander vak weg en schoven de overige op, en dat
+     maakte juist onduidelijk wie er aan de beurt was. */
+  #walkScoreActive .walk-player:not(.active){display:none;}
+  /* één regel per speler (renderWalkScore in 96-walk.js): links naam groot + label, rechts drie
+     vaste blokjes (Opdrachten / Energie / Kaarten). Vaste hoogte, dus de balk verspringt niet
+     als er iets verandert. Wordt het vak te smal (bv. in de linkerkolom bij Automatisch), dan
+     schuiven de blokjes netjes onder de naam. */
+  .walk-player{
+    display:flex; align-items:center; flex-wrap:wrap; gap:6px 12px; flex:1 1 210px; min-width:0;
+    font-family:var(--font-mono); font-size:11px; color:var(--text-dim);
+    background:var(--hull); border:1px solid var(--line-dim); border-left:3px solid var(--pc);
+    border-radius:4px; padding:6px 12px; min-height:48px;
+  }
+  .walk-player-who{flex:1 1 70px; min-width:0; display:flex; align-items:center; gap:8px;}
+  /* de naam krimpt niet (gebruikerswens: naam duidelijk zichtbaar) — liever schuiven de blokjes
+     rechts een regel naar beneden dan dat de naam wordt afgekapt */
+  .walk-player-name{
+    flex:none; white-space:nowrap;
+    font-family:var(--font-display); font-size:16px; font-weight:700; color:var(--pc); letter-spacing:.02em;
+  }
+  .walk-player-me{
+    flex:none; font-size:9px; letter-spacing:.1em; text-transform:uppercase; color:var(--pc);
+    border:1px solid var(--pc); border-radius:3px; padding:1px 5px;
+  }
+  /* "aan zet" (alleen bij wie aan zet is) en na afloop de eindplaats: als klein tabje bovenop de
+     rand van het vak, zodat het geen ruimte in de regel kost — anders schoof het op een
+     laptopbreedte over de blokjes heen naast een lange naam. */
+  .walk-player{position:relative;}
+  .walk-player-tag{
+    position:absolute; top:-7px; left:12px; z-index:1;
+    font-size:8.5px; line-height:1.2; letter-spacing:.14em; text-transform:uppercase; font-weight:700;
+    border-radius:3px; padding:1px 6px;
+  }
+  .walk-player-tag.turn{color:var(--hull); background:var(--pc); display:none;}
+  .walk-player.active .walk-player-tag.turn{display:inline;}
+  .walk-player-tag.hit{color:var(--hull); background:var(--start);}
+  .walk-player-tag.lost{color:var(--danger); border:1px solid var(--danger); background:var(--hull);}
+  .walk-player-stats{flex:none; display:flex; gap:14px; margin-left:auto;}
+  .walk-player-stat{display:flex; flex-direction:column; align-items:center; line-height:1.15;}
+  .walk-player-stat .lbl{font-size:9.5px; letter-spacing:.08em; text-transform:uppercase; color:var(--text-dim); white-space:nowrap;}
+  .walk-player-stat .lbl-short{display:none;}
+  /* smaller dan 1700px: 4 kaarten naast elkaar zijn dan te smal voor het lange label, en de kaart
+     zou naar 2 regels springen (pagina weer te hoog) */
+  @media (max-width: 1700px){
+    .walk-player-stat .lbl-long{display:none;}
+    .walk-player-stat .lbl-short{display:inline;}
+    .walk-player{gap:6px 10px; padding:6px 10px;}
+    .walk-player-stats{gap:12px;}
+  }
+  .walk-player-stat b{font-size:15px; color:var(--text); font-variant-numeric:tabular-nums;}
+  .walk-player-stat.quests b{color:var(--amber);}
+  .walk-player-stat.energy b{color:var(--start);}
+  .walk-player-stat.energy.full b{color:var(--amber);}
+  .walk-player.active{
+    border-color:var(--pc); color:var(--text);
+    background:linear-gradient(140deg, color-mix(in srgb, var(--pc) 18%, var(--hull)), var(--hull) 75%);
+    box-shadow:0 0 0 1px var(--pc) inset, 0 0 10px color-mix(in srgb, var(--pc) 35%, transparent);
+  }
+  /* wie niet aan zet is, staat gedempt op de achtergrond */
+  #walkScore .walk-player:not(.active):not(.done){opacity:.62;}
+  .walk-player-dot{
+    width:10px; height:10px; border-radius:50%; background:var(--pc); flex:none;
+    box-shadow:0 0 6px var(--pc);
+  }
+

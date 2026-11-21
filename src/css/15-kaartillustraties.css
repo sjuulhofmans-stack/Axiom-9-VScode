@@ -1,0 +1,313 @@
+  /* ---------- kaart-illustraties ---------- */
+  /* tint-kleur per kaarttype: amber=beweging, groen=energie, blauw=nut, rood=verstoring */
+
+  .action-card{
+    position:relative; display:flex; flex-direction:column; align-items:center;
+    background:linear-gradient(165deg, var(--panel-2) 0%, var(--hull) 78%);
+    border:1px solid var(--line); color:var(--card-tint);
+    clip-path: polygon(0 8px, 8px 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%);
+    box-shadow: inset 0 0 0 1px rgba(255,255,255,.02);
+    font-family:var(--font-display); text-align:center; cursor:var(--cur-normal);
+  }
+  button.action-card{ font: inherit; }
+  .action-card::before{
+    content:''; position:absolute; inset:0; pointer-events:none;
+    box-shadow: inset 0 0 14px var(--card-glow);
+    clip-path: inherit;
+  }
+  .action-card-name{
+    font-weight:700; letter-spacing:.02em; text-transform:uppercase; color:var(--text);
+    line-height:1.2;
+    /* zonder dit steken lange namen (HERPRIORITERING, NOODTRANSPORT) links en rechts
+       buiten het 108px brede kaartje — een woord breekt van zichzelf nergens af */
+    max-width:100%; overflow-wrap:anywhere;
+  }
+  .action-card-hint{
+    font-family:var(--font-mono); color:var(--text-dim); line-height:1.35;
+  }
+
+  .action-card--lg{
+    width:108px; padding:10px 8px 9px; gap:4px;
+    transition:transform .12s, box-shadow .12s, border-color .12s;
+  }
+  .action-card--lg .action-card-name{font-size:11.5px;}
+  .action-card--lg .action-card-hint{font-size:9.5px;}
+  button.action-card--lg:not(.is-disabled):not(:disabled){cursor:var(--cur-click);}
+  button.action-card--lg:not(.is-disabled):not(:disabled):hover{
+    transform:translateY(-2px);
+    border-color:var(--card-tint);
+    box-shadow:0 6px 16px rgba(0,0,0,.4), 0 0 0 1px var(--card-tint);
+  }
+  .action-card--lg.is-disabled, .action-card--lg:disabled{opacity:.38; filter:grayscale(.4);}
+
+  .action-card-row{display:flex; gap:8px; flex-wrap:wrap;}
+  /* De drie energie-acties uit de solo-modus: volle-breedte-rijen in plaats van kaartjes.
+     Als 108px-kaartjes pasten ze niet met z'n drieën in de 300px-zijkolom (de derde viel op
+     een tweede rij) en smaller gemaakt brak "Herprioritering" middenin het woord af. */
+  /* width:100% is nodig omdat de ouder (#walkSoloActions, class .walk-solo-actions) zelf een
+     flex-RIJ is (voor andere schermen in dit vakje, zie styles.css verderop) — zonder expliciete
+     breedte bleef deze kolom (en dus elke .energy-pick-knop erin) op zijn intrinsieke
+     inhoudsbreedte hangen i.p.v. de hele .walk-solo-panel te vullen (gebruikerswens). */
+  /* gap/padding iets krapper sinds er 4 acties zijn (was 6px / 8px): zo passen 4 rijen + de
+     energiebalk + de "te weinig energie"-regel samen in de vaste 286px van .walk-solo-panel (krapste geval 272px, gemeten) */
+  /* gap weer 8px (gebruikerswens: de gloed van de puls heeft wat lucht nodig tussen de knoppen);
+     krapste geval wordt daarmee ±281px, past nog net in de 286px */
+  .energy-pick-list{display:flex; flex-direction:column; gap:8px; width:100%;}
+  .energy-pick{
+    display:flex; align-items:center; gap:10px; width:100%; text-align:left;
+    padding:5px 10px; border-radius:5px; cursor:var(--cur-click);
+    background:linear-gradient(150deg, var(--panel-2), var(--hull));
+    border:1px solid var(--line); font-family:var(--font-display);
+    transition:border-color .12s, transform .1s, box-shadow .12s;
+  }
+  /* pil i.p.v. cirkel: met alleen een getal leek dit rondje nergens specifiek naar te
+     verwijzen, het ⚡-symbool (hetzelfde teken als bv. de energiebadge in de spelersrij)
+     maakt in één oogopslag duidelijk dat het om energiekosten gaat (gebruikerswens) — een
+     cirkel van 26px is te smal voor "⚡3", dus wordt de badge nu breedte-op-inhoud. */
+  .energy-pick-cost{
+    flex:none; min-width:26px; height:26px; padding:0 7px; border-radius:13px;
+    display:flex; align-items:center; justify-content:center; gap:1px;
+    font-family:var(--font-mono); font-size:12px; font-weight:700;
+    color:var(--start); border:1px solid var(--start); background:rgba(85,214,138,.09);
+  }
+  .energy-pick-text{display:flex; flex-direction:column; gap:1px; min-width:0;}
+  .energy-pick-text b{
+    font-size:13px; font-weight:700; letter-spacing:.03em; text-transform:uppercase; color:var(--text);
+    line-height:1.15;
+  }
+  .energy-pick-text span{
+    font-family:var(--font-mono); font-size:9.5px; line-height:1.35; color:var(--text-dim);
+  }
+  .energy-pick:not(.is-disabled):hover{
+    border-color:var(--start); transform:translateY(-1px);
+    box-shadow:0 4px 12px rgba(0,0,0,.4), 0 0 0 1px var(--start);
+  }
+  .energy-pick.is-disabled{opacity:.45; cursor:var(--cur-no);}
+  .energy-pick.is-disabled .energy-pick-cost{color:var(--text-dim); border-color:var(--line); background:none;}
+  .energy-pick-none{margin:6px 0 0; font-size:11px; line-height:1.3;}
+
+  /* speler die binnen is: van het bord af, dus gedempt weergeven */
+  .walk-player.done{border-left-color:var(--start); opacity:.62;}
+  .walk-meta .hit{color:var(--start);}
+  .walk-meta .lost{color:var(--danger);}
+
+  #walkBoard{
+    /* 20px (i.p.v. 19px): iets groter bord geeft de zijkolom ernaast (die nooit hoger dan het
+       bord mag worden) wat meer hoogtebudget, zonder de pagina onnodig te verlengen — de
+       zijkolom-vakken hebben zelf ook nog een eigen overflow-y:auto als noodklep. .wrap is
+       tegelijk verbreed voor de bredere zijkolom-lay-out. */
+    --cell: 20px;
+    display:grid;
+    grid-template-columns: repeat(40, var(--cell));
+    grid-template-rows: repeat(32, var(--cell));
+    gap:1px; margin:0 auto; width:max-content;
+    position:relative;              /* anker voor de rand om de doelkamer */
+  }
+  #walkBoard .cell{cursor:var(--cur-normal);}
+  /* zwakke tegelrand, alleen ter oriëntatie — donkerblauw en minder opvallend dan de amber
+     rand op het tabblad "Speelbord genereren" (die daar de sleepbewerking moet ondersteunen). */
+  #walkBoard .cell.walk-tile-edge-r{box-shadow: inset -1px 0 0 0 rgba(76,120,178,.22);}
+  #walkBoard .cell.walk-tile-edge-b{box-shadow: inset 0 -1px 0 0 rgba(76,120,178,.22);}
+  #walkBoard .cell.walk-tile-edge-l{box-shadow: inset 1px 0 0 0 rgba(76,120,178,.22);}
+  #walkBoard .cell.walk-tile-edge-t{box-shadow: inset 0 1px 0 0 rgba(76,120,178,.22);}
+  #walkBoard .cell.walk-tile-edge-r.walk-tile-edge-b{box-shadow: inset -1px 0 0 0 rgba(76,120,178,.22), inset 0 -1px 0 0 rgba(76,120,178,.22);}
+  #walkBoard .cell.walk-tile-edge-r.walk-tile-edge-t{box-shadow: inset -1px 0 0 0 rgba(76,120,178,.22), inset 0 1px 0 0 rgba(76,120,178,.22);}
+  #walkBoard .cell.walk-tile-edge-l.walk-tile-edge-b{box-shadow: inset 1px 0 0 0 rgba(76,120,178,.22), inset 0 -1px 0 0 rgba(76,120,178,.22);}
+  #walkBoard .cell.walk-tile-edge-l.walk-tile-edge-t{box-shadow: inset 1px 0 0 0 rgba(76,120,178,.22), inset 0 1px 0 0 rgba(76,120,178,.22);}
+  /* --pc wordt per cel inline gezet op de kleur van de speler die er loopt/staat; de
+     8-cijferige hex-suffix is de doorzichtigheid, zodat het bord eronder zichtbaar blijft. */
+  .cell.walk-trail{
+    background:color-mix(in srgb, var(--pc, var(--amber)) 42%, transparent) !important;
+    box-shadow:inset 0 0 0 1px color-mix(in srgb, var(--pc, var(--amber)) 70%, transparent) !important;
+    z-index:2; position:relative;
+  }
+  /* Rooster en kristalvakje zijn een achtergrondplaatje: het spoor hierboven wiste dat plaatje, dus na
+     een stap erover (en terug in dezelfde beurt) zag je niet meer waar het rooster lag
+     (gebruikersmelding 2026-11). Hier blijft het plaatje staan, met de spelerkleur als waas erover
+     (rooster: het plaatje dekt het hele vakje) of eronder (kristal: klein zeshoekje in het midden). */
+  .cell.grate.walk-trail{
+    background:
+      linear-gradient(color-mix(in srgb, var(--pc, var(--amber)) 34%, transparent), color-mix(in srgb, var(--pc, var(--amber)) 34%, transparent)),
+      #161b22 var(--grate-img) center / 100% 100% no-repeat !important;
+  }
+  .cell.actioncell.walk-trail{
+    background-color:color-mix(in srgb, var(--pc, var(--amber)) 42%, transparent) !important;
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 290'%3E%3Cpolygon points='100,4 196,62 196,228 100,286 4,228 4,62' fill='%237a3fc4' stroke='%23e0c2ff' stroke-width='20' stroke-linejoin='round'/%3E%3Cpolygon points='100,40 165,80 165,150 100,120 35,150 35,80' fill='%23c79bf7' fill-opacity='.55'/%3E%3C/svg%3E") !important;
+    background-repeat:no-repeat !important; background-position:center !important; background-size:auto 80% !important;
+  }
+  /* voltooide opdracht: een "opgebruikt" opdrachtvakje. Bewust NIET groen — dat is de kleur
+     van de startvakjes en die staan tegelijk op het bord. */
+  .cell.walk-done{
+    background:#1d4a5e !important;
+    box-shadow:inset 0 0 0 2px var(--quest) !important;
+    z-index:3; position:relative;
+  }
+  /* Het doelvakje draagt de kleur van de OPDRACHTKAART (--qtint, gezet vanuit markWalkTarget
+     in 96-walk.js) en niet meer het vaste opdrachtblauw; de rand eromheen blijft de kleur van
+     de speler die er heen moet. Zo hoort het vakje zichtbaar bij de kaart in het zijpaneel. */
+  /* De rand + gloed pulsen met dezelfde axPulse als de knoppen en het kamerkader (vroeger
+     knipperde het hele vakje via opacity in een eigen tempo). Op ::after om dezelfde reden als
+     .walk-start-glow: de box-shadow van het vakje kan !important zijn. */
+  .cell.walk-target{
+    background:var(--qtint, var(--quest)) !important;
+    z-index:4; position:relative;
+  }
+  /* Multiplayer: het doel van wie er nu aan zet is (als dat niet jij bent), naast je eigen doel —
+     gestippelde rand in diens kleur, rustig en zonder puls zodat je eigen doel het duidelijkst
+     blijft (soloShowTargets in 97-solo.js). ::before, want ::after is al van .walk-target. */
+  .cell.walk-target-other{z-index:4; position:relative;}
+  .cell.walk-target-other::before{
+    content:''; position:absolute; inset:-3px; border-radius:3px; pointer-events:none;
+    border:2px dashed var(--oc, #fff);
+    box-shadow:0 0 8px color-mix(in srgb, var(--oc, #fff) 45%, transparent);
+  }
+  .cell.walk-target::after{
+    content:''; position:absolute; inset:-2px; border-radius:3px; pointer-events:none;
+    --glow: var(--pc, #fff);
+    animation:axPulse 1.9s ease-in-out infinite;
+  }
+  @keyframes walkPulse{0%,100%{opacity:1;} 50%{opacity:.55;}}
+
+  /* Rand om de hele tegel waar het doelvakje in ligt. Eén los blokje boven het raster in
+     plaats van randen op 28 losse cellen: het bord heeft 1px tussenruimte, dus randen op de
+     cellen zelf zouden een streepjeslijn opleveren. Positie in tegels: een tegel is 8 cellen
+     plus 8 tussenruimtes breed, dus x = kolom * (8*cell + 8). */
+  .walk-room-ring{
+    position:absolute; pointer-events:none; z-index:5; box-sizing:border-box;
+    left:calc(var(--rc) * (var(--cell) * 8 + 8px));
+    top:calc(var(--rr) * (var(--cell) * 8 + 8px));
+    width:calc(var(--cell) * 8 + 7px);
+    height:calc(var(--cell) * 8 + 7px);
+    border:2px solid var(--qtint, var(--quest));
+    border-radius:4px;
+    box-shadow:0 0 14px color-mix(in srgb, var(--qtint, var(--quest)) 60%, transparent),
+               inset 0 0 18px color-mix(in srgb, var(--qtint, var(--quest)) 20%, transparent);
+    /* zelfde tempo/kromme als axPulse en via syncAllPulses (97-solo.js) gelijk ermee; hier via
+       opacity omdat het kader ook een binnengloed heeft, wat op hetzelfde neerkomt */
+    animation:walkRoomPulse 1.9s ease-in-out infinite;
+  }
+  .walk-room-ring[hidden]{display:none;}
+  @keyframes walkRoomPulse{0%,100%{opacity:1;} 50%{opacity:.5;}}
+  #tabWalk.walk-is-paused .walk-room-ring{animation-play-state:paused;}
+
+  /* de opdrachtkaart die nu het doel is, bovenin het zijpaneel */
+  .walk-quest-card{
+    display:flex; align-items:center; gap:11px; flex:none;
+    padding:9px 11px; border-radius:6px;
+    background:linear-gradient(140deg, color-mix(in srgb, var(--qtint) 15%, var(--hull)), var(--hull) 70%);
+    border:1px solid var(--qtint);
+    box-shadow:0 0 16px color-mix(in srgb, var(--qtint) 22%, transparent);
+    cursor:var(--cur-click);
+  }
+  .walk-quest-card:hover{box-shadow:0 0 20px color-mix(in srgb, var(--qtint) 38%, transparent);}
+  .walk-quest-card:empty{display:none; cursor:var(--cur-normal);}
+  /* vergroot bij hover (gebruikersverzoek) — puur transform, dus geen invloed op de hoogte van
+     .walk-info-panel eromheen; overflow:visible op de kaart zelf laat 'm over de tekst ernaast
+     heen groeien in plaats van afgesneden te worden door .walk-info-panel's overflow-y:auto. */
+  .walk-quest-card-face{
+    flex:none; width:78px; display:block; container-type:inline-size; position:relative; z-index:2;
+    transition:transform .15s ease; transform-origin:left center;
+  }
+  .walk-quest-card:hover .walk-quest-card-face{transform:scale(1.4); overflow:visible;}
+  .walk-quest-card-face img{
+    width:100%; aspect-ratio:63/88; object-fit:cover; border-radius:5px; display:block;
+    box-shadow:0 6px 16px rgba(0,0,0,.5);
+  }
+  .walk-quest-card-text{display:flex; flex-direction:column; gap:3px; min-width:0;}
+  .walk-quest-card-text .lbl{
+    font-family:var(--font-mono); font-size:8.5px; letter-spacing:.2em; text-transform:uppercase;
+    color:var(--text-dim);
+  }
+  .walk-quest-card-text b{
+    font-family:var(--font-display); font-size:15px; font-weight:700; text-transform:uppercase;
+    color:#eef3f8; line-height:1.1; overflow-wrap:break-word;
+  }
+  .walk-quest-card-text .sub{font-family:var(--font-mono); font-size:9.5px; color:var(--qtint); line-height:1.35;}
+  .cell.walk-pawn{
+    background:var(--pawn, #ff4fd8) !important;
+    box-shadow:0 0 0 1px rgba(0,0,0,.55), 0 0 9px var(--pawn, #ff4fd8) !important;
+    border-radius:50% !important;
+    z-index:6; position:relative;
+  }
+  /* wie aan zet is krijgt een witte ring, zodat je 'm tussen vier pionnen terugvindt */
+  .cell.walk-pawn.walk-pawn-active{
+    box-shadow:0 0 0 2px #fff, 0 0 12px var(--pawn, #ff4fd8) !important;
+    z-index:7;
+  }
+
+  /* aan/uit-rij voor de legenda en het logboek hieronder — allebei standaard dicht (zie
+     #walkLegend/#walkLog hierbeneden en het commentaar in index.html). */
+  /* onderaan de linkerkolom (.walk-status-col), twee even brede knoppen */
+  .walk-extras-toggle{flex:none; margin:0; display:grid; grid-template-columns:1fr 1fr; gap:8px;}
+  .walk-extras-toggle .active{color:#eafcff; border-color:var(--amber-dim);}
+  /* VOOR NU UIT (gebruikerswens 2026-10, "staat veel in de weg"; later op een andere manier
+     inbouwen): knoppen "Toon legenda"/"Toon log" én de legenda en het log zelf zijn verborgen.
+     De code blijft: walkLog() schrijft gewoon door in #walkLog, dus weer aanzetten = deze regel
+     weghalen. De opdrachtenlijst erboven vult de vrijgekomen ruimte vanzelf. */
+  .walk-extras-toggle, #walkLegend, #walkLog{display:none !important;}
+
+  .walk-legend{
+    display:flex; align-items:center; gap:14px; flex-wrap:wrap; margin-top:12px;
+    font-family:var(--font-mono); font-size:10.5px; color:var(--text-dim);
+  }
+  /* .walk-legend zet zelf `display:flex` (hierboven), dat wint anders van de standaard
+     [hidden]{display:none} van de browser — zelfde reden als .walk-endgame[hidden] en de
+     overlays verderop in dit bestand. */
+  .walk-legend[hidden]{display:none;}
+  .walk-key{display:flex; align-items:center; gap:6px;}
+  .walk-swatch{width:11px; height:11px; border-radius:2px; display:inline-block;}
+  .walk-swatch.pawn{border-radius:50%; margin-right:-3px;}
+  .walk-swatch.pawn.p1{background:#ff4fd8;}
+  .walk-swatch.pawn.p2{background:#ffd23d;}
+  .walk-swatch.pawn.p3{background:#7c5cff;}
+  .walk-swatch.pawn.p4{background:#ff7a45; margin-right:3px;}
+  .walk-swatch.target{background:var(--quest);}
+  /* het spoor krijgt de kleur van wie aan zet is, dus toont de legenda alle vier de kleuren */
+  .walk-swatch.trail{
+    width:26px;
+    background:linear-gradient(90deg,#ff4fd86b 0 25%,#ffd23d6b 25% 50%,#7c5cff6b 50% 75%,#ff7a456b 75% 100%);
+    box-shadow:inset 0 0 0 1px rgba(255,255,255,.22);
+  }
+  .walk-swatch.done{background:#1d4a5e; box-shadow:inset 0 0 0 2px var(--quest);}
+  .walk-swatch.start{background:var(--start);}
+
+  .walk-log{
+    margin-top:20px; max-height:190px; overflow-y:auto;
+    font-family:var(--font-mono); font-size:11.5px; line-height:1.7; color:var(--text-dim);
+    background:var(--hull); border:1px solid var(--line-dim); border-radius:4px; padding:9px 11px;
+  }
+  .walk-log:empty{display:none;}
+  .walk-log div{border-bottom:1px solid rgba(255,255,255,.04); padding:2px 0;}
+  .walk-log b{color:var(--amber);}
+  .walk-log .hit{color:var(--start);}
+  .walk-log .energy{color:var(--start); opacity:.8;}
+  .walk-log .action{color:var(--amber); font-weight:700;}
+  /* route van een Noodtransport: zelfde spoor, maar gestippeld zodat je ziet dat het geen
+     gewone zet was */
+  .cell.walk-trail.walk-jump{
+    box-shadow:inset 0 0 0 1px #fff, 0 0 5px var(--pc, var(--amber)) !important;
+  }
+  .walk-log-dot{
+    width:7px; height:7px; border-radius:50%; background:var(--pc); display:inline-block;
+    margin-right:7px; vertical-align:middle; flex:none;
+  }
+
+  /* ---------- tegel-editor ---------- */
+  /* ---------- kaartkluis + kaartvenster (solo-modus) ---------- */
+  /* het klikbare vlak onder de dobbelstenen; alleen zichtbaar als je kaarten hebt */
+  /* de kaartjes overlappen elkaar als een waaier in je hand */
+
+  /* vervolgkeuze van een gespeelde actiekaart (doelwit/richting/Blinde-Vlek-aanbod) — hoort nu
+     bij de kaartkluis i.p.v. de energiekolom (gebruikerswens). Geen vaste hoogte zoals
+     .walk-solo-panel: dit vakje is geen permanent onderdeel van de kolom maar een kort,
+     op-zichzelf-staand keuzemoment, dus mag gewoon meegroeien met zijn inhoud (2 t/m 4
+     doelwit-knoppen, of de 4 richtingen, of de Blinde-Vlek ja/nee). `:empty` verbergt 'm
+     vanzelf zodra er niets te kiezen valt — zie soloClearCardActionsPanel in 97-solo.js.
+     `.walk-pulse-affordable` (via soloRenderCardActionsPanel) maakt duidelijk dat hier NU een
+     keuze van je gevraagd wordt (gebruikerswens). */
+  .walk-card-actions{
+    display:flex; flex-direction:column; gap:10px;
+    border:1px solid var(--line-dim); border-radius:6px; padding:12px;
+  }
+  .walk-card-actions:empty{display:none;}
+

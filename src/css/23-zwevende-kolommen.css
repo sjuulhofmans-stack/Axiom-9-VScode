@@ -1,0 +1,75 @@
+  /* ================= "ZWEVENDE KOLOMMEN" OP DE HELE PAGINA (gekozen variant 5 uit 6, 2026-10) =================
+     Eerst alleen tijdens een potje, sinds 2026-10 voor ALLES (gebruikerswens: overal dezelfde stijl
+     als het spel). Donkere egale ondergrond (#070a0e, via --page-bg, dus ook de kop); elk vak
+     (.panel, pop-ups, spelerskaarten, beide zijkolommen, bord, chat) is één losse kaart: egaal
+     --panel, ronde hoeken, zachte schaduw, geen rand en geen amber lijntje bovenin; alles daarbinnen
+     plat. BELANGRIJK: alle randen houden hun DIKTE, alleen de kleur wordt transparent — zo blijven
+     de gemeten maten (bord 711px, --wcell, energievak 300px, enz.) exact gelijk. Geen extra
+     padding/gap toevoegen zonder opnieuw te meten.
+     Tijdens een potje is #walkPanel zelf onzichtbaar (de kolommen erin zijn de kaarten, regels met
+     body.is-playing hieronder: die vakken bestaan alleen tijdens een potje); in de lobby is het
+     gewoon een kaart. */
+  :root{--page-bg:#070a0e;}
+  .panel, .card-panel, .editor-panel, .walk-confirm-panel{
+    background:var(--panel); border-color:transparent; border-radius:12px;
+    box-shadow:0 14px 34px -16px #000, inset 0 1px 0 rgba(255,255,255,.04);
+  }
+  .panel::before{display:none;}
+  /* bord in de generator: het stalen kader wordt plat in de kaartkleur (rand blijft 10px dik);
+     de kaart eromheen is .map-board-panel zelf */
+  .map-board-panel .board-outer{
+    background:var(--panel); border-color:var(--panel); outline:none; box-shadow:none;
+  }
+  body.is-playing #walkPanel{background:transparent; border-color:transparent; box-shadow:none;}
+  body.is-playing #walkPanel::before{display:none;}
+  /* spelerskaarten: losse kaart, de kleurstreep links wordt de stip; wie aan zet is krijgt een
+     dun ringetje in zijn kleur i.p.v. de gloed */
+  body.is-playing .walk-player{
+    background:var(--panel); border-color:transparent; border-radius:10px;
+    box-shadow:0 8px 20px -12px #000;
+  }
+  body.is-playing .walk-player.active{
+    border-color:transparent;
+    background:linear-gradient(140deg, color-mix(in srgb, var(--pc) 12%, var(--panel)), var(--panel) 70%);
+    box-shadow:0 0 0 1px var(--pc), 0 8px 20px -12px #000;
+  }
+  /* de twee zijkolommen: één kaart; de vakjes erin zonder eigen rand of vlak */
+  body.is-playing .walk-status-col,
+  body.is-playing .walk-side-stack{
+    background:var(--panel); border-radius:12px;
+    box-shadow:0 14px 34px -16px #000, inset 0 1px 0 rgba(255,255,255,.04);
+  }
+  body.is-playing .walk-panel-box,
+  body.is-playing .walk-info-panel,
+  body.is-playing .walk-quest-checklist,
+  body.is-playing .walk-solo-panel,
+  body.is-playing .walk-hud,
+  body.is-playing .crystal-vault{background:transparent; border-color:transparent;}
+  body.is-playing .walk-extras-toggle{padding:0 6px 6px;}
+  /* rijen binnenin: geen rand, een iets lichter vlak (voltooide opdrachten blijven doorzichtig) */
+  body.is-playing .quest-check-row{border-color:transparent; background:var(--panel-2);}
+  body.is-playing .quest-check-row.is-done{background:transparent;}
+  body.is-playing .quest-check-row.is-current{background:color-mix(in srgb, var(--qtint, var(--quest)) 15%, var(--panel-2));}
+  body.is-playing .quest-check-head{border-bottom-color:transparent;}
+  body.is-playing .mission-pill{background:var(--panel-2); border-color:transparent;}
+  body.is-playing .mission-pill.is-me{box-shadow:inset 0 0 0 1px var(--pc);}
+  /* het bord: zelfde kaart i.p.v. het stalen kader (rand blijft 10px dik, nu in de kaartkleur) */
+  body.is-playing .walk-board-col .board-outer{
+    background:var(--panel); border-color:var(--panel); border-radius:12px; outline:none;
+    box-shadow:0 14px 34px -16px #000, inset 0 0 0 1px rgba(255,255,255,.03);
+  }
+  body.is-playing .walk-endgame{border-color:transparent; border-radius:12px;}
+  /* chat in Multiplayer: ook een losse kaart */
+  body.is-playing .walk-chat-col{
+    background:var(--panel); border-color:transparent; border-radius:12px;
+    box-shadow:0 14px 34px -16px #000, inset 0 1px 0 rgba(255,255,255,.04);
+  }
+  body.is-playing .walk-chat-col::before{display:none;}
+  /* na afloop is de rechterkolom leeg: dan ook geen lege kaart laten staan */
+  body.is-playing .walk-play-layout.is-game-over .walk-side-stack{background:none; box-shadow:none;}
+  /* de linkerkolom ook (gebruikerswens 2026-11, "onzichtbaar net als de rechterkant"): tijdens
+     "Wie begint?" en na afloop staat er niets in. Alleen de kaart verdwijnt; de breedte blijft,
+     dus het bord verschuift niet. */
+  body.is-playing .walk-status-col.is-opening,
+  body.is-playing .walk-play-layout.is-game-over .walk-status-col{background:none; box-shadow:none;}
+

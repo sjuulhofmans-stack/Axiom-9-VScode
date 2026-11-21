@@ -1,0 +1,56 @@
+  /* ---------- board ---------- */
+  .board-outer{
+    overflow:auto; padding-bottom:10px; -webkit-overflow-scrolling:touch;
+    position:relative; border-radius:4px;
+  }
+  #board{
+    --cell: 21px;
+    display:grid;
+    grid-template-columns: repeat(40, var(--cell));
+    grid-template-rows: repeat(32, var(--cell));
+    gap:1px;
+    margin:0 auto;
+    width:max-content;
+  }
+  .cell{
+    width:var(--cell); height:var(--cell); border-radius:1.5px;
+    background:transparent;
+  }
+  .cell.walk{background:var(--walk); box-shadow:inset 0 0 0 1px rgba(0,0,0,.25);}
+  .cell.walk.room-tile{background:var(--walk-room);}
+  .cell.quest{background:var(--quest); box-shadow:0 0 6px rgba(79,184,224,.55);}
+  /* kristalvakje: een klein zeshoekje (het kristal zelf) binnen het vierkante vakje — het vakje
+     blijft even groot als de rest, het kristal past zich aan */
+  .cell.actioncell{background-color:var(--walk); box-shadow:inset 0 0 0 1px rgba(0,0,0,.25);
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 290'%3E%3Cpolygon points='100,4 196,62 196,228 100,286 4,228 4,62' fill='%237a3fc4' stroke='%23e0c2ff' stroke-width='20' stroke-linejoin='round'/%3E%3Cpolygon points='100,40 165,80 165,150 100,120 35,150 35,80' fill='%23c79bf7' fill-opacity='.55'/%3E%3C/svg%3E");
+    background-repeat:no-repeat; background-position:center; background-size:auto 80%;}
+  /* roostervakje (luchtschacht, zie ROOSTERS in 95-simulate.js): gekozen ontwerp D4 uit artifact
+     "Axiom-9 Roosters" (2026-11) — donker vak, koperen kader met vier schroefjes, grijze lamellen.
+     Eén SVG als achtergrond (geen extra elementen, geen ::before: die gebruiken doel/spoor al). */
+  :root{
+    --grate-img:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 30 30'%3E%3Crect width='30' height='30' fill='%23161b22'/%3E%3Crect x='2.5' y='2.5' width='25' height='25' rx='2' fill='none' stroke='%23e0915c' stroke-width='2.2'/%3E%3Crect x='7.5' y='9.5' width='15' height='2.4' fill='%23c5ced6'/%3E%3Crect x='7.5' y='13.8' width='15' height='2.4' fill='%23c5ced6'/%3E%3Crect x='7.5' y='18.1' width='15' height='2.4' fill='%23c5ced6'/%3E%3Ccircle cx='6.2' cy='6.2' r='1.5' fill='%23e0915c'/%3E%3Ccircle cx='23.8' cy='6.2' r='1.5' fill='%23e0915c'/%3E%3Ccircle cx='6.2' cy='23.8' r='1.5' fill='%23e0915c'/%3E%3Ccircle cx='23.8' cy='23.8' r='1.5' fill='%23e0915c'/%3E%3C/svg%3E");
+  }
+  .cell.grate, .swatch-grate{background:#161b22 var(--grate-img) center / 100% 100% no-repeat;}
+  .cell.start{background:var(--start); box-shadow:0 0 6px rgba(85,214,138,.55);}
+  .cell.empty-slot{background:var(--slot-empty); border-radius:1px;}
+  /* tegelgrens op het tabblad Kaart: zacht grijs (was amber .28; gebruikerswens 2026-11: de oranje
+     stippellijn om elke tegel was te druk en onduidelijk) */
+  .cell.tile-edge-r{box-shadow: inset -1px 0 0 0 rgba(150,166,184,.16);}
+  .cell.tile-edge-b{box-shadow: inset 0 -1px 0 0 rgba(150,166,184,.16);}
+  .cell.tile-edge-l{box-shadow: inset 1px 0 0 0 rgba(150,166,184,.16);}
+  .cell.tile-edge-t{box-shadow: inset 0 1px 0 0 rgba(150,166,184,.16);}
+  .cell.tile-edge-r.tile-edge-b{box-shadow: inset -1px 0 0 0 rgba(150,166,184,.16), inset 0 -1px 0 0 rgba(150,166,184,.16);}
+  .cell.tile-edge-r.tile-edge-t{box-shadow: inset -1px 0 0 0 rgba(150,166,184,.16), inset 0 1px 0 0 rgba(150,166,184,.16);}
+  .cell.tile-edge-l.tile-edge-b{box-shadow: inset 1px 0 0 0 rgba(150,166,184,.16), inset 0 -1px 0 0 rgba(150,166,184,.16);}
+  .cell.tile-edge-l.tile-edge-t{box-shadow: inset 1px 0 0 0 rgba(150,166,184,.16), inset 0 1px 0 0 rgba(150,166,184,.16);}
+  .cell.slot-hover{outline:1px solid var(--amber); outline-offset:-1px;}
+  .cell.unreachable{
+    background:#d451a8 !important;
+    box-shadow:0 0 0 1px #ff8ad4, 0 0 7px rgba(255,138,212,.75) !important;
+    z-index:4; position:relative;
+  }
+  .reach-status{display:flex; flex-direction:column; gap:5px; font-family:var(--font-mono); font-size:12.5px;}
+  .ok{color:var(--start);}
+  .bad{color:var(--danger);}
+  .reach-status .sub{color:var(--text-dim); font-size:11.5px;}
+

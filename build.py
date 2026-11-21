@@ -24,31 +24,11 @@ ROOT = pathlib.Path(__file__).parent
 SRC = ROOT / "src"
 DIST = ROOT / "dist"
 
-# Volgorde is belangrijk: 00 eerst (data), daarna regels, dan UI.
-JS_ORDER = [
-    "00-data.js",
-    "05-card-art.js",
-    "06-chants.js",
-    "10-rules.js",
-    "20-connectivity.js",
-    "30-random.js",
-    "40-board.js",
-    "50-interaction.js",
-    "60-palette.js",
-    "70-generator.js",
-    "80-controls.js",
-    "90-editor.js",
-    "95-simulate.js",
-    "96-walk.js",
-    "96b-intro.js",
-    "96c-crystals.js",
-    "96d-dice.js",
-    "97-solo.js",
-    "98-cards.js",
-    "98b-avatar.js",
-    "98c-rules.js",
-    "99-multiplayer.js",
-]
+# Volgorde = de bestandsnaam (00 eerst = data, daarna regels, dan UI). Alle .js in src/js en
+# alle .css in src/css gaan mee, op alfabetische volgorde: een nieuw bestand hoeft nergens in een
+# lijst, alleen het goede nummer krijgen (bv. 95c-… komt na 95b-… en vóór 96-…).
+JS_ORDER = sorted(p.name for p in (SRC / "js").glob("*.js"))
+CSS_ORDER = sorted(p.name for p in (SRC / "css").glob("*.css"))
 
 
 def read(path: pathlib.Path) -> str:
@@ -92,8 +72,8 @@ def build_chants() -> dict:
 
 def build() -> pathlib.Path:
     template = read(SRC / "index.html")
-    # rules.css = opmaak van het tabblad Spelregels, los gehouden van de grote styles.css
-    css = read(SRC / "styles.css") + chr(10) + read(SRC / "rules.css")
+    # alle opmaak uit src/css, op volgorde van bestandsnaam (de volgorde telt: latere regels winnen)
+    css = "\n".join(read(SRC / "css" / name) for name in CSS_ORDER)
     logo = read(SRC / "assets" / "logo.b64").strip()
     bigdaddy = read(SRC / "assets" / "bigdaddy.b64").strip()
     # los lijf + los wiel (i.p.v. één vlakke afbeelding), zodat het wiel apart kan ronddraaien —
@@ -166,6 +146,6 @@ if __name__ == "__main__":
     kb = out.stat().st_size / 1024
     code_kb = sum(
         (SRC / "js" / n).stat().st_size for n in JS_ORDER
-    ) / 1024 + (SRC / "styles.css").stat().st_size / 1024 + (SRC / "rules.css").stat().st_size / 1024
+    ) / 1024 + sum((SRC / "css" / n).stat().st_size for n in CSS_ORDER) / 1024
     n_chants = len(build_chants())
     print(f"Gebouwd: {out}  ({kb:.0f} KB, waarvan {code_kb:.0f} KB code, {n_chants} taunts)")

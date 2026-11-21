@@ -1,0 +1,168 @@
+  /* ---------- tegels selecteren en verslepen: "Plaats maken" (variant 2 uit 4, artifact "Axiom-9
+     Tegels verschuiven", 2026-11; code in 50-interaction.js) ----------
+     Kaders = .walk-room-ring (het kader om de opdrachtkamer tijdens een potje) boven het raster.
+     .tile-float = losse kopie van een tegel boven het bord; alleen transform beweegt. */
+  #board{position:relative;}
+  .map-ring.is-sel{--qtint:var(--amber); z-index:8;}
+  .map-ring.is-home{--qtint:var(--amber); border-style:dashed; box-shadow:none; animation:none; opacity:.55;}
+  .map-ring.is-over{animation:none; z-index:13;}   /* boven de opgetilde tegel: groen/rood moet zichtbaar blijven */
+  /* de echte vakjes van een opgetilde tegel: onzichtbaar, maar de positieletter blijft staan */
+  .cell.slot-lifted{visibility:hidden;}
+  .cell.slot-lifted .letter-badge{visibility:visible;}
+  /* Tijdens het slepen mag het bordvak niet gaan scrollen: de opgetilde tegel is iets groter en
+     gekanteld en stak op de onderste rij net onder het bord uit, waardoor er een schuifbalk kwam en
+     het veld op en neer sprong (gebruikersmelding 2026-11). */
+  .board-outer.is-tile-drag{overflow:hidden !important;}
+  .tile-float{
+    position:absolute; left:0; top:0; z-index:9; pointer-events:none; will-change:transform;
+    transition:transform .26s cubic-bezier(.2,.8,.25,1);
+  }
+  .tile-float.is-drag{transition:none; z-index:12;}
+  .tile-float.is-dropping{transition:transform .18s cubic-bezier(.2,.8,.25,1); z-index:12;}
+  .tile-float.is-lift{--s:1.09;}
+  .tile-float-in{
+    display:grid; grid-template-columns:repeat(8, var(--cell)); grid-template-rows:repeat(8, var(--cell)); gap:1px;
+    border-radius:4px; transform:scale(var(--s, 1)) rotate(var(--tilt, 0deg));
+    transition:transform .16s cubic-bezier(.2,.9,.3,1.2); will-change:transform;
+  }
+  /* opgetild: een kaartje met het kader om de hele tegel en een schaduw eronder (staat vast, de
+     kopie beweegt als geheel) */
+  .tile-float.is-drag .tile-float-in, .tile-float.is-dropping .tile-float-in{
+    background:color-mix(in srgb, var(--hull) 88%, transparent);
+    box-shadow:0 0 0 2px var(--amber), 0 0 14px rgba(255,181,69,.6), 0 16px 28px rgba(0,0,0,.6);
+  }
+  .tile-float.is-dropping .tile-float-in{box-shadow:0 0 0 2px var(--amber), 0 0 14px rgba(255,181,69,.6);}
+  @media (prefers-reduced-motion: reduce){
+    .tile-float, .tile-float-in{transition-duration:1ms !important;}
+  }
+  #board.dragging .slot-hit{cursor:var(--cur-grabbing);}
+  .cell.has-badge{position:relative; z-index:3;}
+  .letter-badge{
+    position:absolute; top:-1px; left:-1px; width:18px; height:18px;
+    display:flex; align-items:center; justify-content:center;
+    font-family:var(--font-mono); font-weight:700; font-size:11px;
+    color:#0b0f14; background:var(--amber); border-radius:2px 7px 2px 2px;
+    pointer-events:none; z-index:4; box-shadow:0 0 4px rgba(0,0,0,.5);
+  }
+  .letter-badge.corner{background:var(--danger); color:#1a0505;}
+  .letter-badge.inner{background:var(--start); color:#04150b;}
+  #board.hide-letters .letter-badge{display:none;}
+
+  /* Linksonderin de tegel: geen overlap met de eigen letterbadge (die zit linksbóven). */
+  .room-label{
+    position:absolute; left:0; z-index:3;
+    top:calc(var(--cell) * 7 + 7px);
+    width:calc(var(--cell) * 8 + 7px); height:20px;
+    display:flex; align-items:center; justify-content:flex-start; padding-left:4px;
+    font-family:var(--font-mono); font-size:9px; letter-spacing:.05em;
+    /* Eerder `mix-blend-mode:overlay` met wit op 32%: over een leeg (donker) vakje las dat
+       prima, maar zodra de naam een gevuld vakje kruiste blendde de letter volledig weg —
+       "Kernreactor" verloor zo zijn laatste letters. De leesbaarheid komt nu uit een donkere
+       rand ROND de letters, niet uit een vlak eronder: een balkje achter de naam legde een
+       zwart blok over de tegels heen en dat hoort niet op het bord. */
+    color:#e8eff6;
+    text-shadow:
+      0 0 3px rgba(4,7,11,.95),
+      0 1px 2px rgba(4,7,11,.95),
+      1px 0 2px rgba(4,7,11,.9),
+      -1px 0 2px rgba(4,7,11,.9),
+      0 -1px 2px rgba(4,7,11,.9);
+    text-align:left; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+    pointer-events:none; user-select:none;
+  }
+
+  #board.hide-walk .cell.walk{background:transparent !important; box-shadow:none !important;}
+  #board.hide-quest .cell.quest{background:transparent !important; box-shadow:none !important;}
+  #board.hide-actioncell .cell.actioncell{background:transparent !important; box-shadow:none !important;}
+  #board.hide-grate .cell.grate{background:transparent !important; box-shadow:none !important;}
+  #board.hide-start .cell.start{background:transparent !important; box-shadow:none !important;}
+  #board.hide-empty .cell.empty-slot{background:transparent !important;}
+  #board.hide-seamopen .cell.seam-open{box-shadow:none !important;}
+  #board.hide-seambroken .cell.seam-broken{box-shadow:none !important;}
+
+  /* ---------- rotatie / selectie ---------- */
+  .rotate-row{display:flex; align-items:center; gap:10px;}
+  .rotate-row button{flex:1;}
+  .selected-tile-box{
+    display:flex; align-items:center; justify-content:space-between; gap:8px;
+    background:var(--hull); border:1px solid var(--line-dim); border-radius:4px;
+    padding:8px 10px; font-family:var(--font-mono); font-size:12px; color:var(--text-dim);
+  }
+  .selected-tile-box b{color:var(--amber); font-size:14px;}
+  .tag{
+    font-family:var(--font-mono); font-size:9.5px; letter-spacing:.06em; text-transform:uppercase;
+    padding:2px 6px; border-radius:3px; border:1px solid var(--line);
+  }
+  .tag.corner{color:var(--danger); border-color:var(--danger);}
+  .tag.startroom{color:var(--start); border-color:var(--start);}
+
+  /* ---------- palette ---------- */
+  /* Kamers en Gangen onder elkaar, elk over de volle breedte, met de 10 tegels naast elkaar
+     (gebruikerswens: "veel groter en netter"; stonden eerst als 2 smalle kolommen naast elkaar) */
+  .register-grid{
+    display:grid; grid-template-columns:1fr; gap:22px; margin-top:22px; align-items:start;
+  }
+  .palette-strip{margin-top:0;}
+  .palette-list{
+    display:grid; grid-template-columns:repeat(10, minmax(0, 1fr)); gap:14px;
+  }
+  .palette-list .tile-thumb{padding:10px;}
+  /* te smal voor 10 naast elkaar: 5 per rij (2 nette rijen) */
+  @media (max-width: 1100px){ .palette-list{grid-template-columns:repeat(5, minmax(0, 1fr));} }
+  .panel h2 .count{
+    font-family:var(--font-mono); font-size:10px; color:var(--amber); letter-spacing:.08em;
+  }
+  /* kaartje "Tekentafel" (renderPalette, 60-palette.js): grote vaste naam, tegel op ruitjespapier,
+     "Bewerken" verschijnt over de tegel bij muis-erop (alleen opacity). Zonder muis (telefoon) staat
+     er altijd een klein potloodje in de hoek. */
+  .tile-thumb{
+    display:flex; flex-direction:column; gap:9px;
+    background:var(--hull); border:1px solid var(--line-dim); border-radius:8px; padding:6px;
+    cursor:var(--cur-click); transition:border-color .15s; container-type:inline-size;
+  }
+  .tile-thumb:hover{border-color:var(--line);}
+  .tile-thumb.active{border-color:var(--amber); box-shadow:0 0 10px rgba(255,181,69,.3);}
+  /* de naam groeit mee met het kaartje (17% van de breedte, max 19px): zo past "Serverruimte"
+     (de langste, ±5,5× de lettergrootte breed) altijd helemaal, ook als de 10 kaartjes smal zijn */
+  .thumb-name{
+    font-family:var(--font-display); font-weight:700; font-size:clamp(11px, 17cqi, 19px); letter-spacing:.03em; line-height:1.15;
+    color:#fff; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+  }
+  .thumb-name.is-corridor{color:var(--text-dim);}
+  .thumb-board{
+    position:relative; padding:8px; border-radius:6px; background-color:var(--panel-2);
+    background-image:linear-gradient(var(--line-dim) 1px, transparent 1px), linear-gradient(90deg, var(--line-dim) 1px, transparent 1px);
+    background-size:14px 14px;
+  }
+  button.thumb-edit{
+    position:absolute; inset:0; min-height:0; padding:0; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:6px;
+    border-radius:6px; border:1px solid var(--quest); background:rgba(7,10,14,.72); color:#eafcff;
+    font-family:var(--font-display); font-weight:700; font-size:13px; letter-spacing:.1em; text-transform:uppercase;
+    opacity:0; transition:opacity .15s;
+  }
+  button.thumb-edit svg{width:22px; height:22px; fill:none; stroke:var(--quest-glow); stroke-width:2; stroke-linecap:round; stroke-linejoin:round;}
+  .thumb-board:hover button.thumb-edit, button.thumb-edit:focus-visible{opacity:1;}
+  button.thumb-edit:disabled{border-style:dashed; border-color:var(--line); color:var(--text-dim); cursor:var(--cur-no);}
+  button.thumb-edit:disabled svg{stroke:var(--text-dim);}
+  @media (hover:none){
+    button.thumb-edit{inset:auto 4px 4px auto; width:28px; height:28px; opacity:1; background:rgba(7,10,14,.85);}
+    button.thumb-edit span{display:none;}
+    button.thumb-edit svg{width:15px; height:15px;}
+  }
+  .sel-main{display:flex; flex-direction:column; gap:2px;}
+  .sel-name{font-family:var(--font-display); font-size:16px; letter-spacing:.04em; text-transform:uppercase;}
+  .sel-name.room{color:var(--start);}
+  .sel-name.corridor{color:var(--text-dim);}
+  .sel-sub{font-family:var(--font-mono); font-size:11px; color:var(--text-dim);}
+  .thumb-grid{
+    display:grid; grid-template-columns:repeat(8,1fr); gap:1px; aspect-ratio:1;
+  }
+  .thumb-cell{width:100%; border-radius:1px; background:transparent;}
+  .thumb-cell.walk{background:var(--walk);}
+  .thumb-cell.walk.room-tile{background:var(--walk-room);}
+  .thumb-cell.quest{background:var(--quest);}
+  .thumb-cell.actioncell{background:var(--actioncell);}
+  .thumb-cell.grate{background:#e0915c;}
+  .thumb-cell.start{background:var(--start);}
+  .thumb-cell.empty-slot{background:var(--slot-empty);}
+
