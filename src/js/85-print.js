@@ -7,13 +7,15 @@
 //   - 3 bladen naast elkaar × 2 onder elkaar, A4 STAAND. Het bord is 40 × 32 vakjes; per blad
 //     13 | 14 | 13 vakjes breed en 16 hoog, zodat elke naad precies op een lijn tussen vakjes valt.
 //   - Een printer kan niet tot de rand printen. Daarom: aan de zijden die tegen een ander blad
-//     komen loopt het bord tot PRINT_M van de papierrand; de lege rand daarbuiten VOUW je naar
-//     achteren (rechts bij kolom 1 en 2, onder bij de bovenste rij). Dan ligt de vouw precies op de
-//     rand van het bord en leg je hem op de eerste lijn van het buurblad, waarvan de lege rand er
-//     gewoon onder schuift. Niets knippen.
+//     komen (rechts bij kolom 1 en 2, onder bij de bovenste rij) staat een KNIPLIJN precies op de
+//     rand van het bord (gebruikerswens 2026-11: kniprand i.p.v. de eerdere vouwrand). Je knipt de
+//     lege rand eraf en legt de knipkant op de eerste lijn van het buurblad, waarvan de lege rand
+//     er gewoon onder schuift. Het bord loopt PRINT_BLEED mm voorbij de kniplijn door (het begin
+//     van het buurblad), zodat een net te ruim geknipte rand geen wit kiertje geeft.
 //   - Eén SVG van het hele bord in millimeters (<defs>), elk blad toont daar zijn stuk van met <use>.
 //   - Bovenste bladen: kop + uitleg in de vrije ruimte boven het bord; onderste: de legenda eronder.
 const PRINT_M = 8;                                // mm vanaf de papierrand die zeker geprint wordt
+const PRINT_BLEED = 2.5;                          // mm bord voorbij de kniplijn (zie hierboven)
 const PRINT_PAGE_W = 210, PRINT_PAGE_H = 297;
 const PRINT_COLS = [13, 14, 13];                  // vakjes per blad, van links naar rechts
 const PRINT_ROWS = [16, 16];                      // vakjes per blad, van boven naar beneden
@@ -132,20 +134,25 @@ function printSheetsHtml(){
     for (let c = 0; c < nCols; c++){
       n++;
       const cw = PRINT_COLS[c] * s, ch = PRINT_ROWS[r] * s;
-      // waar het bordstuk op het blad komt: tegen de vouwrand (rechts/onder) of tegen de marge
+      // waar het bordstuk op het blad komt: tegen de kniplijn (rechts/onder) of tegen de marge
       // waar een ander blad overheen komt (links/boven)
-      const foldR = c < nCols - 1, foldB = r < nRows - 1;
+      const cutR = c < nCols - 1, cutB = r < nRows - 1;
       const bx = c === 0 ? PW - M - cw : M;
       const by = r === 0 ? PH - M - ch : M;
+      // aan een knipkant loopt het bord PRINT_BLEED mm door (het begin van het buurblad): knip je
+      // net te ruim, dan valt dat strookje over hetzelfde stuk bord op het buurblad, geen wit kiertje
+      const vw = cw + (cutR ? PRINT_BLEED : 0), vh = ch + (cutB ? PRINT_BLEED : 0);
       let extra = '';
-      // vouwlijnen: stippellijn over de hele hoogte/breedte van het blad, net buiten het bord
-      if (foldR) extra += `<line x1="${f(bx + cw)}" y1="${M}" x2="${f(bx + cw)}" y2="${PH - M}" stroke="#999" stroke-width=".3" stroke-dasharray="2 1.5"/>` +
-        // tekst langs de vouwlijn, net boven (bovenste rij) of net onder (onderste rij) het bord
-        `<text transform="translate(${f(bx + cw - 1.5)} ${f(r === 0 ? by - 3 : by + ch + 48)}) rotate(-90)" font-size="2.8" fill="#888">vouw hier naar achteren (of knip)</text>`;
-      if (foldB) extra += `<line x1="${M}" y1="${f(by + ch)}" x2="${PW - M}" y2="${f(by + ch)}" stroke="#999" stroke-width=".3" stroke-dasharray="2 1.5"/>`;
+      // kniplijnen: stippellijn over de hele hoogte/breedte van het blad, precies op de rand van het bord
+      if (cutR) extra += `<line x1="${f(bx + cw)}" y1="${M}" x2="${f(bx + cw)}" y2="${PH - M}" stroke="#555" stroke-width=".3" stroke-dasharray="2.5 1.5"/>` +
+        // tekst langs de kniplijn, net boven (bovenste rij) of net onder (onderste rij) het bord
+        `<text transform="translate(${f(bx + cw - 1.5)} ${f(r === 0 ? by - 3 : by + ch + 48)}) rotate(-90)" font-size="2.8" fill="#666">✂ knip hier langs de stippellijn</text>`;
+      if (cutB) extra += `<line x1="${M}" y1="${f(by + ch)}" x2="${PW - M}" y2="${f(by + ch)}" stroke="#555" stroke-width=".3" stroke-dasharray="2.5 1.5"/>`;
+      // linksonder op het eerste blad is er wit naast het bord: daar het schaartje voor de onderkant
+      if (cutB && c === 0) extra += `<text x="${f(bx - 2)}" y="${f(by + ch - 1.5)}" text-anchor="end" font-size="2.8" fill="#666">✂ knip</text>`;
       // bladnummer en waar hij hoort, in de vrije ruimte
       const tagY = r === 0 ? M + 6 : PH - M - 3;
-      // rechts uitgelijnd blijft hij 8 mm van de vouwlijn (daar staat de vouwtekst)
+      // rechts uitgelijnd blijft hij 8 mm van de kniplijn (daar staat de kniptekst)
       extra += `<text x="${c === 0 ? PW - M - 8 : M + 2}" y="${tagY}" text-anchor="${c === 0 ? 'end' : 'start'}" font-size="4" font-weight="700" fill="#555">` +
         `Blad ${n} van 6 · ${r === 0 ? 'boven' : 'onder'} ${['links', 'midden', 'rechts'][c]}</text>`;
       if (r === 0 && c === 0){
@@ -153,15 +160,15 @@ function printSheetsHtml(){
           `<text x="${PW - M - 8}" y="${M + 27}" text-anchor="end" font-size="3.6" fill="#555">Speelbord · seed ${printEsc(seed)}</text>`;
       }
       if (r === 0 && c === 1){
-        const lines = ['Zo leg je het bord:', '1. Vouw de stippelrand rechts (en onder) naar achteren.',
-          '2. Leg die vouw precies op de eerste lijn van het blad ernaast.', '   De lege rand van dat blad schuift eronder.',
+        const lines = ['Zo leg je het bord:', '1. Knip elk blad rechts en/of onder af langs de stippellijn (✂).',
+          '2. Leg die rand precies op de eerste lijn van het blad ernaast.', '   De lege rand van dat blad schuift eronder.',
           '3. Plak de naad met een stukje plakband.', 'Printen: A4 staand, schaal 100% (werkelijke grootte).'];
         extra += lines.map((t, i) => `<text x="${M + 2}" y="${M + 16 + i * 5.4}" font-size="${i ? 3.6 : 4.2}" font-weight="${i ? 400 : 700}" xml:space="preserve">${printEsc(t)}</text>`).join('');
       }
       if (r === 0 && c === 2) extra += `<text x="${M + 2}" y="${M + 16}" font-size="4.2" font-weight="700">Opdrachten</text>` + printQuestListSvg(M + 2, M + 20);
       if (r === nRows - 1 && c === 1) extra += printLegendSvg(M + 2, by + ch + 8, PW - 2 * M - 14);
       html += `<div class="print-sheet"><svg width="${PW}mm" height="${PH}mm" viewBox="0 0 ${PW} ${PH}" font-family="Arial, Helvetica, sans-serif">` +
-        `<svg x="${f(bx)}" y="${f(by)}" width="${f(cw)}" height="${f(ch)}" viewBox="${f(c0 * s)} ${f(r0 * s)} ${f(cw)} ${f(ch)}" overflow="hidden"><use href="#printBoard"/></svg>` +
+        `<svg x="${f(bx)}" y="${f(by)}" width="${f(vw)}" height="${f(vh)}" viewBox="${f(c0 * s)} ${f(r0 * s)} ${f(vw)} ${f(vh)}" overflow="hidden"><use href="#printBoard"/></svg>` +
         extra + `</svg></div>`;
       c0 += PRINT_COLS[c];
     }
