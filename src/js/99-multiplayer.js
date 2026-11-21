@@ -1361,7 +1361,8 @@ function mpBroadcastState(){
     ownerUi: {
       rollHidden: btnWalkSoloRoll ? btnWalkSoloRoll.hidden : true,
       skipHidden: btnWalkSoloSkip ? btnWalkSoloSkip.hidden : true,
-      actionsHtml: walkSoloActionsEl ? walkSoloActionsEl.innerHTML : '',
+      // de uitgegrijsde energie-acties ([data-rest], soloEnergyRestFill) bouwt elke gast zelf
+      actionsHtml: walkSoloActionsEl && !walkSoloActionsEl.querySelector('[data-rest]') ? walkSoloActionsEl.innerHTML : '',
       // vervolgkeuze van een gespeelde kaart (doelwit van een hinderkaart, het Blinde-Vlek-
       // aanbod) staat in een apart vak bij de kaartkluis — ging vroeger niet mee, waardoor een
       // gast die keuzes nooit te zien kreeg en zijn beurt vastliep

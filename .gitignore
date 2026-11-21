@@ -5,3 +5,7 @@ desktop.ini
 
 # Lokale Claude Code instellingen (paden/permissies van deze computer, niet nodig in de repo)
 .claude/settings.local.json
+
+# Ontwerpbestanden (Blender, SketchUp, bronplaatjes, originelen van logo/geluid): staan in OneDrive,
+# bewust niet op GitHub (de repo is openbaar)
+ontwerp/

@@ -604,7 +604,11 @@ Check minimaal:
     (laptop 66px), cijfer 26px (laptop 22px), GEEN vaste breedte (die schoof "1 / 10" 6px uit het
     midden). Gemeten 1920×945 en 1440×780: "10 / 10" 54 resp. 48px breed, één regel, midden van de
     tekst exact boven de lijn van de meter bij 1, 7 en 10, alle actienamen nog volledig leesbaar.
-    Na de worp is het energievak leeg (behalve het kruip-aanbod op een rooster). Schroevendraaier → op een rooster staan →
+    Na de worp en tijdens beurten van bots blijven de energie-acties staan, uitgegrijsd met de reden
+    ("kies je vóór het dobbelen" / "niet jouw beurt") + uitlegvak (gebruikerswens 2026-11; was: vak
+    leeg). Eén plek: `soloEnergyRestFill` + MutationObserver in 97-solo.js, herkenbaar aan [data-rest],
+    gaat in Multiplayer niet mee naar de gast. Een echte keuze (kruip-aanbod, laarzen, portaal …) komt
+    ervoor in de plaats. Schroevendraaier → op een rooster staan →
     knop "Kruip door de luchtschacht" → vrije roosters lichten op (rest gedimd, je doel niet) → klik →
     rooster schroeft los, koperen lichtje, je loopt met dezelfde stappen door; icoon op je spelerskaartje
     tot je kruipt. Op het bord liggen een

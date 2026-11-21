@@ -1003,6 +1003,7 @@ var soloEnergyNotes = {};          // id -> { reason, energy } van de laatste ke
 var soloEnergyNoteDefault = null;  // wat er staat zonder muis erop (null = je kunt niets)
 var soloEnergyNoteShown;           // wat er nu staat (om niets opnieuw te zetten als het gelijk is)
 function soloEnergyNoteHtml(id){
+  if (id === 'rest' && soloEnergyRestNote) return soloEnergyRestNote;
   if (!id || !ENERGY_ACTIONS[id] || !soloEnergyNotes[id]){
     return `<div class="energy-note-head"><b>Te weinig energie</b></div>` +
       `<p>Je kunt deze beurt geen actie betalen. Gooi gewoon: wat de energiesteen geeft, kun je volgende beurt uitgeven.</p>`;
@@ -1092,6 +1093,54 @@ if (walkSoloActionsEl){
     else if (soloPhase === 'moving' && btn.dataset.crawl === 'stop') soloCrawlStop();
     else if (soloPhase === 'crawl-pick' && btn.dataset.crawl === 'cancel') soloCancelCrawlPick();
   });
+}
+
+// ---------- energie-acties BLIJVEN STAAN (gebruikerswens 2026-11: "gaan weg als je dobbelt") ----------
+// Overal waar het energievak leeg werd (na de worp, tijdens het lopen, beurten van bots, na een keuze)
+// komt nu dezelfde lijst terug, uitgegrijsd met de reden ("kies je vóór het dobbelen" / "niet jouw
+// beurt") en het uitlegvak eronder; muis op een actie = zijn uitleg, net als vóór de worp. Een echte
+// keuze (laarzen-richting, kruipen, portaalkleur …) komt gewoon in de plaats ervan. Eén plek regelt
+// het: een MutationObserver vult het vak zodra het leeg raakt, en soloEnergyRestFill() werkt het bij
+// als de reden verandert. Herkenbaar aan [data-rest]; in Multiplayer gaat die NIET mee naar de gast
+// (mpBroadcastState stuurt dan ''), elke gast vult zijn eigen vak. Tijdens andermans beurt in
+// Multiplayer blijft het vak verborgen (.mp-not-my-turn: "X is aan zet").
+var soloEnergyRestNote = '';
+function soloEnergyRestState(){
+  if (!walkSoloActionsEl || !soloPlayers || !soloPlayers.length) return null;
+  if (soloPhase === 'idle' || soloPhase === 'game-over' || soloPhase === 'choose-action' || /^opening/.test(soloPhase)) return null;
+  const active = solo();
+  if (!active) return null;
+  const mine = typeof mp !== 'undefined' && mp.active && mp.phase === 'in-game'
+    ? !!active && active.idx === mp.myIdx
+    : !!active && !!active.isHuman;
+  if (!soloPlayers.some(p => p.isHuman)) return null;   // Bots spelen: geen energievak
+  return mine
+    ? { key: 'own', reason: 'kies je vóór het dobbelen', head: 'Na de worp',
+        text: 'Een energie-actie kies je vóór je gooit. Volgende beurt kun je weer kiezen.' }
+    : { key: 'other', reason: 'niet jouw beurt', head: 'Niet jouw beurt',
+        text: 'Aan het begin van je volgende beurt, vóór je gooit, kun je weer een energie-actie kiezen.' };
+}
+function soloEnergyRestFill(){
+  const st = soloEnergyRestState();
+  if (!st) return;
+  const el = walkSoloActionsEl;
+  const rest = el.firstElementChild && el.firstElementChild.dataset.rest !== undefined ? el.firstElementChild : null;
+  if (el.firstChild && !rest) return;                        // er staat een echte keuze
+  if (rest && rest.dataset.rest === st.key) return;          // staat er al zo
+  const ids = ['boost', 'reorder', 'gravity', 'portal', 'driver', 'jump'].sort((a, b) => ENERGY_ACTIONS[a].cost - ENERGY_ACTIONS[b].cost);
+  soloEnergyNotes = {};
+  for (const id of ids) soloEnergyNotes[id] = { reason: st.reason, energy: 0 };
+  soloEnergyRestNote = `<div class="energy-note-head"><b>${st.head}</b></div><p>${st.text}</p>`;
+  soloEnergyNoteDefault = 'rest';
+  el.innerHTML = `<div class="energy-rest" data-rest="${st.key}" hidden></div>` +
+    `<div class="energy-pick-list is-actions is-energy">${ids.map(id => renderEnergySoloButton(id, true, st.reason)).join('')}</div>` +
+    `<div class="energy-note" aria-live="polite">${soloEnergyNoteHtml('rest')}</div>`;
+  soloEnergyNoteShown = 'rest';
+}
+if (walkSoloActionsEl){
+  // leeg geraakt → in dezelfde taak (vóór het tekenen) de lijst terug, dus niets knippert
+  new MutationObserver(() => { if (!walkSoloActionsEl.firstChild) soloEnergyRestFill(); })
+    .observe(walkSoloActionsEl, { childList: true });
 }
 
 
@@ -1200,7 +1249,8 @@ function soloRefreshCardVault(){
     if (walkSoloActionsEl){
       const html = soloCrawlOfferHtml();
       // alleen opnieuw in de DOM als het echt anders is (anders begint de puls telkens opnieuw)
-      if (!html){ if (walkSoloActionsEl.firstChild) walkSoloActionsEl.innerHTML = ''; }
+      // geen aanbod: de uitgegrijsde energie-acties (soloEnergyRestFill) mogen blijven staan
+      if (!html){ if (walkSoloActionsEl.firstChild && !walkSoloActionsEl.querySelector('[data-rest]')) walkSoloActionsEl.innerHTML = ''; }
       else if (walkSoloActionsEl.dataset.offer !== html || !walkSoloActionsEl.querySelector('.crawl-offer')){
         walkSoloActionsEl.innerHTML = html;
         walkSoloActionsEl.dataset.offer = html;
@@ -1209,6 +1259,7 @@ function soloRefreshCardVault(){
     }
     soloClearCardActionsPanel();
   }
+  soloEnergyRestFill();   // reden bijwerken (jouw zet ↔ beurt van een ander); doet niets als het al klopt
   if (!walkCardVaultEl) return;
   // Multiplayer: altijd je eigen kluis (mpRefreshCardVault). Hier viel een gast die een bot-beurt
   // naspeelde anders terug op de vorige speler aan zet — een andere mens, van wie hij de
