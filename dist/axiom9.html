@@ -1784,6 +1784,10 @@
   /* dobbelen wie begint / startposities kiezen (walkSetOpeningMode, 96-walk.js): geen infovak links,
      wie er aan zet is staat al in de spelersbalk boven het bord (gebruikersmelding) */
   .walk-info-panel.is-opening{display:none !important;}
+  /* de opdrachtenlijst ook: anders schoof die tijdens "Wie begint?" naar boven (op de plek van de
+     missiestrook) en schoot hij na het kiezen weer naar beneden (gebruikersmelding 2026-11). Nu is de
+     linkerkolom leeg tot het potje begint, en verschijnen strook + lijst samen op hun vaste plek. */
+  .walk-status-col.is-opening .walk-quest-checklist{display:none !important;}
   .walk-info-panel.is-mission #walkQuestCard,
   .walk-info-panel.is-mission #walkMeta,
   .walk-info-panel.is-mission #walkScoreActive{display:none;}

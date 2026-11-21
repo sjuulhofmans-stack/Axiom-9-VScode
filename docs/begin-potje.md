@@ -15,5 +15,8 @@
   de vrije startpositie het dichtst bij hun eerste opdracht (`botPickStartLabel`).
   Weergave: `renderOpeningPanel` in `96-walk.js` (de hele rechterkolom),
   logica: `soloBeginOpening` e.v. in `97-solo.js`, Automatisch: `walkRunOpening`.
+  Linkerkolom tijdens de opening: helemaal leeg, ook de opdrachtenlijst (2026-11-21; die schoof
+  eerst naar boven en schoot na het kiezen weer naar beneden). `.walk-status-col.is-opening` in
+  `src/css/12-missie-energieacties.css`.
   De batch-simulatie houdt bewust vaste startposities: die meet juist de
   eerlijkheid **per** startpositie.
