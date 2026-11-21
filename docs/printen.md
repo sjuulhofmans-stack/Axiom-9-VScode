@@ -10,11 +10,13 @@ elkaar, niet knippen, met een plakbandje aan elkaar, speelbaar, zo min mogelijk 
   13 | 14 | 13 vakjes breed (`PRINT_COLS`) en 16 hoog (`PRINT_ROWS`). Zo valt elke naad precies op
   een lijn tussen twee vakjes.
 - Vakje = (210 − 2 × 8) / 14 = **13,86 mm**. Bord = 554 × 443 mm. Pionnen dus hooguit ±12 mm.
-- **Printerrand:** een printer kan niet tot de papierrand printen. Aan de kanten die tegen een
-  ander blad komen loopt het bord tot `PRINT_M` (8 mm) van de rand. Die lege rand vouw je naar
-  achteren: rechts bij de linker en middelste kolom, onder bij de bovenste rij. De vouw ligt dan
-  precies op de rand van het bord; je legt hem op de eerste lijn van het buurblad, waarvan de lege
-  rand er gewoon onder schuift. Knippen langs de stippellijn mag ook.
+- **Printerrand → kniprand** (gebruikerswens 2026-11-21; eerst was het een vouwrand). Een printer
+  kan niet tot de papierrand printen. Aan de kanten die tegen een ander blad komen (rechts bij de
+  linker en middelste kolom, onder bij de bovenste rij) staat een stippellijn met ✂ precies op de
+  rand van het bord. Die rand knip je eraf en leg je op de eerste lijn van het buurblad, waarvan de
+  lege rand (`PRINT_M`, 8 mm) er gewoon onder schuift.
+- **Doorloop van 2,5 mm** (`PRINT_BLEED`): voorbij de kniplijn staat al het begin van het buurblad.
+  Knip je net te ruim, dan valt dat strookje over precies hetzelfde stuk bord: geen wit kiertje.
 - Inkt: gangen wit, kamers heel lichtgrijs (`#efefef`), dunne grijze vakjeslijnen, dikke zwarte
   lijn waar vloer ophoudt (muur). Kleur alleen op de speciale vakjes, en die zijn ook in zwart-wit
   te herkennen: opdracht = nummer 1–9, start = S1–S4, kristal = zeshoek, rooster = spijltjes.
