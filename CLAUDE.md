@@ -42,6 +42,7 @@ src/js/
   40-board  50-interaction  60-palette                                      tabblad Kaart
   70-generator                                                              bordbouwer
   80-controls                                                               knoppen, tabbladen, speelmenu
+  85-print                                                                  bord printen op 6 A4'tjes
   90-editor                                                                 tegel-editor + legenda
   95a-sim-basis  95b-energie  95c-portalen  95d-roosters  95e-bot-slim      spelregels + bots,
   95f-kristallen  95g-bot-keuzes  95h-bewegen  95i-beurt-potje              gedeeld door alle modi
@@ -50,7 +51,7 @@ src/js/
   97a-solo-opzet  97b-solo-bord-score  97c-solo-energie  97d-solo-kluis     Zelf spelen
   97e-solo-acties  97f-solo-beurt  97g-solo-einde  97h-solo-opening
   98-cards  98b-avatar  98c-rules  99-multiplayer                           overige tabbladen
-src/css/01-basis … 27-spelregels.css   één bestand per onderdeel, naam zegt wat erin staat
+src/css/01-basis … 28-printen.css      één bestand per onderdeel, naam zegt wat erin staat
 docs/                   uitleg, metingen en ontwerpkeuzes per onderwerp
 ontwerp/                (alleen in OneDrive, niet in git) bronbestanden, originelen, Opdrachtkaarten.pdf
 ```
@@ -72,6 +73,7 @@ Oude namen in commentaar en in docs: `95-simulate.js` = de `95a…95k`-bestanden
 | multiplayer | `99-multiplayer` | [multiplayer](docs/multiplayer.md) + punt 10 van de [controlelijst](docs/controlelijst.md) |
 | simulatie en de uitslag | `95i-beurt-potje`, `95j-sim-scherm`, `95k-sim-uitslag` | punt 6–7 van de [controlelijst](docs/controlelijst.md) |
 | knoppen, lobby, legenda, cursor, kaders, speelweergave | `80-controls`, `src/css/` | [waar-zit-wat](docs/waar-zit-wat.md) |
+| het bord printen (6 A4'tjes) | `85-print`, `src/css/28-printen.css` | [printen](docs/printen.md) |
 | iets wat beweegt of animeert | — | [prestatie](docs/prestatie.md) |
 
 De volledige tabel "Waar moet ik zijn?" staat in [docs/waar-zit-wat.md](docs/waar-zit-wat.md).

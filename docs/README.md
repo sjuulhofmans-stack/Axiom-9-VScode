@@ -17,6 +17,7 @@ daar is niets uit weggelaten.
 | [controlelijst.md](controlelijst.md) | alles wat je na een wijziging kunt nakijken (15 punten) |
 | [prestatie.md](prestatie.md) | wat het speelscherm laat haperen en wat niet |
 | [nog-te-doen-en-roosters.md](nog-te-doen-en-roosters.md) | roosters/schroevendraaier, open punten |
+| [printen.md](printen.md) | het bord op 6 A4'tjes printen (knop bij de seed) |
 | [analyse.md](analyse.md) | de grote code-analyse (genummerde punten, bv. "nr. 35") |
 
 ## Oude bestandsnamen

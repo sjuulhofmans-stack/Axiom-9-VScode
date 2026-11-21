@@ -1,0 +1,18 @@
+  /* ---------- PRINTEN: het bord op 6 A4'tjes (85-print.js) ---------- */
+  /* knop naast de seed: de seed krimpt, de knop houdt zijn breedte */
+  .seed-row input{flex:1 1 auto; min-width:0;}
+  .seed-row #btnPrintBoard{flex:none;}
+  #printRoot{display:none;}
+  @page{size:A4 portrait; margin:0;}
+  @media print{
+    /* alleen de bladen; de rest van de pagina (donkere achtergrond, kop, tabbladen) niet */
+    html, body{background:#fff !important; height:auto !important; overflow:visible !important; margin:0 !important; padding:0 !important;}
+    body.is-printing > *:not(#printRoot){display:none !important;}
+    body.is-printing #printRoot{display:block;}
+    .print-sheet{
+      width:210mm; height:297mm; overflow:hidden; break-after:page; page-break-after:always;
+      -webkit-print-color-adjust:exact; print-color-adjust:exact;
+    }
+    .print-sheet:last-child{break-after:auto; page-break-after:auto;}
+    .print-sheet > svg{display:block;}
+  }
